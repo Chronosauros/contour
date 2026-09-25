@@ -9,7 +9,7 @@ plugins {
 providers.gradleProperty("contour.buildRoot").orNull?.let { layout.buildDirectory.set(file("$it/app")) }
 
 // Shown in the perf build's launcher name ("Contour 1.0"), so the icon itself says which build is on the phone.
-val appVersion = "1.0.2"
+val appVersion = "1.0.3"
 
 // Release signing, maintainer only: -Pcontour.signing=<file.properties> with storeFile (relative to that file),
 // storePassword, keyAlias and keyPassword. Without it the release APK comes out unsigned - sign it with your own key.
@@ -27,7 +27,7 @@ android {
         minSdk = 28
         targetSdk = 36
         // v0.2 (versionCode 2) is on the Pixel; `install -r` refuses a lower code, and keeps the data only on update.
-        versionCode = 5
+        versionCode = 6
         versionName = appVersion
     }
 

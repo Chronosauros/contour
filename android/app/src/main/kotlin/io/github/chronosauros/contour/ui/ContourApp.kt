@@ -118,6 +118,7 @@ fun ContourApp(
         val scope = rememberCoroutineScope()
         var sheet by remember { mutableStateOf<Sheet?>(null) }
         var service by remember { mutableStateOf(false) }
+        var licences by remember { mutableStateOf(false) }
         var archiveOpen by remember { mutableStateOf(prefs.getBoolean("archiveOpen", false)) }
         val snackbar = remember { SnackbarHostState() }
         val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
@@ -171,6 +172,7 @@ fun ContourApp(
                     undoable("DELETED ${p.name}", onUndo = { model.undoDelete(p.id) }, onGone = { model.finishDelete(p.id) })
                 }
                 override fun service() { service = true }
+                override fun licences() { licences = true }
             }
         }
         val tuneActions = remember(model) {
@@ -232,6 +234,7 @@ fun ContourApp(
                 ) { Text(data.visuals.message, style = Type.label, modifier = Modifier.testTag("snackbar_text")) }
             }
             if (service) DebugScreen(device) { service = false }
+            if (licences) LicencesScreen { licences = false }
         }
 
         val close = { sheet = null }
@@ -244,7 +247,7 @@ fun ContourApp(
             null -> Unit
         }
 
-        BackHandler(enabled = sheet == null && !service && pager.currentPage == Page.TUNE) {
+        BackHandler(enabled = sheet == null && !service && !licences && pager.currentPage == Page.TUNE) {
             scope.launch { pager.animateScrollToPage(Page.LIBRARY) }
         }
     }

@@ -2,14 +2,15 @@
 
 Contour is licensed under the Apache License, Version 2.0 (see `LICENSE`). This file lists everything
 Contour uses that someone else made: the libraries inside the app, code and knowledge it builds on, and the
-tools used to build it. The app shows this file, `NOTICE` and `LICENSE` on its licences screen (long-press
-the device status, then Licences).
+tools used to build it. The app shows this file, `NOTICE` and `LICENSE` on its About & licences screen (at the
+foot of the Library, and in the service menu).
 
 Summary:
 - Every library inside the app is licensed under the Apache License 2.0.
 - The only code from another project is a port of the WalkPlay protocol and coefficient maths from
   devicePEQ, licensed under 0BSD (section 2).
-- The app bundles no fonts, images, sounds or data made by others.
+- The app bundles no fonts, images or sounds made by others. The only outside data is the three filter
+  settings of the DUSK example profile, credited in section 3.
 
 ## 1. Libraries inside the app (all Apache License 2.0)
 
@@ -88,6 +89,12 @@ Formulas and formats, no code copied:
 - Fonts: none bundled. On Pixel phones the app asks the system for its Google Sans font by name; elsewhere it
   uses the system sans-serif. Google Sans is not part of this project and is not distributed with it.
 - Icons: Material Icons, from the AndroidX libraries in section 1 (Apache License 2.0).
+- Example profiles created on first launch:
+  - NIGHTFALL: the maintainer's own tuning, part of this project under the Apache License 2.0.
+  - DUSK: the "DUSK-Default" curve of the Moondrop DSP cable for the Moondrop x Crinacle DUSK, as published by
+    Crinacle at https://crinacle.com/2024/04/10/moondrop-x-crinacle-dusk-eq-dsp-values/ (three peaking
+    filters: 1400 Hz -3 dB Q 0.8, 5400 Hz -3 dB Q 2.0, 14000 Hz -5 dB Q 2.0). These are factual EQ settings,
+    included with credit so users can hear the DSP cable's default on other sources.
 - The launcher icon and all other graphics are drawn in code or as vector resources in this repo, under the
   project's Apache License 2.0.
 
@@ -104,6 +111,6 @@ Formulas and formats, no code copied:
 
 ## 5. Trademarks
 
-CrinEar, Protocol Micro, WalkPlay, Google, Pixel, Google Sans, Android and all other product names belong to
+CrinEar, Protocol Micro, Nightfall, WalkPlay, Moondrop, Crinacle, DUSK, Google, Pixel, Google Sans, Android and all other product names belong to
 their owners. Contour is an unofficial project and is not affiliated with or endorsed by any of them. Names are
 used only to say which hardware and formats Contour works with.

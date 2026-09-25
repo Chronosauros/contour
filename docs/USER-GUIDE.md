@@ -202,6 +202,11 @@ paste back into Contour on any phone, or load into Equalizer APO and other EQ to
 Profiles live only on your phone. Uninstalling Contour deletes them, so share the ones you care about
 first.
 
+## About and licences
+
+**ABOUT & LICENCES** at the very bottom of the Library shows the app version, the copyright, and the
+open-source licences of Contour and everything it uses (also reachable from the service screen).
+
 ## Service screen
 
 Long-press the status pill (top right) to open the service screen. You will rarely need it:

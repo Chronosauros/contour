@@ -113,7 +113,11 @@ Contour is licensed under the Apache License, Version 2.0 (`LICENSE`).
 
 The WalkPlay protocol and the biquad coefficient maths are ported from
 [devicePEQ](https://github.com/jeromeof/devicePEQ) by Jerome O'Flaherty (0BSD). Every third-party
-component and its licence is listed in `THIRD_PARTY_NOTICES.md`; attributions are in `NOTICE`.
+component and its licence is listed in `THIRD_PARTY_NOTICES.md`; attributions are in `NOTICE`. The DUSK
+example profile uses the DUSK-Default DSP curve
+[published by Crinacle](https://crinacle.com/2024/04/10/moondrop-x-crinacle-dusk-eq-dsp-values/). In the app,
+all of this is under **ABOUT & LICENCES** at the bottom of the Library.
 
-CrinEar, Protocol Micro, WalkPlay and other product names belong to their owners and are used only to say
-what Contour works with.
+Contour is an unofficial project, not affiliated with or endorsed by CrinEar or any other brand. CrinEar,
+Protocol Micro, Nightfall, WalkPlay, Moondrop, Crinacle, DUSK and other product names belong to their owners
+and are used only to say what Contour works with.

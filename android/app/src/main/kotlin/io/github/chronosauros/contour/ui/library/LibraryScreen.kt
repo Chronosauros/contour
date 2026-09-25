@@ -90,6 +90,7 @@ interface LibraryActions {
     fun restore(p: Profile)
     fun delete(p: Profile)
     fun service()
+    fun licences()
 }
 
 private val CARD_HEIGHT = 76.dp
@@ -244,6 +245,20 @@ fun LibraryScreen(
                             dim = true,
                         )
                     }
+                }
+            }
+            item(key = "licences") {
+                // the way to the open-source notices, always visible at the foot of the library
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(top = 20.dp)
+                        .height(48.dp)
+                        .clickable { openId = null; actions.licences() }
+                        .testTag("licences"),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("ABOUT & LICENCES", style = Type.small, color = c.textMute)
                 }
             }
         }

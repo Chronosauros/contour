@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.sp
 /** The repo's licence files as the build copies them into assets/licences/ (see app/build.gradle.kts). */
 private val LICENCE_FILES = listOf("NOTICE", "THIRD_PARTY_NOTICES.md", "LICENSE")
 
-/** Open-source licences, reached from the service screen: NOTICE, the third-party list and the Apache License 2.0. */
+/** About & licences, reached from the foot of the library and from the service screen: NOTICE, the third-party list and the Apache License 2.0. */
 @Composable
 fun LicencesScreen(onClose: () -> Unit) {
     BackHandler(onBack = onClose)
@@ -37,6 +37,9 @@ fun LicencesScreen(onClose: () -> Unit) {
                 .getOrDefault("(not found in this build)")
         }
     }
+    val version = remember {
+        runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: ""
+    }
     MaterialTheme {
         Surface(Modifier.fillMaxSize()) {
             LazyColumn(
@@ -46,9 +49,17 @@ fun LicencesScreen(onClose: () -> Unit) {
             ) {
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Open-source licences", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                        Text("About & licences", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
                         TextButton(onClick = onClose) { Text("Close") }
                     }
+                }
+                item {
+                    Text(
+                        "Contour $version\nCopyright 2026 Chronosaur. Licensed under the Apache License 2.0.\n" +
+                            "Source code: https://github.com/Chronosauros/contour\n" +
+                            "Unofficial - not affiliated with or endorsed by CrinEar or any other brand named in the app.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
                 files.forEach { (name, text) ->
                     item { Text(name, style = MaterialTheme.typography.titleSmall) }

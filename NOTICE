@@ -11,5 +11,8 @@ Copyright 2024 Jerome O'Flaherty, licensed under the 0BSD licence
 The app contains libraries from Android Jetpack (AndroidX) and Kotlin, licensed under the Apache License,
 Version 2.0. The full list is in THIRD_PARTY_NOTICES.md.
 
-CrinEar, Protocol Micro, WalkPlay and all other product names are trademarks of their owners. Contour is
+The DUSK example profile uses the DUSK-Default DSP curve published by Crinacle
+(https://crinacle.com/2024/04/10/moondrop-x-crinacle-dusk-eq-dsp-values/).
+
+CrinEar, Protocol Micro, WalkPlay, Moondrop, Crinacle and all other product names are trademarks of their owners. Contour is
 unofficial and not affiliated with or endorsed by any of them.
