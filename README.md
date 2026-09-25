@@ -25,8 +25,9 @@ Contour puts that on your phone. It is deliberately a small, simple tool:
   it back to check every value, and stores it in the dongle's memory.
 - **Then the phone is out of the picture.** Unplug the dongle and use it with your laptop, another phone or
   anything else. The EQ stays in it until you send another one.
-- **A real example to start from.** The first launch includes NIGHTFALL, the maintainer's own tuning for
-  the CrinEar Nightfall, next to a flat PROFILE 1.
+- **Real examples to start from.** The first launch includes NIGHTFALL, the maintainer's own tuning for
+  the CrinEar Nightfall, and DUSK, the default curve of Moondrop's DSP cable for the Moondrop x Crinacle
+  DUSK (so the analog cable sounds like the DSP one), next to a flat PROFILE 1.
 - **You can still tune on the go.** Drag bands on the graph, fine-tune with sliders, paste an AutoEQ
   profile from the clipboard, or read the current EQ off the dongle.
 

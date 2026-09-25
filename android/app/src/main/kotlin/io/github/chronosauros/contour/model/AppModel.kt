@@ -64,13 +64,15 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         val list = store.loadProfiles()
         val order = saved?.order.orEmpty()
         var sorted = list.sortedWith(compareBy({ order.indexOf(it.id).let { i -> if (i < 0) Int.MAX_VALUE else i } }, { it.createdAt }))
-        if (saved == null && sorted.isEmpty()) { // first launch: PROFILE 1 (one flat band) opens, NIGHTFALL as an example
+        if (saved == null && sorted.isEmpty()) { // first launch: PROFILE 1 (one flat band) opens, NIGHTFALL and DUSK as examples
             val now = System.currentTimeMillis()
             val first = Profile(newId(), "PROFILE 1", "", "headphones", listOf(flatBand()), null, now, now)
             val example = Profile(newId(), "NIGHTFALL", "CRINEAR NIGHTFALL", "moon", nightfallBands(), null, now, now + 1)
+            val dusk = Profile(newId(), "DUSK", "MOONDROP DUSK DEFAULT DSP", "sun", duskBands(), null, now, now + 2)
             store.save(first)
             store.save(example)
-            sorted = listOf(first, example)
+            store.save(dusk)
+            sorted = listOf(first, example, dusk)
         }
         profiles.clear()
         profiles.addAll(sorted)
@@ -93,6 +95,13 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         Band(bandId(), FilterType.PEAK, 6207.0, -3.0, 3.9),
         Band(bandId(), FilterType.PEAK, 12450.0, -4.5, 6.05),
         Band(bandId(), FilterType.PEAK, 15911.0, 3.0, 6.3),
+    )
+
+    /** The DUSK-Default curve of Moondrop's DSP cable (values published by Crinacle), for the analog cable. */
+    private fun duskBands() = listOf(
+        Band(bandId(), FilterType.PEAK, 1400.0, -3.0, 0.8),
+        Band(bandId(), FilterType.PEAK, 5400.0, -3.0, 2.0),
+        Band(bandId(), FilterType.PEAK, 14000.0, -5.0, 2.0),
     )
 
     // ---- persistence ----------------------------------------------------------------------------------
