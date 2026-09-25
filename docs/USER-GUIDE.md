@@ -33,7 +33,7 @@ This guide walks through everything the app does. If you only want the short ver
 
 ## Install
 
-1. Download `contour-1.0.0.apk` from the [Releases page](https://github.com/Chronosauros/contour/releases).
+1. Download the newest `contour-<version>.apk` from the [Releases page](https://github.com/Chronosauros/contour/releases).
 2. Open the file on your phone. Android asks you to allow installs from your browser or file manager
    the first time; allow it for that app.
 3. Open Contour. The first time it starts with two profiles: **PROFILE 1**, holding a single flat band
