@@ -50,13 +50,13 @@ android {
         }
         // Canonical review build: the release code - R8, not debuggable - that the shell can still profile
         // (src/perf/AndroidManifest.xml), with its own package and launcher name:
-        //   android/wsl-build.sh :app:assemblePerf  ->  io.github.chronosauros.contour.perf, "Contour 1.0"
+        //   android/wsl-build.sh :app:assemblePerf  ->  io.github.chronosauros.contour.perf, "Contour Private"
         // Review hooks in MainActivity work only here and in debug builds. Signed with the build machine's debug key.
         create("perf") {
             initWith(getByName("release"))
             applicationIdSuffix = ".perf"
             versionNameSuffix = "-perf"
-            manifestPlaceholders["perfLabel"] = "Contour ${appVersion.substringBeforeLast('.')}"
+            manifestPlaceholders["perfLabel"] = "Contour Private"
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += "release"
         }

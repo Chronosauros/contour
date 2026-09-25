@@ -15,7 +15,9 @@ dongle in, pick one and send it. Plug in, send, unplug - that is the whole routi
 
 The Protocol Micro has a parametric EQ built into the dongle itself. Whatever EQ it holds works with every
 app and every device you plug it into - no system equaliser, no app running in the background. But
-changing that EQ normally means a desktop browser tool and a computer nearby.
+the official way to change it is CrinEar's browser tool at [eq.hangout.audio](https://eq.hangout.audio/),
+which the maker lists for desktop (PC and macOS) browsers. There is no official mobile app, and phone
+browsers lack the WebHID support the tool relies on - so in practice you need a computer nearby.
 
 Contour puts that on your phone. It is deliberately a small, simple tool:
 
