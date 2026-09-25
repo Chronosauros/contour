@@ -1,0 +1,18 @@
+# Line endings: LF for every text file (sources are edited from Windows and WSL).
+* text=auto eol=lf
+# Tracked with CRLF in the index before this file existed: left exactly as they are.
+android/gradlew.bat -text
+research/protocol/device-backup-2026-09-25.json -text
+research/protocol/device-backup-2026-09-25.txt -text
+research/protocol/devicepeq-ref/LICENSE-devicePEQ.txt -text
+research/protocol/devicepeq-ref/compensation.js -text
+research/protocol/devicepeq-ref/fiioUsbHidHandler.js -text
+research/protocol/devicepeq-ref/usbDeviceConfig.js -text
+research/protocol/devicepeq-ref/walkplayHidHandler.js -text
+research/protocol/dry-run-devicepeq.log -text
+research/protocol/dry-run-volatile.log -text
+research/protocol/raw-read-2026-09-25.log -text
+research/protocol/report-descriptor.txt -text
+research/protocol/step1-read.log -text
+research/protocol/step1.json -text
+research/protocol/timing.log -text

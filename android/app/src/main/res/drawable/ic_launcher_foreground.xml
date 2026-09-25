@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Launcher icon: the Tune graph in miniature - a light EQ curve with the selected (orange) node on its peak.
+     108 dp adaptive-icon canvas; everything stays inside the 72 dp circle every launcher mask shows. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:fillColor="#00000000"
+        android:pathData="M24,65 C39,65 40,45 54,45 C68,45 69,65 84,65"
+        android:strokeColor="#F3F0EC"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="6" />
+    <path
+        android:fillColor="#F07A3A"
+        android:pathData="M46.5,45 a7.5,7.5 0 1,0 15,0 a7.5,7.5 0 1,0 -15,0" />
+</vector>

@@ -1,0 +1,29 @@
+# Android / Gradle build output
+build/
+.gradle/
+.kotlin/
+*.apk
+*.aab
+
+# IDE and machine-local files
+.idea/
+*.iml
+local.properties
+android/local.properties.windows-parked
+android/toolchain.env
+
+# Signing keys
+*.keystore
+*.jks
+
+# Python venvs and caches of the research tools
+.venv/
+venv/
+__pycache__/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# local data copies - never committed
+backup/

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- CrinEar Protocol Micro: USB 0x3302:0xC20F (decimal, as the USB host filter requires) -->
+    <usb-device
+        vendor-id="13058"
+        product-id="49679" />
+</resources>

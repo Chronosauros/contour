@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Launcher icon tile: between the app's dark background and its surface. -->
+    <color name="ic_launcher_background">#201E1C</color>
+</resources>

@@ -1,0 +1,291 @@
+package io.github.chronosauros.contour.ui
+
+import android.content.Context
+import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Constraints
+import kotlin.math.roundToInt
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SnackbarVisuals
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.testTagsAsResourceId
+import androidx.compose.ui.unit.dp
+import io.github.chronosauros.contour.core.Profile
+import io.github.chronosauros.contour.model.AppModel
+import io.github.chronosauros.contour.model.Page
+import io.github.chronosauros.contour.model.Sender
+import io.github.chronosauros.contour.ui.kit.LocalHaptics
+import io.github.chronosauros.contour.ui.kit.rememberHaptics
+import io.github.chronosauros.contour.ui.library.LibraryActions
+import io.github.chronosauros.contour.ui.library.LibraryScreen
+import io.github.chronosauros.contour.ui.sheets.BandSheet
+import io.github.chronosauros.contour.ui.sheets.EditSheet
+import io.github.chronosauros.contour.ui.sheets.NewProfileSheet
+import io.github.chronosauros.contour.ui.sheets.SendFailureSheet
+import io.github.chronosauros.contour.ui.sheets.Sheet
+import io.github.chronosauros.contour.ui.sheets.ValueSheet
+import io.github.chronosauros.contour.ui.tune.Param
+import io.github.chronosauros.contour.ui.tune.TuneActions
+import io.github.chronosauros.contour.ui.tune.TuneScreen
+import io.github.chronosauros.contour.usb.DeviceController
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.launch
+
+private val BAR_TOUCH = 48.dp
+private val BAR_GAP = 12.dp
+
+private class UndoVisuals(override val message: String) : SnackbarVisuals {
+    override val actionLabel = "UNDO"
+    override val withDismissAction = false
+    override val duration = SnackbarDuration.Indefinite
+}
+
+/**
+ * The shell: Tune (left) and Library (right) side by side in a pager, the page bar at the bottom, sheets,
+ * the undo snackbar and the service screen. [sheetRequest] comes from the review hooks.
+ */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+fun ContourApp(
+    model: AppModel,
+    device: DeviceController,
+    sender: Sender,
+    initialPage: Int,
+    sheetRequest: Sheet?,
+    onSheetRequestTaken: () -> Unit,
+) {
+    val haptics = rememberHaptics()
+    // LocalContentColor: every Text without an explicit color follows the theme (dark mode drew them black)
+    CompositionLocalProvider(LocalHaptics provides haptics, LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+        val context = LocalContext.current
+        val prefs = remember { context.getSharedPreferences("ui", Context.MODE_PRIVATE) }
+        val pager = rememberPagerState(initialPage = initialPage) { 2 }
+        val scope = rememberCoroutineScope()
+        var sheet by remember { mutableStateOf<Sheet?>(null) }
+        var service by remember { mutableStateOf(false) }
+        var archiveOpen by remember { mutableStateOf(prefs.getBoolean("archiveOpen", false)) }
+        val snackbar = remember { SnackbarHostState() }
+        val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+        val nav = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+        val bottom = nav + BAR_GAP + BAR_TOUCH
+
+        LaunchedEffect(sheetRequest) {
+            if (sheetRequest != null) {
+                sheet = sheetRequest
+                onSheetRequestTaken()
+            }
+        }
+        // Page requests from the model (tap on a row, a new profile) and the review hooks. Clearing the request
+        // must not cancel the slide, so the slide runs in its own coroutine.
+        LaunchedEffect(pager) {
+            snapshotFlow { model.pageRequest }.filterNotNull().collect { p ->
+                model.pageRequest = null
+                launch { pager.animateScrollToPage(p) }
+            }
+        }
+        LaunchedEffect(pager) {
+            snapshotFlow { pager.settledPage }.drop(1).collect { haptics.step() }
+        }
+
+        fun undoable(text: String, onUndo: () -> Unit, onGone: () -> Unit) {
+            snackbar.currentSnackbarData?.dismiss()
+            scope.launch {
+                val v = UndoVisuals(text)
+                val timer = launch {
+                    while (snackbar.currentSnackbarData?.visuals !== v) delay(50)
+                    delay(5000)
+                    if (snackbar.currentSnackbarData?.visuals === v) snackbar.currentSnackbarData?.dismiss()
+                }
+                val r = snackbar.showSnackbar(v)
+                timer.cancel()
+                if (r == SnackbarResult.ActionPerformed) onUndo() else onGone()
+            }
+        }
+
+        val libraryActions = remember(model) {
+            object : LibraryActions {
+                override fun edit(id: String) { sheet = Sheet.Edit(id) }
+                override fun newProfile() { sheet = Sheet.New }
+                override fun archive(p: Profile) {
+                    model.setArchived(p.id, true)
+                    undoable("ARCHIVED ${p.name}", onUndo = { model.setArchived(p.id, false) }, onGone = {})
+                }
+                override fun restore(p: Profile) { model.setArchived(p.id, false) }
+                override fun delete(p: Profile) {
+                    model.delete(p.id)
+                    undoable("DELETED ${p.name}", onUndo = { model.undoDelete(p.id) }, onGone = { model.finishDelete(p.id) })
+                }
+                override fun service() { service = true }
+            }
+        }
+        val tuneActions = remember(model) {
+            object : TuneActions {
+                override fun edit(id: String) { sheet = Sheet.Edit(id) }
+                override fun value(param: Param) { sheet = Sheet.Value(param) }
+                override fun band(index: Int) { sheet = Sheet.BandActions(index) }
+                override fun sendDetails() { sheet = Sheet.SendFailure(sender.failure) }
+                override fun service() { service = true }
+            }
+        }
+
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(pal.bg)
+                .semantics { testTagsAsResourceId = true },
+        ) {
+            HorizontalPager(
+                state = pager,
+                beyondViewportPageCount = 1,
+                modifier = Modifier.fillMaxSize(),
+            ) { page ->
+                if (page == Page.TUNE) {
+                    Box(Modifier.fillMaxSize().testTag("page_tune")) {
+                        TuneScreen(model, device, sender, tuneActions, top, bottom)
+                    }
+                } else {
+                    Box(Modifier.fillMaxSize().testTag("page_library")) {
+                        LibraryScreen(
+                            model, device, sender, libraryActions,
+                            archiveOpen = archiveOpen,
+                            onArchiveOpen = { archiveOpen = it; prefs.edit().putBoolean("archiveOpen", it).apply() },
+                            top = top, bottom = bottom,
+                        )
+                    }
+                }
+            }
+            PageBar(
+                pager,
+                onPage = { scope.launch { pager.animateScrollToPage(it) } },
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = nav + BAR_GAP),
+            )
+            SnackbarHost(
+                snackbar,
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottom + 8.dp),
+            ) { data ->
+                val shape = RoundedCornerShape(18.dp)
+                Snackbar(
+                    modifier = Modifier.padding(horizontal = 14.dp).lift(shape, Lift.HERO),
+                    shape = shape,
+                    containerColor = pal.surface2,
+                    contentColor = pal.text,
+                    action = {
+                        TextButton(onClick = { data.performAction() }, modifier = Modifier.testTag("undo")) {
+                            Text(data.visuals.actionLabel ?: "UNDO", style = Type.label, color = pal.accent)
+                        }
+                    },
+                ) { Text(data.visuals.message, style = Type.label, modifier = Modifier.testTag("snackbar_text")) }
+            }
+            if (service) DebugScreen(device) { service = false }
+        }
+
+        val close = { sheet = null }
+        when (val s = sheet) {
+            is Sheet.Edit -> EditSheet(model, s.id, close)
+            Sheet.New -> NewProfileSheet(model, device, close)
+            is Sheet.Value -> ValueSheet(model, s.param, close)
+            is Sheet.BandActions -> BandSheet(model, s.index, close)
+            is Sheet.SendFailure -> SendFailureSheet(s.reason, close)
+            null -> Unit
+        }
+
+        BackHandler(enabled = sheet == null && !service && pager.currentPage == Page.TUNE) {
+            scope.launch { pager.animateScrollToPage(Page.LIBRARY) }
+        }
+    }
+}
+
+/**
+ * The page indicator: a pressed-in 144 x 18 dp track with a raised orange half that follows the pager position
+ * continuously. Tapping its left / right half goes to Tune / Library.
+ */
+@Composable
+private fun PageBar(pager: PagerState, onPage: (Int) -> Unit, modifier: Modifier = Modifier) {
+    val c = pal
+    val name = if (pager.settledPage == Page.TUNE) "page tune" else "page library"
+    val track = RoundedCornerShape(9.dp)
+    val knob = RoundedCornerShape(6.dp)
+    Box(modifier.width(176.dp).height(BAR_TOUCH).semantics { contentDescription = name }.testTag("page_bar")) {
+        Row(Modifier.fillMaxSize()) {
+            val none = remember { MutableInteractionSource() }
+            Box(
+                Modifier.weight(1f).fillMaxHeight()
+                    .clickable(none, null) { onPage(Page.TUNE) }
+                    .testTag("page_bar_tune"),
+            )
+            Box(
+                Modifier.weight(1f).fillMaxHeight()
+                    .clickable(none, null) { onPage(Page.LIBRARY) }
+                    .testTag("page_bar_library"),
+            )
+        }
+        Box(
+            Modifier
+                .align(Alignment.Center)
+                .size(144.dp, 18.dp)
+                .clip(track)
+                .background(c.track)
+                .sink(track)
+                .padding(3.dp),
+        ) {
+            Box(
+                Modifier
+                    .layout { m, cs ->
+                        val half = cs.maxWidth / 2
+                        val pl = m.measure(Constraints.fixed(half, cs.maxHeight))
+                        layout(cs.maxWidth, cs.maxHeight) {
+                            val p = (pager.currentPage + pager.currentPageOffsetFraction).coerceIn(0f, 1f)
+                            pl.place((p * half).roundToInt(), 0)
+                        }
+                    }
+                    .lift(knob, Lift.RAISED)
+                    .background(c.accent, knob),
+            )
+        }
+    }
+}
