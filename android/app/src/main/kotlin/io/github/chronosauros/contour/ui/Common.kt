@@ -29,6 +29,9 @@ import io.github.chronosauros.contour.ui.kit.LocalHaptics
 import io.github.chronosauros.contour.usb.DeviceController
 import io.github.chronosauros.contour.usb.Link
 
+/** The status LED when the DAC is connected. */
+private val LED_ON = Color(0xFF46D17A)
+
 /**
  * Device status (a pill: label + LED), the same on both pages: tap = USB permission, long-press = service screen.
  * The pill is 36 dp tall inside a 48 dp touch target.
@@ -68,7 +71,7 @@ fun DeviceStatus(device: DeviceController, onService: () -> Unit, modifier: Modi
             Text(label, style = Type.label, color = p.textDim)
             Canvas(Modifier.size(8.dp)) {
                 val r = size.minDimension / 2
-                if (on) drawCircle(p.text, r)
+                if (on) drawCircle(LED_ON, r)
                 else drawCircle(p.textMute, r - 0.75.dp.toPx(), style = Stroke(1.5.dp.toPx()))
             }
         }

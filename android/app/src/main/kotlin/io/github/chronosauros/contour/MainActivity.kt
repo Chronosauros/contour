@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
 import io.github.chronosauros.contour.core.Band
 import io.github.chronosauros.contour.core.FilterType
+import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.model.AppModel
 import io.github.chronosauros.contour.model.Backup
 import io.github.chronosauros.contour.model.Page
@@ -28,6 +29,7 @@ import io.github.chronosauros.contour.ui.sheets.Sheet
 import io.github.chronosauros.contour.ui.tune.Param
 import io.github.chronosauros.contour.usb.DeviceController
 import io.github.chronosauros.contour.usb.UsbLog
+import kotlinx.serialization.json.Json
 
 private const val TEST_NAME = "TEST"
 private const val TEST_SUB = "AUTOMATION TEST"
@@ -72,6 +74,9 @@ class MainActivity : ComponentActivity() {
      * `--es bench create|delete`: create = always a NEW profile "TEST" (subtitle AUTOMATION TEST, fresh id, the
      *   4 benchmark bands), it never edits or replaces an existing profile; delete = removes only profiles named
      *   TEST with that subtitle. (The owner's own BENCH profile, tuned by hand on 25.09, is never touched.)
+     * `--es demo load`: adds every profile file from .json files in external files/demo (the store's own JSON) as a
+     *   NEW profile, skipping names the library already has (README screenshots); `--es demo replace` first
+     *   deletes the library's profiles with those names (restoring the owner's own tunings).
      * `--es dump profiles` (the library files as they are on disk -> external files/backup/dump-<time>).
      */
     private fun applyReviewExtras(i: Intent?, first: Boolean) {
@@ -98,6 +103,10 @@ class MainActivity : ComponentActivity() {
             }
             "delete" -> removeTest()
         }
+        when (i.getStringExtra("demo")) {
+            "load" -> loadDemo(replace = false)
+            "replace" -> loadDemo(replace = true)
+        }
         val page = when (i.getStringExtra("screen")) {
             "tune" -> Page.TUNE
             "library" -> Page.LIBRARY
@@ -117,6 +126,15 @@ class MainActivity : ComponentActivity() {
         }
         (page ?: sheetPage)?.let { if (first) initialPage = it else model.pageRequest = it }
         if (sheet != null) sheetRequest = sheet
+    }
+
+    private fun loadDemo(replace: Boolean) {
+        val json = Json { ignoreUnknownKeys = true }
+        getExternalFilesDir("demo")?.listFiles().orEmpty().filter { it.name.endsWith(".json") }.sortedBy { it.name }.forEach { f ->
+            val p = runCatching { json.decodeFromString(Profile.serializer(), f.readText()) }.getOrNull() ?: return@forEach
+            if (replace) model.profiles.filter { it.name == p.name }.map { it.id }.forEach { model.delete(it); model.finishDelete(it) }
+            if (model.profiles.none { it.name == p.name }) model.create(p.bands, p.preampDb, p.name, p.subtitle, p.icon, open = false)
+        }
     }
 
     private fun removeTest() {

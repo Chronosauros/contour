@@ -2,15 +2,37 @@
 
 # Contour
 
-A tactile parametric-EQ editor and profile library for Android. Contour writes your EQ straight into a USB DAC
-over USB HID, so the sound changes inside the DAC itself: for every app, without a system equaliser, and it
-stays on the DAC when you unplug it.
+**An on-the-go EQ manager for the CrinEar Protocol Micro.** Keep all your EQ profiles on your phone, plug the
+dongle in, pick one and send it. Plug in, send, unplug - that is the whole routine.
 
 <p align="center">
-  <img src="docs/images/tune.png" width="300" alt="Tune: response graph, bands, sliders, preamp and HOLD TO SEND">
+  <img src="docs/images/tune.png" width="300" alt="EQ page: response graph, bands, sliders, preamp and HOLD TO SEND">
   &nbsp;&nbsp;
-  <img src="docs/images/library.png" width="300" alt="Library: profiles with their response curves">
+  <img src="docs/images/library.png" width="300" alt="Library: saved profiles with their response curves">
 </p>
+
+## Why it exists
+
+The Protocol Micro has a parametric EQ built into the dongle itself. Whatever EQ it holds works with every
+app and every device you plug it into - no system equaliser, no app running in the background. But
+changing that EQ normally means a desktop browser tool and a computer nearby.
+
+Contour puts that on your phone. It is deliberately a small, simple tool:
+
+- **Your EQs are saved.** One profile per pair of earphones, or per mood. They live on the phone, ready
+  whenever the dongle is plugged in.
+- **Sending takes seconds.** Plug the dongle in, tap a profile, hold HOLD TO SEND. Contour writes it, reads
+  it back to check every value, and stores it in the dongle's memory.
+- **Then the phone is out of the picture.** Unplug the dongle and use it with your laptop, another phone or
+  anything else. The EQ stays in it until you send another one.
+- **A real example to start from.** The first launch includes NIGHTFALL, the maintainer's own tuning for
+  the CrinEar Nightfall, next to a flat PROFILE 1.
+- **You can still tune on the go.** Drag bands on the graph, fine-tune with sliders, paste an AutoEQ
+  profile from the clipboard, or read the current EQ off the dongle.
+
+Contour does not process audio, does not need the internet and has no accounts. It only talks to the dongle.
+
+**Read the [user guide](docs/USER-GUIDE.md)** for everything the app does, step by step.
 
 ## Supported hardware
 
@@ -22,32 +44,21 @@ Contour is unofficial and not affiliated with CrinEar. Other WalkPlay and FiiO d
 
 Needs Android 9 or newer and a phone with USB host (USB OTG) support.
 
-## What it does
+## At a glance
 
-Two pages, swiped with a finger: **Tune** and **Library**. The bar at the bottom shows which one is open.
+Two pages, switched with the bar at the bottom or by swiping: **EQ** and **LIBRARY**.
 
-**Tune** edits the current profile:
-- the response graph: drag a band's node, tap to select it, double-tap to set its gain to 0 dB,
-  long-press an empty spot to add a band, pinch to change Q;
-- band chips: tap to select, long-press to bypass or delete; `+` adds a band;
-- filter type (PEAK, LOW SHELF, HIGH SHELF) and FREQ, GAIN and Q sliders. The sliders are relative:
-  touching one never jumps the value, dragging moves it finely, and tapping the number lets you type it;
-- PREAMP: AUTO keeps the curve from clipping; with AUTO off, drag the dB value sideways or tap it to type;
-- **HOLD TO SEND**: hold for 0.7 s to write the profile to the DAC. Contour reads it back, compares every
-  register and only then saves it to the DAC's memory. The button then shows ON DAC.
-
-**Library** manages profiles:
-- tap a profile to make it current and open it in Tune; long-press to rename it, pick an icon, duplicate
-  it or share it as text;
-- swipe left to archive or delete, with a 5-second UNDO;
-- the empty slot at the end creates a new profile: empty, pasted from the clipboard (Equalizer APO /
-  AutoEQ parametric text or EQ by Ear JSON), or read from the DAC.
+- **EQ** edits the current profile: drag, tap, double-tap and pinch band nodes on the graph; PEAK, LOW
+  SHELF and HIGH SHELF filters; FREQ, GAIN and Q sliders that are fine when you drag slowly and cover the
+  whole range when you drag fast; tap any number to type it; PREAMP with AUTO anti-clipping.
+- **HOLD TO SEND** (0.7 s hold) writes the profile to the dongle, reads it back, compares every register and
+  only then saves it to the dongle's memory. The button then shows ON DAC.
+- **LIBRARY** keeps your profiles: tap to open, long-press to rename, change the icon, duplicate or share;
+  swipe to archive or delete, with UNDO. New profiles start flat, come from the clipboard (Equalizer APO /
+  AutoEQ parametric text or EQ by Ear JSON) or are read from the dongle.
 
 HIGH SHELF bands are sent to the Protocol Micro as a mirrored LOW SHELF plus preamp, which gives exactly the
 same curve shape (the maths is in `android/core/src/main/kotlin/io/github/chronosauros/contour/core/Device.kt`).
-
-Long-press the device status (top right) for the service screen: the raw DAC state, a USB log, Restore flat
-and the open-source licences.
 
 ## Safety
 
@@ -59,7 +70,8 @@ risk (see the warranty disclaimer in `LICENSE`).
 ## Install
 
 Download the APK from [Releases](../../releases) and open it on your phone (Android asks you to allow
-installs from that source). Each release lists the APK's SHA-256.
+installs from that source). Each release lists the APK's SHA-256. The [user guide](docs/USER-GUIDE.md) takes
+it from there.
 
 ## Build
 

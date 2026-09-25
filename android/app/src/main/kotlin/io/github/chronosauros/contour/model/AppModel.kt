@@ -64,11 +64,13 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         val list = store.loadProfiles()
         val order = saved?.order.orEmpty()
         var sorted = list.sortedWith(compareBy({ order.indexOf(it.id).let { i -> if (i < 0) Int.MAX_VALUE else i } }, { it.createdAt }))
-        if (saved == null && sorted.isEmpty()) { // first launch: PROFILE 1 with one flat band, never an empty screen
+        if (saved == null && sorted.isEmpty()) { // first launch: PROFILE 1 (one flat band) opens, NIGHTFALL as an example
             val now = System.currentTimeMillis()
             val first = Profile(newId(), "PROFILE 1", "", "headphones", listOf(flatBand()), null, now, now)
+            val example = Profile(newId(), "NIGHTFALL", "CRINEAR NIGHTFALL", "moon", nightfallBands(), null, now, now + 1)
             store.save(first)
-            sorted = listOf(first)
+            store.save(example)
+            sorted = listOf(first, example)
         }
         profiles.clear()
         profiles.addAll(sorted)
@@ -83,8 +85,15 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     fun newId(): String = UUID.randomUUID().toString().substring(0, 13)
     fun bandId(): String = "b" + UUID.randomUUID().toString().substring(0, 8)
 
-    /** The band a fresh profile starts with: PEAK 1 kHz, 0 dB, Q 1 (flat, ready to drag). */
-    fun flatBand() = Band(bandId(), FilterType.PEAK, 1000.0, 0.0, 1.0)
+    /** The band a fresh profile starts with: PEAK 1 kHz, 0 dB, Q 0.71 (flat, ready to drag). */
+    fun flatBand() = Band(bandId(), FilterType.PEAK, 1000.0, 0.0, 0.71)
+
+    /** The maintainer's own tuning for the CrinEar Nightfall, shipped as the example profile. */
+    private fun nightfallBands() = listOf(
+        Band(bandId(), FilterType.PEAK, 6207.0, -3.0, 3.9),
+        Band(bandId(), FilterType.PEAK, 12450.0, -4.5, 6.05),
+        Band(bandId(), FilterType.PEAK, 15911.0, 3.0, 6.3),
+    )
 
     // ---- persistence ----------------------------------------------------------------------------------
 
@@ -194,7 +203,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         val p = current ?: return false
         if (p.bands.size >= MAX_BANDS) return false
         val f = freq ?: widestGapMiddle(p.bands.map { it.freqHz })
-        val band = Band(bandId(), FilterType.PEAK, Math.round(f.coerceIn(20.0, 20_000.0)).toDouble(), round1(gain.coerceIn(-10.0, 10.0)), 1.0)
+        val band = Band(bandId(), FilterType.PEAK, Math.round(f.coerceIn(20.0, 20_000.0)).toDouble(), round1(gain.coerceIn(-10.0, 10.0)), 0.71)
         update { it.copy(bands = it.bands + band) }
         selectBand(p.bands.size)
         return true

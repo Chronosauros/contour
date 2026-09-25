@@ -11,7 +11,17 @@ import androidx.compose.ui.unit.Constraints
 import kotlin.math.roundToInt
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.GraphicEq
+import androidx.compose.material.icons.outlined.LibraryMusic
+import androidx.compose.material3.Icon
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -76,7 +86,7 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 
-private val BAR_TOUCH = 48.dp
+private val BAR_TOUCH = 60.dp
 private val BAR_GAP = 12.dp
 
 private class UndoVisuals(override val message: String) : SnackbarVisuals {
@@ -112,7 +122,7 @@ fun ContourApp(
         val snackbar = remember { SnackbarHostState() }
         val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         val nav = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-        val bottom = nav + BAR_GAP + BAR_TOUCH
+        val bottom = nav + BAR_GAP + BAR_TOUCH + BAR_GAP
 
         LaunchedEffect(sheetRequest) {
             if (sheetRequest != null) {
@@ -241,51 +251,61 @@ fun ContourApp(
 }
 
 /**
- * The page indicator: a pressed-in 144 x 18 dp track with a raised orange half that follows the pager position
- * continuously. Tapping its left / right half goes to Tune / Library.
+ * The page switch: a pressed-in block (full width, [BAR_TOUCH] tall) with a raised orange half that follows the
+ * pager position continuously, under two labelled halves - EQ (Tune) and LIBRARY. Tapping a half goes there.
  */
 @Composable
 private fun PageBar(pager: PagerState, onPage: (Int) -> Unit, modifier: Modifier = Modifier) {
     val c = pal
     val name = if (pager.settledPage == Page.TUNE) "page tune" else "page library"
-    val track = RoundedCornerShape(9.dp)
-    val knob = RoundedCornerShape(6.dp)
-    Box(modifier.width(176.dp).height(BAR_TOUCH).semantics { contentDescription = name }.testTag("page_bar")) {
-        Row(Modifier.fillMaxSize()) {
-            val none = remember { MutableInteractionSource() }
-            Box(
-                Modifier.weight(1f).fillMaxHeight()
-                    .clickable(none, null) { onPage(Page.TUNE) }
-                    .testTag("page_bar_tune"),
-            )
-            Box(
-                Modifier.weight(1f).fillMaxHeight()
-                    .clickable(none, null) { onPage(Page.LIBRARY) }
-                    .testTag("page_bar_library"),
-            )
-        }
+    val track = RoundedCornerShape(20.dp)
+    val knob = RoundedCornerShape(16.dp)
+    val pos = (pager.currentPage + pager.currentPageOffsetFraction).coerceIn(0f, 1f)
+    Box(
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .height(BAR_TOUCH)
+            .clip(track)
+            .background(c.track)
+            .sink(track)
+            .padding(4.dp)
+            .semantics { contentDescription = name }
+            .testTag("page_bar"),
+    ) {
         Box(
             Modifier
-                .align(Alignment.Center)
-                .size(144.dp, 18.dp)
-                .clip(track)
-                .background(c.track)
-                .sink(track)
-                .padding(3.dp),
-        ) {
-            Box(
-                Modifier
-                    .layout { m, cs ->
-                        val half = cs.maxWidth / 2
-                        val pl = m.measure(Constraints.fixed(half, cs.maxHeight))
-                        layout(cs.maxWidth, cs.maxHeight) {
-                            val p = (pager.currentPage + pager.currentPageOffsetFraction).coerceIn(0f, 1f)
-                            pl.place((p * half).roundToInt(), 0)
-                        }
+                .fillMaxSize()
+                .layout { m, cs ->
+                    val half = cs.maxWidth / 2
+                    val pl = m.measure(Constraints.fixed(half, cs.maxHeight))
+                    layout(cs.maxWidth, cs.maxHeight) {
+                        val p = (pager.currentPage + pager.currentPageOffsetFraction).coerceIn(0f, 1f)
+                        pl.place((p * half).roundToInt(), 0)
                     }
-                    .lift(knob, Lift.RAISED)
-                    .background(c.accent, knob),
+                }
+                .lift(knob, Lift.RAISED)
+                .background(c.accent, knob),
+        )
+        Row(Modifier.fillMaxSize()) {
+            val none = remember { MutableInteractionSource() }
+            PageHalf(
+                "EQ", Icons.Outlined.GraphicEq, lerp(c.onAccent, c.textDim, pos),
+                Modifier.weight(1f).clickable(none, null) { onPage(Page.TUNE) }.testTag("page_bar_tune"),
+            )
+            PageHalf(
+                "LIBRARY", Icons.Outlined.LibraryMusic, lerp(c.textDim, c.onAccent, pos),
+                Modifier.weight(1f).clickable(none, null) { onPage(Page.LIBRARY) }.testTag("page_bar_library"),
             )
         }
+    }
+}
+
+@Composable
+private fun PageHalf(label: String, icon: ImageVector, color: Color, modifier: Modifier) {
+    Row(modifier.fillMaxHeight(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(label, style = Type.button, color = color, maxLines = 1)
     }
 }

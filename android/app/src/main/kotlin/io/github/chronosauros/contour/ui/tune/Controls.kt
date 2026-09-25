@@ -49,12 +49,25 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-/** Finger travel per fill travel: the full range takes about a whole screen width of drag, for fine control. */
+/**
+ * Drag gain = fill travel per finger travel, by finger speed (pointer acceleration): at or below [SPEED_FINE] the
+ * value moves [SLOW] times finer than the fill (precise), at or above [SPEED_FAST] [FAST] times faster, so one
+ * quick swipe covers the whole range (20 Hz - 20 kHz) and a slow drag still lands on single steps.
+ */
 private const val SLOW = 2.5f
+private const val FAST = 2.2f
+private const val SPEED_FINE = 0.12f // dp per ms
+private const val SPEED_FAST = 0.9f
+
+private fun dragGain(speedDp: Float): Float {
+    val t = ((speedDp - SPEED_FINE) / (SPEED_FAST - SPEED_FINE)).coerceIn(0f, 1f)
+    val s = t * t * (3 - 2 * t)
+    return 1f / SLOW + (FAST - 1f / SLOW) * s
+}
 
 /**
  * A tall horizontal slider with RELATIVE drag: touch-down never moves the value, the drag moves it by the
- * distance travelled, [SLOW] times finer than the fill's travel. The value is the light fill in a pressed-in track;
+ * distance travelled, scaled by finger speed ([dragGain]). The value is the light fill in a pressed-in track;
  * at the minimum the fill is a square nub. Quantized; haptic ticks at the scale marks, a strong one at the
  * param's home value, a reject tick when pushed past an end. Horizontal drags inside it never reach the pager.
  */
@@ -72,15 +85,19 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
             .pointerInput(param) {
                 var pos = 0f
                 var atEnd = false
+                var speed = 0f
                 detectHorizontalDragGestures(
                     onDragStart = {
                         pos = scale.toPos(v.value)
                         atEnd = false
+                        speed = 0f
                     },
                 ) { ch, dx ->
                     ch.consume()
-                    val travel = SLOW * (size.width - size.height).toFloat().coerceAtLeast(1f)
-                    val raw = pos + dx / travel
+                    val dt = (ch.uptimeMillis - ch.previousUptimeMillis).coerceAtLeast(1L).toFloat()
+                    speed = 0.6f * speed + 0.4f * (kotlin.math.abs(dx) / density / dt)
+                    val travel = (size.width - size.height).toFloat().coerceAtLeast(1f)
+                    val raw = pos + dx * dragGain(speed) / travel
                     if (raw < 0f || raw > 1f) {
                         if (!atEnd) haptics.reject()
                         atEnd = true
