@@ -120,6 +120,9 @@ A new band starts flat: PEAK, 0 dB, Q 0.71.
 The sliders work relative to where they are, so touching one never makes the value jump.
 
 - **Slow drags** move the value in fine steps, for small corrections.
+- **Lifting your finger** keeps the value you were holding. A fingertip rolls a little as it leaves the
+  screen, and Contour ignores that last nudge - also when you drag a dot on the graph, pinch for Q or
+  drag PREAMP.
 - **Fast drags** cover the whole range quickly - one fast swipe on FREQ goes all the way from 20 Hz to
   20 kHz.
 - **Tap the number** to type an exact value.

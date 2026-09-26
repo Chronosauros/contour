@@ -7,7 +7,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,37 +38,60 @@ import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.model.Sender
 import io.github.chronosauros.contour.ui.Lift
 import io.github.chronosauros.contour.ui.Type
+import io.github.chronosauros.contour.ui.kit.LiftGuard
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
+import io.github.chronosauros.contour.ui.kit.Scale
+import io.github.chronosauros.contour.ui.kit.detectHorizontalDragWithEnds
 import io.github.chronosauros.contour.ui.lift
 import io.github.chronosauros.contour.ui.pal
 import io.github.chronosauros.contour.ui.sink
 import io.github.chronosauros.contour.usb.DeviceController
 import io.github.chronosauros.contour.usb.Link
+import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
  * Drag gain = fill travel per finger travel, by finger speed (pointer acceleration): at or below [SPEED_FINE] the
- * value moves [SLOW] times finer than the fill (precise), at or above [SPEED_FAST] [FAST] times faster, so one
- * quick swipe covers the whole range (20 Hz - 20 kHz) and a slow drag still lands on single steps.
+ * fill moves [SLOW] of the finger's travel (owner 26.09 chose four times finer than 1.0.3's 0.4: 0.1 dB in about
+ * 8 dp, about 4.5 Hz a dp at 1 kHz), or less where the scale's [Scale.fineMax] caps it (FREQ: at most 5 Hz a dp,
+ * so the top decade stays adjustable); from there it rises evenly in ratio to [FAST] at [SPEED_FAST], so one quick
+ * swipe still covers the whole range (20 Hz - 20 kHz).
+ *
+ * Owner 26.09: the linear ramp tried first (0.12-0.15 -> 0.9 dp/ms) already sped up the owner's careful drags,
+ * which run at about 0.3-0.6 dp/ms (log: mean gain 0.92 where the slow gain was 0.1) - "the whole thing is
+ * definitely too fast". Now a careful drag stays near the slow gain (0.12 at 0.5 dp/ms, 0.32 at 0.9) and only a
+ * real swipe is fast.
  */
-private const val SLOW = 2.5f
+private const val SLOW = 0.1f
 private const val FAST = 2.2f
-private const val SPEED_FINE = 0.12f // dp per ms
-private const val SPEED_FAST = 0.9f
+private const val SPEED_FINE = 0.25f // dp per ms
+private const val SPEED_FAST = 1.8f
 
-private fun dragGain(speedDp: Float): Float {
+/** 0 for a finger at or below [SPEED_FINE], 1 at or above [SPEED_FAST], smooth between (also PREAMP's drag). */
+internal fun speedRamp(speedDp: Float): Float {
     val t = ((speedDp - SPEED_FINE) / (SPEED_FAST - SPEED_FINE)).coerceIn(0f, 1f)
-    val s = t * t * (3 - 2 * t)
-    return 1f / SLOW + (FAST - 1f / SLOW) * s
+    return t * t * (3 - 2 * t)
 }
+
+/** From [a] at [s] = 0 to [b] at 1, evenly in ratio: each step of speed multiplies the gain by the same amount. */
+internal fun ratioLerp(a: Float, b: Float, s: Float): Float = a * (b / a).pow(s)
+
+/** The slow finger's gain at value [v] on a fill [travelDp] long: [SLOW], capped by [Scale.fineMax]. */
+private fun slowGain(scale: Scale, v: Double, travelDp: Float): Float {
+    val cap = scale.fineMax ?: return SLOW
+    return minOf(SLOW, (cap * travelDp / scale.perPos(v)).toFloat())
+}
+
+private fun dragGain(speedDp: Float, slow: Float): Float = ratioLerp(slow, FAST, speedRamp(speedDp))
 
 /**
  * A tall horizontal slider with RELATIVE drag: touch-down never moves the value, the drag moves it by the
  * distance travelled, scaled by finger speed ([dragGain]). The value is the light fill in a pressed-in track;
  * at the minimum the fill is a square nub. Quantized; haptic ticks at the scale marks, a strong one at the
- * param's home value, a reject tick when pushed past an end. Horizontal drags inside it never reach the pager.
+ * param's home value, a reject tick when pushed past an end. Lifting the finger off a value keeps that value
+ * ([LiftGuard]). Horizontal drags inside it never reach the pager.
  */
 @Composable
 fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier: Modifier = Modifier) {
@@ -83,21 +105,27 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
         modifier
             .testTag("slider_${param.name.lowercase()}")
             .pointerInput(param) {
+                val guard = LiftGuard<Double>(density, param.name)
                 var pos = 0f
                 var atEnd = false
                 var speed = 0f
-                detectHorizontalDragGestures(
-                    onDragStart = {
+                var ticked = 0.0 // the value the haptics last spoke for
+                detectHorizontalDragWithEnds(
+                    onStart = { down ->
                         pos = scale.toPos(v.value)
                         atEnd = false
                         speed = 0f
+                        ticked = v.value
+                        guard.start(down.uptimeMillis, down.position, v.value)
                     },
+                    onEnd = { up -> if (up != null) guard.release(up)?.let { change.value(it) } },
                 ) { ch, dx ->
                     ch.consume()
                     val dt = (ch.uptimeMillis - ch.previousUptimeMillis).coerceAtLeast(1L).toFloat()
                     speed = 0.6f * speed + 0.4f * (kotlin.math.abs(dx) / density / dt)
                     val travel = (size.width - size.height).toFloat().coerceAtLeast(1f)
-                    val raw = pos + dx * dragGain(speed) / travel
+                    val slow = slowGain(scale, scale.fromPos(pos), travel / density)
+                    val raw = pos + dx * dragGain(speed, slow) / travel
                     if (raw < 0f || raw > 1f) {
                         if (!atEnd) haptics.reject()
                         atEnd = true
@@ -106,11 +134,12 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
                     }
                     pos = raw.coerceIn(0f, 1f)
                     val next = scale.quantize(scale.fromPos(pos))
-                    val cur = v.value
-                    if (next != cur) {
-                        val k = param.crossing(cur, next)
+                    if (next != v.value) change.value(next)
+                    guard.move(ch.uptimeMillis, ch.position, next)
+                    if (next != ticked && !guard.settling(ch.uptimeMillis)) {
+                        val k = param.crossing(ticked, next)
                         if (k > 0) haptics.crossing(k)
-                        change.value(next)
+                        ticked = next
                     }
                 }
             }

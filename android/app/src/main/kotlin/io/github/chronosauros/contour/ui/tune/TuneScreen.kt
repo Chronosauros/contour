@@ -28,7 +28,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlin.math.floor
 import androidx.compose.ui.Alignment
@@ -48,7 +47,9 @@ import io.github.chronosauros.contour.model.shownPreamp
 import io.github.chronosauros.contour.ui.DeviceStatus
 import io.github.chronosauros.contour.ui.Lift
 import io.github.chronosauros.contour.ui.Type
+import io.github.chronosauros.contour.ui.kit.LiftGuard
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
+import io.github.chronosauros.contour.ui.kit.detectHorizontalDragWithEnds
 import io.github.chronosauros.contour.ui.kit.ProfileIcons
 import io.github.chronosauros.contour.ui.lift
 import io.github.chronosauros.contour.ui.pal
@@ -262,12 +263,16 @@ private fun ParamRow(param: Param, value: Double, onTap: () -> Unit, onChange: (
     }
 }
 
-/** Manual preamp drag: dB per dp of finger travel (the 30 dB range in about a screen width). */
+/** Manual preamp drag: dB per dp of travel for a fast finger (the 30 dB range in about a screen width)... */
 private const val PREAMP_DB_PER_DP = 0.08
+
+/** ...and the share of it for a slow finger (0.02 dB a dp: four times finer, like the sliders, owner 26.09). */
+private const val PREAMP_SLOW = 0.25f
 
 /**
  * PREAMP: the value and AUTO. With AUTO off the value is manual: tap = type it, drag sideways = adjust it
- * (0.1 dB steps, a tick at every whole dB, a strong one at 0 dB, a reject tick at the device limits).
+ * (0.1 dB steps, a tick at every whole dB, a strong one at 0 dB, a reject tick at the device limits; lifting
+ * the finger off a value keeps it, [LiftGuard]).
  */
 @Composable
 private fun PreampRow(model: AppModel, p: Profile, actions: TuneActions) {
@@ -292,20 +297,30 @@ private fun PreampRow(model: AppModel, p: Profile, actions: TuneActions) {
                 .weight(1f)
                 .fillMaxHeight()
                 .then(if (auto) Modifier else Modifier.pointerInput(p.id) {
+                    val guard = LiftGuard<Double>(density, "PREAMP")
                     var acc = 0.0
                     var atEnd = false
-                    detectHorizontalDragGestures(
-                        onDragStart = {
+                    var speed = 0f
+                    var ticked = 0.0 // the value the haptics last spoke for
+                    detectHorizontalDragWithEnds(
+                        onStart = { down ->
                             acc = prof.value.preampDb ?: shownPreamp(prof.value)
                             atEnd = false
+                            speed = 0f
+                            ticked = acc
+                            guard.start(down.uptimeMillis, down.position, acc)
                         },
+                        onEnd = { up -> if (up != null) guard.release(up)?.let { model.setPreamp(it) } },
                     ) { ch, dx ->
                         ch.consume()
-                        val now = prof.value.preampDb ?: return@detectHorizontalDragGestures
+                        val now = prof.value.preampDb ?: return@detectHorizontalDragWithEnds
                         val hs = ProtocolMicro.highShelfGainSum(prof.value.bands)
                         val lo = ProtocolMicro.PREAMP_MIN_DB - hs
                         val hi = ProtocolMicro.PREAMP_MAX_DB - hs
-                        val raw = acc + dx.toDp().value * PREAMP_DB_PER_DP
+                        val dt = (ch.uptimeMillis - ch.previousUptimeMillis).coerceAtLeast(1L).toFloat()
+                        speed = 0.6f * speed + 0.4f * (kotlin.math.abs(dx) / density / dt)
+                        val rate = PREAMP_DB_PER_DP * ratioLerp(PREAMP_SLOW, 1f, speedRamp(speed))
+                        val raw = acc + dx.toDp().value * rate
                         if (raw < lo || raw > hi) {
                             if (!atEnd) haptics.reject()
                             atEnd = true
@@ -314,9 +329,11 @@ private fun PreampRow(model: AppModel, p: Profile, actions: TuneActions) {
                         }
                         acc = raw.coerceIn(lo, hi)
                         val next = Math.round(acc * 10) / 10.0
-                        if (next != now) {
-                            if (floor(next) != floor(now)) haptics.crossing(if (next == 0.0) 2 else 1)
-                            model.setPreamp(next)
+                        if (next != now) model.setPreamp(next)
+                        guard.move(ch.uptimeMillis, ch.position, next)
+                        if (next != ticked && !guard.settling(ch.uptimeMillis)) {
+                            if (floor(next) != floor(ticked)) haptics.crossing(if (next == 0.0) 2 else 1)
+                            ticked = next
                         }
                     }
                 })

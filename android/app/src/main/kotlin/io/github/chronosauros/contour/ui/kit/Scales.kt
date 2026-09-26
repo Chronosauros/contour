@@ -9,6 +9,8 @@ import kotlin.math.roundToLong
 /**
  * A slider scale: value <-> position 0..1, quantization, the tick marks and labels drawn above the slot,
  * and the haptic marks (a light tick when the value crosses a [stepMarks] value, a strong one at [strongMarks]).
+ * [fineMax]: the most a slow finger moves the value per dp, where the scale is coarser than that (FREQ's top
+ * decade), or null.
  */
 class Scale(
     val min: Double,
@@ -20,7 +22,11 @@ class Scale(
     val stepMarks: DoubleArray,
     val strongMarks: DoubleArray,
     val reset: Double?,
+    val fineMax: Double? = null,
 ) {
+    /** How much the value moves per 1 of position at [v] (the scale's slope). */
+    fun perPos(v: Double): Double = if (log) v.coerceIn(min, max) * ln(max / min) else max - min
+
     fun toPos(v: Double): Float {
         val c = v.coerceIn(min, max)
         return (if (log) ln(c / min) / ln(max / min) else (c - min) / (max - min)).toFloat()
@@ -71,6 +77,8 @@ class Scale(
             stepMarks = ISO_THIRDS,
             strongMarks = doubleArrayOf(20.0, 100.0, 1000.0, 10_000.0, 20_000.0),
             reset = null,
+            // owner 26.09: 15 kHz and up is 4 % of the log bar; a slow finger there moved about 73 Hz a dp
+            fineMax = 5.0,
         )
 
         val GAIN = Scale(

@@ -34,6 +34,7 @@ import io.github.chronosauros.contour.model.AppModel
 import io.github.chronosauros.contour.ui.Type
 import io.github.chronosauros.contour.ui.lift
 import io.github.chronosauros.contour.ui.pal
+import io.github.chronosauros.contour.ui.kit.LiftGuard
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
 import io.github.chronosauros.contour.ui.kit.Scale
 import kotlin.math.exp
@@ -62,7 +63,8 @@ private val GRID_DB = doubleArrayOf(-12.0, -6.0, 0.0, 6.0, 12.0)
 /**
  * The response graph of the current profile. Every gesture that starts inside it belongs to it (the pager
  * never gets it): drag a node = frequency / gain, tap = select, double-tap = 0 dB, long-press on an empty
- * spot = new PEAK band, pinch = Q of the selected band.
+ * spot = new PEAK band, pinch = Q of the selected band. Lifting the finger off a node or out of a pinch keeps
+ * the value it rested on ([LiftGuard]).
  */
 @Composable
 fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifier) {
@@ -89,6 +91,8 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
             .pointerInput(Unit) {
                 val pad = PAD.toPx()
                 val hitR = 24.dp.toPx()
+                val nodeGuard = LiftGuard<Pair<Double, Double>>(density, "NODE")
+                val pinchGuard = LiftGuard<Double>(density, "PINCH")
                 awaitEachGesture {
                     val map = PlotMap(size.width.toFloat(), size.height.toFloat(), pad)
                     val down = awaitFirstDown(requireUnconsumed = false)
@@ -108,6 +112,14 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                     var pinchQ0 = 1.0
                     var total = Offset.Zero
                     var lastUptime = t0
+                    var pinching = false
+                    var ticked = 0.0 to 0.0 // the node's (Hz, dB) the haptics last spoke for
+                    var qTicked = 1.0
+                    if (hit != null) {
+                        val b = bands0[hit]
+                        ticked = b.freqHz to b.gainDb
+                        nodeGuard.start(t0, down.position, ticked)
+                    }
                     while (true) {
                         val waitLong = mode == 0 && hit == null
                         val ev = if (waitLong) {
@@ -129,7 +141,19 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                         ev.changes.forEach { it.consume() } // the graph owns every gesture (moves read with IgnoreConsumed)
                         lastUptime = ev.changes.first().uptimeMillis
                         val pressed = ev.changes.filter { it.pressed }
+                        if (pinching && pressed.size < 2) { // a pinch ends when a finger lifts
+                            pinching = false
+                            val i = model.selectedBand
+                            pinchGuard.release(lastUptime)?.let { q ->
+                                prof.value.bands.getOrNull(i)?.let { model.setBand(i, it.copy(q = q)) }
+                            }
+                        }
                         if (pressed.isEmpty()) {
+                            if (mode == 1) {
+                                nodeGuard.release(lastUptime)?.let { (f, g) ->
+                                    prof.value.bands.getOrNull(hit!!)?.let { model.setBand(hit, it.copy(freqHz = f, gainDb = g)) }
+                                }
+                            }
                             if (mode == 0 && hit != null) {
                                 val now = ev.changes.first().uptimeMillis
                                 if (lastTap[1] == hit.toLong() && now - lastTap[0] < viewConfiguration.doubleTapTimeoutMillis) {
@@ -150,18 +174,23 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                         }
                         if (pressed.size >= 2) {
                             val d = (pressed[0].position - pressed[1].position).getDistance()
-                            if (mode != 2) {
+                            if (!pinching) { // a new pinch, also when a second finger comes back
                                 mode = 2
+                                pinching = true
                                 pinchD0 = d.coerceAtLeast(1f)
                                 pinchQ0 = prof.value.bands.getOrNull(model.selectedBand)?.q ?: 1.0
+                                qTicked = pinchQ0
+                                pinchGuard.start(lastUptime, Offset(d, 0f), pinchQ0)
                             } else {
                                 val i = model.selectedBand
                                 val b = prof.value.bands.getOrNull(i) ?: continue
                                 val q = Scale.Q.quantize(pinchQ0 * pinchD0 / d.coerceAtLeast(1f))
-                                if (q != b.q) {
-                                    val k = Param.Q.crossing(b.q, q)
+                                if (q != b.q) model.setBand(i, b.copy(q = q))
+                                pinchGuard.move(lastUptime, Offset(d, 0f), q)
+                                if (q != qTicked && !pinchGuard.settling(lastUptime)) {
+                                    val k = Param.Q.crossing(qTicked, q)
                                     if (k > 0) haptics.crossing(k)
-                                    model.setBand(i, b.copy(q = q))
+                                    qTicked = q
                                 }
                             }
                             continue
@@ -176,6 +205,7 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                                         model.selectBand(hit)
                                         val b = prof.value.bands[hit]
                                         grab = Offset(map.x(b.freqHz), map.y(b.gainDb)) - ch.position
+                                        nodeGuard.move(ch.uptimeMillis, ch.position, b.freqHz to b.gainDb)
                                     } else {
                                         mode = 3
                                     }
@@ -186,10 +216,12 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                                 val pos = ch.position + grab
                                 val f = Scale.FREQ.quantize(map.f(pos.x))
                                 val g = Scale.GAIN.quantize(map.g(pos.y).coerceIn(-10.0, 10.0))
-                                if (f != b.freqHz || g != b.gainDb) {
-                                    val k = maxOf(Param.FREQ.crossing(b.freqHz, f), Param.GAIN.crossing(b.gainDb, g))
+                                if (f != b.freqHz || g != b.gainDb) model.setBand(hit, b.copy(freqHz = f, gainDb = g))
+                                nodeGuard.move(ch.uptimeMillis, ch.position, f to g)
+                                if ((f to g) != ticked && !nodeGuard.settling(ch.uptimeMillis)) {
+                                    val k = maxOf(Param.FREQ.crossing(ticked.first, f), Param.GAIN.crossing(ticked.second, g))
                                     if (k > 0) haptics.crossing(k)
-                                    model.setBand(hit, b.copy(freqHz = f, gainDb = g))
+                                    ticked = f to g
                                 }
                             }
                         }
