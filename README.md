@@ -72,9 +72,18 @@ risk (see the warranty disclaimer in `LICENSE`).
 
 ## Install
 
-Download the APK from [Releases](../../releases) and open it on your phone (Android asks you to allow
-installs from that source). Each release lists the APK's SHA-256. The [user guide](docs/USER-GUIDE.md) takes
-it from there.
+**Step-by-step instructions: [chronosauros.github.io/contour/install](https://chronosauros.github.io/contour/install/)**
+
+- **[Obtainium](https://obtainium.imranr.dev/)** (recommended, updates itself): in Obtainium tap Add app and
+  paste `https://github.com/Chronosauros/contour`, or on your phone tap
+  [Add Contour to Obtainium](https://chronosauros.github.io/contour/install/#obtainium).
+- **APK**: download `contour-<version>.apk` from the [latest release](../../releases/latest) and open it on
+  your phone (Android asks you to allow installs from that source).
+
+Every official build is signed by the same key: package `io.github.chronosauros.contour`, certificate
+SHA-256 `C8:C8:CA:EA:76:16:28:ED:9D:50:5F:F0:73:42:EE:5E:A0:D4:66:A4:AD:71:8D:0D:B0:77:42:2B:A3:F7:E6:01`
+(CN=Chronosaur). Each release also lists the APK's SHA-256. The [user guide](docs/USER-GUIDE.md) takes it
+from there.
 
 ## Build
 

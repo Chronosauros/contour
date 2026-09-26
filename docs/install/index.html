@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Install Contour</title>
+<meta name="description" content="Install Contour, a free and open-source on-the-go EQ manager for the CrinEar Protocol Micro USB DAC. Add it to Obtainium for automatic updates, or download the APK.">
+<link rel="canonical" href="https://chronosauros.github.io/contour/install/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://chronosauros.github.io/contour/install/">
+<meta property="og:title" content="Install Contour">
+<meta property="og:description" content="An on-the-go EQ manager for the CrinEar Protocol Micro. Free and open source.">
+<meta property="og:image" content="https://chronosauros.github.io/contour/images/icon-512.png">
+<meta name="twitter:card" content="summary">
+<meta name="theme-color" content="#EFECE8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171615" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" type="image/png" href="../images/icon-512.png">
+<link rel="apple-touch-icon" href="../images/icon-512.png">
+<style>
+/*
+  Look = the Contour app (android/.../ui/Theme.kt and screens), 1 dp = 1 CSS px, 1 sp = 1 CSS px.
+  Colors: only Palette roles (LightPalette here, DarkPalette under prefers-color-scheme: dark).
+  Shadows: Compose Shadow(radius r, offset y, alpha a * shadowAlpha) -> CSS 0 y blur color.
+    blur = 1.15 * r + 1 px (Android blur radius r -> Skia sigma 0.577r + 0.5 -> CSS blur = 2 sigma),
+    color = --shadow mixed at a * shadowAlpha.
+    CARD r10 y3 a.42 -> 0 3px 12.5px | RAISED r6 y2 a.55 -> 0 2px 8px | HERO r14 y5 a.55 -> 0 5px 17px
+    sink (inner) r5 y2 a.55 -> inset 0 2px 7px.  HOLD TO SEND held: r x0.4, y x0.3.
+*/
+@font-face{
+  font-family:"Google Sans Flex";
+  src:url("fonts/google-sans-flex-latin.woff") format("woff");
+  font-weight:400 700; font-style:normal; font-display:swap;
+}
+:root{
+  /* LightPalette (Theme.kt:62) */
+  --bg:#EFECE8; --surface:#FAF8F5; --surface2:#E7E3DE;
+  --track:#E2DDD7; --fill:#3A3633;
+  --text:#1D1B19; --text-dim:#6E6963; --text-mute:#9A948D;
+  --grid:#E9E5E0; --accent:#F07A3A; --on-accent:#2B1A10;
+  --sunken:#E6E2DD; --shadow:#2B2118;
+  /* a * shadowAlpha (0.3) */
+  --k-card:12.6%; --k-high:16.5%;
+  /* the status LED when connected (Common.kt:23 LED_ON) */
+  --led-on:#46D17A;
+
+  --lift-card:0 3px 12.5px color-mix(in srgb, var(--shadow) var(--k-card), transparent);
+  --lift-raised:0 2px 8px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+  --lift-hero:0 5px 17px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+  --lift-hero-held:0 1.5px 7.4px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+  --lift-raised-held:0 0.6px 3.8px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+  --sink:inset 0 2px 7px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+
+  --font:"Google Sans Flex","Google Sans","Google Sans Text",system-ui,sans-serif;
+  --r-card:20px;   /* LibraryScreen CARD */
+  --r-row:16px;    /* TuneScreen ROW_SHAPE */
+  --r-btn:24px;    /* HOLD TO SEND, LAST SENT */
+  --r-chip:14px;   /* band chips */
+  --r-option:12px; /* sheet Option, banner */
+  --r-tag:8px;     /* ON DAC tag */
+  --gap:8px;       /* TuneScreen GAP, library row spacing */
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    /* DarkPalette (Theme.kt:54) */
+    --bg:#171615; --surface:#242220; --surface2:#2E2B29;
+    --track:#3A3734; --fill:#D9D5D0;
+    --text:#F3F0EC; --text-dim:#A39E98; --text-mute:#77726C;
+    --grid:#34312E; --accent:#F07A3A; --on-accent:#2B1A10;
+    --sunken:#121110; --shadow:#000000;
+    /* a * shadowAlpha (1.0) */
+    --k-card:42%; --k-high:55%;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:16px}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{transition:none!important}}
+/* body copy: the one style the app has no role for - Google Sans, regular, text / text-dim */
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:16px;line-height:1.5;font-weight:400;overflow-x:hidden;font-optical-sizing:auto}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px}
+a{color:var(--text);text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:3px;overflow-wrap:anywhere}
+h1,h2,h3{margin:0}
+p{margin:0 0 .75em}
+strong{font-weight:600}
+code{font-family:inherit;font-feature-settings:"tnum";background:var(--sunken);padding:.05em .4em;border-radius:var(--r-tag);overflow-wrap:anywhere;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+/* type roles (Theme.kt Type) */
+.t-label,.copy .lbl,.grp-body h3,.sec-label,.shots figcaption{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;line-height:1.3}
+
+/* hero */
+.hero{padding:32px 0 8px}
+.hero img.icon{width:88px;height:88px;border-radius:var(--r-card);display:block;margin-bottom:20px;box-shadow:var(--lift-card)}
+/* Type.screenTitle 38 Bold -0.01em, uppercase like LIBRARY */
+.hero h1{font-size:38px;font-weight:700;letter-spacing:-.01em;line-height:1.1;text-transform:uppercase}
+.hero .lede{color:var(--text-dim);margin:12px 0 18px;max-width:34em;font-size:17px}
+/* the version pill = DeviceStatus: surface, circle shape, CARD lift, label + LED */
+.ver{display:inline-flex;align-items:center;gap:10px;background:var(--surface);color:var(--text-dim);border-radius:999px;box-shadow:var(--lift-card);padding:10px 14px 10px 16px;margin:0 0 24px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-feature-settings:"tnum";line-height:1.3}
+.ver .dot{order:2;width:8px;height:8px;border-radius:50%;background:var(--led-on);flex:none}
+.cta{display:flex;flex-wrap:wrap;gap:var(--gap)}
+
+/* buttons: HOLD TO SEND (accent, HERO) and LAST SENT (surface2, RAISED); radius 24, 58 tall, Type.button */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:58px;padding:12px 22px;border-radius:var(--r-btn);border:0;font:inherit;font-size:17px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;line-height:1.2;text-align:center;text-decoration:none;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:box-shadow .12s}
+.btn-primary{background:var(--accent);color:var(--on-accent);box-shadow:var(--lift-hero)}
+.btn-tonal{background:var(--surface2);color:var(--text);box-shadow:var(--lift-raised)}
+.btn-primary:active{box-shadow:var(--lift-hero-held)}
+.btn-tonal:active{box-shadow:var(--lift-raised-held)}
+.cta .btn{flex:1 1 220px}
+.btn svg{width:22px;height:22px;flex:none}
+
+/* plain section */
+section.plain{margin:32px 0}
+/* section header = ARCHIVE header: Type.label, text-dim, start SIDE + 6 */
+section.plain > h2{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);padding:0 6px;margin-bottom:12px}
+.needs{list-style:none;margin:0;padding:0;display:grid;gap:var(--gap)}
+/* library row: surface, radius 20, CARD lift, padding start 20 end 22 */
+.needs li{background:var(--surface);border-radius:var(--r-card);box-shadow:var(--lift-card);padding:16px 22px 16px 20px}
+/* Type.rowName 18 Bold -0.015em */
+.needs li strong{display:block;font-size:18px;font-weight:700;letter-spacing:-.015em;line-height:1.25;text-transform:uppercase;margin-bottom:3px}
+.needs li span{color:var(--text-dim);font-size:15px;line-height:1.45}
+.note{color:var(--text-dim);font-size:15px;margin:16px 6px 0}
+.shots{display:flex;gap:16px;margin-top:20px;padding:0 2px}
+.shots figure{margin:0;flex:1 1 0;max-width:180px}
+.shots img{display:block;width:100%;height:auto;border-radius:var(--r-card);box-shadow:var(--lift-card);background:var(--surface)}
+.shots figcaption{color:var(--text-dim);margin-top:10px;text-align:center}
+
+/* collapsible groups = library cards; the open one stands a step higher (current row = RAISED) */
+.groups{display:grid;gap:var(--gap);margin:8px 0 40px}
+details.grp{background:var(--surface);border-radius:var(--r-card);box-shadow:var(--lift-card)}
+details.grp[open]{box-shadow:var(--lift-raised)}
+details.grp > summary{list-style:none;cursor:pointer;display:flex;align-items:flex-start;gap:12px;padding:18px 18px 18px 20px;border-radius:var(--r-card);-webkit-tap-highlight-color:transparent}
+details.grp > summary::-webkit-details-marker{display:none}
+.sum-text{flex:1 1 auto;min-width:0}
+.sum-text h2{font-size:18px;font-weight:700;letter-spacing:-.015em;line-height:1.25;text-transform:uppercase}
+.sum-text p{margin:4px 0 0;color:var(--text-dim);font-size:15px;line-height:1.4}
+/* RECOMMENDED = the ON DAC tag: Type.small, text-dim on surface2, radius 8, 4 x 8 */
+.tag{display:inline-block;vertical-align:middle;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;line-height:1.2;background:var(--surface2);color:var(--text-dim);border-radius:var(--r-tag);padding:4px 8px;margin-left:6px;position:relative;top:-2px}
+/* the arrow = ExpandMore in the archive header: 24 px, text-dim, no plate */
+.chev{flex:none;width:24px;height:24px;display:grid;place-items:center;color:var(--text-dim);transition:transform .2s}
+.chev svg{width:24px;height:24px}
+details.grp[open] > summary .chev{transform:rotate(180deg)}
+.grp-body{padding:2px 22px 22px 20px}
+.grp-body h3{color:var(--text-dim);margin:24px 0 10px}
+
+/* steps: numbers are band chips - surface2, radius 14, RAISED, Type.chip */
+ol.steps{list-style:none;counter-reset:s;margin:10px 0 0;padding:0;display:grid;gap:16px}
+ol.steps > li{counter-increment:s;position:relative;padding-left:54px;min-height:40px}
+ol.steps > li::before{content:counter(s);position:absolute;left:0;top:-6px;width:40px;height:40px;border-radius:var(--r-chip);background:var(--surface2);color:var(--text);box-shadow:var(--lift-raised);font-size:20px;font-weight:600;font-feature-settings:"tnum";display:grid;place-items:center}
+ol.steps > li p:last-child{margin-bottom:0}
+ol.steps .btn{margin:6px 0 12px}
+.sub{color:var(--text-dim);font-size:15px}
+/* info box = sheet Option: surface2, radius 12, 12 x 16, flat */
+.box{background:var(--surface2);border-radius:var(--r-option);padding:12px 16px;margin-top:18px}
+.box > :last-child{margin-bottom:0}
+/* hint = the top banner: surface2, radius 12 */
+.hint{display:none;margin-top:4px;background:var(--surface2);border-radius:var(--r-option);padding:12px;font-size:15px}
+.hint.show{display:block}
+ul.plain-list{margin:0;padding-left:1.2em}
+ul.plain-list li{margin:6px 0}
+ul.plain-list li::marker{color:var(--text-mute)}
+
+/* copy rows: label | value | action, in a pressed-in well (sunken + sink, ROW_SHAPE 16, start 18) */
+.copy{display:grid;grid-template-columns:1fr auto;grid-template-areas:"label label" "value action";gap:6px 10px;align-items:center;background:var(--sunken);box-shadow:var(--sink);border-radius:var(--r-row);padding:12px 8px 10px 18px;margin:10px 0}
+.box .copy{margin-bottom:0}
+.copy .lbl{grid-area:label;color:var(--text-dim)}
+.copy .val{grid-area:value;font-family:inherit;font-feature-settings:"tnum";font-size:15px;font-weight:500;line-height:1.45;word-break:break-all;min-width:0;white-space:pre-wrap;margin:0}
+.copy .copy-btn{grid-area:action;align-self:center}
+@media (min-width:640px){
+  .copy{grid-template-columns:150px 1fr auto;grid-template-areas:"label value action";padding:8px 8px 8px 18px}
+}
+/* copy button = the + chip: surface2, radius 14, RAISED; done = selected chip (accent) */
+.copy-btn{min-width:78px;min-height:40px;padding:8px 14px;border-radius:var(--r-chip);border:0;background:var(--surface2);color:var(--text);box-shadow:var(--lift-raised);font:inherit;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:box-shadow .12s}
+.copy-btn:active{box-shadow:var(--lift-raised-held)}
+.copy-btn.done{background:var(--accent);color:var(--on-accent)}
+
+/* troubleshooting */
+dl.faq{margin:0}
+dl.faq dt{font-weight:700;margin-top:18px}
+dl.faq dt:first-child{margin-top:4px}
+dl.faq dd{margin:4px 0 0;color:var(--text-dim)}
+
+/* QR (desktop only): a surface card; the code keeps dark-on-light in both themes, from palette roles */
+.qr{display:none}
+@media (min-width:900px) and (hover:hover){
+  .qr{display:flex;align-items:center;gap:20px;background:var(--surface);border-radius:var(--r-card);box-shadow:var(--lift-card);padding:18px 22px 18px 18px;margin:32px 0 0}
+  .qr svg{width:128px;height:128px;flex:none;border-radius:var(--r-option)}
+  .qr p{margin:0;font-size:17px}
+  .qr p span{display:block;color:var(--text-dim);font-size:15px;margin-top:4px}
+}
+.qr .qr-plate{fill:var(--surface)}
+.qr .qr-mod{stroke:var(--text)}
+@media (prefers-color-scheme: dark){
+  .qr .qr-plate{fill:var(--text)}
+  .qr .qr-mod{stroke:var(--bg)}
+}
+
+/* footer = ABOUT & LICENCES: quiet, no rule */
+footer{padding:8px 6px 48px;color:var(--text-dim);font-size:14px}
+footer ul{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:6px}
+footer p{margin:0 0 8px}
+
+@media print{
+  :root{--bg:#EFECE8;--surface:#FAF8F5;--surface2:#E7E3DE;--text:#1D1B19;--text-dim:#6E6963;--text-mute:#9A948D;--sunken:#E6E2DD;--accent:#F07A3A}
+  html{scroll-behavior:auto}
+  body{background:var(--surface);color:var(--text)}
+  *{box-shadow:none!important}
+  .cta,.copy-btn,.chev,.qr,.hint{display:none!important}
+  details.grp{break-inside:auto}
+  details.grp::details-content{content-visibility:visible;display:block}
+  details.grp > summary{pointer-events:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="hero">
+  <img class="icon" src="../images/icon-512.png" width="88" height="88" alt="Contour app icon">
+  <h1>Install Contour</h1>
+  <p class="lede">An on-the-go EQ manager for the CrinEar Protocol Micro. Free and open source.</p>
+  <p class="ver"><span class="dot" aria-hidden="true"></span><span id="ver-line">Latest: 1.1.0 - 26 Sep 2026</span></p>
+  <div class="cta">
+    <a class="btn btn-primary" href="#obtainium">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+      Add to Obtainium
+    </a>
+    <a class="btn btn-tonal" href="#apk">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+      Download APK
+    </a>
+  </div>
+  <div class="qr" aria-hidden="false">
+    <svg viewBox="-2 -2 37 37" role="img" aria-label="QR code for chronosauros.github.io/contour/install" shape-rendering="crispEdges"><rect class="qr-plate" x="-2" y="-2" width="37" height="37"/><path class="qr-mod" d="M0 0.5h7m1 0h1m7 0h1m1 0h3m2 0h1m2 0h7M0 1.5h1m5 0h1m1 0h3m3 0h1m1 0h2m2 0h1m1 0h2m2 0h1m5 0h1M0 2.5h1m1 0h3m1 0h1m2 0h2m2 0h2m1 0h1m1 0h1m1 0h1m1 0h3m1 0h1m1 0h3m1 0h1M0 3.5h1m1 0h3m1 0h1m1 0h4m6 0h2m2 0h3m1 0h1m1 0h3m1 0h1M0 4.5h1m1 0h3m1 0h1m3 0h1m1 0h2m2 0h3m2 0h1m2 0h1m1 0h1m1 0h3m1 0h1M0 5.5h1m5 0h1m3 0h2m2 0h5m2 0h1m2 0h1m1 0h1m5 0h1M0 6.5h7m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h1m1 0h7M8 7.5h4m3 0h5m2 0h2M0 8.5h1m1 0h2m1 0h3m3 0h2m2 0h4m2 0h1m4 0h1m2 0h1m1 0h2M1 9.5h3m1 0h1m1 0h3m1 0h3m2 0h4m2 0h2m2 0h2m1 0h2m1 0h1M0 10.5h1m1 0h1m1 0h3m2 0h1m1 0h3m4 0h1m3 0h4m1 0h3m1 0h2M0 11.5h1m2 0h2m2 0h1m1 0h1m1 0h1m3 0h1m1 0h1m4 0h3m1 0h2m1 0h1m2 0h1M0 12.5h1m2 0h2m1 0h4m1 0h1m2 0h1m1 0h1m3 0h1m2 0h3m1 0h3m1 0h2M1 13.5h1m2 0h1m2 0h3m3 0h2m5 0h1m3 0h1m5 0h2M2 14.5h1m1 0h4m1 0h1m1 0h3m5 0h4m3 0h1m3 0h1M0 15.5h1m4 0h1m2 0h1m3 0h1m2 0h1m5 0h2m2 0h3m1 0h2M1 16.5h3m1 0h2m5 0h2m4 0h1m2 0h3m1 0h2m1 0h1m1 0h1M2 17.5h2m3 0h1m3 0h2m1 0h3m1 0h1m1 0h7m1 0h2m1 0h2M1 18.5h1m3 0h3m1 0h2m1 0h1m2 0h1m2 0h1m1 0h1m1 0h1m1 0h1m1 0h3m1 0h2M2 19.5h3m3 0h5m2 0h1m1 0h3m2 0h1m2 0h2m1 0h1m2 0h1M2 20.5h1m1 0h1m1 0h1m1 0h1m4 0h2m1 0h1m5 0h1m1 0h1m2 0h1m1 0h3M0 21.5h3m1 0h2m2 0h4m1 0h1m1 0h2m3 0h2m1 0h1m2 0h1m2 0h2m1 0h1M4 22.5h1m1 0h1m2 0h1m1 0h1m2 0h2m1 0h4m2 0h2m1 0h2m1 0h1m1 0h2M1 23.5h2m2 0h1m1 0h1m1 0h2m1 0h2m1 0h1m4 0h1m2 0h1m2 0h4m2 0h1M0 24.5h1m1 0h2m1 0h4m4 0h2m2 0h1m1 0h1m2 0h1m1 0h5m2 0h2M8 25.5h2m1 0h2m1 0h3m2 0h1m1 0h2m1 0h1m3 0h2M0 26.5h7m1 0h4m2 0h1m2 0h3m1 0h1m1 0h2m1 0h1m1 0h1M0 27.5h1m5 0h1m1 0h1m1 0h1m1 0h1m2 0h5m3 0h2m3 0h5M0 28.5h1m1 0h3m1 0h1m2 0h1m3 0h1m2 0h3m3 0h7m1 0h2M0 29.5h1m1 0h3m1 0h1m1 0h2m1 0h4m1 0h2m1 0h1m2 0h1m4 0h1m1 0h4M0 30.5h1m1 0h3m1 0h1m1 0h2m3 0h1m1 0h2m1 0h1m1 0h3m3 0h2m1 0h1M0 31.5h1m5 0h1m2 0h3m2 0h1m2 0h1m2 0h1m1 0h1m1 0h2m1 0h2m3 0h1M0 32.5h7m1 0h5m1 0h1m2 0h5m1 0h1m1 0h2m1 0h3"/></svg>
+    <p>Reading this on a computer? Scan to open it on your phone.<span><a href="https://chronosauros.github.io/contour/install/">chronosauros.github.io/contour/install</a></span></p>
+  </div>
+</header>
+
+<section class="plain" id="need">
+  <h2>What you need</h2>
+  <ul class="needs">
+    <li><strong>A CrinEar Protocol Micro USB DAC</strong><span>Contour works only with this dongle for now.</span></li>
+    <li><strong>An Android phone with Android 9 or newer</strong><span>It needs USB host support (USB OTG). Almost every phone with USB-C has it.</span></li>
+    <li><strong>Nothing else</strong><span>No account, no internet connection, no extra hardware.</span></li>
+  </ul>
+  <p class="note">Contour is unofficial and not affiliated with CrinEar.</p>
+  <div class="shots">
+    <figure><img src="../images/tune.png" width="480" height="966" loading="lazy" decoding="async" alt="Contour Tune screen with an EQ curve"><figcaption>Tune</figcaption></figure>
+    <figure><img src="../images/library.png" width="480" height="966" loading="lazy" decoding="async" alt="Contour Library screen with saved profiles"><figcaption>Library</figcaption></figure>
+  </div>
+</section>
+
+<div class="groups">
+
+<details class="grp" id="obtainium">
+  <summary>
+    <div class="sum-text"><h2>Obtainium <span class="tag">Recommended</span></h2><p>Install once and Contour updates itself from its official releases.</p></div>
+    <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+  </summary>
+  <div class="grp-body">
+    <p>Obtainium is a free, open-source app that installs apps straight from their official GitHub releases and tells you when an update is out.</p>
+    <ol class="steps">
+      <li>
+        <p><strong>Install Obtainium first.</strong> Get it from its <a href="https://github.com/ImranR98/Obtainium/releases/latest">latest release on GitHub</a>. For most modern phones, pick the file ending in <code>arm64-v8a-release.apk</code>.</p>
+        <p class="sub">It is also on <a href="https://f-droid.org/packages/dev.imranr.obtainium.fdroid/">F-Droid</a>. More about it on <a href="https://obtainium.imranr.dev/">obtainium.imranr.dev</a>.</p>
+      </li>
+      <li>
+        <p><strong>On your phone, tap the button below.</strong></p>
+        <a class="btn btn-primary" id="obt-btn" href="obtainium://app/%7B%22id%22%3A%22io.github.chronosauros.contour%22%2C%22url%22%3A%22https%3A%2F%2Fgithub.com%2FChronosauros%2Fcontour%22%2C%22author%22%3A%22Chronosaur%22%2C%22name%22%3A%22Contour%22%7D">Add Contour to Obtainium</a>
+        <p class="hint" id="obt-hint" role="status">Nothing happened? Install Obtainium first (step 1), then tap again.</p>
+        <p>The first time, Obtainium may ask to send notifications - allow it, that's how it tells you about updates. It may also show a welcome note - tap <strong>Okay</strong>.</p>
+        <p>Contour then appears in its list ("Imported 1 app"). The new version may show as "Unknown" at first.</p>
+      </li>
+      <li>
+        <p><strong>Pull the list down</strong> to check for updates, then tap the download icon next to Contour.</p>
+        <p>Android asks once to allow Obtainium to install apps. Turn on <strong>Allow from this source</strong>, go back and tap <strong>Install</strong>.</p>
+      </li>
+      <li>
+        <p><strong>Google Play Protect may say "App scan recommended"</strong> because it hasn't seen Contour before. Tap <strong>Scan app</strong> - after the scan the install finishes.</p>
+      </li>
+      <li>
+        <p><strong>Done.</strong> Obtainium checks for new versions in the background and offers to update. Your profiles stay.</p>
+      </li>
+    </ol>
+    <div class="box">
+      <p><strong>Button does nothing?</strong> It only works on a phone that already has Obtainium. You can add Contour by hand instead: open Obtainium, tap <strong>Add app</strong>, paste this address and tap <strong>Add</strong>.</p>
+      <div class="copy">
+        <span class="lbl">Source URL</span>
+        <a class="val" href="https://github.com/Chronosauros/contour">https://github.com/Chronosauros/contour</a>
+        <button type="button" class="copy-btn" data-copy="https://github.com/Chronosauros/contour">Copy</button>
+      </div>
+    </div>
+  </div>
+</details>
+
+<details class="grp" id="apk">
+  <summary>
+    <div class="sum-text"><h2>Download the APK</h2><p>No extra app needed. You install updates yourself.</p></div>
+    <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+  </summary>
+  <div class="grp-body">
+    <ol class="steps">
+      <li>
+        <p><strong>Download the app file.</strong></p>
+        <a class="btn btn-primary" id="dl-btn" href="https://github.com/Chronosauros/contour/releases/download/v1.1.0/contour-1.1.0.apk">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+          <span id="dl-label">Download Contour 1.1.0</span>
+        </a>
+        <p class="sub">The file is <code id="apk-name">contour-1.1.0.apk</code>, about <span id="apk-size">3.4 MB</span>. If the button fails, get it from the <a href="https://github.com/Chronosauros/contour/releases/latest">latest release page</a>.</p>
+      </li>
+      <li>
+        <p><strong>Open the downloaded file</strong> - from the download notification or your Files app.</p>
+        <p>The first time, Android says installing from this source isn't allowed. Tap <strong>Settings</strong>, turn on <strong>Allow from this source</strong> for your browser or file manager, go back and tap <strong>Install</strong>.</p>
+      </li>
+      <li>
+        <p><strong>Google Play Protect may say "App scan recommended"</strong> because it hasn't seen Contour before. Tap <strong>Scan app</strong> - after the scan the install finishes. You can also <a href="#verify">check the file yourself</a>.</p>
+      </li>
+      <li>
+        <p><strong>Open Contour.</strong></p>
+      </li>
+    </ol>
+    <div class="box">
+      <p><strong>Updating later:</strong> download the newer APK and install it over the old one. Your profiles stay.</p>
+      <p>To hear about new versions, watch the repo's releases on <a href="https://github.com/Chronosauros/contour">GitHub</a> (Watch &gt; Custom &gt; Releases), or use <a href="#obtainium">Obtainium</a>.</p>
+    </div>
+  </div>
+</details>
+
+<details class="grp" id="first-run">
+  <summary>
+    <div class="sum-text"><h2>After installing</h2><p>Connect the dongle and send your first profile to it.</p></div>
+    <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+  </summary>
+  <div class="grp-body">
+    <ol class="steps">
+      <li><p><strong>Plug in the Protocol Micro.</strong></p></li>
+      <li><p><strong>Allow USB access</strong> when Android asks. Tick "always" to skip this next time.</p></li>
+      <li><p>The status shows <strong>CONNECTED</strong> with a green dot.</p></li>
+      <li><p>Pick a profile in <strong>LIBRARY</strong>, then hold <strong>HOLD TO SEND</strong> until it fills. The profile now shows <strong>ON DAC</strong>.</p></li>
+      <li><p><strong>Unplug and go.</strong> The dongle keeps the sound you sent, on any phone or computer.</p></li>
+    </ol>
+    <p style="margin-top:16px">On first launch you get three examples: <strong>PROFILE 1</strong> (flat), <strong>NIGHTFALL</strong> and <strong>DUSK</strong>.</p>
+    <p>Everything else is in the <a href="https://github.com/Chronosauros/contour/blob/main/docs/USER-GUIDE.md">user guide</a>.</p>
+  </div>
+</details>
+
+<details class="grp" id="verify">
+  <summary>
+    <div class="sum-text"><h2>Check that the APK is genuine</h2><p>The signing key and checksums to confirm your copy is official.</p></div>
+    <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+  </summary>
+  <div class="grp-body">
+    <p>Every official build is signed by Chronosaur with the same key. If these match, the app is the real one.</p>
+    <div class="copy">
+      <span class="lbl">Package name</span>
+      <p class="val">io.github.chronosauros.contour</p>
+      <button type="button" class="copy-btn" data-copy="io.github.chronosauros.contour">Copy</button>
+    </div>
+    <div class="copy">
+      <span class="lbl">Certificate SHA-256</span>
+      <p class="val">C8:C8:CA:EA:76:16:28:ED:9D:50:5F:F0:73:42:EE:5E:A0:D4:66:A4:AD:71:8D:0D:B0:77:42:2B:A3:F7:E6:01</p>
+      <button type="button" class="copy-btn" data-copy="C8:C8:CA:EA:76:16:28:ED:9D:50:5F:F0:73:42:EE:5E:A0:D4:66:A4:AD:71:8D:0D:B0:77:42:2B:A3:F7:E6:01">Copy</button>
+    </div>
+    <div class="copy">
+      <span class="lbl">Certificate subject</span>
+      <p class="val">CN=Chronosaur</p>
+      <button type="button" class="copy-btn" data-copy="CN=Chronosaur">Copy</button>
+    </div>
+
+    <h3>Easiest: AppVerifier</h3>
+    <p><a href="https://github.com/soupslurpr/AppVerifier">AppVerifier</a> is a free app (also on Accrescent and F-Droid) that compares an app's signature with the one you give it.</p>
+    <div class="copy">
+      <span class="lbl">For AppVerifier</span>
+      <pre class="val">io.github.chronosauros.contour
+C8:C8:CA:EA:76:16:28:ED:9D:50:5F:F0:73:42:EE:5E:A0:D4:66:A4:AD:71:8D:0D:B0:77:42:2B:A3:F7:E6:01</pre>
+      <button type="button" class="copy-btn" data-copy="io.github.chronosauros.contour&#10;C8:C8:CA:EA:76:16:28:ED:9D:50:5F:F0:73:42:EE:5E:A0:D4:66:A4:AD:71:8D:0D:B0:77:42:2B:A3:F7:E6:01">Copy</button>
+    </div>
+    <p>Copy it, open AppVerifier, pick Contour (if installed) or the downloaded APK, and it confirms the match.</p>
+
+    <h3>File checksum</h3>
+    <p>Each release lists the APK's SHA-256 in its <a href="https://github.com/Chronosauros/contour/releases/latest">release notes</a>. For the latest version:</p>
+    <div class="copy">
+      <span class="lbl" id="sha-label">contour-1.1.0.apk</span>
+      <p class="val" id="sha-val">e154b8f8b6a1cccd48082771ab17adf4fb997ab827578ced0e09dec634b07622</p>
+      <button type="button" class="copy-btn" id="sha-btn" data-copy="e154b8f8b6a1cccd48082771ab17adf4fb997ab827578ced0e09dec634b07622">Copy</button>
+    </div>
+
+    <h3>For developers</h3>
+    <div class="copy">
+      <span class="lbl">Command</span>
+      <p class="val" id="cmd-val">apksigner verify --print-certs contour-1.1.0.apk</p>
+      <button type="button" class="copy-btn" id="cmd-btn" data-copy="apksigner verify --print-certs contour-1.1.0.apk">Copy</button>
+    </div>
+    <p>It should print <code>CN=Chronosaur</code> and this digest (lowercase, no colons):</p>
+    <div class="copy">
+      <span class="lbl">Digest</span>
+      <p class="val">c8c8caea761628ed9d505ff07342ee5ea0d466a4ad718d0db077422ba3f7e601</p>
+      <button type="button" class="copy-btn" data-copy="c8c8caea761628ed9d505ff07342ee5ea0d466a4ad718d0db077422ba3f7e601">Copy</button>
+    </div>
+  </div>
+</details>
+
+<details class="grp" id="update">
+  <summary>
+    <div class="sum-text"><h2>Updating and your profiles</h2><p>What keeps your saved profiles safe, and the two things that don't.</p></div>
+    <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+  </summary>
+  <div class="grp-body">
+    <ul class="plain-list">
+      <li><strong>Updates never touch your saved profiles.</strong> Installing over the existing app keeps everything.</li>
+      <li><strong>Switch freely</strong> between Obtainium and the direct APK. They are the same app with the same signature.</li>
+      <li><strong>A copy you built yourself is different.</strong> It has a different signature, so an official release can't install over it. Android says "App not installed".</li>
+      <li><strong>Going back to an older version isn't possible</strong> without uninstalling.</li>
+      <li><strong>Uninstalling removes your profiles.</strong> Back them up first: in Library, long-press a profile and tap Share. See the <a href="https://github.com/Chronosauros/contour/blob/main/docs/USER-GUIDE.md">user guide</a>.</li>
+    </ul>
+  </div>
+</details>
+
+<details class="grp" id="troubleshooting">
+  <summary>
+    <div class="sum-text"><h2>Troubleshooting</h2><p>Fixes for the most common install and connection problems.</p></div>
+    <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+  </summary>
+  <div class="grp-body">
+    <dl class="faq">
+      <dt>"App not installed"</dt>
+      <dd>Either a copy you built yourself is installed (different signature), or a newer version is already on the phone. Back up your profiles, uninstall the old copy, then install again.</dd>
+      <dt>Play Protect says "App scan recommended"</dt>
+      <dd>Google hasn't seen Contour before. Tap <strong>Scan app</strong> - after the scan the install continues.</dd>
+      <dt>The Obtainium button does nothing</dt>
+      <dd>Obtainium isn't installed yet, or you're on a computer. Install Obtainium on your phone, or use the <a href="#obtainium">manual way</a> (Add app, paste the address).</dd>
+      <dt>The status stays NO DAC</dt>
+      <dd>Check the cable or adapter and plug it in firmly. The phone must support USB OTG. Some phones have an OTG switch in Settings that needs to be turned on.</dd>
+      <dt>It says TAP TO CONNECT</dt>
+      <dd>Tap it and allow USB access when Android asks.</dd>
+      <dt>Obtainium says "rate limited"</dt>
+      <dd>GitHub limits how often apps can check without an account. Try again later, or add a GitHub token in Obtainium's settings.</dd>
+    </dl>
+    <p style="margin-top:18px">Still stuck? Ask on <a href="https://github.com/Chronosauros/contour/issues">GitHub Issues</a>.</p>
+  </div>
+</details>
+
+<details class="grp" id="stores">
+  <summary>
+    <div class="sum-text"><h2>Coming later: app stores</h2><p>F-Droid is on the way.</p></div>
+    <span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span>
+  </summary>
+  <div class="grp-body">
+    <p>Contour has been prepared for F-Droid; this page will link it once it's live. F-Droid will ship the same APK signed by the same key, so switching between Obtainium, a direct download and F-Droid won't need a reinstall.</p>
+  </div>
+</details>
+
+</div>
+
+<footer>
+  <ul>
+    <li>Source code: <a href="https://github.com/Chronosauros/contour">github.com/Chronosauros/contour</a></li>
+    <li>Licence: Apache 2.0</li>
+    <li>Privacy: <a href="https://github.com/Chronosauros/contour/blob/main/PRIVACY.md">PRIVACY.md</a> - no internet permission, no analytics, no accounts</li>
+  </ul>
+  <p>Contour is an unofficial project, not affiliated with or endorsed by CrinEar. Product names belong to their owners.</p>
+  <p>Made by Chronosaur</p>
+</footer>
+
+</div>
+<script>
+(function(){
+  "use strict";
+  var KEY = "contour-install-open";
+  var groups = Array.prototype.slice.call(document.querySelectorAll("details.grp"));
+
+  /* ---- remembered open/closed state ---- */
+  function load(){ try { return JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e){ return {}; } }
+  function save(){
+    var s = {};
+    groups.forEach(function(g){ if (g.open) s[g.id] = 1; });
+    try { localStorage.setItem(KEY, JSON.stringify(s)); } catch(e){}
+  }
+  var stored = load();
+  groups.forEach(function(g){ if (stored[g.id]) g.open = true; });
+  var printing = false;
+  groups.forEach(function(g){ g.addEventListener("toggle", function(){ if (!printing) save(); }); });
+
+  /* ---- deep links ---- */
+  function openHash(scroll){
+    var id = decodeURIComponent((location.hash || "").slice(1));
+    if (!id) return;
+    var el = document.getElementById(id);
+    if (!el || !el.classList.contains("grp")) return;
+    el.open = true;
+    if (scroll) requestAnimationFrame(function(){ el.scrollIntoView({block:"start"}); });
+  }
+  openHash(true);
+  window.addEventListener("hashchange", function(){ openHash(true); });
+  document.addEventListener("click", function(e){
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a) return;
+    var el = document.getElementById(a.getAttribute("href").slice(1));
+    if (el && el.classList.contains("grp")) {
+      el.open = true;
+      if (location.hash === a.getAttribute("href")) { e.preventDefault(); el.scrollIntoView({block:"start", behavior:"smooth"}); }
+    }
+  });
+
+  /* ---- print: expand all, then restore ---- */
+  var before = null;
+  window.addEventListener("beforeprint", function(){
+    printing = true; before = groups.map(function(g){ return g.open; });
+    groups.forEach(function(g){ g.open = true; });
+  });
+  window.addEventListener("afterprint", function(){
+    if (before) groups.forEach(function(g, i){ g.open = before[i]; });
+    setTimeout(function(){ printing = false; }, 0);
+  });
+
+  /* ---- copy buttons ---- */
+  function fallbackCopy(text){
+    var ta = document.createElement("textarea");
+    ta.value = text; ta.setAttribute("readonly", "");
+    ta.style.position = "fixed"; ta.style.top = "-1000px"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    var ok = false; try { ok = document.execCommand("copy"); } catch(e){}
+    document.body.removeChild(ta); return ok;
+  }
+  function flash(btn, label){
+    btn.textContent = label; btn.classList.toggle("done", label === "Copied");
+    clearTimeout(btn._t);
+    btn._t = setTimeout(function(){ btn.textContent = "Copy"; btn.classList.remove("done"); }, 1600);
+  }
+  document.addEventListener("click", function(e){
+    var btn = e.target.closest && e.target.closest(".copy-btn");
+    if (!btn) return;
+    var text = btn.getAttribute("data-copy") || "";
+    var done = function(){ flash(btn, "Copied"); };
+    var fail = function(){ flash(btn, fallbackCopy(text) ? "Copied" : "Press and hold to copy"); };
+    try {
+      if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(text).then(done, fail);
+      else fail();
+    } catch(err){ fail(); }
+  });
+
+  /* ---- Obtainium hint ---- */
+  var obt = document.getElementById("obt-btn"), hint = document.getElementById("obt-hint");
+  if (obt && hint) obt.addEventListener("click", function(){
+    setTimeout(function(){ if (document.visibilityState === "visible") hint.classList.add("show"); }, 2000);
+  });
+
+  /* ---- latest release ---- */
+  var API = "https://api.github.com/repos/Chronosauros/contour/releases/latest";
+  var CKEY = "contour-release-v1", TTL = 10 * 60 * 1000;
+  var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  function setText(id, t){ var n = document.getElementById(id); if (n) n.textContent = t; }
+  function apply(r){
+    if (!r || !r.tag_name) return;
+    var ver = String(r.tag_name).replace(/^v/i, "");
+    var dateTxt = "";
+    if (r.published_at) { var d = new Date(r.published_at); if (!isNaN(d)) dateTxt = d.getUTCDate() + " " + MONTHS[d.getUTCMonth()] + " " + d.getUTCFullYear(); }
+    setText("ver-line", "Latest: " + ver + (dateTxt ? " - " + dateTxt : ""));
+    var asset = null;
+    (r.assets || []).forEach(function(a){ if (!asset && /^contour-.*\.apk$/.test(a.name)) asset = a; });
+    var name = asset ? asset.name : ("contour-" + ver + ".apk");
+    setText("dl-label", "Download Contour " + ver);
+    setText("apk-name", name);
+    if (asset) {
+      document.getElementById("dl-btn").href = asset.browser_download_url;
+      if (asset.size) setText("apk-size", (asset.size / 1e6).toFixed(1) + " MB");
+    } else {
+      document.getElementById("dl-btn").href = "https://github.com/Chronosauros/contour/releases/latest";
+    }
+    var cmd = "apksigner verify --print-certs " + name;
+    setText("cmd-val", cmd); document.getElementById("cmd-btn").setAttribute("data-copy", cmd);
+    setText("sha-label", name);
+    var m = /SHA-256 of `contour-[^`]+\.apk`: `([0-9a-f]{64})`/.exec(r.body || "");
+    var sv = document.getElementById("sha-val"), sb = document.getElementById("sha-btn");
+    if (m) { sv.textContent = m[1]; sb.setAttribute("data-copy", m[1]); sb.hidden = false; }
+    else { sv.textContent = "See the release notes"; sb.hidden = true; }
+  }
+  var cached = null;
+  try { var raw = sessionStorage.getItem(CKEY); if (raw) { var c = JSON.parse(raw); if (c && Date.now() - c.t < TTL) cached = c.r; } } catch(e){}
+  if (cached) { try { apply(cached); } catch(e){} }
+  else if (window.fetch) {
+    fetch(API, { headers: { "Accept": "application/vnd.github+json" } })
+      .then(function(res){ if (!res.ok) throw new Error("HTTP " + res.status); return res.json(); })
+      .then(function(r){
+        var slim = { tag_name: r.tag_name, published_at: r.published_at, body: r.body,
+          assets: (r.assets || []).map(function(a){ return { name: a.name, browser_download_url: a.browser_download_url, size: a.size }; }) };
+        try { sessionStorage.setItem(CKEY, JSON.stringify({ t: Date.now(), r: slim })); } catch(e){}
+        apply(slim);
+      })
+      .catch(function(){ /* keep the static fallback baked into the page */ });
+  }
+})();
+</script>
+</body>
+</html>

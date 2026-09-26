@@ -33,6 +33,10 @@ This guide walks through everything the app does. If you only want the short ver
 
 ## Install
 
+The [install page](https://chronosauros.github.io/contour/install/) has every option step by step. The
+easiest way to also get updates is [Obtainium](https://chronosauros.github.io/contour/install/#obtainium):
+in Obtainium tap Add app, paste `https://github.com/Chronosauros/contour` and install. Or by hand:
+
 1. Download the newest `contour-<version>.apk` from the [Releases page](https://github.com/Chronosauros/contour/releases).
 2. Open the file on your phone. Android asks you to allow installs from your browser or file manager
    the first time; allow it for that app.
