@@ -14,6 +14,27 @@ Ideas and devices for later. None of these is enabled until it is confirmed on r
 ## CrinEar Protocol Max (WalkPlay SchemeNo16)
 - 10 bands, +-10 dB, low and high shelf, no frequency/Q compensation, pregain via command 0x03.
 
+## KT Micro driver (Kiwi Ears Allegro Mini, Allegro PRO)
+- Second protocol family, separate from WalkPlay. devicePEQ matches VID `0x31B2` plus the USB product name ("Kiwi Ears-Allegro Mini", with a hyphen; "Kiwi Ears-Allegro PRO").
+- Register protocol over HID: report ID `0x4B`, frames `<reg> 00 00 00 <cmd>`, base register offset `0x26` on both Allegros (confirmed from a USB capture in devicePEQ).
+- 5 bands, +-12 dB, low and high shelf, no pregain. One writable slot ("Custom", id `0x03`); `0x02` = EQ off. The device disconnects after save.
+- Not in our copy yet: `ktmicroUsbHidHandler.js` has to be pulled from devicePEQ (MIT) into `research/protocol/devicepeq-ref/`.
+- App needs: 5-band capability, profiles without preamp (warn when a profile needs more than 5 bands or pregain), reconnect after save.
+- Other `0x31B2` devices (e.g. "Space Gaming IEM") do not answer this protocol - leave them out.
+- Requested by a Reddit user with an Allegro Mini (26.09.2026). Enable only after they or another tester confirm it on the device.
+
+## Other brands, grouped by driver
+Source: devicePEQ `usbDeviceConfig.js` (26.09.2026). One driver unlocks the whole group, but each device still needs its own confirmation. devicePEQ marks some devices `experimental` - treat those as unconfirmed even there.
+
+- **WalkPlay (the driver Contour already has)** - only IDs and capability profiles to add: Tanchjim (Space Pro, Ola II DSP, Stargate II), NiceHCK Octave, Truthear KeyX, ddHiFi DSP Cable, Moondrop Dawn Pro 2, CrinEar Protocol Max, generic CS43131 / CS43198 / ES9039 dongles. Experimental there: BGVP MX1, Letshuoer DT04, Moondrop MD-QT-042 / HiFi with PD. Band layouts vary per scheme: 5, 6, 8 or 10 bands, +-10 dB, some peaking only.
+- **KT Micro (the driver above)** - besides both Allegros: Kiwi Ears Chorus and other KT_* chips (matched by PID, registers laid out differently per chip), JCally KT02H20, Tanchjim One DSP / Bunny DSP / Fission, Moondrop CDSP and Chu 2 DSP. All 5 bands, +-12 dB, no pregain.
+- **FiiO / JadeAudio** - the largest group, framed HID protocol (`fiioUsbHidHandler.js` is already in our copy): KA15, KA17, K13 R2R, K15, K17, K19, BTR13, BTR17, BT11, QX11, QX13, FX17, Oak Nano, Retro Nano, Air Link, Air Amp, FP3, FG3, BR15 R2R, JadeAudio JA11 / JIEZI, Snowsky Melody / Tiny A / Tiny B. 5 to 31 bands, user slots differ per model (see FiiO KA15 and K13 R2R above).
+- **Moondrop (own protocol)** - Rays, AG Rays, Marigold, FreeDSP Mini / Pro, Moonriver 3, Dawn Pro 2, Echo A, DHA15, Deco, ddHiFi DSP IEM. Mostly 8 bands, +-12 dB. Old Fashioned uses an older, separate Moondrop protocol (5 bands, max +3 dB).
+- **Conexant** - Moondrop FreeDSP and Echo-B (9 bands, +-12 dB).
+- **Fosi Audio / Topping** (VID `0x152A`, shared with Topping) - Fosi DS3: 8 bands, +-12 dB, all filter types, no pregain. The driver is experimental in devicePEQ.
+
+Suggested order: WalkPlay IDs first (no new code), then KT Micro (a user is asking), then FiiO (the handler is already in our copy, largest group), then Moondrop. Leave Conexant and Fosi until someone asks for them.
+
 ## Live preview on the DAC
 - Band writes without the flash commit may apply live. To be confirmed by ear. If yes: stream band changes while dragging (at most 20-30 writes per second), commit to flash only on send.
 

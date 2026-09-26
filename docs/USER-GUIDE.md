@@ -141,6 +141,15 @@ Boosting bands can make the signal clip. The preamp lowers the whole volume to m
 Everything you change is saved on the phone immediately. There is no save button and nothing to lose
 if you close the app.
 
+### Undo and redo
+
+The arrows beside the profile name step back and forward through your edits. One touch is one step,
+however far a slider or point travelled, and a drag that ends where it started leaves no step. Each
+profile keeps its own history of up to 100 steps, and it survives closing the app.
+
+**LAST SENT** appears beside **HOLD TO SEND** when the EQ differs from the version last verified on the
+DAC. Tap it to bring that version back; the undo arrow can take you back again.
+
 ## Sending to the DAC
 
 **HOLD TO SEND** is the only button that writes to the dongle. Hold it for about 0.7 seconds: it fills

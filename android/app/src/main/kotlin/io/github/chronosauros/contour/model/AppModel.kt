@@ -5,6 +5,7 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import io.github.chronosauros.contour.core.Band
@@ -33,6 +34,10 @@ object Page {
  * one, the selected band. Every edit replaces the profile (immutable [Profile]) and schedules a debounced
  * atomic save (400 ms); [flush] queues everything pending (onStop). A delete keeps the file until [finishDelete]
  * (snackbar gone, or the app stops), so UNDO can put the row back.
+ *
+ * Every change to a profile's EQ (bands, preamp) also records the state before it in that profile's history
+ * (history.json): [undo] / [redo] step through it and [revertToSent] brings back the EQ last verified on the DAC.
+ * A touch on Tune ([beginGesture] .. [endGesture]) is one step however many values the drag went through.
  */
 class AppModel(private val store: ProfileStore, private val scope: CoroutineScope, private val beforeLoad: () -> Unit = {}) {
     val profiles = mutableStateListOf<Profile>()
@@ -58,7 +63,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         private set
     private var stateJob: Job? = null
     private val dirty = HashMap<String, Profile?>() // null = delete the file
-    private data class WriteRequest(val state: SavedState, val changes: Map<String, Profile?>)
+    private data class WriteRequest(val state: SavedState, val changes: Map<String, Profile?>, val history: Map<String, ProfileHistory>)
     private val writes = Channel<WriteRequest>(Channel.UNLIMITED)
     private val pendingDeletes = HashMap<String, () -> Unit>()
     var recentlyDeleted by mutableStateOf<Profile?>(null)
@@ -77,6 +82,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         // initial/retry load completes before it ever enqueues one, and the same model survives recreation.
         scope.launch(Dispatchers.IO) {
             val outstanding = HashMap<String, Profile?>()
+            var writtenHistory: Map<String, ProfileHistory>? = null
             for (request in writes) {
                 outstanding.putAll(request.changes)
                 var failed = false
@@ -87,6 +93,10 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
                         outstanding.remove(id)
                     }
                     store.saveState(request.state)
+                    if (request.history != writtenHistory) {
+                        store.saveHistory(request.history)
+                        writtenHistory = request.history
+                    }
                     // Physical deletes come only AFTER a durable tombstone, even on retries.
                     outstanding.filterValues { it == null }.keys.toList().forEach { id ->
                         store.delete(id)
@@ -120,6 +130,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
                 withContext(Dispatchers.IO) {
                     beforeLoad()
                     val saved = store.loadState()
+                    loadedHistory = store.loadHistory()
                     var list = store.loadProfiles(saved?.deletedIds.orEmpty())
                     if (saved == null && list.size != list.map { it.id }.toSet().size)
                         throw java.io.IOException("Duplicate profile ids; library preserved")
@@ -159,6 +170,8 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
             selectedBand = saved?.lastBand ?: 0
             lastSentId = saved?.lastSent
             seeded = saved?.seeded ?: true
+            history.clear()
+            history.putAll(loadedHistory.filterKeys { id -> sorted.any { it.id == id } })
             clampSelection()
             loading = false
             // Normalize only after all referenced files have been verified/read.
@@ -206,7 +219,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         deletedIds + pendingDeletes.keys)
 
     private fun enqueueWrite() {
-        if (!loading && !loadError) writes.trySend(WriteRequest(savedState(), dirty.toMap()))
+        if (!loading && !loadError) writes.trySend(WriteRequest(savedState(), dirty.toMap(), history.toMap()))
     }
 
     private fun scheduleSave(p: Profile?, id: String) {
@@ -271,9 +284,98 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         val old = profiles[i]
         val t = transform(old)
         if (t == old) return
+        if (!restoring && (t.bands != old.bands || t.preampDb != old.preampDb) && old.id !in gestureRecorded) {
+            record(old.id, EqState(old))
+            if (gestureOpen) gestureRecorded.add(old.id)
+        }
         val next = t.copy(updatedAt = System.currentTimeMillis())
         profiles[i] = next
         scheduleSave(next, next.id)
+    }
+
+    // ---- history ------------------------------------------------------------------------------------
+
+    private val history = mutableStateMapOf<String, ProfileHistory>()
+    private var loadedHistory: Map<String, ProfileHistory> = emptyMap()
+    private var restoring = false
+    private var gestureOpen = false
+    private val gestureRecorded = HashSet<String>()
+
+    /** A new step: [before] goes on top of UNDO and REDO is gone. */
+    private fun record(id: String, before: EqState) {
+        val h = history[id] ?: ProfileHistory()
+        history[id] = h.copy(undo = (h.undo + before).takeLast(HISTORY_MAX), redo = emptyList())
+    }
+
+    /** A finger went down on Tune: everything it changes until the last finger is up is one step. */
+    fun beginGesture() {
+        if (gestureOpen) return
+        gestureOpen = true
+        gestureRecorded.clear()
+    }
+
+    /** The last finger is up. A drag that came back to where it started leaves no step behind. */
+    fun endGesture() {
+        if (!gestureOpen) return
+        gestureOpen = false
+        for (id in gestureRecorded) {
+            val h = history[id] ?: continue
+            val p = byId(id) ?: continue
+            if (h.undo.lastOrNull() == EqState(p)) history[id] = h.copy(undo = h.undo.dropLast(1))
+        }
+        gestureRecorded.clear()
+    }
+
+    private fun applyEq(id: String, s: EqState) {
+        restoring = true
+        try {
+            update(id) { it.copy(bands = s.bands, preampDb = s.preampDb) }
+        } finally {
+            restoring = false
+        }
+        clampSelection()
+        scheduleState()
+    }
+
+    fun canUndo(p: Profile?): Boolean = p != null && history[p.id]?.undo?.isNotEmpty() == true
+    fun canRedo(p: Profile?): Boolean = p != null && history[p.id]?.redo?.isNotEmpty() == true
+
+    /** LAST SENT has something to bring back: a verified send exists and the EQ has changed since. */
+    fun canRevertToSent(p: Profile?): Boolean {
+        val s = p?.let { history[it.id]?.sent } ?: return false
+        return s != EqState(p)
+    }
+
+    fun undo() {
+        val p = current ?: return
+        val h = history[p.id] ?: return
+        val s = h.undo.lastOrNull() ?: return
+        history[p.id] = h.copy(undo = h.undo.dropLast(1), redo = (h.redo + EqState(p)).takeLast(HISTORY_MAX))
+        applyEq(p.id, s)
+    }
+
+    fun redo() {
+        val p = current ?: return
+        val h = history[p.id] ?: return
+        val s = h.redo.lastOrNull() ?: return
+        history[p.id] = h.copy(undo = (h.undo + EqState(p)).takeLast(HISTORY_MAX), redo = h.redo.dropLast(1))
+        applyEq(p.id, s)
+    }
+
+    /** Back to the EQ last verified on the DAC; one UNDO step like any other edit. */
+    fun revertToSent() {
+        val p = current ?: return
+        if (!canRevertToSent(p)) return
+        val s = history[p.id]?.sent ?: return
+        record(p.id, EqState(p))
+        applyEq(p.id, s)
+    }
+
+    /** HOLD TO SEND verified [p] on the DAC: it becomes the LAST SENT of its profile. */
+    fun markSent(p: Profile) {
+        val h = history[p.id] ?: ProfileHistory()
+        history[p.id] = h.copy(sent = EqState(p))
+        setLastSent(p.id)
     }
 
     fun setBand(index: Int, band: Band) = update { p ->
@@ -429,6 +531,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         deleted.remove(id) ?: return
         if (recentlyDeleted?.id == id) recentlyDeleted = null
         if (lastSentId == id) lastSentId = null
+        history.remove(id)
         dirty[id] = null
         stateJob?.cancel()
         enqueueWrite()
@@ -444,6 +547,8 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         const val NAME_MAX = 18
         /** The UNDO window of a delete (the snackbar shows as long). */
         const val UNDO_MS = 5000L
+        /** Steps of UNDO (and REDO) kept per profile. */
+        const val HISTORY_MAX = 100
     }
 }
 

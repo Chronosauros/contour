@@ -23,6 +23,7 @@ class ProfileStore(filesDir: File) {
     private val root = filesDir
     private val dir = File(root, "profiles")
     private val stateFile = File(root, "state.json")
+    private val historyFile = File(root, "history.json")
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = false; encodeDefaults = true }
     private val safeId = Regex("[A-Za-z0-9_-]{1,64}")
 
@@ -91,6 +92,21 @@ class ProfileStore(filesDir: File) {
     fun saveState(s: SavedState) {
         (s.order + s.deletedIds + listOfNotNull(s.lastOpen, s.lastSent)).forEach(::validate)
         atomicWrite(confined(stateFile, root), json.encodeToString(SavedState.serializer(), s))
+    }
+
+    /** The edit history is a convenience: an unreadable file starts it empty instead of blocking the library. */
+    fun loadHistory(): Map<String, ProfileHistory> = try {
+        val file = confined(historyFile, root)
+        if (!file.exists()) emptyMap()
+        else json.decodeFromString(HistoryFile.serializer(), file.readText()).profiles.filterKeys { safeId.matches(it) }
+    } catch (e: Exception) {
+        android.util.Log.w(TAG, "Edit history unreadable; starting empty", e)
+        emptyMap()
+    }
+
+    fun saveHistory(h: Map<String, ProfileHistory>) {
+        h.keys.forEach(::validate)
+        atomicWrite(confined(historyFile, root), json.encodeToString(HistoryFile.serializer(), HistoryFile(h)))
     }
 
     /** fsync temp then rename without removing the previous target. Directory rename metadata is not fsynced. */

@@ -25,12 +25,17 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Redo
+import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.changedToDown
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlin.math.floor
 import androidx.compose.ui.Alignment
@@ -78,10 +83,31 @@ private val ROW_SHAPE = RoundedCornerShape(16.dp)
 fun TuneScreen(model: AppModel, device: DeviceController, sender: Sender, actions: TuneActions, top: Dp, bottom: Dp) {
     val p = model.current
     Column(
-        Modifier.fillMaxSize().padding(top = top, bottom = bottom).padding(horizontal = SIDE),
+        Modifier
+            .fillMaxSize()
+            // One touch = one UNDO step: opened before any child sees the first finger, closed after every
+            // child (a drag's lift-off value included) has handled the last finger going up.
+            .pointerInput(model) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val e = awaitPointerEvent(PointerEventPass.Initial)
+                        if (e.changes.any { it.changedToDown() }) model.beginGesture()
+                    }
+                }
+            }
+            .pointerInput(model) {
+                awaitPointerEventScope {
+                    while (true) {
+                        val e = awaitPointerEvent(PointerEventPass.Final)
+                        if (e.changes.none { it.pressed }) model.endGesture()
+                    }
+                }
+            }
+            .padding(top = top, bottom = bottom)
+            .padding(horizontal = SIDE),
         verticalArrangement = Arrangement.spacedBy(GAP),
     ) {
-        Header(p, device, actions)
+        Header(model, p, device, actions)
         if (p == null) {
             Box(Modifier.fillMaxWidth().weight(1f).testTag("tune_empty"), contentAlignment = Alignment.Center) {
                 Text(
@@ -105,12 +131,15 @@ fun TuneScreen(model: AppModel, device: DeviceController, sender: Sender, action
             }
         }
         PreampRow(model, p, actions)
-        HoldToSend(p, device, sender, actions::sendDetails, Modifier.height(58.dp))
+        Row(Modifier.fillMaxWidth().height(58.dp), horizontalArrangement = Arrangement.spacedBy(GAP)) {
+            if (model.canRevertToSent(p)) LastSentButton(model)
+            HoldToSend(p, device, sender, actions::sendDetails, Modifier.weight(1f).fillMaxHeight())
+        }
     }
 }
 
 @Composable
-private fun Header(p: Profile?, device: DeviceController, actions: TuneActions) {
+private fun Header(model: AppModel, p: Profile?, device: DeviceController, actions: TuneActions) {
     val c = pal
     Row(Modifier.fillMaxWidth().height(56.dp), verticalAlignment = Alignment.CenterVertically) {
         if (p != null) {
@@ -131,7 +160,52 @@ private fun Header(p: Profile?, device: DeviceController, actions: TuneActions) 
         } else {
             Text("TUNE", style = Type.profileTitle, color = c.text, modifier = Modifier.weight(1f).padding(start = 6.dp))
         }
+        if (p != null) {
+            HistoryButton(Icons.AutoMirrored.Rounded.Undo, "undo", model.canUndo(p), model::undo)
+            HistoryButton(Icons.AutoMirrored.Rounded.Redo, "redo", model.canRedo(p), model::redo)
+            Spacer(Modifier.width(4.dp))
+        }
         DeviceStatus(device, actions::service)
+    }
+}
+
+/** UNDO / REDO in the header: bright when there is a step to take, dimmed (a reject tick) when not. */
+@Composable
+private fun HistoryButton(icon: androidx.compose.ui.graphics.vector.ImageVector, name: String, enabled: Boolean, onClick: () -> Unit) {
+    val c = pal
+    val haptics = LocalHaptics.current
+    Box(
+        Modifier
+            .size(44.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .clickable { if (enabled) { haptics.tap(); onClick() } else haptics.reject() }
+            .testTag("history_$name"),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, name, tint = if (enabled) c.text else c.textMute, modifier = Modifier.size(26.dp))
+    }
+}
+
+/** LAST SENT, beside HOLD TO SEND while the EQ differs from the one last verified on the DAC: tap = back to it. */
+@Composable
+private fun LastSentButton(model: AppModel) {
+    val c = pal
+    val haptics = LocalHaptics.current
+    val shape = RoundedCornerShape(24.dp)
+    Row(
+        Modifier
+            .fillMaxHeight()
+            .lift(shape, Lift.RAISED)
+            .clip(shape)
+            .background(c.surface2)
+            .clickable { haptics.tap(); model.revertToSent() }
+            .padding(horizontal = 18.dp)
+            .testTag("last_sent"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Icon(Icons.Rounded.History, null, tint = c.text, modifier = Modifier.size(22.dp))
+        Text("LAST SENT", style = Type.label, color = c.text, maxLines = 1)
     }
 }
 

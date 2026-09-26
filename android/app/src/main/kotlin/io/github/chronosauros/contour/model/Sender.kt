@@ -56,7 +56,7 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
         scope.launch {
             val r: SendOutcome = device.send(p)
             sendingId = null
-            if (r.verified) model.setLastSent(p.id) else fail(p.id, r.reason ?: "UNKNOWN")
+            if (r.verified) model.markSent(p) else fail(p.id, r.reason ?: "UNKNOWN")
         }
     }
 

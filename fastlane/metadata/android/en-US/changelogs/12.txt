@@ -1,0 +1,1 @@
+Undo and redo on the EQ page: one touch is one step, 100 steps per profile, kept after closing the app. LAST SENT brings back the version last verified on the DAC.
