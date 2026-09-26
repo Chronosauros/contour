@@ -10,7 +10,10 @@ import kotlin.math.sqrt
  * WalkPlay HID PEQ protocol, SchemeNo11 (CrinEar Protocol Micro, 3302:C20F).
  *
  * A 1:1 port of `research/protocol/walkplay.py`, itself a port of devicePEQ's walkplayHidHandler.js
- * (0BSD, Jerome O'Flaherty, commit 0617f382) verified bit-exact against the device.
+ * (0BSD, Jerome O'Flaherty, commit 0617f382) verified bit-exact against the device - except the SchemeNo11
+ * frequency/Q compensation of that commit, which is left out: frequency and Q go on the wire exactly as the
+ * user set them, as CrinEar's own tool (devicePEQ v0.20 on graph.hangout.audio) writes and reads them.
+ * With the compensation a band set to 6900 Hz here read back as 7058 Hz there.
  * Every buffer here is a full 64-byte report with the report ID at [0], so `buf[n] == d[n - 1]`
  * in PROTOCOL.md's WebHID offsets. JS semantics are kept: `Math.round` = floor(x + 0.5),
  * `>> 0` truncation, int32 wrap.
@@ -27,8 +30,7 @@ object WalkPlay {
     const val CMD_PEQ: Int = 0x09
     const val CMD_VERSION: Int = 0x0C
     const val BANDS: Int = 8
-    const val FREQ_FACTOR: Double = 0.9775     // freqCompensation ratio (realised / requested)
-    const val DESIGN_FS: Double = 96_000.0     // qCompensation cosNyquist designFs, and the biquad rate
+    const val DESIGN_FS: Double = 96_000.0     // the biquad design rate
 
     const val TYPE_LSQ: Int = 1
     const val TYPE_PK: Int = 2
@@ -64,8 +66,6 @@ object WalkPlay {
         TYPE_HP -> FilterType.HIGH_PASS
         else -> FilterType.PEAK
     }
-
-    private fun qCompensated(typeCode: Int): Boolean = typeCode == TYPE_PK || typeCode == TYPE_LSQ || typeCode == TYPE_HSQ
 
     // ---- reports ---------------------------------------------------------------------------------
 
@@ -106,7 +106,7 @@ object WalkPlay {
     /** Raw registers of one band, as the device stores them. [gain256] is signed. */
     data class Registers(val index: Int, val freq: Int, val q256: Int, val gain256: Int, val typeCode: Int)
 
-    /** A decoded band reply: registers plus the devicePEQ-decompensated (realised) values. */
+    /** A decoded band reply: registers plus their values in Hz / dB / Q, as CrinEar's tool shows them. */
     data class DeviceBand(
         val registers: Registers,
         val slotByte: Int,
@@ -130,8 +130,8 @@ object WalkPlay {
         val type = filterType(typeCode)
         val gain = jsRound(gainRaw / 256.0 * 100) / 100
         val qStored = jsRound(qRaw / 256.0 * 100) / 100
-        val freq = if (freqRaw > 0) decompensateFreq(freqRaw) else freqRaw.toDouble()
-        val q = if (qStored > 0) decompensateQ(qStored, freqRaw, typeCode) else qStored
+        val freq = freqRaw.toDouble()
+        val q = qStored
         val uninit = freqRaw == 0xFFFF && qRaw == 0xFFFF && gainRaw == -1
         val disabled = uninit || freqRaw == 0 || freqRaw == 0xFFFF || q == 0.0
         return DeviceBand(
@@ -146,38 +146,11 @@ object WalkPlay {
         )
     }
 
-    // ---- compensation (SchemeNo11) -----------------------------------------------------------------
-
-    /** Realised / requested Q at the frequency actually written ('cosNyquist', designFs 96 000). */
-    fun qRatio(freqSent: Double, typeCode: Int): Double {
-        if (!qCompensated(typeCode) || !(freqSent > 0)) return 1.0
-        val x = minOf(maxOf(freqSent / DESIGN_FS, 0.0), 0.5 - 1e-9)
-        return cos(Math.PI * x)
-    }
-
-    /** User frequency -> the frequency to write (unrounded; the biquad uses it as is). */
-    fun compensateFreq(freqHz: Double): Double {
-        if (!(freqHz > 0)) return freqHz
-        return minOf(20_000.0, maxOf(20.0, freqHz / FREQ_FACTOR))
-    }
-
-    /** User Q -> the Q to write, keyed off the compensated frequency. */
-    fun compensateQ(q: Double, freqSent: Double, typeCode: Int): Double {
-        if (!(q > 0)) return q
-        val ratio = qRatio(freqSent, typeCode)
-        if (ratio == 1.0) return q
-        return minOf(10.0, maxOf(0.1, q / ratio))
-    }
-
-    fun decompensateFreq(freqRaw: Int): Double = freqRaw * FREQ_FACTOR
-
-    fun decompensateQ(qStored: Double, freqRaw: Int, typeCode: Int): Double = qStored * qRatio(freqRaw.toDouble(), typeCode)
-
     // ---- writes ------------------------------------------------------------------------------------
 
     /**
-     * One band as it goes on the wire: [freq] and [q] are ALREADY compensated (or raw register values);
-     * the biquad uses them unrounded, the metadata fields get `trunc(freq)`, `round(q * 256)`, `round(gain * 256)`.
+     * One band as it goes on the wire: the biquad uses [freq] and [q] unrounded, the metadata fields get
+     * `trunc(freq)`, `round(q * 256)`, `round(gain * 256)`.
      */
     data class BandWrite(val index: Int, val freq: Double, val gainDb: Double, val q: Double, val typeCode: Int) {
         /** The registers the device will hold after this write (for the read-back comparison). */
@@ -188,15 +161,12 @@ object WalkPlay {
         }
     }
 
-    /** Factory flat band of [index]: raw registers, no compensation - byte-identical to the device's own. */
+    /** Factory flat band of [index]: byte-identical to the device's own. */
     fun factoryFlat(index: Int): BandWrite = BandWrite(index, FACTORY_FREQS[index].toDouble(), 0.0, FACTORY_Q, TYPE_PK)
 
-    /** A user band -> its wire values, through the SchemeNo11 compensation. */
-    fun bandWrite(index: Int, band: Band): BandWrite {
-        val code = typeCode(band.type)
-        val f = compensateFreq(band.freqHz)
-        return BandWrite(index, f, band.gainDb, compensateQ(band.q, f, code), code)
-    }
+    /** A user band -> its wire values, unchanged (no SchemeNo11 compensation, see the class comment). */
+    fun bandWrite(index: Int, band: Band): BandWrite =
+        BandWrite(index, band.freqHz, band.gainDb, band.q, typeCode(band.type))
 
     /** computeIIRFilter: 5 x int32 LE, Q30 - b0, b1, b2, -a1, -a2 normalised by a0, RBJ at 96 kHz. */
     fun computeIir(freq: Double, gainDb: Double, q: Double, typeCode: Int): ByteArray {

@@ -156,10 +156,9 @@ object ProtocolMicro {
             if (!deviceBand.enabled || r.typeCode !in setOf(WalkPlay.TYPE_PK, WalkPlay.TYPE_LSQ)) {
                 return DacImport.Rejected(listOf("DAC band ${slot + 1}: disabled or unsupported native type ${r.typeCode}; cannot import exactly"))
             }
-            // The metadata truncates the compensated frequency: choose the centre of its raw bin,
-            // not the lower edge (which can fall one bin short due to floating point arithmetic).
-            val frequency = (r.freq + 0.5) * WalkPlay.FREQ_FACTOR
-            val q = r.q256 / 256.0 * WalkPlay.qRatio(r.freq.toDouble(), r.typeCode)
+            // Whole Hz and Q in 1/256 steps: exactly what the registers hold and CrinEar's tool shows.
+            val frequency = r.freq.toDouble()
+            val q = r.q256 / 256.0
             reconstructed += Band("dac$slot", deviceBand.type, frequency, r.gain256 / 256.0, q)
         }
         val eq = ImportedEq(reconstructed, preampDb.toDouble())

@@ -10,8 +10,7 @@ import kotlin.math.sqrt
 
 /**
  * Display DSP: RBJ Audio EQ Cookbook biquads (Q for peaks/pass filters, shelf slope S = band Q)
- * evaluated at [FS] with the user's own values, i.e. the intended curve, not what a device realises
- * after compensation.
+ * evaluated at [FS] with the user's own values, i.e. the intended curve.
  *
  * Cheap enough for every drag frame: a [FreqGrid] precomputes cos(w) and cos(2w) once, so one band
  * costs a handful of multiplications per point and no trigonometry.

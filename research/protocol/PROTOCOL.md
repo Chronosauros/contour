@@ -70,6 +70,16 @@ Everything marked VERIFIED was observed on the owner's device on 2026-09-25 (fir
 `deviceHandlesPregain: false` - the host computes it and writes CMD 0x03 as an integer dB (rounded!),
 range int8 (UI practical range <= 0). No BP/notch/allpass.
 
+## Contour does NOT use the compensation below (decision 26.09.2026)
+CrinEar's own tool - devicePEQ v0.20 on graph.hangout.audio/plugins/devicePEQ (walkplayHidHandler.js
+Last-Modified 02.07.2026) - writes freq/Q raw (biquad and metadata) and reads them raw. With the compensation,
+a Contour band at 6900 Hz showed as 7058 Hz there (Reddit user report, 26.09). The 2.2-2.5 % offset was measured
+on another SchemeNo11 device (EPZ TP13), never on the Protocol Micro. Contour now writes and reads raw values.
+v0.20 differences Contour keeps on purpose: v0.20 writes the PK biquad for every type (shelves become peaks in
+the coefficients; Contour writes real shelf biquads) and writes the preamp as min(0, preamp + 5)
+(`globalGainBuffer: -5`, removed in 0617f382 as not present in the official WalkPlay app); Contour writes the
+preamp register as is. PK biquad bytes are identical to v0.20 (test `bands reach the wire as set...`).
+
 ## Compensation (SchemeNo11 only; `freqCompensation {ratio 0.9775}`, `qCompensation {cosNyquist, designFs 96000}`)
 Applied on write AND inverted on read (CO; WH L281-303, L379-398). Order on write:
 1. `f_sent = clamp(f_user / 0.9775, 20, 20000)`; written as `trunc(f_sent)` (JS `>>`), biquad uses the unrounded float.

@@ -71,9 +71,11 @@ class ProtocolParityTest {
             assertEquals(f["index"]!!.jsonPrimitive.int, d.registers.index)
             assertEquals(f["enabled"]!!.jsonPrimitive.boolean, d.enabled)
             assertEquals(f["type"]!!.jsonPrimitive.content, ApoType.of(d.type))
-            assertEquals(f["freq_hz"]!!.jsonPrimitive.double, roundTo(d.freqHz, 1))
+            // The backup's freq_hz / q went through devicePEQ 0617f382's SchemeNo11 decompensation; Contour
+            // reads the registers as CrinEar's tool does: whole Hz and Q rounded to 2 decimals.
+            assertEquals(raw["freq"]!!.jsonPrimitive.int.toDouble(), d.freqHz)
             assertEquals(f["gain_db"]!!.jsonPrimitive.double, roundTo(d.gainDb, 2))
-            assertEquals(f["q"]!!.jsonPrimitive.double, roundTo(d.q, 3))
+            assertEquals(roundTo(raw["q_x256"]!!.jsonPrimitive.int / 256.0, 2), d.q)
             assertEquals(raw["freq"]!!.jsonPrimitive.int, d.registers.freq)
             assertEquals(raw["q_x256"]!!.jsonPrimitive.int, d.registers.q256)
             assertEquals(raw["gain_x256"]!!.jsonPrimitive.int, d.registers.gain256)
@@ -213,7 +215,7 @@ class ProtocolParityTest {
 
     /**
      * Max deviation from its mean of (emulated device curve - intended curve), 1 024 log points. Both curves
-     * in the device's own maths (the Q30 biquads devicePEQ would write, same compensation): the intended one
+     * in the device's own maths (the Q30 biquads Contour writes): the intended one
      * with native HIGH SHELF biquads and the user's preamp, the emulated one = ProtocolMicro.plan.
      */
     private fun hsDeviation(bands: List<Band>, preampDb: Double?): Double {
@@ -287,6 +289,47 @@ class ProtocolParityTest {
                 assertEquals(expectedOffset, difference, 0.003, "preamp=$manual at $f Hz")
             }
         }
+    }
+
+    /** devicePEQ v0.20 computeIIRFilter + quantizer (graph.hangout.audio, 02.07.2026): the PK biquad for every type. */
+    private fun hangoutPkBiquad(freq: Double, gain: Double, q: Double): ByteArray {
+        val a = Math.sqrt(Math.pow(10.0, gain / 20)); val w = freq * 6.283185307179586 / 96000
+        val sn = Math.sin(w) / (2 * q); val d4 = sn * a; val d5 = sn / a; val d6 = d5 + 1
+        fun r(x: Double) = Math.round(x * 1073741824)
+        val den = listOf(1.0, Math.cos(w) * -2 / d6, (1 - d5) / d6).map(::r)
+        val num = listOf((d4 + 1) / d6, Math.cos(w) * -2 / d6, (1 - d4) / d6).map(::r)
+        val out = ByteArray(20)
+        listOf(num[0], num[1], num[2], -den[1], -den[2]).forEachIndexed { i, v ->
+            val n = v.toInt(); for (k in 0..3) out[i * 4 + k] = ((n shr (8 * k)) and 0xFF).toByte()
+        }
+        return out
+    }
+
+    @Test
+    fun `bands reach the wire as set and read back like CrinEar's tool`() {
+        // katetuotto's report 26.09: 6900 Hz set in Contour showed 7058 Hz on graph.hangout.audio, 10200 -> 10434.
+        val bands = listOf(
+            Band("a", FilterType.PEAK, 6900.0, -5.0, 10.0),
+            Band("b", FilterType.PEAK, 10200.0, -4.0, 8.3),
+            Band("c", FilterType.LOW_SHELF, 5000.0, -4.0, 0.71),
+            Band("d", FilterType.PEAK, 20.0, -1.8, 0.5),
+        )
+        val plan = ProtocolMicro.plan(bands, null) as DevicePlan.Ready
+        bands.forEachIndexed { i, b ->
+            val report = WalkPlay.bandWriteReport(plan.bands[i], slot = 0)
+            val read = WalkPlay.parseBand(report)
+            assertEquals(b.freqHz, read.freqHz, "band $i freq")
+            assertEquals(b.q, read.q, "band $i Q")
+            assertEquals(b.gainDb, read.gainDb, "band $i gain")
+            assertEquals(b.type, read.type, "band $i type")
+            if (b.type == FilterType.PEAK) {
+                assertEquals(hex(hangoutPkBiquad(b.freqHz, b.gainDb, b.q)), hex(report.copyOfRange(8, 28)), "band $i biquad")
+            }
+        }
+        // A profile saved on graph.hangout.audio imports with the same numbers.
+        val imported = ProtocolMicro.importExact(plan.bands.map { WalkPlay.parseBand(WalkPlay.bandWriteReport(it, 0)) }, plan.preampDb)
+        assertTrue(imported is DacImport.Ready, "$imported")
+        assertEquals(listOf(6900.0, 10200.0, 5000.0, 20.0), imported.eq.bands.map { it.freqHz })
     }
 
     @Test
