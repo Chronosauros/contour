@@ -224,6 +224,7 @@ fun ContourApp(
                             archiveOpen = archiveOpen,
                             onArchiveOpen = { archiveOpen = it; prefs.edit().putBoolean("archiveOpen", it).apply() },
                             top = top, bottom = bottom,
+                            visible = pager.settledPage == page,
                         )
                     }
                 }
