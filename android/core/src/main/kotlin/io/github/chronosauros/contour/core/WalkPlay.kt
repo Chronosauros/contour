@@ -229,12 +229,13 @@ object WalkPlay {
         }
         val scale = 1073741824.0
         val values = doubleArrayOf(
-            jsRound(b0 / a0 * scale), jsRound(b1 / a0 * scale), jsRound(b2 / a0 * scale),
-            -jsRound(a1 / a0 * scale), -jsRound(a2 / a0 * scale),
+            b0 / a0 * scale, b1 / a0 * scale, b2 / a0 * scale,
+            -a1 / a0 * scale, -a2 / a0 * scale,
         )
+        require(values.all { it.isFinite() }) { "non-finite biquad coefficients" }
         val out = ByteArray(20)
         values.forEachIndexed { i, v ->
-            val n = toInt32(v)
+            val n = toInt32(if (i < 3) jsRound(v) else -jsRound(-v))
             out[i * 4] = (n and 0xFF).toByte()
             out[i * 4 + 1] = ((n shr 8) and 0xFF).toByte()
             out[i * 4 + 2] = ((n shr 16) and 0xFF).toByte()

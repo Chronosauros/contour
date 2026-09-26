@@ -15,6 +15,15 @@ android/toolchain.env
 # Signing keys
 *.keystore
 *.jks
+*.p12
+*.pfx
+release*.properties
+signing*.properties
+key.properties
+keystore.properties
+
+# Isolated release-hardening Gradle output
+android/.release-hardening-build/
 
 # Python venvs and caches of the research tools
 .venv/

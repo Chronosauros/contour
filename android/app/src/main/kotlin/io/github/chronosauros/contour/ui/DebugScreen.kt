@@ -112,7 +112,7 @@ fun DebugScreen(device: DeviceController, onClose: () -> Unit) {
                 }
                 HorizontalDivider()
                 val listState = rememberLazyListState()
-                LaunchedEffect(lines.size) { if (lines.isNotEmpty()) listState.scrollToItem(lines.lastIndex) }
+                LaunchedEffect(lines.lastOrNull()) { if (lines.isNotEmpty()) listState.scrollToItem(lines.lastIndex) }
                 LazyColumn(Modifier.fillMaxWidth().weight(1f), state = listState) {
                     items(lines) { Text(it, fontFamily = FontFamily.Monospace, fontSize = 9.sp, lineHeight = 11.sp) }
                 }

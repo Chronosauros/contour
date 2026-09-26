@@ -32,6 +32,13 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.semantics
+import io.github.chronosauros.contour.core.DevicePlan
+import io.github.chronosauros.contour.core.ProtocolMicro
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import io.github.chronosauros.contour.core.Profile
@@ -104,6 +111,17 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
     Box(
         modifier
             .testTag("slider_${param.name.lowercase()}")
+            .semantics {
+                contentDescription = "${param.label} slider"
+                progressBarRangeInfo = ProgressBarRangeInfo(value.toFloat(), scale.min.toFloat()..scale.max.toFloat())
+                setProgress { requested ->
+                    if (!requested.isFinite()) false else {
+                        val next = scale.quantize(requested.toDouble().coerceIn(scale.min, scale.max))
+                        if (next != value) onChange(next)
+                        true
+                    }
+                }
+            }
             .pointerInput(param) {
                 val guard = LiftGuard<Double>(density, param.name)
                 var pos = 0f
@@ -198,6 +216,7 @@ fun holdLabel(p: Profile, device: DeviceController, sender: Sender): String = wh
     sender.sendingId == p.id -> "SENDING"
     device.link == Link.NO_DAC -> "NO DAC"
     device.link == Link.NEEDS_PERMISSION -> "TAP TO CONNECT"
+    ProtocolMicro.plan(p) is DevicePlan.Rejected -> "INVALID EQ - EDIT BAND"
     sender.onDacId == p.id -> "ON DAC"
     sender.failedFor(p) -> "FAILED - HOLD TO RETRY"
     else -> "HOLD TO SEND"
@@ -248,6 +267,7 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
                     when (labelNow.value) {
                         "SENDING" -> return@awaitEachGesture
                         "NO DAC" -> { haptics.reject(); return@awaitEachGesture }
+                        "INVALID EQ - EDIT BAND" -> { haptics.reject(); return@awaitEachGesture }
                         "TAP TO CONNECT" -> {
                             val up = waitUp()
                             if (up) device.requestPermission()
@@ -255,8 +275,7 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
                         }
                     }
                     val failed = labelNow.value.startsWith("FAILED")
-                    var job: Job? = null
-                    job = scope.launch {
+                    val job: Job = scope.launch {
                         fill.snapTo(0f)
                         var lastTick = 0f
                         fill.animateTo(1f, tween(HOLD_MS, easing = LinearEasing)) {
@@ -266,27 +285,39 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
                             }
                         }
                     }
-                    val done = withTimeoutOrNull(HOLD_MS.toLong() + 20) {
-                        while (true) {
-                            val ev = awaitPointerEvent()
-                            val ch = ev.changes.firstOrNull { it.id == down.id } ?: return@withTimeoutOrNull false
-                            ch.consume()
-                            if (ch.changedToUp() || !ch.pressed) return@withTimeoutOrNull false
+                    var finished = false
+                    try {
+                        val done = withTimeoutOrNull(HOLD_MS.toLong() + 20) {
+                            while (true) {
+                                val ev = awaitPointerEvent()
+                                val ch = ev.changes.firstOrNull { it.id == down.id } ?: return@withTimeoutOrNull false
+                                val inside = ch.position.x >= 0f && ch.position.x < size.width &&
+                                    ch.position.y >= 0f && ch.position.y < size.height
+                                if (ch.isConsumed || !inside) return@withTimeoutOrNull false
+                                val released = ch.changedToUp()
+                                ch.consume()
+                                if (released) return@withTimeoutOrNull true
+                                if (!ch.pressed) return@withTimeoutOrNull false
+                            }
+                            @Suppress("UNREACHABLE_CODE")
+                            false
                         }
-                        @Suppress("UNREACHABLE_CODE")
-                        false
-                    }
-                    if (done == null && fill.value >= 0.97f) {
-                        haptics.click()
-                        sender.send(profile.value)
-                        scope.launch { fill.animateTo(0f, tween(250)) }
-                        waitUp()
-                    } else {
-                        val quick = (fill.value < 0.3f)
+                        if (done == null) {
+                            job.cancel()
+                            haptics.click()
+                            sender.send(profile.value)
+                            scope.launch { fill.animateTo(0f, tween(250)) }
+                            waitUp()
+                        } else {
+                            val quick = (fill.value < 0.3f)
+                            job.cancel()
+                            scope.launch { fill.animateTo(0f, tween(150)) }
+                            if (quick && failed && done == true) details.value()
+                        }
+                        finished = true
+                    } finally {
                         job.cancel()
-                        scope.launch { fill.animateTo(0f, tween(150)) }
-                        if (done == null) waitUp()
-                        else if (quick && failed) details.value()
+                        if (!finished) scope.launch { fill.snapTo(0f) }
                     }
                 }
             },

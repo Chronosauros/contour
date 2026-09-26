@@ -23,6 +23,12 @@ sealed interface DevicePlan {
     data class Rejected(val issues: List<String>) : DevicePlan
 }
 
+/** Register-matching reconstruction; original coefficient bytes are not guaranteed, or an import error. */
+sealed interface DacImport {
+    data class Ready(val eq: ImportedEq) : DacImport
+    data class Rejected(val issues: List<String>) : DacImport
+}
+
 /** CrinEar Protocol Micro (WalkPlay SchemeNo11). Unofficial; not affiliated with CrinEar. */
 object ProtocolMicro {
     val CAPABILITIES = DeviceCapabilities(
@@ -66,6 +72,7 @@ object ProtocolMicro {
      * The device preamp for [bands] with the user's preamp [preampDb] (null = AUTO), in whole dB:
      * AUTO -> `-ceil(max(device-domain curve) - 1e-6)` when that max is > 0, else 0;
      * manual -> `floor(preamp + sum of HS gains + 1e-6)`; then clamped to [-30, 0].
+     * [plan] rejects out-of-range manual values before calling this display helper.
      */
     fun devicePreamp(bands: List<Band>, preampDb: Double?): Int {
         val raw = if (preampDb == null) {
@@ -100,12 +107,28 @@ object ProtocolMicro {
             }
         }
         if (preampDb != null && !preampDb.isFinite()) issues += "Preamp $preampDb dB is not a number"
+        if (preampDb != null && preampDb.isFinite()) {
+            val adjusted = preampDb + highShelfGainSum(active)
+            val register = kotlin.math.floor(adjusted + 1e-6)
+            if (!register.isFinite() || register < PREAMP_MIN_DB || register > PREAMP_MAX_DB) {
+                issues += "Preamp with HIGH SHELF adjustment (${fmt(adjusted)} dB) outside $PREAMP_MIN_DB..$PREAMP_MAX_DB dB register range"
+            }
+        }
         if (issues.isNotEmpty()) return DevicePlan.Rejected(issues)
         val dev = deviceBands(active)
         val writes = List(caps.bands) { slot ->
             if (slot < dev.size) WalkPlay.bandWrite(slot, dev[slot]) else WalkPlay.factoryFlat(slot)
         }
-        return DevicePlan.Ready(writes, devicePreamp(active, preampDb))
+        writes.forEachIndexed { slot, write ->
+            if (runCatching { WalkPlay.computeIir(write.freq, write.gainDb, write.q, write.typeCode) }.isFailure) {
+                issues += "Band ${slot + 1}: non-finite biquad coefficients; cannot send to ${caps.name}"
+            }
+        }
+        if (issues.isNotEmpty()) return DevicePlan.Rejected(issues)
+        val deviceGain = runCatching { devicePreamp(active, preampDb) }.getOrElse {
+            return DevicePlan.Rejected(listOf("AUTO preamp: no finite response; cannot send to ${caps.name}"))
+        }
+        return DevicePlan.Ready(writes, deviceGain)
     }
 
     fun plan(profile: Profile, caps: DeviceCapabilities = CAPABILITIES): DevicePlan =
@@ -115,6 +138,39 @@ object ProtocolMicro {
     fun matches(plan: DevicePlan.Ready, regs: List<WalkPlay.Registers>, preampDb: Int): Boolean =
         regs.size == plan.bands.size && plan.preampDb == preampDb &&
             plan.bands.indices.all { plan.bands[it].registers() == regs[it] }
+
+    /** Invert register quantisation and validate the re-encoded registers; coefficients are not compared. */
+    fun importExact(bands: List<WalkPlay.DeviceBand>, preampDb: Int): DacImport {
+        if (bands.size != WalkPlay.BANDS || bands.indices.any { bands[it].registers.index != it }) {
+            return DacImport.Rejected(listOf("Expected all 8 DAC slots in order"))
+        }
+        if (preampDb !in PREAMP_MIN_DB..PREAMP_MAX_DB) {
+            return DacImport.Rejected(listOf("DAC preamp $preampDb dB outside $PREAMP_MIN_DB..$PREAMP_MAX_DB dB"))
+        }
+        // Keep one factory-flat band editable when the entire DAC is flat.
+        val lastUsed = maxOf(0, bands.indexOfLast { it.registers != WalkPlay.factoryFlat(it.registers.index).registers() })
+        val reconstructed = ArrayList<Band>()
+        for (slot in 0..lastUsed) {
+            val deviceBand = bands[slot]
+            val r = deviceBand.registers
+            if (!deviceBand.enabled || r.typeCode !in setOf(WalkPlay.TYPE_PK, WalkPlay.TYPE_LSQ)) {
+                return DacImport.Rejected(listOf("DAC band ${slot + 1}: disabled or unsupported native type ${r.typeCode}; cannot import exactly"))
+            }
+            // The metadata truncates the compensated frequency: choose the centre of its raw bin,
+            // not the lower edge (which can fall one bin short due to floating point arithmetic).
+            val frequency = (r.freq + 0.5) * WalkPlay.FREQ_FACTOR
+            val q = r.q256 / 256.0 * WalkPlay.qRatio(r.freq.toDouble(), r.typeCode)
+            reconstructed += Band("dac$slot", deviceBand.type, frequency, r.gain256 / 256.0, q)
+        }
+        val eq = ImportedEq(reconstructed, preampDb.toDouble())
+        val candidate = plan(eq.bands, eq.preampDb)
+        if (candidate !is DevicePlan.Ready || !matches(candidate, bands.map { it.registers }, preampDb)) {
+            val issue = if (candidate is DevicePlan.Rejected) candidate.issues.joinToString("; ")
+                else "quantised registers differ on re-encode"
+            return DacImport.Rejected(listOf("DAC state cannot be imported exactly: $issue"))
+        }
+        return DacImport.Ready(eq)
+    }
 
     /** "This profile is on the DAC": its plan produces exactly the registers read back. */
     fun matches(profile: Profile, regs: List<WalkPlay.Registers>, preampDb: Int): Boolean =

@@ -5,6 +5,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
@@ -96,7 +99,9 @@ fun TuneScreen(model: AppModel, device: DeviceController, sender: Sender, action
         if (b != null) {
             TypeRow(model, b.type)
             for (param in listOf(Param.FREQ, Param.GAIN, Param.Q)) {
-                ParamRow(param, param.of(b), onTap = { actions.value(param) }) { v -> model.setBand(i, param.set(b, v)) }
+                ParamRow(param, param.of(b), onTap = { actions.value(param) }) { v ->
+                    model.transformBandIfCurrent(p.id, i, b.id) { current -> param.set(current, v) }
+                }
             }
         }
         PreampRow(model, p, actions)
@@ -137,14 +142,14 @@ private fun BandStrip(model: AppModel, p: Profile, actions: TuneActions) {
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(14.dp)
     Row(
-        Modifier.fillMaxWidth().height(50.dp),
+        Modifier.fillMaxWidth().height(50.dp).horizontalScroll(rememberScrollState()),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         p.bands.forEachIndexed { i, b ->
             val sel = i == model.selectedBand
             // enabled bands stand up from the page, a disabled one is pressed into it
             val chip = Modifier
-                .weight(1f)
+                .widthIn(min = 48.dp)
                 .fillMaxHeight()
                 .let { if (b.enabled || sel) it.lift(shape, Lift.RAISED) else it }
                 .clip(shape)
@@ -169,7 +174,7 @@ private fun BandStrip(model: AppModel, p: Profile, actions: TuneActions) {
         if (p.bands.size < AppModel.MAX_BANDS) {
             Box(
                 Modifier
-                    .weight(1f)
+                    .widthIn(min = 48.dp)
                     .fillMaxHeight()
                     .lift(shape, Lift.RAISED)
                     .clip(shape)
@@ -181,8 +186,7 @@ private fun BandStrip(model: AppModel, p: Profile, actions: TuneActions) {
                 Icon(Icons.Rounded.Add, "add band", tint = c.text, modifier = Modifier.size(26.dp))
             }
         }
-        // keep chips the same width whatever the count: fill the unused places
-        repeat((AppModel.MAX_BANDS - p.bands.size - 1).coerceAtLeast(0)) { Spacer(Modifier.weight(1f)) }
+
     }
 }
 
@@ -259,7 +263,7 @@ private fun ParamRow(param: Param, value: Double, onTap: () -> Unit, onChange: (
         ) {
             Text(param.text(value), style = Type.value, color = c.text, maxLines = 1, softWrap = false)
         }
-        RelSlider(param, value, onChange, Modifier.weight(1f).fillMaxHeight().padding(top = 5.dp, bottom = 5.dp, end = 5.dp))
+        RelSlider(param, value, onChange, Modifier.weight(1f).fillMaxHeight().padding(end = 5.dp))
     }
 }
 
@@ -279,7 +283,8 @@ private fun PreampRow(model: AppModel, p: Profile, actions: TuneActions) {
     val c = pal
     val haptics = LocalHaptics.current
     val auto = p.preampDb == null
-    val db = shownPreamp(p)
+    val autoDb = runCatching { shownPreamp(p.copy(preampDb = null)) }.getOrNull()
+    val db = if (auto) autoDb else p.preampDb
     val prof = rememberUpdatedState(p)
     Row(
         Modifier
@@ -296,7 +301,7 @@ private fun PreampRow(model: AppModel, p: Profile, actions: TuneActions) {
             Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .then(if (auto) Modifier else Modifier.pointerInput(p.id) {
+                .then(if (auto || db == null) Modifier else Modifier.pointerInput(p.id) {
                     val guard = LiftGuard<Double>(density, "PREAMP")
                     var acc = 0.0
                     var atEnd = false
@@ -304,11 +309,13 @@ private fun PreampRow(model: AppModel, p: Profile, actions: TuneActions) {
                     var ticked = 0.0 // the value the haptics last spoke for
                     detectHorizontalDragWithEnds(
                         onStart = { down ->
-                            acc = prof.value.preampDb ?: shownPreamp(prof.value)
-                            atEnd = false
-                            speed = 0f
-                            ticked = acc
-                            guard.start(down.uptimeMillis, down.position, acc)
+                            prof.value.preampDb?.let { start ->
+                                acc = start
+                                atEnd = false
+                                speed = 0f
+                                ticked = acc
+                                guard.start(down.uptimeMillis, down.position, acc)
+                            }
                         },
                         onEnd = { up -> if (up != null) guard.release(up)?.let { model.setPreamp(it) } },
                     ) { ch, dx ->
@@ -338,14 +345,15 @@ private fun PreampRow(model: AppModel, p: Profile, actions: TuneActions) {
                     }
                 })
                 .clip(RoundedCornerShape(8.dp))
-                .clickable(enabled = !auto) { actions.value(Param.PREAMP) }
+                .clickable(enabled = !auto && db != null) { actions.value(Param.PREAMP) }
                 .testTag("value_preamp"),
             contentAlignment = Alignment.CenterStart,
         ) {
             // AUTO: a computed value, dimmed; manual: bright, and it can be dragged
-            Text(Param.PREAMP.text(db), style = Type.value, color = if (auto) c.textDim else c.text, maxLines = 1, softWrap = false)
+            Text(db?.let { Param.PREAMP.text(it) } ?: "INVALID EQ", style = Type.value, color = if (auto) c.textDim else c.text, maxLines = 1, softWrap = false)
         }
         Text("AUTO", style = Type.label, color = c.textDim)
-        Toggle(auto, { model.setPreampAuto(it) }, Modifier.testTag("preamp_auto"))
+        if (autoDb == null) Text("INVALID EQ", style = Type.label, color = c.textDim)
+        else Toggle(auto, { model.setPreampAuto(it) }, Modifier.testTag("preamp_auto"))
     }
 }

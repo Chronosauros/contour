@@ -1,5 +1,6 @@
 package io.github.chronosauros.contour.model
 
+import android.util.Log
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -18,6 +19,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.channels.Channel
 
 /** The two pages of the pager, in their order. */
 object Page {
@@ -28,10 +31,10 @@ object Page {
 /**
  * The library and the editing state: every profile (active and archived) in the saved order, the current
  * one, the selected band. Every edit replaces the profile (immutable [Profile]) and schedules a debounced
- * atomic save (400 ms); [flush] writes everything pending (onStop). A delete keeps the file until [finishDelete]
+ * atomic save (400 ms); [flush] queues everything pending (onStop). A delete keeps the file until [finishDelete]
  * (snackbar gone, or the app stops), so UNDO can put the row back.
  */
-class AppModel(private val store: ProfileStore, private val scope: CoroutineScope) {
+class AppModel(private val store: ProfileStore, private val scope: CoroutineScope, private val beforeLoad: () -> Unit = {}) {
     val profiles = mutableStateListOf<Profile>()
     var currentId by mutableStateOf<String?>(null)
         private set
@@ -48,40 +51,132 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     val archived: List<Profile> by derivedStateOf { profiles.filter { it.archived } }
 
     private var seeded = true
-    private val pending = HashMap<String, Job>()
+    private val deletedIds = HashSet<String>()
+    var loadError by mutableStateOf(false)
+        private set
+    var saveError by mutableStateOf(false)
+        private set
     private var stateJob: Job? = null
-    private val lock = Any()
     private val dirty = HashMap<String, Profile?>() // null = delete the file
+    private data class WriteRequest(val state: SavedState, val changes: Map<String, Profile?>)
+    private val writes = Channel<WriteRequest>(Channel.UNLIMITED)
+    private val pendingDeletes = HashMap<String, () -> Unit>()
+    var recentlyDeleted by mutableStateOf<Profile?>(null)
+        private set
+    var loading by mutableStateOf(true)
+        private set
+    var deleting by mutableStateOf(false)
+        private set
 
     /** Deleted rows waiting for their snackbar: id -> (profile, index in [profiles], was current). */
     private val deleted = HashMap<String, Triple<Profile, Int, Boolean>>()
     private val deleteTimers = HashMap<String, Job>()
 
+    init {
+        // This scope is process-owned, not Activity-owned. One channel reader serializes writes;
+        // initial/retry load completes before it ever enqueues one, and the same model survives recreation.
+        scope.launch(Dispatchers.IO) {
+            val outstanding = HashMap<String, Profile?>()
+            for (request in writes) {
+                outstanding.putAll(request.changes)
+                var failed = false
+                try {
+                    // A state.order entry is never published before its profile file exists.
+                    outstanding.filterValues { it != null }.toMap().forEach { (id, p) ->
+                        store.save(p!!)
+                        outstanding.remove(id)
+                    }
+                    store.saveState(request.state)
+                    // Physical deletes come only AFTER a durable tombstone, even on retries.
+                    outstanding.filterValues { it == null }.keys.toList().forEach { id ->
+                        store.delete(id)
+                        outstanding.remove(id)
+                    }
+                } catch (e: Exception) {
+                    Log.e(ProfileStore.TAG, "Library save failed", e)
+                    failed = true
+                }
+                withContext(Dispatchers.Main) {
+                    if (failed) saveError = true else {
+                        request.changes.forEach { (id, value) -> if (dirty.containsKey(id) && dirty[id] == value) dirty.remove(id) }
+                        saveError = false
+                        request.state.deletedIds.forEach { id -> pendingDeletes.remove(id)?.invoke() }
+                        deleting = pendingDeletes.isNotEmpty()
+                    }
+                }
+            }
+        }
+    }
+
     // ---- loading ------------------------------------------------------------------------------------
 
     fun load() {
-        val saved = store.loadState()
-        val list = store.loadProfiles()
-        val order = saved?.order.orEmpty()
-        var sorted = list.sortedWith(compareBy({ order.indexOf(it.id).let { i -> if (i < 0) Int.MAX_VALUE else i } }, { it.createdAt }))
-        if (saved == null && sorted.isEmpty()) { // first launch: PROFILE 1 (one flat band) opens, NIGHTFALL and DUSK as examples
-            val now = System.currentTimeMillis()
-            val first = Profile(newId(), "PROFILE 1", "", "headphones", listOf(flatBand()), null, now, now)
-            val example = Profile(newId(), "NIGHTFALL", "CRINEAR NIGHTFALL", "moon", nightfallBands(), null, now, now + 1)
-            val dusk = Profile(newId(), "DUSK", "MOONDROP DUSK DEFAULT DSP", "sun", duskBands(), null, now, now + 2)
-            store.save(first)
-            store.save(example)
-            store.save(dusk)
-            sorted = listOf(first, example, dusk)
+        if (!loading && !loadError) return
+        loading = true
+        loadError = false
+        scope.launch {
+            // Backup, reads and any first-run writes must stay off the main thread.
+            val loaded = try {
+                withContext(Dispatchers.IO) {
+                    beforeLoad()
+                    val saved = store.loadState()
+                    var list = store.loadProfiles(saved?.deletedIds.orEmpty())
+                    if (saved == null && list.size != list.map { it.id }.toSet().size)
+                        throw java.io.IOException("Duplicate profile ids; library preserved")
+                    if (saved == null && list.all(::isOriginalSeed) && list.size != list.map { it.name }.toSet().size)
+                        throw java.io.IOException("Duplicate seed roles; library preserved")
+                    if (saved == null && (list.isEmpty() || list.all(::isOriginalSeed))) {
+                        // A previous launch may have written one or two seed files then failed. Keep their
+                        // ids and finish only missing roles; unrelated pre-state libraries are never seeded.
+                        val now = System.currentTimeMillis()
+                        val seeds = listOf(
+                            Profile(newId(), "PROFILE 1", "", "headphones", listOf(flatBand()), null, now, now),
+                            Profile(newId(), "NIGHTFALL", "CRINEAR NIGHTFALL", "moon", nightfallBands(), null, now, now + 1),
+                            Profile(newId(), "DUSK", "MOONDROP DUSK DEFAULT DSP", "sun", duskBands(), null, now, now + 2),
+                        )
+                        for (seed in seeds) if (list.none { it.name == seed.name }) {
+                            store.save(seed)
+                            list = list + seed
+                        }
+                        list = seeds.map { seed -> list.first { it.name == seed.name } }
+                    }
+                    saved to list
+                }
+            } catch (e: Exception) {
+                Log.e(ProfileStore.TAG, "Library load failed", e)
+                loadError = true
+                loading = false
+                return@launch
+            }
+            val (saved, list) = loaded
+            deletedIds.clear()
+            deletedIds.addAll(saved?.deletedIds.orEmpty())
+            val order = saved?.order.orEmpty()
+            val sorted = list.sortedWith(compareBy({ order.indexOf(it.id).let { i -> if (i < 0) Int.MAX_VALUE else i } }, { it.createdAt }))
+            profiles.clear()
+            profiles.addAll(sorted)
+            currentId = saved?.lastOpen?.takeIf { id -> sorted.any { it.id == id } } ?: sorted.firstOrNull { !it.archived }?.id
+            selectedBand = saved?.lastBand ?: 0
+            lastSentId = saved?.lastSent
+            seeded = saved?.seeded ?: true
+            clampSelection()
+            loading = false
+            // Normalize only after all referenced files have been verified/read.
+            saveStateNow()
+            deletedIds.forEach { id -> dirty[id] = null }
+            if (deletedIds.isNotEmpty()) enqueueWrite()
         }
-        profiles.clear()
-        profiles.addAll(sorted)
-        currentId = saved?.lastOpen?.takeIf { id -> sorted.any { it.id == id } } ?: sorted.firstOrNull { !it.archived }?.id
-        selectedBand = saved?.lastBand ?: 0
-        lastSentId = saved?.lastSent
-        seeded = saved?.seeded ?: true
-        clampSelection()
-        store.saveState(savedState())
+    }
+
+    private fun isOriginalSeed(p: Profile): Boolean {
+        if (p.archived || p.preampDb != null || p.bands.any { it.type != FilterType.PEAK || !it.enabled }) return false
+        val shape = p.bands.map { listOf(it.freqHz, it.gainDb, it.q) }
+        return when (p.name) {
+            "PROFILE 1" -> p.subtitle == "" && p.icon == "headphones" && shape == listOf(listOf(1000.0, 0.0, 0.71))
+            "NIGHTFALL" -> p.subtitle == "CRINEAR NIGHTFALL" && p.icon == "moon" && shape == listOf(listOf(6207.0, -3.0, 3.9), listOf(12450.0, -4.5, 6.05), listOf(15911.0, 3.0, 6.3))
+            "DUSK" -> p.subtitle == "MOONDROP DUSK DEFAULT DSP" && p.icon == "sun" && shape == listOf(listOf(1400.0, -3.0, 0.8), listOf(5400.0, -3.0, 2.0), listOf(14000.0, -5.0, 2.0))
+            else -> false
+        }
     }
 
     fun newId(): String = UUID.randomUUID().toString().substring(0, 13)
@@ -106,59 +201,37 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
 
     // ---- persistence ----------------------------------------------------------------------------------
 
-    private fun savedState() = SavedState(profiles.map { it.id }, currentId, selectedBand, lastSentId, seeded)
+    private fun savedState() = SavedState(profiles.map { it.id }.filterNot { it in pendingDeletes },
+        currentId?.takeUnless { it in pendingDeletes }, selectedBand, lastSentId, seeded,
+        deletedIds + pendingDeletes.keys)
 
-    private var stateSeq = 0L
-    private var writtenSeq = 0L
-
-    /** Writes [s] (captured with number [seq]) unless a newer state is already on disk. Any thread. */
-    private fun writeState(s: SavedState, seq: Long) = synchronized(lock) {
-        if (seq < writtenSeq) return@synchronized
-        store.saveState(s)
-        writtenSeq = seq
+    private fun enqueueWrite() {
+        if (!loading && !loadError) writes.trySend(WriteRequest(savedState(), dirty.toMap()))
     }
 
     private fun scheduleSave(p: Profile?, id: String) {
-        synchronized(lock) { dirty[id] = p }
-        pending[id]?.cancel()
-        pending[id] = scope.launch(Dispatchers.IO) {
-            delay(400)
-            writeDirty(id)
-        }
+        dirty[id] = p
         scheduleState()
-    }
-
-    private fun writeDirty(id: String) {
-        val entry = synchronized(lock) { if (dirty.containsKey(id)) dirty.remove(id) to true else null to false }
-        if (!entry.second) return
-        val p = entry.first
-        if (p == null) store.delete(id) else store.save(p)
     }
 
     private fun scheduleState() {
         stateJob?.cancel()
-        val s = savedState()
-        val seq = ++stateSeq
-        stateJob = scope.launch(Dispatchers.IO) {
+        stateJob = scope.launch {
             delay(400)
-            writeState(s, seq)
+            enqueueWrite()
         }
     }
 
-    /** Writes every pending change now and removes the files of deleted rows (onStop). */
+    /** onStop queues a snapshot in the process-owned writer; never waits for storage on main. */
     fun flush() {
+        if (loading || loadError) return
         deleted.keys.toList().forEach(::finishDelete)
-        val ids = synchronized(lock) { dirty.keys.toList() }
-        pending.values.forEach { it.cancel() }
-        pending.clear()
         stateJob?.cancel()
-        val s = savedState()
-        val seq = ++stateSeq
-        scope.launch(Dispatchers.IO) {
-            ids.forEach(::writeDirty)
-            writeState(s, seq)
-        }
+        enqueueWrite()
     }
+
+    /** User-initiated single attempt; failed entries stay pending until this or the next onStop. */
+    fun retrySave() { stateJob?.cancel(); enqueueWrite() }
 
     // ---- selection ------------------------------------------------------------------------------------
 
@@ -207,6 +280,15 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         if (index !in p.bands.indices) p else p.copy(bands = p.bands.toMutableList().also { it[index] = band })
     }
 
+    /** A drag may finish after a profile switch, band deletion, or another edit. Transform only the live band. */
+    fun transformBandIfCurrent(profileId: String, index: Int, bandId: String, transform: (Band) -> Band) {
+        if (currentId != profileId) return
+        update(profileId) { p ->
+            if (currentId != profileId || p.bands.getOrNull(index)?.id != bandId) p
+            else p.copy(bands = p.bands.toMutableList().also { it[index] = transform(it[index]) })
+        }
+    }
+
     /** Adds a PEAK band (Q 1) at [freq] / [gain], or 0 dB in the widest gap; selects it. False when full. */
     fun addBand(freq: Double? = null, gain: Double = 0.0): Boolean {
         val p = current ?: return false
@@ -237,21 +319,18 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
 
     /** AUTO off starts manual at the shown (curve-domain) value, so the device register does not change. */
     fun setPreampAuto(auto: Boolean) {
-        update { p -> if (auto) p.copy(preampDb = null) else p.copy(preampDb = round1(shownPreamp(p))) }
-        logPreamp()
-    }
-
-    /** One log line per preamp change: what the row shows and the register a send would write (no DAC access). */
-    private fun logPreamp() {
-        val p = current ?: return
-        android.util.Log.i("ContourPreamp", "${p.name}: auto=${p.preampDb == null} shown=${shownPreamp(p)} register=${ProtocolMicro.devicePreamp(p.bands, p.preampDb)}")
+        update { p ->
+            if (auto) {
+                if (runCatching { shownPreamp(p.copy(preampDb = null)) }.isSuccess) p.copy(preampDb = null) else p
+            } else runCatching { round1(shownPreamp(p)) }.getOrNull()?.let { p.copy(preampDb = it) } ?: p
+        }
     }
 
     /** Manual preamp in the curve domain, clamped so the register stays in the device range. */
     fun setPreamp(db: Double) = update {
         val hs = ProtocolMicro.highShelfGainSum(it.bands)
         it.copy(preampDb = round1(db.coerceIn(ProtocolMicro.PREAMP_MIN_DB - hs, ProtocolMicro.PREAMP_MAX_DB - hs)))
-    }.also { logPreamp() }
+    }
 
     fun rename(id: String, name: String) = update(id) {
         it.copy(name = name.trim().uppercase().take(NAME_MAX).ifEmpty { it.name })
@@ -293,17 +372,25 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     /** ARCHIVE (true) / RESTORE (false). The row keeps its place in the order. */
     fun setArchived(id: String, archived: Boolean) = update(id) { it.copy(archived = archived) }
 
-    /**
-     * Removes the row and writes state.json without it at once; the file goes in [finishDelete], which runs
-     * by itself [UNDO_MS] after the delete (the model's own timer, not the snackbar's) or earlier from the
-     * snackbar / onStop. [undoDelete] puts the row back at the same index.
-     */
+    /** Keep the row visible until the tombstone is written; only then announce deletion/UNDO. */
     fun delete(id: String) {
+        val i = profiles.indexOfFirst { it.id == id }
+        if (i < 0 || id in pendingDeletes) return
+        pendingDeletes[id] = {
+            commitDelete(id)
+        }
+        deleting = true
+        saveStateNow()
+    }
+
+    private fun commitDelete(id: String) {
         val i = profiles.indexOfFirst { it.id == id }
         if (i < 0) return
         val p = profiles.removeAt(i)
+        recentlyDeleted = p
         val wasCurrent = currentId == id
         deleted[id] = Triple(p, i, wasCurrent)
+        deletedIds.add(id)
         if (wasCurrent) {
             val after = profiles.drop(i).firstOrNull { it.archived == p.archived }
                 ?: profiles.take(i).lastOrNull { it.archived == p.archived }
@@ -323,7 +410,11 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     fun undoDelete(id: String) {
         deleteTimers.remove(id)?.cancel()
         val (p, i, wasCurrent) = deleted.remove(id) ?: return
+        if (recentlyDeleted?.id == id) recentlyDeleted = null
+        deletedIds.remove(id)
         profiles.add(i.coerceAtMost(profiles.size), p)
+        // A file might have been removed by a completed delete; restore it before un-tombstoning.
+        dirty[id] = p
         if (wasCurrent) {
             currentId = p.id
             selectedBand = 0
@@ -332,27 +423,20 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         scheduleState()
     }
 
-    /** The file goes now (no debounce), and state.json is rewritten now. Idempotent. */
+    /** The file goes only after state.json with its tombstone is safely replaced. */
     fun finishDelete(id: String) {
         deleteTimers.remove(id)?.cancel()
         deleted.remove(id) ?: return
+        if (recentlyDeleted?.id == id) recentlyDeleted = null
         if (lastSentId == id) lastSentId = null
-        pending.remove(id)?.cancel()
-        synchronized(lock) { dirty.remove(id) }
-        val s = savedState()
-        val seq = ++stateSeq
+        dirty[id] = null
         stateJob?.cancel()
-        scope.launch(Dispatchers.IO) {
-            store.delete(id)
-            writeState(s, seq)
-        }
+        enqueueWrite()
     }
 
     private fun saveStateNow() {
         stateJob?.cancel()
-        val s = savedState()
-        val seq = ++stateSeq
-        stateJob = scope.launch(Dispatchers.IO) { writeState(s, seq) }
+        enqueueWrite()
     }
 
     companion object {

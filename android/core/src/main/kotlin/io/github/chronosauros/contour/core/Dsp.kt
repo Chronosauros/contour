@@ -9,8 +9,9 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Display DSP: RBJ Audio EQ Cookbook biquads (Q form) evaluated at [FS] with the user's own values,
- * i.e. the intended curve, not what a device realises after compensation.
+ * Display DSP: RBJ Audio EQ Cookbook biquads (Q for peaks/pass filters, shelf slope S = band Q)
+ * evaluated at [FS] with the user's own values, i.e. the intended curve, not what a device realises
+ * after compensation.
  *
  * Cheap enough for every drag frame: a [FreqGrid] precomputes cos(w) and cos(2w) once, so one band
  * costs a handful of multiplications per point and no trigonometry.
@@ -44,8 +45,14 @@ object Dsp {
         val w0 = 2.0 * Math.PI * band.freqHz / fs
         val c = cos(w0)
         val s = sin(w0)
-        val alpha = s / (2.0 * band.q)
+        val alpha = s / (2.0 * band.q) // peak and pass filters only; shelves use slope S = Q
         val a = 10.0.pow(band.gainDb / 40.0)
+        val shelfAlpha = if (band.type == FilterType.LOW_SHELF || band.type == FilterType.HIGH_SHELF) {
+            val radicand = (a + 1.0 / a) * (1.0 / band.q - 1.0) + 2.0
+            require(radicand.isFinite() && radicand >= 0.0) { "Shelf gain/Q has no real response" }
+            (s / 2.0) * sqrt(radicand)
+        }
+        else 0.0
         val b0: Double
         val b1: Double
         val b2: Double
@@ -58,13 +65,13 @@ object Dsp {
                 a0 = 1 + alpha / a; a1 = -2 * c; a2 = 1 - alpha / a
             }
             FilterType.LOW_SHELF -> {
-                val k = 2 * sqrt(a) * alpha
+                val k = 2 * sqrt(a) * shelfAlpha
                 b0 = a * ((a + 1) - (a - 1) * c + k); b1 = 2 * a * ((a - 1) - (a + 1) * c)
                 b2 = a * ((a + 1) - (a - 1) * c - k); a0 = (a + 1) + (a - 1) * c + k
                 a1 = -2 * ((a - 1) + (a + 1) * c); a2 = (a + 1) + (a - 1) * c - k
             }
             FilterType.HIGH_SHELF -> {
-                val k = 2 * sqrt(a) * alpha
+                val k = 2 * sqrt(a) * shelfAlpha
                 b0 = a * ((a + 1) + (a - 1) * c + k); b1 = -2 * a * ((a - 1) + (a + 1) * c)
                 b2 = a * ((a + 1) + (a - 1) * c - k); a0 = (a + 1) - (a - 1) * c + k
                 a1 = 2 * ((a - 1) - (a + 1) * c); a2 = (a + 1) - (a - 1) * c - k
@@ -78,7 +85,11 @@ object Dsp {
                 a0 = 1 + alpha; a1 = -2 * c; a2 = 1 - alpha
             }
         }
-        return Biquad(b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0)
+        val result = Biquad(b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0)
+        require(listOf(result.b0, result.b1, result.b2, result.a1, result.a2).all { it.isFinite() }) {
+            "Band has no finite response"
+        }
+        return result
     }
 
     /** Adds one band's response in dB to [out] (same size as [grid]). */
@@ -104,6 +115,7 @@ object Dsp {
         require(out.size == grid.size)
         out.fill(0.0)
         for (b in bands) if (b.enabled) addBandDb(b, grid, out)
+        require(out.all { it.isFinite() }) { "Profile has no finite response" }
     }
 
     fun responseDb(bands: List<Band>, grid: FreqGrid = DISPLAY_GRID): DoubleArray =
@@ -129,6 +141,7 @@ object Preamp {
         if (active.isEmpty()) return 0
         val centres = Dsp.FreqGrid(DoubleArray(active.size) { active[it].freqHz })
         val max = maxOf(Dsp.responseDb(active, SCAN_GRID).max(), Dsp.responseDb(active, centres).max())
+        require(max.isFinite()) { "AUTO preamp needs a finite response" }
         return if (max > 0) -kotlin.math.ceil(max - 1e-6).toInt() else 0
     }
 }

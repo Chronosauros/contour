@@ -45,6 +45,7 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SnackbarVisuals
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.Button
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -109,6 +110,17 @@ fun ContourApp(
     sheetRequest: Sheet?,
     onSheetRequestTaken: () -> Unit,
 ) {
+    if (model.loading || model.loadError) {
+        Box(Modifier.fillMaxSize().background(pal.bg).padding(24.dp), contentAlignment = Alignment.Center) {
+            androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (model.loadError) {
+                    Text("LIBRARY COULD NOT BE READ. YOUR FILES WERE NOT CHANGED.", color = pal.text)
+                    Button(onClick = { model.load() }) { Text("RETRY LOADING") }
+                } else Text("LOADING LIBRARY…", color = pal.text)
+            }
+        }
+        return
+    }
     val haptics = rememberHaptics()
     // LocalContentColor: every Text without an explicit color follows the theme (dark mode drew them black)
     CompositionLocalProvider(LocalHaptics provides haptics, LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
@@ -158,6 +170,12 @@ fun ContourApp(
             }
         }
 
+        val recentlyDeleted = model.recentlyDeleted
+        LaunchedEffect(recentlyDeleted?.id) {
+            if (recentlyDeleted != null) undoable("DELETED ${recentlyDeleted.name}",
+                onUndo = { model.undoDelete(recentlyDeleted.id) },
+                onGone = { model.finishDelete(recentlyDeleted.id) })
+        }
         val libraryActions = remember(model) {
             object : LibraryActions {
                 override fun edit(id: String) { sheet = Sheet.Edit(id) }
@@ -169,7 +187,6 @@ fun ContourApp(
                 override fun restore(p: Profile) { model.setArchived(p.id, false) }
                 override fun delete(p: Profile) {
                     model.delete(p.id)
-                    undoable("DELETED ${p.name}", onUndo = { model.undoDelete(p.id) }, onGone = { model.finishDelete(p.id) })
                 }
                 override fun service() { service = true }
                 override fun licences() { licences = true }
@@ -232,6 +249,16 @@ fun ContourApp(
                         }
                     },
                 ) { Text(data.visuals.message, style = Type.label, modifier = Modifier.testTag("snackbar_text")) }
+            }
+            if (model.saveError || model.deleting) {
+                Row(
+                    Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(top = top + 8.dp, start = 16.dp, end = 16.dp)
+                        .background(pal.surface2, RoundedCornerShape(12.dp)).padding(start = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(if (model.saveError) "NOT SAVED — CHECK STORAGE" else "SAVING DELETE…", style = Type.label, modifier = Modifier.weight(1f))
+                    if (model.saveError) TextButton(onClick = { model.retrySave() }) { Text("RETRY") }
+                }
             }
             if (service) DebugScreen(device) { service = false }
             if (licences) LicencesScreen { licences = false }

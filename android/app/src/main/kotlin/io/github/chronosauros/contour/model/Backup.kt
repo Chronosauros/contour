@@ -3,6 +3,7 @@ package io.github.chronosauros.contour.model
 import android.content.Context
 import android.util.Log
 import java.io.File
+import java.io.IOException
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -20,9 +21,16 @@ object Backup {
      * exists is never touched again. The copy goes to a temp folder first and is renamed when complete.
      */
     fun beforeV1(context: Context) {
-        val root = context.getExternalFilesDir(null) ?: run { Log.w(TAG, "no external files dir"); return }
+        val root = context.getExternalFilesDir(null) ?: throw IOException("No external backup directory")
         val dest = File(root, "backup/$BEFORE_V1")
-        if (dest.exists()) return
+        val parent = requireNotNull(dest.parentFile)
+        if (parent.canonicalFile.parentFile != root.canonicalFile ||
+            dest.canonicalFile.parentFile != parent.canonicalFile || dest.canonicalFile.name != dest.name)
+            throw IOException("Unsafe backup path")
+        if (dest.exists()) {
+            if (!dest.isDirectory) throw IOException("Backup destination is not a directory")
+            return
+        }
         val n = copyLibrary(context.filesDir, dest)
         Log.i(TAG, "backup $BEFORE_V1: $n files")
     }
@@ -45,19 +53,36 @@ object Backup {
     }
 
     private fun copyLibrary(filesDir: File, dest: File): Int {
-        val tmp = File(dest.parentFile, ".${dest.name}.tmp")
-        tmp.deleteRecursively()
-        File(tmp, "profiles").mkdirs()
+        val parent = requireNotNull(dest.parentFile)
+        val tmp = File(parent, ".${dest.name}.tmp")
+        if (tmp.canonicalFile.parentFile != parent.canonicalFile || tmp.canonicalFile.name != tmp.name)
+            throw IOException("Unsafe temporary backup path")
+        if (!parent.isDirectory && !parent.mkdirs()) throw IOException("Cannot create backup directory")
+        if (tmp.exists() && !tmp.deleteRecursively()) throw IOException("Cannot clear incomplete backup")
+        if (!File(tmp, "profiles").mkdirs()) throw IOException("Cannot create backup profiles directory")
+        if (!filesDir.isDirectory || filesDir.listFiles() == null) throw IOException("Cannot read source library")
         var n = 0
-        File(filesDir, "profiles").listFiles().orEmpty().filter { it.isFile && it.name.endsWith(".json") }.forEach {
+        val source = File(filesDir, "profiles")
+        val state = File(filesDir, "state.json")
+        if (source.exists() && source.canonicalFile.parentFile != filesDir.canonicalFile)
+            throw IOException("Unsafe source profiles directory")
+        if (!source.exists() && state.exists()) throw IOException("Source profiles directory missing")
+        val profiles = if (source.exists()) source.listFiles() ?: throw IOException("Cannot list source profiles") else emptyArray()
+        profiles.filter { it.name.endsWith(".json") }.forEach {
+            val id = it.name.removeSuffix(".json")
+            if (!Regex("[A-Za-z0-9_-]{1,64}").matches(id) || it.canonicalFile.parentFile != source.canonicalFile)
+                throw IOException("Unsafe source profile path")
+            if (!it.isFile) throw IOException("Unreadable source profile ${it.name}")
             it.copyTo(File(tmp, "profiles/${it.name}"), overwrite = true)
             n++
         }
-        File(filesDir, "state.json").takeIf { it.isFile }?.let {
+        if (state.exists() && (state.canonicalFile.parentFile != filesDir.canonicalFile || !state.isFile))
+            throw IOException("Unreadable or unsafe source state")
+        state.takeIf { it.isFile }?.let {
             it.copyTo(File(tmp, "state.json"), overwrite = true)
             n++
         }
-        if (!tmp.renameTo(dest)) Log.w(TAG, "could not rename ${tmp.name}")
+        if (!tmp.renameTo(dest)) throw IOException("Cannot finalize backup ${dest.name}")
         return n
     }
 }

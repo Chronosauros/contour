@@ -67,9 +67,6 @@ val LightPalette = Palette(
     sunken = Color(0xFFE6E2DD), shadow = Color(0xFF2B2118), shadowAlpha = 0.3f,
 )
 
-/** The accent, for the few places that do not read the palette. */
-val Accent = DarkPalette.accent
-
 val LocalPalette = staticCompositionLocalOf { DarkPalette }
 
 /** The palette of the current theme. */

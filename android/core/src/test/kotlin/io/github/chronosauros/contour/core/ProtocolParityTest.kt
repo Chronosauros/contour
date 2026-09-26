@@ -4,6 +4,7 @@ import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -247,6 +248,126 @@ class ProtocolParityTest {
         assertEquals(-2, synPlan.preampDb, "manual -6 dB + HS +4 dB")
         println("  preamp: Mega5EST AUTO ${(ProtocolMicro.plan(mega.bands, null) as DevicePlan.Ready).preampDb} dB, synthetic AUTO ${(ProtocolMicro.plan(synthetic, null) as DevicePlan.Ready).preampDb} dB, synthetic manual -6 -> ${synPlan.preampDb} dB")
         assertTrue(dMega < 0.01 && dSyn < 0.01 && dSynManual < 0.01)
+    }
+
+    @Test
+    fun `display shelves agree in absolute dB with reference Q30 over the grid and centres`() {
+        val cases = listOf(
+            Band("ls", FilterType.LOW_SHELF, 1000.0, 6.0, 0.7),
+            Band("hs", FilterType.HIGH_SHELF, 8000.0, 4.0, 0.7),
+            Band("pk", FilterType.PEAK, 3000.0, -3.0, 2.0),
+            Band("boundary", FilterType.LOW_SHELF, 1000.0, 10.0, 6.8716),
+        )
+        for (band in cases) {
+            val freqs = Dsp.logFreqs(512) + doubleArrayOf(band.freqHz, 500.0, 20_000.0)
+            val actual = Dsp.bandDb(band, Dsp.FreqGrid(freqs))
+            val bytes = WalkPlay.computeIir(band.freqHz, band.gainDb, band.q, WalkPlay.typeCode(band.type))
+            freqs.forEachIndexed { i, f ->
+                assertEquals(q30Db(bytes, f), actual[i], 0.003, "${band.type} Q=${band.q} at $f Hz")
+            }
+        }
+        assertEquals(5.163, Dsp.bandDb(cases[0], Dsp.FreqGrid(doubleArrayOf(500.0)))[0], 0.02)
+        assertEquals(3.753, Dsp.bandDb(cases[1], Dsp.FreqGrid(doubleArrayOf(20_000.0)))[0], 0.02)
+        assertEquals(-7, Preamp.auto(listOf(Band("auto", FilterType.LOW_SHELF, 1000.0, 6.0, 2.0))))
+    }
+
+    @Test
+    fun `fractional high shelf offset is only whole dB preamp quantisation`() {
+        val band = Band("hs", FilterType.HIGH_SHELF, 8000.0, 2.5, 0.7)
+        val native = WalkPlay.bandWrite(0, band)
+        val nativeBytes = WalkPlay.computeIir(native.freq, native.gainDb, native.q, native.typeCode)
+        val freqs = Dsp.logFreqs(512) + doubleArrayOf(8000.0, 20_000.0)
+        for ((manual, expectedOffset) in listOf(null to 0.5, -6.0 to -0.5)) {
+            val plan = ProtocolMicro.plan(listOf(band), manual) as DevicePlan.Ready
+            val emulated = plan.bands[0]
+            val emulatedBytes = WalkPlay.computeIir(emulated.freq, emulated.gainDb, emulated.q, emulated.typeCode)
+            val nativePreamp = manual ?: Preamp.auto(listOf(band)).toDouble()
+            for (f in freqs) {
+                val difference = plan.preampDb + q30Db(emulatedBytes, f) - nativePreamp - q30Db(nativeBytes, f)
+                assertEquals(expectedOffset, difference, 0.003, "preamp=$manual at $f Hz")
+            }
+        }
+    }
+
+    @Test
+    fun `exact DAC import reconstructs fractional raw registers including low frequency bins`() {
+        val original = listOf(
+            WalkPlay.BandWrite(0, 26.25, 257 / 256.0, 257 / 256.0, WalkPlay.TYPE_PK),
+            WalkPlay.BandWrite(1, 31.25, -257 / 256.0, 257 / 256.0, WalkPlay.TYPE_LSQ),
+        ) + (2 until WalkPlay.BANDS).map { WalkPlay.factoryFlat(it) }
+        val decoded = original.map { WalkPlay.parseBand(WalkPlay.bandWriteReport(it, 0)) }
+        assertEquals(257, decoded[0].registers.q256)
+        assertEquals(257, decoded[0].registers.gain256)
+        assertEquals(26, decoded[0].registers.freq)
+        assertEquals(31, decoded[1].registers.freq)
+        val imported = ProtocolMicro.importExact(decoded, -4)
+        assertTrue(imported is DacImport.Ready, "$imported")
+        val plan = ProtocolMicro.plan(imported.eq.bands, imported.eq.preampDb) as DevicePlan.Ready
+        assertTrue(ProtocolMicro.matches(plan, decoded.map { it.registers }, -4), "$plan")
+        assertEquals(257 / 256.0, imported.eq.bands[0].gainDb)
+    }
+
+    @Test
+    fun `exact DAC import rejects unsupported native types and nonfactory trailing slots`() {
+        val flat = List(WalkPlay.BANDS) { WalkPlay.factoryFlat(it) }
+        fun decoded(writes: List<WalkPlay.BandWrite>) = writes.map { WalkPlay.parseBand(WalkPlay.bandWriteReport(it, 0)) }
+        val factoryImport = ProtocolMicro.importExact(decoded(flat), 0)
+        assertTrue(factoryImport is DacImport.Ready)
+        assertEquals(1, factoryImport.eq.bands.size, "factory flat imports as an editable band")
+        assertTrue(ProtocolMicro.matches(ProtocolMicro.plan(factoryImport.eq.bands, factoryImport.eq.preampDb) as DevicePlan.Ready,
+            decoded(flat).map { it.registers }, 0))
+        val late = flat.toMutableList().also { it[7] = WalkPlay.BandWrite(7, 1000.25, -1.0, 1.0, WalkPlay.TYPE_PK) }
+        val lateImport = ProtocolMicro.importExact(decoded(late), -2)
+        assertTrue(lateImport is DacImport.Ready, "$lateImport")
+        assertEquals(8, lateImport.eq.bands.size, "factory slots before an active slot retain their positions")
+        assertTrue(ProtocolMicro.matches(ProtocolMicro.plan(lateImport.eq.bands, lateImport.eq.preampDb) as DevicePlan.Ready,
+            decoded(late).map { it.registers }, -2))
+        val nativeHs = flat.toMutableList().also { it[0] = WalkPlay.BandWrite(0, 8000.0, 4.0, 0.7, WalkPlay.TYPE_HSQ) }
+        assertTrue(ProtocolMicro.importExact(decoded(nativeHs), -4) is DacImport.Rejected)
+        val impossible = flat.toMutableList().also { it[7] = WalkPlay.BandWrite(7, 19.0, 1.0, 1.0, WalkPlay.TYPE_PK) }
+        assertTrue(ProtocolMicro.importExact(decoded(impossible), 0) is DacImport.Rejected)
+        val disabled = decoded(flat).toMutableList().also {
+            it[0] = it[0].copy(enabled = false, registers = it[0].registers.copy(freq = 0, q256 = 0))
+        }
+        assertTrue(ProtocolMicro.importExact(disabled, 0) is DacImport.Rejected)
+    }
+
+    @Test
+    fun `shelf with invalid biquad cannot reach the wire`() {
+        val shelf = Band("s", FilterType.LOW_SHELF, 1000.0, 10.0, 10.0)
+        val plan = ProtocolMicro.plan(listOf(shelf), null)
+        assertTrue(plan is DevicePlan.Rejected)
+        assertTrue(plan.issues.any { it.contains("Band 1: non-finite biquad") }, "$plan")
+        val write = WalkPlay.bandWrite(0, shelf)
+        assertFailsWith<IllegalArgumentException> { WalkPlay.bandWriteReport(write, slot = 0) }
+        assertTrue(ProtocolMicro.plan(listOf(shelf.copy(q = 0.7)), null) is DevicePlan.Ready)
+    }
+
+    @Test
+    fun `invalid extreme shelves reject AUTO rather than looking like zero dB`() {
+        for (type in listOf(FilterType.LOW_SHELF, FilterType.HIGH_SHELF)) {
+            val invalid = Band("extreme", type, 1000.0, 10.0, 10.0)
+            assertFailsWith<IllegalArgumentException>("$type must not report AUTO 0") {
+                Preamp.auto(listOf(invalid))
+            }
+            val plan = ProtocolMicro.plan(listOf(invalid), null)
+            assertTrue(plan is DevicePlan.Rejected, "$type AUTO unexpectedly ready: $plan")
+            assertTrue(plan.issues.any { it.contains("non-finite") || it.contains("no real response") }, "$plan")
+            val valid = invalid.copy(q = 0.7)
+            assertTrue(Preamp.auto(listOf(valid)) < 0, "$type valid AUTO lost")
+            assertTrue(ProtocolMicro.plan(listOf(valid), null) is DevicePlan.Ready, "$type valid shelf rejected")
+        }
+    }
+
+    @Test
+    fun `manual preamp rejects out of range HS adjusted register without silent clamp`() {
+        val shelf = Band("hs", FilterType.HIGH_SHELF, 8000.0, 4.0, 0.7)
+        val tooHigh = ProtocolMicro.plan(listOf(shelf), 0.0)
+        assertTrue(tooHigh is DevicePlan.Rejected)
+        assertTrue(tooHigh.issues.any { it.contains("HIGH SHELF adjustment") })
+        assertEquals(-30, (ProtocolMicro.plan(listOf(shelf), -34.0) as DevicePlan.Ready).preampDb)
+        assertTrue(ProtocolMicro.plan(listOf(shelf), -34.1) is DevicePlan.Rejected)
+        assertEquals(0, (ProtocolMicro.plan(listOf(shelf), -3.9) as DevicePlan.Ready).preampDb)
     }
 
     // ---- 6: which profile is on the DAC -----------------------------------------------------------

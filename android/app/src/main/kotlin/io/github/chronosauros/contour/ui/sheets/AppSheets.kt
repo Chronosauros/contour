@@ -58,6 +58,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.chronosauros.contour.core.ApoText
+import io.github.chronosauros.contour.core.DacImport
 import io.github.chronosauros.contour.core.ImportedEq
 import io.github.chronosauros.contour.model.AppModel
 import io.github.chronosauros.contour.model.Importer
@@ -109,6 +110,7 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit) {
     val context = LocalContext.current
     var name by remember(id) { mutableStateOf(p.name) }
     var sub by remember(id) { mutableStateOf(p.subtitle) }
+    val sharePreamp = runCatching { p.effectivePreampDb() }.getOrNull()
     SheetFrame(onDone) {
         SheetTitle("EDIT PROFILE")
         OutlinedTextField(
@@ -158,15 +160,18 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit) {
             OutlinedButton(
                 onClick = {
                     val cur = model.byId(id) ?: return@OutlinedButton
-                    val text = ApoText.format(cur.bands, cur.effectivePreampDb())
+                    val preamp = runCatching { cur.effectivePreampDb() }.getOrNull() ?: return@OutlinedButton
+                    val text = ApoText.format(cur.bands, preamp)
                     val send = Intent(Intent.ACTION_SEND).setType("text/plain")
                         .putExtra(Intent.EXTRA_SUBJECT, cur.name)
                         .putExtra(Intent.EXTRA_TEXT, text)
                     context.startActivity(Intent.createChooser(send, cur.name))
                 },
+                enabled = sharePreamp != null,
                 modifier = Modifier.weight(1f).height(52.dp).testTag("edit_share"),
             ) { Text("SHARE") }
         }
+        if (sharePreamp == null) Text("Cannot share: AUTO preamp unavailable for invalid EQ")
     }
 }
 
@@ -181,7 +186,8 @@ fun NewProfileSheet(model: AppModel, device: DeviceController, onDone: () -> Uni
         clip = Importer.parse(text)?.let { Importer.fit(it) }
     }
     val snapshot = device.snapshot
-    val dac = device.link == Link.CONNECTED && snapshot != null
+    val dacImport = if (device.link == Link.CONNECTED && snapshot != null)
+        Importer.fromDac(snapshot.bands, snapshot.preampDb) else null
     SheetFrame(onDone) {
         SheetTitle("NEW PROFILE")
         Option("FLAT", "One flat band at 1 kHz - drag it or add more", true, "new_empty") {
@@ -200,9 +206,17 @@ fun NewProfileSheet(model: AppModel, device: DeviceController, onDone: () -> Uni
             model.create(eq.bands, eq.preampDb)
             onDone()
         }
-        Option("FROM DAC", if (dac) "The EQ the DAC holds now" else "Connect the DAC first", dac, "new_dac") {
-            val s = snapshot ?: return@Option
-            val (eq, _) = Importer.fit(Importer.fromDac(s.bands, s.preampDb))
+        Option(
+            "FROM DAC",
+            when (dacImport) {
+                is DacImport.Ready -> "Re-encodes to the DAC's registers; exact original coefficients are not guaranteed"
+                is DacImport.Rejected -> dacImport.issues.joinToString("; ")
+                null -> "Connect the DAC first"
+            },
+            dacImport is DacImport.Ready,
+            "new_dac",
+        ) {
+            val eq = (dacImport as? DacImport.Ready)?.eq ?: return@Option
             model.create(eq.bands, eq.preampDb, sub = "FROM DAC")
             onDone()
         }
@@ -234,16 +248,36 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
     val i = model.selectedBand
     val b = p.bands.getOrNull(i)
     if (param != Param.PREAMP && b == null) return onDone()
-    val start = if (param == Param.PREAMP) shownPreamp(p) else param.of(b!!)
-    val initial = param.edit(start)
-    var text by remember { mutableStateOf(TextFieldValue(initial, TextRange(0, initial.length))) }
-    val focus = remember { FocusRequester() }
-    val commit = {
-        param.parse(text.text)?.let { v ->
-            if (param == Param.PREAMP) model.setPreamp(v)
-            else model.current?.bands?.getOrNull(i)?.let { model.setBand(i, param.set(it, v)) }
+    val start = if (param == Param.PREAMP) runCatching { shownPreamp(p) }.getOrNull() else param.of(b!!)
+    if (start == null) {
+        SheetFrame(onDone) {
+            SheetTitle("PREAMP")
+            Text("AUTO preamp unavailable for invalid EQ. Fix the shelf settings first.")
+            Button(onClick = onDone) { Text("CLOSE") }
         }
-        onDone()
+        return
+    }
+    val initial = param.edit(start)
+    val opening = remember { Triple(p.id, if (param == Param.PREAMP) null else i to b!!.id, initial) }
+    var text by remember { mutableStateOf(TextFieldValue(opening.third, TextRange(0, opening.third.length))) }
+    var invalid by remember { mutableStateOf(false) }
+    val focus = remember { FocusRequester() }
+    val commit = commit@{
+        val live = model.current
+        val band = opening.second
+        if (live == null || live.id != opening.first ||
+            (band != null && (model.selectedBand != band.first || live.bands.getOrNull(band.first)?.id != band.second))) {
+            onDone()
+            return@commit
+        }
+        val parsed = param.parse(text.text)
+        if (parsed == null) {
+            invalid = true
+        } else {
+            if (band == null) model.setPreamp(parsed)
+            else model.setBand(band.first, param.set(live.bands[band.first], parsed))
+            onDone()
+        }
     }
     SheetFrame(onDone) {
         SheetTitle(if (param == Param.PREAMP) "PREAMP" else "BAND ${i + 1} - ${param.label}")
@@ -255,8 +289,10 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
         }
         OutlinedTextField(
             value = text,
-            onValueChange = { text = it },
+            onValueChange = { text = it; invalid = false },
             label = { Text(range) },
+            isError = invalid,
+            supportingText = if (invalid) ({ Text("Enter a valid number") }) else null,
             suffix = { if (param.unit.isNotEmpty()) Text(param.unit) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),

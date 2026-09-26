@@ -32,6 +32,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -57,6 +58,10 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -310,6 +315,7 @@ private fun SwipeRow(
     val full = rememberUpdatedState(fullAction)
     val setOpen = rememberUpdatedState(onOpen)
     val name = p.name
+    DisposableEffect(p.id, coords) { onDispose { coords.remove(p.id) } }
 
     Box(
         Modifier
@@ -389,7 +395,19 @@ private fun SwipeRow(
                     }
                 }
             }
-            .semantics { selected = current }
+            .semantics(mergeDescendants = true) {
+                selected = current
+                contentDescription = if (dim) "${p.name}, archived" else p.name
+                onClick(label = "Select profile") { tap.value(); true }
+                onLongClick(label = "Edit profile") { longPress.value(); true }
+                customActions = rowActions.map { a ->
+                    CustomAccessibilityAction(a.label.lowercase().replaceFirstChar { it.uppercase() } + " profile") {
+                        setOpen.value(false)
+                        a.run()
+                        true
+                    }
+                }
+            }
             .testTag("row_$name"),
     ) {
         if (offset < -1f) {

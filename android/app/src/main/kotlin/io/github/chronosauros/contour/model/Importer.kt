@@ -1,7 +1,7 @@
 package io.github.chronosauros.contour.model
 
 import io.github.chronosauros.contour.core.ApoText
-import io.github.chronosauros.contour.core.Band
+import io.github.chronosauros.contour.core.DacImport
 import io.github.chronosauros.contour.core.EqByEarJson
 import io.github.chronosauros.contour.core.ImportedEq
 import io.github.chronosauros.contour.core.ProtocolMicro
@@ -35,7 +35,9 @@ object Importer {
             b.copy(freqHz = f, gainDb = g, q = q)
         }
         if (clamped > 0) notes += "$clamped band${if (clamped > 1) "s" else ""} rounded or clamped to the device ranges"
-        val pre = eq.preampDb?.let { Math.round(it.coerceIn(-20.0, 0.0)).toDouble() }
+        val pre = eq.preampDb?.let {
+            Math.round(it.coerceIn(ProtocolMicro.PREAMP_MIN_DB.toDouble(), ProtocolMicro.PREAMP_MAX_DB.toDouble())).toDouble()
+        }
         return ImportedEq(bands, pre) to notes.joinToString("; ").ifEmpty { null }
     }
 
@@ -48,11 +50,8 @@ object Importer {
         return j?.takeIf { it.bands.isNotEmpty() }
     }
 
-    /** The DAC's current EQ as bands (factory-flat slots skipped), decoded with compensation. */
-    fun fromDac(bands: List<WalkPlay.DeviceBand>, preampDb: Int): ImportedEq {
-        val list = bands.filterIndexed { i, b -> b.enabled && b.registers != WalkPlay.factoryFlat(i).registers() }
-            .map { Band("x", it.type, it.freqHz, it.gainDb, it.q, true) }
-        return ImportedEq(list, preampDb.toDouble())
-    }
+    /** Exact DAC conversion; never pass through the lossy clipboard fitter. */
+    fun fromDac(bands: List<WalkPlay.DeviceBand>, preampDb: Int): DacImport =
+        ProtocolMicro.importExact(bands, preampDb)
 }
 

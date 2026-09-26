@@ -247,15 +247,19 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
         }
 
         val bands: List<Band> = profile.bands
-        Dsp.responseDb(bands, Dsp.DISPLAY_GRID, curve)
+        val validCurve = runCatching { Dsp.responseDb(bands, Dsp.DISPLAY_GRID, curve) }.isSuccess
         path.reset()
         val freqs = Dsp.DISPLAY_GRID.freqs
-        for (i in curve.indices) {
-            val x = map.x(freqs[i])
-            val y = map.y(curve[i])
-            if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+        if (validCurve) {
+            for (i in curve.indices) {
+                val x = map.x(freqs[i])
+                val y = map.y(curve[i])
+                if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            }
+            drawPath(path, c.text, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+        } else {
+            drawText(measurer, "INVALID EQ — adjust shelf gain or Q", Offset(pad, pad), Type.graph.copy(color = c.text))
         }
-        drawPath(path, c.text, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
 
         val r = NODE_RADIUS.toPx()
         // nodes stand a little above the plot: a small soft shadow under each enabled node

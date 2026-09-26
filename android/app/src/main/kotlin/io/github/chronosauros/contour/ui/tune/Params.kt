@@ -43,21 +43,13 @@ enum class Param(val label: String, val unit: String, val scale: Scale?, val hom
 
     /** Typed text -> the stored value (clamped and quantized to the device range), null if not a number. */
     fun parse(text: String): Double? {
-        val t = text.replace(',', '.').filter { it.isDigit() || it == '.' || it == '-' }
-        val v = t.toDoubleOrNull() ?: return null
+        val v = text.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() } ?: return null
         return when (this) {
             PREAMP -> Math.round(v * 10) / 10.0 // clamped by AppModel.setPreamp (device range minus HS gains)
             else -> scale!!.quantize(v.coerceIn(scale.min, scale.max))
         }
     }
 
-    /** 0 = none, 1 = step, 2 = strong: the haptic for a change from [a] to [b]. */
-    fun crossing(a: Double, b: Double): Int {
-        val s = scale ?: return 0
-        if (a == b) return 0
-        val lo = minOf(a, b)
-        val hi = maxOf(a, b)
-        if ((home > lo && home <= hi && b > a) || (home >= lo && home < hi && b < a)) return 2
-        return if (s.crossing(a, b) > 0) 1 else 0
-    }
+    /** Preserve the scale's strong marks (including [home]) instead of downgrading them to a step. */
+    fun crossing(a: Double, b: Double): Int = scale?.crossing(a, b) ?: 0
 }

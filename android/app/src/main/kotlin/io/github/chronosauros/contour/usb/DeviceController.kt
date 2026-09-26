@@ -107,8 +107,12 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     suspend fun send(profile: Profile): SendOutcome = sendWith("send") { d -> client.writeProfile(d, profile) }
 
     private suspend fun sendWith(what: String, op: suspend (UsbDevice) -> WriteResult): SendOutcome {
-        val d = findDac() ?: return SendOutcome(false, "NO DAC")
-        if (!manager.hasPermission(d)) return SendOutcome(false, "NO PERMISSION")
+        val d = findDac() ?: run { link = Link.NO_DAC; snapshot = null; return SendOutcome(false, "NO DAC") }
+        if (!manager.hasPermission(d)) {
+            link = Link.NEEDS_PERMISSION
+            snapshot = null
+            return SendOutcome(false, "NO PERMISSION")
+        }
         if (busy) return SendOutcome(false, "DAC BUSY")
         busy = true
         return try {
@@ -119,6 +123,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             if (r.verified) SendOutcome(true, null) else SendOutcome(false, "READ-BACK MISMATCH: ${r.mismatches.firstOrNull() ?: ""}")
         } catch (e: Exception) {
             UsbLog.line("$what failed: ${e.message}")
+            snapshot = null // a partial write or failed read cannot establish what the DAC holds
             error = e.message
             SendOutcome(false, e.message ?: e.javaClass.simpleName)
         } finally {
@@ -137,8 +142,8 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     }
 
     private fun launchOp(what: String, op: suspend (UsbDevice) -> Unit) {
-        val d = findDac() ?: run { link = Link.NO_DAC; return }
-        if (!manager.hasPermission(d)) { link = Link.NEEDS_PERMISSION; return }
+        val d = findDac() ?: run { link = Link.NO_DAC; snapshot = null; return }
+        if (!manager.hasPermission(d)) { link = Link.NEEDS_PERMISSION; snapshot = null; return }
         if (busy) return
         busy = true
         scope.launch {
@@ -147,6 +152,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                 error = null
             } catch (e: Exception) {
                 UsbLog.line("$what failed: ${e.message}")
+                snapshot = null
                 error = "$what failed: ${e.message}"
             } finally {
                 busy = false

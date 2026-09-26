@@ -81,8 +81,9 @@ fun DeviceStatus(device: DeviceController, onService: () -> Unit, modifier: Modi
 /** A small real-response thumbnail of [bands] (enabled bands, -12..+12 dB). */
 @Composable
 fun ResponseThumb(bands: List<Band>, color: Color, modifier: Modifier = Modifier) {
-    val db = remember(bands) { Dsp.responseDb(bands, THUMB_GRID) }
+    val db = remember(bands) { runCatching { Dsp.responseDb(bands, THUMB_GRID) }.getOrNull() }
     Canvas(modifier) {
+        if (db == null) return@Canvas // Invalid response must never be drawn as a flat or NaN curve.
         val h = size.height
         val path = Path()
         for (i in db.indices) {
