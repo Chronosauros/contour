@@ -1,0 +1,1 @@
+F-Droid build: no dependency-info block in the APK; store listing (description, screenshots) in the repo. No app changes.
