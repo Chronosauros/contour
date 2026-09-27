@@ -1,0 +1,1 @@
+CLEAR EQ in Edit profile resets the curve to one flat band, with undo. A long profile name in the EQ page header shrinks to fit before it is cut off.

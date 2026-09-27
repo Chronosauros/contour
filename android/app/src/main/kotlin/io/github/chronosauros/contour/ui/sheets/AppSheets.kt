@@ -172,6 +172,17 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit) {
             ) { Text("SHARE") }
         }
         if (sharePreamp == null) Text("Cannot share: AUTO preamp unavailable for invalid EQ")
+        val clear = model.byId(id)?.let { model.isClear(it) } ?: true
+        OutlinedButton(
+            onClick = { model.clearEq(id); onDone() },
+            enabled = !clear,
+            modifier = Modifier.fillMaxWidth().height(52.dp).testTag("edit_clear"),
+        ) { Text("CLEAR EQ") }
+        Text(
+            "One flat band, preamp AUTO. UNDO on the EQ page brings the curve back.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 

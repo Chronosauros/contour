@@ -185,7 +185,8 @@ The number next to LIBRARY is how many profiles you have.
 
 - **Tap** a card to make it the current profile and open it on the EQ page.
 - **Long-press** a card to edit it: change the **NAME** and description, pick an **ICON**,
-  **DUPLICATE** it (handy before experimenting) or **SHARE** it.
+  **DUPLICATE** it (handy before experimenting) or **SHARE** it. **CLEAR EQ** leaves one flat band
+  with the preamp on AUTO, and the undo arrow on the EQ page brings the curve back.
 - **Swipe left** on a card to **ARCHIVE** or **DELETE** it. Both show **UNDO** for 5 seconds.
   Archived profiles move to a folded section at the bottom of the list. Open it and swipe an archived
   card to **RESTORE** it.

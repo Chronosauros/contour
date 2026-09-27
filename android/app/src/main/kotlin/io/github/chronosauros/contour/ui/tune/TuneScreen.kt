@@ -7,6 +7,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -46,6 +48,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import io.github.chronosauros.contour.core.FilterType
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.core.ProtocolMicro
@@ -155,7 +158,14 @@ private fun Header(model: AppModel, p: Profile?, device: DeviceController, actio
             ) {
                 Icon(ProfileIcons.of(p.icon), null, tint = c.text, modifier = Modifier.size(26.dp))
                 Spacer(Modifier.width(14.dp))
-                Text(p.name, style = Type.profileTitle, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                // a long name steps down from the title size before it is cut (the header shares its row with UNDO/REDO)
+                BasicText(
+                    p.name,
+                    style = Type.profileTitle.copy(color = c.text),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    autoSize = TextAutoSize.StepBased(minFontSize = 17.sp, maxFontSize = Type.profileTitle.fontSize, stepSize = 1.sp),
+                )
             }
         } else {
             Text("TUNE", style = Type.profileTitle, color = c.text, modifier = Modifier.weight(1f).padding(start = 6.dp))

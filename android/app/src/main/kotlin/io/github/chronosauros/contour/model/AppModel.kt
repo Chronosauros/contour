@@ -409,6 +409,19 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         scheduleState()
     }
 
+    /** CLEAR EQ: back to one flat band and AUTO preamp; one UNDO step like any other edit. */
+    fun clearEq(id: String) {
+        update(id) { it.copy(bands = listOf(flatBand()), preampDb = null) }
+        if (id == currentId) {
+            selectedBand = 0
+            scheduleState()
+        }
+    }
+
+    /** Already one flat band with AUTO preamp: nothing for CLEAR EQ to do. */
+    fun isClear(p: Profile): Boolean = p.preampDb == null && p.bands.size == 1 &&
+        p.bands[0].let { it.enabled && it.gainDb == 0.0 && it.type == FilterType.PEAK }
+
     fun toggleBypass(index: Int) = update { p ->
         p.copy(bands = p.bands.mapIndexed { i, b -> if (i == index) b.copy(enabled = !b.enabled) else b })
     }
