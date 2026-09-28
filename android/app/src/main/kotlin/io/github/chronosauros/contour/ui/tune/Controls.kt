@@ -47,8 +47,10 @@ import io.github.chronosauros.contour.ui.Lift
 import io.github.chronosauros.contour.ui.Type
 import io.github.chronosauros.contour.ui.kit.LiftGuard
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
+import io.github.chronosauros.contour.ui.kit.LocalPagerLock
 import io.github.chronosauros.contour.ui.kit.Scale
 import io.github.chronosauros.contour.ui.kit.detectHorizontalDragWithEnds
+import io.github.chronosauros.contour.ui.kit.holdsPager
 import io.github.chronosauros.contour.ui.lift
 import io.github.chronosauros.contour.ui.pal
 import io.github.chronosauros.contour.ui.sink
@@ -104,6 +106,7 @@ private fun dragGain(speedDp: Float, slow: Float): Float = ratioLerp(slow, FAST,
 fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier: Modifier = Modifier) {
     val scale = param.scale!!
     val haptics = LocalHaptics.current
+    val pagerLock = LocalPagerLock.current
     val p = pal
     val v = rememberUpdatedState(value)
     val change = rememberUpdatedState(onChange)
@@ -122,6 +125,7 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
                     }
                 }
             }
+            .holdsPager(pagerLock)
             .pointerInput(param) {
                 val guard = LiftGuard<Double>(density, param.name)
                 var pos = 0f

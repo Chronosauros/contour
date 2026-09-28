@@ -40,3 +40,11 @@ Suggested order: WalkPlay IDs first (no new code), then KT Micro (a user is aski
 
 ## Other WalkPlay SchemeNo11 devices
 - About 140 PIDs share the scheme in devicePEQ's table. Enable them after a tester confirms one.
+
+## Reddit feedback 27.09.2026 (freestyler7) - to check later
+- Clear EQ - done in 1.1.1 (CLEAR EQ in EDIT PROFILE).
+- Quick A/B button: bypass EQ but keep the preamp. Concern: Micro pops when saving a profile while music plays, so A/B through flash writes would be jarring.
+- Question: does the DAC have an in-memory (RAM) mode, or is a flash write the only option? Ties into "Live preview on the DAC" above - if band writes without the flash commit apply live, A/B and Clear can use them and skip the pop.
+
+## Header layout after the undo buttons
+- 1.1.1 shrinks the name 30 -> 17 sp before the ellipsis. A full header rebuild waits for A/B, which also wants header space.

@@ -1,0 +1,1 @@
+While a finger is on a slider, the PREAMP or a point on the graph, the screen stays on the EQ page instead of swiping to the library.

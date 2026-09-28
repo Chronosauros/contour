@@ -66,6 +66,7 @@ takes a few seconds.
 
 Contour has two pages: **EQ**, where you shape the current profile, and **LIBRARY**, where you keep all
 of them. Switch between them with the bar at the bottom of the screen, or swipe left and right.
+While your finger is on a slider or a point on the graph, the page stays put.
 
 <p align="center">
   <img src="images/tune.png" width="300" alt="EQ page">

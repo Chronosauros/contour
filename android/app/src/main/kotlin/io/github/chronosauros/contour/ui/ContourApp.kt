@@ -69,6 +69,8 @@ import io.github.chronosauros.contour.model.AppModel
 import io.github.chronosauros.contour.model.Page
 import io.github.chronosauros.contour.model.Sender
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
+import io.github.chronosauros.contour.ui.kit.LocalPagerLock
+import io.github.chronosauros.contour.ui.kit.PagerLock
 import io.github.chronosauros.contour.ui.kit.rememberHaptics
 import io.github.chronosauros.contour.ui.library.LibraryActions
 import io.github.chronosauros.contour.ui.library.LibraryScreen
@@ -122,8 +124,9 @@ fun ContourApp(
         return
     }
     val haptics = rememberHaptics()
+    val pagerLock = remember { PagerLock() }
     // LocalContentColor: every Text without an explicit color follows the theme (dark mode drew them black)
-    CompositionLocalProvider(LocalHaptics provides haptics, LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+    CompositionLocalProvider(LocalHaptics provides haptics, LocalPagerLock provides pagerLock, LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
         val context = LocalContext.current
         val prefs = remember { context.getSharedPreferences("ui", Context.MODE_PRIVATE) }
         val pager = rememberPagerState(initialPage = initialPage) { 2 }
@@ -211,6 +214,8 @@ fun ContourApp(
             HorizontalPager(
                 state = pager,
                 beyondViewportPageCount = 1,
+                // a finger on a slider, PREAMP or the graph never turns the page
+                userScrollEnabled = !pagerLock.locked,
                 modifier = Modifier.fillMaxSize(),
             ) { page ->
                 if (page == Page.TUNE) {

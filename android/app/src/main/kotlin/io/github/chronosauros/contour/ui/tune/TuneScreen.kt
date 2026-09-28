@@ -60,7 +60,9 @@ import io.github.chronosauros.contour.ui.Lift
 import io.github.chronosauros.contour.ui.Type
 import io.github.chronosauros.contour.ui.kit.LiftGuard
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
+import io.github.chronosauros.contour.ui.kit.LocalPagerLock
 import io.github.chronosauros.contour.ui.kit.detectHorizontalDragWithEnds
+import io.github.chronosauros.contour.ui.kit.holdsPager
 import io.github.chronosauros.contour.ui.kit.ProfileIcons
 import io.github.chronosauros.contour.ui.lift
 import io.github.chronosauros.contour.ui.pal
@@ -366,6 +368,7 @@ private const val PREAMP_SLOW = 0.25f
 private fun PreampRow(model: AppModel, p: Profile, actions: TuneActions) {
     val c = pal
     val haptics = LocalHaptics.current
+    val pagerLock = LocalPagerLock.current
     val auto = p.preampDb == null
     val autoDb = runCatching { shownPreamp(p.copy(preampDb = null)) }.getOrNull()
     val db = if (auto) autoDb else p.preampDb
@@ -385,7 +388,7 @@ private fun PreampRow(model: AppModel, p: Profile, actions: TuneActions) {
             Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .then(if (auto || db == null) Modifier else Modifier.pointerInput(p.id) {
+                .then(if (auto || db == null) Modifier else Modifier.holdsPager(pagerLock).pointerInput(p.id) {
                     val guard = LiftGuard<Double>(density, "PREAMP")
                     var acc = 0.0
                     var atEnd = false

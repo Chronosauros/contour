@@ -36,6 +36,8 @@ import io.github.chronosauros.contour.ui.lift
 import io.github.chronosauros.contour.ui.pal
 import io.github.chronosauros.contour.ui.kit.LiftGuard
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
+import io.github.chronosauros.contour.ui.kit.LocalPagerLock
+import io.github.chronosauros.contour.ui.kit.holdsPager
 import io.github.chronosauros.contour.ui.kit.Scale
 import kotlin.math.exp
 import kotlin.math.hypot
@@ -70,6 +72,7 @@ private val GRID_DB = doubleArrayOf(-12.0, -6.0, 0.0, 6.0, 12.0)
 fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifier) {
     val c = pal
     val haptics = LocalHaptics.current
+    val pagerLock = LocalPagerLock.current
     val nodePaint = remember { android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG) }
     val measurer = rememberTextMeasurer()
     val curve = remember { DoubleArray(Dsp.DISPLAY_POINTS) }
@@ -88,6 +91,7 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
             .testTag("graph")
             // a node drag that starts near a screen edge must not become the system back gesture
             .systemGestureExclusion()
+            .holdsPager(pagerLock)
             .pointerInput(Unit) {
                 val pad = PAD.toPx()
                 val hitR = 24.dp.toPx()
