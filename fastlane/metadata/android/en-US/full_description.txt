@@ -1,10 +1,10 @@
-<p>An on-the-go EQ manager for the CrinEar Protocol Micro USB dongle. Keep your EQ profiles on your phone, plug the dongle in, pick one and send it. Plug in, send, unplug - that is the whole routine.</p>
-<p>The Protocol Micro has a parametric EQ built into the dongle. Whatever it holds works with every app and every device you plug it into. The official tool is a desktop browser page; Contour puts it on your phone.</p>
+<p>A parametric equalizer (PEQ) manager for the CrinEar Protocol Micro USB DAC dongle. Keep your EQ profiles on your phone, plug the dongle in, pick one and send it. Plug in, send, unplug - that is the whole routine.</p>
+<p>The Protocol Micro has a parametric EQ built into the dongle itself. Whatever it holds works with every app and every device you plug it into - no system equalizer, no app running in the background. The official tool is a desktop browser page; Contour puts it on your phone.</p>
 <ul>
-<li><b>Your EQs are saved</b> - one profile per pair of earphones, or per mood.</li>
-<li><b>Sending takes seconds</b> - hold HOLD TO SEND; Contour writes the profile, reads it back to check every value and stores it in the dongle's memory.</li>
-<li><b>Tune on the go</b> - drag bands on the graph, fine-tune with sliders, paste an AutoEQ / Equalizer APO profile from the clipboard, or read the current EQ off the dongle.</li>
+<li><b>Your EQ profiles are saved</b> - one profile per pair of earphones (IEMs) or headphones, or per mood.</li>
+<li><b>Sending takes seconds</b> - hold HOLD TO SEND; Contour writes the profile to the DAC, reads it back to check every value and stores it in the dongle's memory.</li>
+<li><b>Tune on the go</b> - drag bands on the response graph, fine-tune with sliders, paste an AutoEQ or Equalizer APO parametric profile from the clipboard, or read the current EQ off the dongle. Profiles can be shared as Equalizer APO text.</li>
 <li><b>Examples to start from</b> - NIGHTFALL and DUSK next to a flat profile.</li>
 </ul>
-<p>Contour does not process audio, needs no internet and has no accounts. It only talks to the dongle. Requires Android 9+ and USB host (OTG) support.</p>
+<p>Contour is free and open source (Apache-2.0). It does not process audio, needs no internet, has no accounts, no ads and no tracking. It only talks to the dongle. Requires Android 9+ and USB host (OTG) support.</p>
 <p>Unofficial, not affiliated with CrinEar. It writes to the dongle only on an explicit action and only with documented commands; use at your own risk.</p>

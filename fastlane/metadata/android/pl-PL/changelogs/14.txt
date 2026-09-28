@@ -1,0 +1,1 @@
+Gdy palec jest na suwaku, PREAMP albo punkcie na wykresie, ekran zostaje na stronie EQ i nie przeskakuje do biblioteki.
