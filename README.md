@@ -53,7 +53,7 @@ Two pages, switched with the bar at the bottom or by swiping: **EQ** and **LIBRA
 
 - **EQ** edits the current profile: drag, tap, double-tap and pinch band nodes on the graph; PEAK, LOW
   SHELF and HIGH SHELF filters; FREQ, GAIN and Q sliders that are fine when you drag slowly and cover the
-  whole range when you drag fast; tap any number to type it; PREAMP with AUTO anti-clipping.
+  whole range when you drag fast; tap any number to type it; PREAMP with a MANUAL / AUTO anti-clipping bar; a quick A/B button to compare with the EQ off.
 - **HOLD TO SEND** (0.7 s hold) writes the profile to the dongle, reads it back, compares every register and
   only then saves it to the dongle's memory. The button then shows ON DAC.
 - **LIBRARY** keeps your profiles: tap to open, long-press to rename, change the icon, duplicate or share;

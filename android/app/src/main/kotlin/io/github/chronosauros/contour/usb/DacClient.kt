@@ -46,6 +46,19 @@ class DacClient(private val manager: UsbManager) {
 
     suspend fun readDevice(device: UsbDevice): DacSnapshot = withDevice(device) { read(it) }
 
+    /** A/B: only the supplied bands + TEMP_WRITE, on the existing USB thread. No read-back wait. */
+    suspend fun writeTemporaryBands(device: UsbDevice, bands: List<WalkPlay.BandWrite>, slot: Int) = withDevice(device) { t ->
+        // Encode everything before sending: invalid coefficients cannot leave a partial write.
+        val steps = WalkPlay.temporaryBandSequence(bands, slot)
+        val t0 = SystemClock.elapsedRealtime()
+        UsbLog.line("A/B RAM: ${bands.size} changed bands, slot $slot, preamp kept")
+        for (step in steps) {
+            t.send(step.report)
+            if (step.delayAfterMs > 0) Thread.sleep(step.delayAfterMs)
+        }
+        UsbLog.line("A/B RAM: TEMP_WRITE sent, ${SystemClock.elapsedRealtime() - t0} ms (DSP not verified by read-back)")
+    }
+
     /** Profile -> device plan -> write -> read back and compare. Throws with the issues when it does not fit. */
     suspend fun writeProfile(device: UsbDevice, profile: Profile): WriteResult =
         when (val plan = ProtocolMicro.plan(profile)) {

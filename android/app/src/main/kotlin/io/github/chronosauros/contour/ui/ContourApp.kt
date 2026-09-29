@@ -46,6 +46,7 @@ import androidx.compose.material3.SnackbarVisuals
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Button
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -89,8 +90,9 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 
-private val BAR_TOUCH = 60.dp
-private val BAR_GAP = 12.dp
+/** The page bar: a control row like any other, [Grid.SIDE] from the screen edge below and beside it, [Grid.GAP] under the content. */
+private val BAR_H = Grid.ROW
+private val BAR_EDGE = Grid.SIDE
 
 private class UndoVisuals(override val message: String) : SnackbarVisuals {
     override val actionLabel = "UNDO"
@@ -134,15 +136,16 @@ fun ContourApp(
         var sheet by remember { mutableStateOf<Sheet?>(null) }
         var service by remember { mutableStateOf(false) }
         var licences by remember { mutableStateOf(false) }
+        var confirmSync by remember { mutableStateOf(false) }
         var archiveOpen by remember { mutableStateOf(prefs.getBoolean("archiveOpen", false)) }
         val snackbar = remember { SnackbarHostState() }
         val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         val nav = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-        val bottom = nav + BAR_GAP + BAR_TOUCH + BAR_GAP
+        val bottom = nav + BAR_EDGE + BAR_H + Grid.GAP
 
         LaunchedEffect(sheetRequest) {
             if (sheetRequest != null) {
-                sheet = sheetRequest
+                sender.leaveAb { sheet = sheetRequest }
                 onSheetRequestTaken()
             }
         }
@@ -151,11 +154,20 @@ fun ContourApp(
         LaunchedEffect(pager) {
             snapshotFlow { model.pageRequest }.filterNotNull().collect { p ->
                 model.pageRequest = null
-                launch { pager.animateScrollToPage(p) }
+                sender.leaveAb { scope.launch { pager.animateScrollToPage(p) } }
             }
         }
         LaunchedEffect(pager) {
             snapshotFlow { pager.settledPage }.drop(1).collect { haptics.step() }
+        }
+        // Swipes have no page-button callback: restore as soon as the pager targets Library.
+        LaunchedEffect(pager) {
+            snapshotFlow { pager.targetPage }.collect { if (it == Page.LIBRARY) sender.leaveAb() }
+        }
+        // Also covers model/review-hook changes that did not originate in a Tune control.
+        LaunchedEffect(model.current) {
+            val p = model.current
+            if (p == null || !sender.canAb(p)) sender.leaveAb()
         }
 
         fun undoable(text: String, onUndo: () -> Unit, onGone: () -> Unit) {
@@ -181,8 +193,13 @@ fun ContourApp(
         }
         val libraryActions = remember(model) {
             object : LibraryActions {
-                override fun edit(id: String) { sheet = Sheet.Edit(id) }
-                override fun newProfile() { sheet = Sheet.New }
+                override fun edit(id: String) { sender.leaveAb { sheet = Sheet.Edit(id) } }
+                override fun newProfile() { sender.leaveAb { sheet = Sheet.New } }
+                override fun syncAll() {
+                    if (!model.loading && !model.loadError && !model.deleting && model.profiles.isNotEmpty()) {
+                        confirmSync = true
+                    }
+                }
                 override fun archive(p: Profile) {
                     model.setArchived(p.id, true)
                     undoable("ARCHIVED ${p.name}", onUndo = { model.setArchived(p.id, false) }, onGone = {})
@@ -191,17 +208,17 @@ fun ContourApp(
                 override fun delete(p: Profile) {
                     model.delete(p.id)
                 }
-                override fun service() { service = true }
-                override fun licences() { licences = true }
+                override fun service() { sender.leaveAb { service = true } }
+                override fun licences() { sender.leaveAb { licences = true } }
             }
         }
         val tuneActions = remember(model) {
             object : TuneActions {
-                override fun edit(id: String) { sheet = Sheet.Edit(id) }
-                override fun value(param: Param) { sheet = Sheet.Value(param) }
-                override fun band(index: Int) { sheet = Sheet.BandActions(index) }
+                override fun edit(id: String) { sender.leaveAb { sheet = Sheet.Edit(id) } }
+                override fun value(param: Param) { sender.leaveAb { sheet = Sheet.Value(param) } }
+                override fun band(index: Int) { sender.leaveAb { sheet = Sheet.BandActions(index) } }
                 override fun sendDetails() { sheet = Sheet.SendFailure(sender.failure) }
-                override fun service() { service = true }
+                override fun service() { sender.leaveAb { service = true } }
             }
         }
 
@@ -236,30 +253,31 @@ fun ContourApp(
             }
             PageBar(
                 pager,
-                onPage = { scope.launch { pager.animateScrollToPage(it) } },
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = nav + BAR_GAP),
+                onPage = { page -> sender.leaveAb { scope.launch { pager.animateScrollToPage(page) } } },
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = nav + BAR_EDGE),
             )
             SnackbarHost(
                 snackbar,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottom + 8.dp),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottom),
             ) { data ->
-                val shape = RoundedCornerShape(18.dp)
+                val shape = RoundedCornerShape(Radii.L)
+                val actionLabel = data.visuals.actionLabel
                 Snackbar(
-                    modifier = Modifier.padding(horizontal = 14.dp).lift(shape, Lift.HERO),
+                    modifier = Modifier.padding(horizontal = Grid.SIDE).lift(shape, Lift.HERO),
                     shape = shape,
                     containerColor = pal.surface2,
                     contentColor = pal.text,
-                    action = {
+                    action = if (actionLabel == null) null else { {
                         TextButton(onClick = { data.performAction() }, modifier = Modifier.testTag("undo")) {
-                            Text(data.visuals.actionLabel ?: "UNDO", style = Type.label, color = pal.accent)
+                            Text(actionLabel, style = Type.label, color = pal.accent)
                         }
-                    },
+                    } },
                 ) { Text(data.visuals.message, style = Type.label, modifier = Modifier.testTag("snackbar_text")) }
             }
             if (model.saveError || model.deleting) {
                 Row(
-                    Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(top = top + 8.dp, start = 16.dp, end = 16.dp)
-                        .background(pal.surface2, RoundedCornerShape(12.dp)).padding(start = 12.dp),
+                    Modifier.align(Alignment.TopCenter).fillMaxWidth().padding(top = top + Grid.GAP, start = Grid.SIDE, end = Grid.SIDE)
+                        .background(pal.surface2, RoundedCornerShape(Radii.L)).padding(start = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(if (model.saveError) "NOT SAVED — CHECK STORAGE" else "SAVING DELETE…", style = Type.label, modifier = Modifier.weight(1f))
@@ -268,6 +286,44 @@ fun ContourApp(
             }
             if (service) DebugScreen(device) { service = false }
             if (licences) LicencesScreen { licences = false }
+        }
+
+        if (confirmSync) {
+            AlertDialog(
+                onDismissRequest = { confirmSync = false },
+                shape = RoundedCornerShape(Radii.L),
+                containerColor = pal.surface2,
+                titleContentColor = pal.text,
+                textContentColor = pal.textDim,
+                title = { Text("SAVE ALL PROFILES?", style = Type.rowName) },
+                text = {
+                    Text("You are about to save all current profiles as LAST SENT. " +
+                        "This replaces their previous LAST SENT settings. " +
+                        "There is no Undo button. Are you sure?")
+                },
+                confirmButton = {
+                    TextButton(
+                        enabled = !model.loading && !model.loadError && !model.deleting && model.profiles.isNotEmpty(),
+                        modifier = Modifier.testTag("sync_all_confirm"),
+                        onClick = {
+                            confirmSync = false
+                            val count = model.saveAllAsSent()
+                            if (count > 0) {
+                                snackbar.currentSnackbarData?.dismiss()
+                                scope.launch {
+                                    snackbar.showSnackbar("$count PROFILES SAVED AS LAST SENT", duration = SnackbarDuration.Short)
+                                }
+                            }
+                        },
+                    ) { Text("SAVE ALL", style = Type.label, color = pal.accent) }
+                },
+                dismissButton = {
+                    TextButton(onClick = { confirmSync = false }, modifier = Modifier.testTag("sync_all_cancel")) {
+                        Text("CANCEL", style = Type.label, color = pal.textDim)
+                    }
+                },
+                modifier = Modifier.testTag("sync_all_dialog"),
+            )
         }
 
         val close = { sheet = null }
@@ -281,31 +337,31 @@ fun ContourApp(
         }
 
         BackHandler(enabled = sheet == null && !service && !licences && pager.currentPage == Page.TUNE) {
-            scope.launch { pager.animateScrollToPage(Page.LIBRARY) }
+            sender.leaveAb { scope.launch { pager.animateScrollToPage(Page.LIBRARY) } }
         }
     }
 }
 
 /**
- * The page switch: a pressed-in block (full width, [BAR_TOUCH] tall) with a raised orange half that follows the
+ * The page switch: a pressed-in block (full width, [BAR_H] tall) with a raised orange half that follows the
  * pager position continuously, under two labelled halves - EQ (Tune) and LIBRARY. Tapping a half goes there.
  */
 @Composable
 private fun PageBar(pager: PagerState, onPage: (Int) -> Unit, modifier: Modifier = Modifier) {
     val c = pal
     val name = if (pager.settledPage == Page.TUNE) "page tune" else "page library"
-    val track = RoundedCornerShape(20.dp)
-    val knob = RoundedCornerShape(16.dp)
+    val track = RoundedCornerShape(Radii.L)
+    val knob = RoundedCornerShape(Radii.M)
     val pos = (pager.currentPage + pager.currentPageOffsetFraction).coerceIn(0f, 1f)
     Box(
         modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .height(BAR_TOUCH)
+            .padding(horizontal = Grid.SIDE)
+            .height(BAR_H)
             .clip(track)
             .background(c.track)
             .sink(track)
-            .padding(4.dp)
+            .padding(Grid.INSET)
             .semantics { contentDescription = name }
             .testTag("page_bar"),
     ) {

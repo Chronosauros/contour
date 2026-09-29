@@ -42,6 +42,12 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     var error by mutableStateOf<String?>(null)
         private set
 
+    /** snapshot remains the A reference during B; it must not be replaced by a bypass read. */
+    var abBypassed by mutableStateOf(false)
+        private set
+    private var abReference: DacSnapshot? = null
+    private var connectionEpoch = 0L
+
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
             when (intent.action) {
@@ -51,7 +57,13 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                     refresh(read = granted)
                 }
                 UsbManager.ACTION_USB_DEVICE_DETACHED -> {
+                    val detached = if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
+                        else @Suppress("DEPRECATION") intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE)
+                    if (detached?.vendorId != WalkPlay.VENDOR_ID || detached.productId != WalkPlay.PRODUCT_ID) return
                     UsbLog.line("detached")
+                    connectionEpoch++
+                    abBypassed = false
+                    abReference = null
                     snapshot = null
                     refresh(read = false)
                 }
@@ -84,8 +96,23 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             !manager.hasPermission(d) -> Link.NEEDS_PERMISSION
             else -> Link.CONNECTED
         }
-        if (link != Link.CONNECTED) snapshot = null
-        if (read && link == Link.CONNECTED) read()
+        if (link != Link.CONNECTED) {
+            connectionEpoch++
+            snapshot = null
+            abBypassed = false
+            abReference = null
+        }
+        if (read && link == Link.CONNECTED && !abBypassed) read()
+    }
+
+    /**
+     * Tap on NO DAC / the status pill: looks for the DAC again (it may have been plugged in without an attach
+     * event reaching the app), then asks for USB permission or reads it. Returns false when there is none.
+     */
+    fun connect(): Boolean {
+        refresh(read = true)
+        if (link == Link.NEEDS_PERMISSION) requestPermission()
+        return link != Link.NO_DAC
     }
 
     /** The system permission dialog (TAP TO CONNECT). */
@@ -98,6 +125,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     }
 
     fun read() {
+        if (abBypassed) return
         launchOp("read") { d ->
             snapshot = client.readDevice(d)
         }
@@ -105,6 +133,46 @@ class DeviceController(private val context: Context, private val scope: Coroutin
 
     /** Writes [profile] (plan, commit, read back, compare). The result's read-back becomes the snapshot. */
     suspend fun send(profile: Profile): SendOutcome = sendWith("send") { d -> client.writeProfile(d, profile) }
+
+    /** Toggle against the actual A registers, not the editor's rounded or emulated band values. */
+    suspend fun switchAb(bypass: Boolean): SendOutcome {
+        if (bypass == abBypassed) return SendOutcome(true, null)
+        val reference = (if (bypass) snapshot else abReference) ?: return forgetAb("DAC STATE UNKNOWN")
+        val d = findDac() ?: run {
+            abBypassed = false; abReference = null; snapshot = null; link = Link.NO_DAC
+            return SendOutcome(false, "NO DAC")
+        }
+        if (!manager.hasPermission(d)) { link = Link.NEEDS_PERMISSION; return forgetAb("NO PERMISSION") }
+        if (busy) return forgetAb("DAC BUSY")
+        val epoch = connectionEpoch
+        val bands = reference.bands.map { it.registers }.filter { it.gain256 != 0 }.map { r ->
+            WalkPlay.BandWrite(r.index, r.freq.toDouble(), if (bypass) 0.0 else r.gain256 / 256.0, r.q256 / 256.0, r.typeCode)
+        }
+        busy = true
+        return try {
+            client.writeTemporaryBands(d, bands, reference.slot)
+            if (epoch != connectionEpoch) return SendOutcome(false, "DAC DETACHED")
+            abBypassed = bypass
+            abReference = if (bypass) reference else null
+            error = null
+            UsbLog.line("A/B: ${if (bypass) "B — EQ OFF, PREAMP KEPT" else "A restored"}")
+            SendOutcome(true, null)
+        } catch (e: Exception) {
+            UsbLog.line("A/B failed: ${e.message}")
+            if (epoch != connectionEpoch) SendOutcome(false, "DAC DETACHED")
+            else forgetAb(e.message ?: e.javaClass.simpleName)
+        } finally {
+            busy = false
+        }
+    }
+
+    private fun forgetAb(reason: String): SendOutcome {
+        abBypassed = false
+        abReference = null
+        snapshot = null // partial switch: UI returns to A, but the DAC state is unknown, not ON DAC
+        error = reason
+        return SendOutcome(false, reason)
+    }
 
     private suspend fun sendWith(what: String, op: suspend (UsbDevice) -> WriteResult): SendOutcome {
         val d = findDac() ?: run { link = Link.NO_DAC; snapshot = null; return SendOutcome(false, "NO DAC") }

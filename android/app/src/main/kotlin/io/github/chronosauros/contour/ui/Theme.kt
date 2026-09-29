@@ -89,11 +89,14 @@ private fun liftShadow(level: Lift, p: Palette): Shadow {
 @Composable
 fun Modifier.lift(shape: Shape, level: Lift = Lift.CARD): Modifier = dropShadow(shape, liftShadow(level, pal))
 
-/** Pressed-in: a soft shadow inside the top edge. Put it after `background`. */
+/**
+ * Pressed-in: a soft shadow inside the top edge. Put it after `background`. Every pressed-in surface (slider
+ * tracks, the type well, the page bar, a disabled band, the empty slot, the switch) is [Palette.track] under this.
+ */
 @Composable
-fun Modifier.sink(shape: Shape): Modifier {
+fun Modifier.sink(shape: Shape, strength: Float = 1f): Modifier {
     val p = pal
-    return innerShadow(shape, Shadow(radius = 5.dp, color = p.shadow, offset = DpOffset(0.dp, 2.dp), alpha = 0.55f * p.shadowAlpha))
+    return innerShadow(shape, Shadow(radius = 5.dp, color = p.shadow, offset = DpOffset(0.dp, 2.dp), alpha = 0.55f * strength * p.shadowAlpha))
 }
 
 /** Google Sans from the Pixel (no bundled font); the system sans elsewhere. */
@@ -112,8 +115,10 @@ object Type {
 
     val screenTitle = s(38, FontWeight.Bold, (-0.01).em)
     val profileTitle = s(30, FontWeight.Bold, (-0.01).em)
-    val count = s(26, FontWeight.SemiBold)
-    val value = s(26, FontWeight.SemiBold, (-0.01).em)
+    /** The number in a value card. */
+    val value = s(18, FontWeight.SemiBold, 0.02.em)
+    /** FREQ / GAIN / Q / PREAMP over the number: about half of it. */
+    val paramLabel = s(7, FontWeight.SemiBold, 0.08.em)
     val chip = s(20, FontWeight.SemiBold)
     val rowName = s(18, FontWeight.Bold, (-0.015).em)
     val button = s(17, FontWeight.Bold, 0.04.em)
@@ -186,3 +191,26 @@ fun ContourTheme(dark: Boolean, content: @Composable () -> Unit) {
 
 /** Tabular numerals for every value. */
 val Tabular = TextStyle(fontFeatureSettings = "tnum")
+
+/**
+ * The one layout grid: the page margin, the gap between neighbouring blocks (and between a row's buttons), the
+ * height of every control row (bands, filter type, values, PREAMP, HOLD TO SEND, the page bar, sheet buttons)
+ * and the inset of a control inside its well (the type pill, the slider, the page-bar knob).
+ */
+object Grid {
+    val SIDE = 16.dp
+    val GAP = 8.dp
+    val ROW = 56.dp
+    val INSET = 4.dp
+    /** Text inside an L-radius card starts this far from its edge: past the curve of the corner. */
+    val TEXT = 24.dp
+    /** Air around the send button: it stands apart from the controls above and the page bar below. */
+    val GROUP = 16.dp
+}
+
+/** The one corner scale. L = anything that stands on the page, M = inside an L (4 dp inset) or a small control, S = tap areas and tags. */
+object Radii {
+    val L = 20.dp
+    val M = 16.dp
+    val S = 12.dp
+}

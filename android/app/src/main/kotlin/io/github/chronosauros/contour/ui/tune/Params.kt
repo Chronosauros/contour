@@ -33,6 +33,13 @@ enum class Param(val label: String, val unit: String, val scale: Scale?, val hom
         PREAMP -> "${Fmt.gain(v)} dB"
     }
 
+    /** [text] without the unit: the number the stacked value shows big, [unit] small beside it. */
+    fun number(v: Double): String = when (this) {
+        FREQ -> Fmt.freq(v)
+        GAIN, PREAMP -> Fmt.gain(v)
+        Q -> Fmt.q(v)
+    }
+
     /** Plain number for the text field. */
     fun edit(v: Double): String = when (this) {
         FREQ -> Math.round(v).toString()

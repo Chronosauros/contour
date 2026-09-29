@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.semantics
@@ -52,6 +53,7 @@ import io.github.chronosauros.contour.ui.kit.Scale
 import io.github.chronosauros.contour.ui.kit.detectHorizontalDragWithEnds
 import io.github.chronosauros.contour.ui.kit.holdsPager
 import io.github.chronosauros.contour.ui.lift
+import io.github.chronosauros.contour.ui.Radii
 import io.github.chronosauros.contour.ui.pal
 import io.github.chronosauros.contour.ui.sink
 import io.github.chronosauros.contour.usb.DeviceController
@@ -103,30 +105,32 @@ private fun dragGain(speedDp: Float, slow: Float): Float = ratioLerp(slow, FAST,
  * ([LiftGuard]). Horizontal drags inside it never reach the pager.
  */
 @Composable
-fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier: Modifier = Modifier) {
+fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     val scale = param.scale!!
     val haptics = LocalHaptics.current
     val pagerLock = LocalPagerLock.current
     val p = pal
     val v = rememberUpdatedState(value)
     val change = rememberUpdatedState(onChange)
-    val shape = RoundedCornerShape(11.dp)
+    val shape = RoundedCornerShape(Radii.M)
     Box(
         modifier
             .testTag("slider_${param.name.lowercase()}")
             .semantics {
                 contentDescription = "${param.label} slider"
                 progressBarRangeInfo = ProgressBarRangeInfo(value.toFloat(), scale.min.toFloat()..scale.max.toFloat())
+                if (!enabled) disabled()
                 setProgress { requested ->
-                    if (!requested.isFinite()) false else {
+                    if (!enabled || !requested.isFinite()) false else {
                         val next = scale.quantize(requested.toDouble().coerceIn(scale.min, scale.max))
                         if (next != value) onChange(next)
                         true
                     }
                 }
             }
-            .holdsPager(pagerLock)
-            .pointerInput(param) {
+            .then(if (enabled) Modifier.holdsPager(pagerLock) else Modifier)
+            .pointerInput(param, enabled) {
+                if (!enabled) return@pointerInput
                 val guard = LiftGuard<Double>(density, param.name)
                 var pos = 0f
                 var atEnd = false
@@ -183,38 +187,6 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
     }
 }
 
-/** A switch: 52 x 32 track (accent when on, pressed in), a raised 26 dp knob; 48 dp tall touch target. */
-@Composable
-fun Toggle(checked: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier) {
-    val p = pal
-    val haptics = LocalHaptics.current
-    val x by animateDpAsState(if (checked) 23.dp else 3.dp, label = "knob")
-    val track = RoundedCornerShape(16.dp)
-    Box(
-        modifier
-            .size(60.dp, 48.dp)
-            .toggleable(checked, interactionSource = null, indication = null, role = Role.Switch) { haptics.segment(); onChange(it) },
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(
-            Modifier
-                .size(52.dp, 32.dp)
-                .clip(track)
-                .background(if (checked) p.accent else p.track)
-                .sink(track),
-        ) {
-            Box(
-                Modifier
-                    .offset(x = x)
-                    .align(Alignment.CenterStart)
-                    .size(26.dp)
-                    .lift(CircleShape, Lift.RAISED)
-                    .background(if (checked) p.text else p.textDim, CircleShape),
-            )
-        }
-    }
-}
-
 /** What HOLD TO SEND shows for [p] now. */
 fun holdLabel(p: Profile, device: DeviceController, sender: Sender): String = when {
     sender.sendingId == p.id -> "SENDING"
@@ -246,7 +218,7 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
     val details = rememberUpdatedState(onDetails)
     val orange = label == "HOLD TO SEND" || label == "SENDING"
     val flat = label == "NO DAC"
-    val shape = RoundedCornerShape(24.dp)
+    val shape = RoundedCornerShape(Radii.L)
     Box(
         modifier
             .fillMaxWidth()
@@ -270,7 +242,10 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
                     down.consume()
                     when (labelNow.value) {
                         "SENDING" -> return@awaitEachGesture
-                        "NO DAC" -> { haptics.reject(); return@awaitEachGesture }
+                        "NO DAC" -> {
+                            if (waitUp() && !device.connect()) haptics.reject()
+                            return@awaitEachGesture
+                        }
                         "INVALID EQ - EDIT BAND" -> { haptics.reject(); return@awaitEachGesture }
                         "TAP TO CONNECT" -> {
                             val up = waitUp()

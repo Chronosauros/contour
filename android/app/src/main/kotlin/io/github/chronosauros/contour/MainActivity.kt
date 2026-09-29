@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.Lifecycle
 import io.github.chronosauros.contour.model.AppModel
 import io.github.chronosauros.contour.model.Backup
 import io.github.chronosauros.contour.model.Page
@@ -28,12 +29,15 @@ import io.github.chronosauros.contour.usb.DeviceController
 import io.github.chronosauros.contour.usb.UsbLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     companion object {
         private val persistenceScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         private var processModel: AppModel? = null
+        private var pendingAbCleanup: Job? = null
     }
     private lateinit var model: AppModel
     private lateinit var device: DeviceController
@@ -55,7 +59,8 @@ class MainActivity : ComponentActivity() {
             Backup.beforeV1(appContext)
         }.also { processModel = it; it.load() }
         device = DeviceController(this, lifecycleScope)
-        sender = Sender(model, device, lifecycleScope)
+        // A/B restoration must survive ON_STOP and Activity destruction long enough to release HID.
+        sender = Sender(model, device, lifecycleScope, persistenceScope)
         device.start()
         applyReviewExtras(intent, first = true)
 
@@ -108,23 +113,36 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         if (intent.action == UsbManager.ACTION_USB_DEVICE_ATTACHED) {
             UsbLog.line("attached")
-            device.refresh(read = true)
+            refreshDevice()
         }
         applyReviewExtras(intent, first = false)
     }
 
     override fun onResume() {
         super.onResume()
-        device.refresh(read = true)
+        sender.onResume()
+        refreshDevice()
+    }
+
+    private fun refreshDevice() {
+        // A recreated Activity must not read B before the old one restores A and releases HID.
+        val cleanup = pendingAbCleanup
+        lifecycleScope.launch {
+            cleanup?.join()
+            if (pendingAbCleanup === cleanup) pendingAbCleanup = null
+            if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) device.refresh(read = true)
+        }
     }
 
     override fun onStop() {
+        sender.onStop()
         model.flush()
         super.onStop()
     }
 
     override fun onDestroy() {
-        device.stop()
+        val previous = pendingAbCleanup
+        pendingAbCleanup = sender.leaveAb { device.stop() } ?: previous?.takeIf { it.isActive }
         super.onDestroy()
     }
 }

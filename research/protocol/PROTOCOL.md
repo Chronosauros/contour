@@ -149,3 +149,22 @@ Same handler/wire format for SchemeNo10-21 (WH L7). Differences are config only:
 - Write test NOT run: the session's permission classifier blocked the device-writing command
   ("Real-World Transactions"). Still open: whether volatile writes apply without the commit, whether
   writes get acks, write->read-back latency, and the commit round-trip.
+
+## Ear test, 2026-09-29 (live_test.py, owner listening on the PC, music playing)
+- The Micro's HID interface was MI_02 on this PC (MI_03 on 25.09): walkplay.py now matches usage page 0x0C.
+- Band 1 toggled between the DAC value and PK 2000 Hz Q 0.7 -10 dB, 4 cycles x 4 s, restore verified by read-back.
+- `--apply none` (band writes + preamp, no commit command): no audible change. Read-back echoes the registers
+  anyway, so read-back does not prove the DSP applied a write.
+- `--apply temp` (band writes + preamp + TEMP_WRITE `0x0A` only, no flash): the cut applied live on every switch,
+  with light pops/clicks at the switches.
+- Persistence: `--apply temp --leave-modified` left the cut on the DAC; after unplug/replug read_device.py
+  showed the pre-test state (device-backup-2026-09-29-224718.json: same freq/gain/Q/type for all 8 bands,
+  preamp -3 dB; biquad low bytes differ slightly, the DAC recomputes them). TEMP_WRITE is RAM-only.
+- Click test (`--apply temp --cut gain`: only band 7's gain toggles 0 -> -10 dB, freq/Q unchanged), owner's
+  ranking: best `--writes changed` (only the changed band + TEMP_WRITE, no preamp write); second `--writes all`
+  (8 bands + preamp + TEMP_WRITE); worst `--writes changed --ramp 4` (gain stepped in 5 writes ~30 ms apart -
+  each step is its own click). Softest live change: one band write + TEMP_WRITE, in one jump, no ramp.
+- For the app (1.1.x always sends 8 bands + preamp + 0x05, 0x17, 0x0A, 0x01 = flash, only on Send): live
+  preview, A/B and CLEAR EQ can send only the changed bands + TEMP_WRITE (RAM, no flash wear); Save keeps
+  the full commit. After unplug the DAC falls back to the last saved EQ. Owner decision 29.09: build only
+  A/B this way; live preview dropped, CLEAR EQ unchanged (ROADMAP.md).

@@ -1,0 +1,1 @@
+Szybkie A/B: przycisk A/B na wykresie wyłącza i włącza EQ w trakcie słuchania, z zachowanym preampem, bez zapisu w pamięci DAC-a. Nowe wiersze parametrów i pasek PREAMP (MANUAL / AUTO), jedna szarość, skala zaokrągleń i siatka odstępów. CLEAR EQ na stronie EQ, LAST SENT dla wszystkich profili z Biblioteki (karta +, z potwierdzeniem). Dotknięcie NO DAC łączy z podłączonym DAC-iem.

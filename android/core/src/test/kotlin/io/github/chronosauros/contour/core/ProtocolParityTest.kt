@@ -164,6 +164,36 @@ class ProtocolParityTest {
     }
 
     @Test
+    fun `A-B temporary bands contain only changed slots and TEMP_WRITE without preamp or flash`() {
+        // Sample A: one cut, one boost, all remaining bands already at zero; DAC preamp stays -3 dB.
+        val a = listOf(
+            WalkPlay.BandWrite(0, 2000.0, -10.0, 179 / 256.0, WalkPlay.TYPE_PK),
+            WalkPlay.BandWrite(1, 100.0, 2.0, 192 / 256.0, WalkPlay.TYPE_LSQ),
+        ) + (2 until WalkPlay.BANDS).map { WalkPlay.factoryFlat(it) }
+        val changed = a.filter { it.registers().gain256 != 0 }
+        val toB = WalkPlay.temporaryBandSequence(changed.map { it.copy(gainDb = 0.0) }, slot = 7)
+        val toA = WalkPlay.temporaryBandSequence(changed, slot = 7)
+        val temp = WalkPlay.report(WalkPlay.WRITE, 0x0A, 0x04, 0, 0, 0xFF, 0xFF, 0)
+        assertEquals(3, toB.size)
+        assertEquals(3, toA.size)
+        for (sequence in listOf(toB, toA)) {
+            assertEquals(listOf(0x09, 0x09, 0x0A), sequence.map { it.report[2].toInt() and 0xFF })
+            assertEquals(listOf(20L, 20L, 0L), sequence.map { it.delayAfterMs })
+            assertEquals(hex(temp), hex(sequence.last().report))
+            assertTrue(sequence.all { it.report.size == WalkPlay.REPORT_SIZE })
+        }
+        changed.forEachIndexed { i, original ->
+            assertEquals(original.registers().copy(gain256 = 0), WalkPlay.parseBand(toB[i].report).registers)
+            assertEquals(original.registers(), WalkPlay.parseBand(toA[i].report).registers)
+            assertEquals(7, WalkPlay.parseSlot(toB[i].report))
+            assertEquals(hex(WalkPlay.bandWriteReport(original, 7)), hex(toA[i].report))
+        }
+        assertEquals(hex(temp), hex(WalkPlay.temporaryBandSequence(emptyList(), 7).single().report))
+        println("A/B SAMPLE A->B slot=7, preamp=-3 (not written); full 64-byte reports:")
+        toB.forEachIndexed { i, step -> println("  ${i + 1}: ${hex(step.report)}; delay ${step.delayAfterMs} ms") }
+    }
+
+    @Test
     fun `4 - APO text round trip is lossless and Nightfall's auto preamp is -3 dB`() {
         needLibrary()
         val files = library.listFiles().orEmpty().filter { it.isDirectory }

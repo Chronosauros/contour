@@ -51,6 +51,7 @@ import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Icon
 import androidx.compose.ui.draw.clip
 import androidx.compose.material3.Text
@@ -98,9 +99,11 @@ import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.model.AppModel
 import io.github.chronosauros.contour.model.Sender
 import io.github.chronosauros.contour.ui.DeviceStatus
+import io.github.chronosauros.contour.ui.Grid
 import io.github.chronosauros.contour.ui.Lift
 import io.github.chronosauros.contour.ui.Type
 import io.github.chronosauros.contour.ui.lift
+import io.github.chronosauros.contour.ui.Radii
 import io.github.chronosauros.contour.ui.pal
 import io.github.chronosauros.contour.ui.sink
 import io.github.chronosauros.contour.ui.ResponseThumb
@@ -116,6 +119,7 @@ import kotlinx.coroutines.launch
 interface LibraryActions {
     fun edit(id: String)
     fun newProfile()
+    fun syncAll()
     fun archive(p: Profile)
     fun restore(p: Profile)
     fun delete(p: Profile)
@@ -127,8 +131,9 @@ private val CARD_HEIGHT = 76.dp
 private val ACTION_WIDTH = 96.dp
 /** At rest the card stops short of the row edge; the strip behind it shows faint action icons (a hint to swipe left). */
 private val HINT_GAP = 22.dp
-private val SIDE = 14.dp
-private val CARD = RoundedCornerShape(20.dp)
+private const val NEW_SLOT_ID = "library-new-slot"
+private val SIDE = Grid.SIDE
+private val CARD = RoundedCornerShape(Radii.L)
 
 /**
  * Library: choosing and managing profiles only - it never sends anything to the DAC.
@@ -150,8 +155,11 @@ fun LibraryScreen(
     val c = pal
     val listState = rememberLazyListState()
     var openId by remember { mutableStateOf<String?>(null) }
-    // The shipped DUSK profile hints the swipe until someone swipes a row.
-    var swiped by rememberSaveable { mutableStateOf(false) }
+    // The shipped DUSK profile hints the swipe until someone swipes a row once - remembered for good
+    // (app data survives updates), so the hint never returns, whatever happens to the DUSK profile.
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val prefs = remember { context.getSharedPreferences("ui", android.content.Context.MODE_PRIVATE) }
+    var swiped by remember { mutableStateOf(prefs.getBoolean("swipeHintDone", false)) }
     var nudge by remember { mutableIntStateOf(0) }
     val hintId = if (swiped) null else model.active.firstOrNull { it.name == "DUSK" }?.id
     LaunchedEffect(visible, hintId) {
@@ -201,17 +209,11 @@ fun LibraryScreen(
         ) {
             item(key = "header") {
                 Row(
-                    Modifier.fillMaxWidth().height(72.dp).padding(start = SIDE + 6.dp, end = SIDE),
+                    // Same header height as Tune; the status ends at the profile cards' right edge.
+                    Modifier.fillMaxWidth().height(Grid.ROW).padding(start = SIDE + 6.dp, end = SIDE + HINT_GAP),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("LIBRARY", style = Type.screenTitle, color = c.text, modifier = Modifier.alignByBaseline())
-                    Spacer(Modifier.width(14.dp))
-                    Text(
-                        "${active.size}",
-                        style = Type.count,
-                        color = c.textMute,
-                        modifier = Modifier.alignByBaseline().testTag("library_count"),
-                    )
+                    Text("LIBRARY", style = Type.screenTitle, color = c.text)
                     Spacer(Modifier.weight(1f))
                     DeviceStatus(device, actions::service)
                 }
@@ -224,7 +226,7 @@ fun LibraryScreen(
                     onDac = p.id == onDac,
                     open = openId == p.id,
                     onOpen = { openId = if (it) p.id else if (openId == p.id) null else openId },
-                    onTap = { model.choose(p.id) },
+                    onTap = { sender.leaveAb { model.choose(p.id) } },
                     onLongPress = { actions.edit(p.id) },
                     fullAction = { actions.archive(p) },
                     rowActions = listOf(
@@ -233,26 +235,27 @@ fun LibraryScreen(
                     ),
                     coords = rowCoords,
                     nudge = if (p.id == hintId) nudge else 0,
-                    onSwipe = { swiped = true },
+                    onSwipe = {
+                        if (!swiped) {
+                            swiped = true
+                            prefs.edit().putBoolean("swipeHintDone", true).apply()
+                        }
+                    },
                 )
             }
             item(key = "empty-slot") {
-                // the empty slot is pressed into the page: a place waiting for a profile
-                Box(
-                    Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = SIDE, vertical = 4.dp)
-                        .height(64.dp)
-                        .clip(CARD)
-                        .background(c.sunken)
-                        .sink(CARD)
-                        .clickable { openId = null; actions.newProfile() }
-                        .semantics { contentDescription = "empty slot" }
-                        .testTag("empty_slot"),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(Icons.Rounded.Add, null, tint = c.textDim, modifier = Modifier.size(28.dp))
-                }
+                SwipeRow(
+                    p = null,
+                    current = false,
+                    onDac = false,
+                    open = openId == NEW_SLOT_ID,
+                    onOpen = { openId = if (it) NEW_SLOT_ID else if (openId == NEW_SLOT_ID) null else openId },
+                    onTap = { openId = null; actions.newProfile() },
+                    onLongPress = {},
+                    fullAction = actions::syncAll,
+                    rowActions = listOf(RowAction("LAST SENT", "sync", Icons.Rounded.Sync, actions::syncAll)),
+                    coords = rowCoords,
+                )
             }
             if (archived.isNotEmpty()) {
                 item(key = "archive-header") {
@@ -281,7 +284,7 @@ fun LibraryScreen(
                             onDac = p.id == onDac,
                             open = openId == p.id,
                             onOpen = { openId = if (it) p.id else if (openId == p.id) null else openId },
-                            onTap = { model.choose(p.id) },
+                            onTap = { sender.leaveAb { model.choose(p.id) } },
                             onLongPress = { actions.edit(p.id) },
                             fullAction = { actions.restore(p) },
                             rowActions = listOf(
@@ -290,7 +293,12 @@ fun LibraryScreen(
                             ),
                             coords = rowCoords,
                             dim = true,
-                            onSwipe = { swiped = true },
+                            onSwipe = {
+                        if (!swiped) {
+                            swiped = true
+                            prefs.edit().putBoolean("swipeHintDone", true).apply()
+                        }
+                    },
                         )
                     }
                 }
@@ -321,7 +329,7 @@ class RowAction(val label: String, val tag: String, val icon: ImageVector, val r
  */
 @Composable
 private fun SwipeRow(
-    p: Profile,
+    p: Profile?,
     current: Boolean,
     onDac: Boolean,
     open: Boolean,
@@ -391,8 +399,9 @@ private fun SwipeRow(
     val longPress = rememberUpdatedState(onLongPress)
     val full = rememberUpdatedState(fullAction)
     val setOpen = rememberUpdatedState(onOpen)
-    val name = p.name
-    DisposableEffect(p.id, coords) { onDispose { coords.remove(p.id) } }
+    val name = p?.name ?: "empty_slot"
+    val rowId = p?.id ?: NEW_SLOT_ID
+    DisposableEffect(rowId, coords) { onDispose { coords.remove(rowId) } }
 
     Box(
         Modifier
@@ -400,8 +409,8 @@ private fun SwipeRow(
             .padding(horizontal = SIDE, vertical = 4.dp)
             .height(CARD_HEIGHT)
             .onSizeChanged { width = it.width }
-            .onGloballyPositioned { coords[p.id] = it.boundsInWindow() }
-            .pointerInput(p.id) {
+            .onGloballyPositioned { coords[rowId] = it.boundsInWindow() }
+            .pointerInput(rowId) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val slop = viewConfiguration.touchSlop
@@ -478,11 +487,13 @@ private fun SwipeRow(
             }
             .semantics(mergeDescendants = true) {
                 selected = current
-                contentDescription = if (dim) "${p.name}, archived" else p.name
-                onClick(label = "Select profile") { tap.value(); true }
-                onLongClick(label = "Edit profile") { longPress.value(); true }
+                contentDescription = if (p == null) "New profile; swipe left to save all profiles as LAST SENT"
+                    else if (dim) "${p.name}, archived" else p.name
+                onClick(label = if (p == null) "Create profile" else "Select profile") { tap.value(); true }
+                if (p != null) onLongClick(label = "Edit profile") { longPress.value(); true }
                 customActions = rowActions.map { a ->
-                    CustomAccessibilityAction(a.label.lowercase().replaceFirstChar { it.uppercase() } + " profile") {
+                    CustomAccessibilityAction(if (p == null) "Save all profiles as LAST SENT"
+                        else a.label.lowercase().replaceFirstChar { it.uppercase() } + " profile") {
                         setOpen.value(false)
                         a.run()
                         true
@@ -511,11 +522,18 @@ private fun SwipeRow(
                 .fillMaxWidth()
                 .padding(end = HINT_GAP)
                 // the current profile stands a step higher than the others; archived rows lie flat
-                .let { if (dim) it else it.lift(CARD, if (current) Lift.RAISED else Lift.CARD) }
-                .background(c.surface, CARD)
-                .padding(start = 20.dp, end = 22.dp),
+                .let { if (p == null || dim) it else it.lift(CARD, if (current) Lift.RAISED else Lift.CARD) }
+                .background(if (p == null) c.track else c.surface, CARD)
+                .let { if (p == null) it.sink(CARD) else it.padding(start = 20.dp, end = 22.dp) }
+                .testTag(if (p == null) "empty_slot" else "profile_card"),
             verticalAlignment = Alignment.CenterVertically,
         ) {
+            if (p == null) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Icon(Icons.Rounded.Add, null, tint = c.textDim, modifier = Modifier.size(28.dp))
+                }
+                return@Row
+            }
             Icon(
                 ProfileIcons.of(p.icon),
                 contentDescription = null,
@@ -546,15 +564,15 @@ private fun SwipeRow(
                 Text(
                     "ON DAC",
                     style = Type.small,
-                    color = c.textDim,
+                    color = c.accent,
                     modifier = Modifier
-                        .background(c.surface2, RoundedCornerShape(8.dp))
+                        .background(c.surface2, RoundedCornerShape(Radii.S))
                         .padding(horizontal = 8.dp, vertical = 4.dp)
                         .testTag("row_${name}_ondac"),
                 )
                 Spacer(Modifier.width(12.dp))
             }
-            ResponseThumb(p.bands, if (dim) c.textMute else c.textDim, Modifier.width(74.dp).height(32.dp))
+            ResponseThumb(p.bands, if (dim) c.textMute else c.textDim, Modifier.width(74.dp).height(52.dp))
         }
     }
 }

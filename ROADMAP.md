@@ -35,16 +35,16 @@ Source: devicePEQ `usbDeviceConfig.js` (26.09.2026). One driver unlocks the whol
 
 Suggested order: WalkPlay IDs first (no new code), then KT Micro (a user is asking), then FiiO (the handler is already in our copy, largest group), then Moondrop. Leave Conexant and Fosi until someone asks for them.
 
-## Live preview on the DAC
-- Band writes without the flash commit may apply live. To be confirmed by ear. If yes: stream band changes while dragging (at most 20-30 writes per second), commit to flash only on send.
+## Live preview on the DAC - dropped (owner, 29.09.2026)
+- Ear test 29.09 confirmed that band writes + TEMP_WRITE (0x0A) apply live from RAM (`research/protocol/PROTOCOL.md`, "Ear test, 2026-09-29"). Owner decided not to build live preview; only A/B uses this path.
 
 ## Other WalkPlay SchemeNo11 devices
 - About 140 PIDs share the scheme in devicePEQ's table. Enable them after a tester confirms one.
 
 ## Reddit feedback 27.09.2026 (freestyler7) - to check later
 - Clear EQ - done in 1.1.1 (CLEAR EQ in EDIT PROFILE).
-- Quick A/B button: bypass EQ but keep the preamp. Concern: Micro pops when saving a profile while music plays, so A/B through flash writes would be jarring.
-- Question: does the DAC have an in-memory (RAM) mode, or is a flash write the only option? Ties into "Live preview on the DAC" above - if band writes without the flash commit apply live, A/B and Clear can use them and skip the pop.
+- Quick A/B button: bypass EQ but keep the preamp. Concern: Micro pops when saving a profile while music plays, so A/B through flash writes would be jarring. **Planned for the next release (owner, 29.09).** Switch through RAM: send only the changed bands + TEMP_WRITE, no preamp, no ramp - the quietest method in the ear test. A/B must never commit to flash; after unplug the DAC falls back to the last sent EQ. Placement chosen 29.09: raised "A/B" button in the top-right corner of the graph card; in B it turns accent and reads "EQ OFF  PREAMP KEPT" (owner), the curve lies flat with a ghost of the EQ, band controls dim, preamp row stays bright (`docs/changes/2026-09-29-ab-toggle/variant-graph-*.png`).
+- Question: does the DAC have an in-memory (RAM) mode? Answered 29.09: yes, TEMP_WRITE applies band writes live and is lost on unplug. CLEAR EQ stays as it is (flash write) unless the owner decides otherwise.
 
 ## Header layout after the undo buttons
 - 1.1.1 shrinks the name 30 -> 17 sp before the ellipsis. A full header rebuild waits for A/B, which also wants header space.

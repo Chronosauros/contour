@@ -12,7 +12,7 @@ data class EqState(val bands: List<Band>, val preampDb: Double? = null) {
 
 /**
  * One profile's edit history. [undo] ends with the most recent step; [sent] is the EQ as it was last
- * verified on the DAC (null until the first send from a build that keeps it).
+ * verified on the DAC or saved explicitly through Library's save-all action (null until either happens).
  */
 @Serializable
 data class ProfileHistory(

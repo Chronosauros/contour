@@ -21,6 +21,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import io.github.chronosauros.contour.ui.Grid
+import io.github.chronosauros.contour.ui.Radii
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -89,11 +91,11 @@ fun SheetFrame(onDismiss: () -> Unit, content: @Composable () -> Unit) {
                 .fillMaxWidth()
                 .semantics { testTagsAsResourceId = true }
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 20.dp)
-                .padding(bottom = 16.dp)
+                .padding(horizontal = Grid.SIDE)
+                .padding(bottom = Grid.SIDE)
                 .navigationBarsPadding()
                 .imePadding(),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(Grid.GAP),
         ) { content() }
     }
 }
@@ -141,9 +143,9 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit) {
                                 .weight(1f)
                                 .aspectRatio(1.4f)
                                 .heightIn(min = 48.dp)
-                                .clip(RoundedCornerShape(10.dp))
+                                .clip(RoundedCornerShape(Radii.S))
                                 .background(if (sel) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceContainerLow)
-                                .border(if (sel) 2.dp else 0.dp, if (sel) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(10.dp))
+                                .border(if (sel) 2.dp else 0.dp, if (sel) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(Radii.S))
                                 .clickable { model.setIcon(id, n) }
                                 .testTag("icon_$n"),
                             contentAlignment = androidx.compose.ui.Alignment.Center,
@@ -152,10 +154,10 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit) {
                 }
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Grid.GAP)) {
             OutlinedButton(
                 onClick = { model.duplicate(id); onDone() },
-                modifier = Modifier.weight(1f).height(52.dp).testTag("edit_duplicate"),
+                modifier = Modifier.weight(1f).height(Grid.ROW).testTag("edit_duplicate"),
             ) { Text("DUPLICATE") }
             OutlinedButton(
                 onClick = {
@@ -168,7 +170,7 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit) {
                     context.startActivity(Intent.createChooser(send, cur.name))
                 },
                 enabled = sharePreamp != null,
-                modifier = Modifier.weight(1f).height(52.dp).testTag("edit_share"),
+                modifier = Modifier.weight(1f).height(Grid.ROW).testTag("edit_share"),
             ) { Text("SHARE") }
         }
         if (sharePreamp == null) Text("Cannot share: AUTO preamp unavailable for invalid EQ")
@@ -176,7 +178,7 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit) {
         OutlinedButton(
             onClick = { model.clearEq(id); onDone() },
             enabled = !clear,
-            modifier = Modifier.fillMaxWidth().height(52.dp).testTag("edit_clear"),
+            modifier = Modifier.fillMaxWidth().height(Grid.ROW).testTag("edit_clear"),
         ) { Text("CLEAR EQ") }
         Text(
             "One flat band, preamp AUTO. UNDO on the EQ page brings the curve back.",
@@ -241,7 +243,7 @@ private fun Option(title: String, detail: String, enabled: Boolean, tag: String,
         Modifier
             .fillMaxWidth()
             .heightIn(min = 64.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(Radii.M))
             .background(c.surfaceContainerHigh)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp)
@@ -310,7 +312,7 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
             keyboardActions = KeyboardActions(onDone = { commit() }),
             modifier = Modifier.fillMaxWidth().focusRequester(focus).testTag("value_input"),
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(Grid.GAP)) {
             if (param == Param.GAIN || param == Param.PREAMP) {
                 OutlinedButton(
                     onClick = {
@@ -318,10 +320,10 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
                         val n = if (t.startsWith("-")) t.drop(1) else "-$t"
                         text = TextFieldValue(n, TextRange(n.length))
                     },
-                    modifier = Modifier.weight(1f).height(52.dp).testTag("value_sign"),
+                    modifier = Modifier.weight(1f).height(Grid.ROW).testTag("value_sign"),
                 ) { Text("+/-") }
             }
-            Button(onClick = { commit() }, modifier = Modifier.weight(1f).height(52.dp).testTag("value_done")) { Text("DONE") }
+            Button(onClick = { commit() }, modifier = Modifier.weight(1f).height(Grid.ROW).testTag("value_done")) { Text("DONE") }
         }
     }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
@@ -335,11 +337,11 @@ fun BandSheet(model: AppModel, index: Int, onDone: () -> Unit) {
         SheetTitle("BAND ${index + 1}")
         OutlinedButton(
             onClick = { model.toggleBypass(index); onDone() },
-            modifier = Modifier.fillMaxWidth().height(52.dp).testTag("band_bypass"),
+            modifier = Modifier.fillMaxWidth().height(Grid.ROW).testTag("band_bypass"),
         ) { Text(if (b.enabled) "BYPASS" else "ENABLE") }
         OutlinedButton(
             onClick = { model.deleteBand(index); onDone() },
-            modifier = Modifier.fillMaxWidth().height(52.dp).testTag("band_delete"),
+            modifier = Modifier.fillMaxWidth().height(Grid.ROW).testTag("band_delete"),
         ) { Text("DELETE") }
     }
 }

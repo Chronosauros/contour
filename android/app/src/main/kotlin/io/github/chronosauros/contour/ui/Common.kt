@@ -7,10 +7,12 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -22,6 +24,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import io.github.chronosauros.contour.core.Band
 import io.github.chronosauros.contour.core.Dsp
@@ -33,8 +38,8 @@ import io.github.chronosauros.contour.usb.Link
 private val LED_ON = Color(0xFF46D17A)
 
 /**
- * Device status (a pill: label + LED), the same on both pages: tap = USB permission, long-press = service screen.
- * The pill is 36 dp tall inside a 48 dp touch target.
+ * Device status in the Library (a pill: label + LED): tap = USB permission, long-press = service screen.
+ * Matches CLEAR EQ's 48 dp height and M corners; NO DAC also matches its text-based width.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -48,27 +53,33 @@ fun DeviceStatus(device: DeviceController, onService: () -> Unit, modifier: Modi
         else -> "CONNECTED"
     }
     val on = device.link == Link.CONNECTED
+    val shape = RoundedCornerShape(Radii.M)
+    val textMeasurer = rememberTextMeasurer()
+    val compactWidth = with(LocalDensity.current) {
+        textMeasurer.measure("CLEAR EQ", style = Type.label).size.width.toDp()
+    } + 32.dp
     Box(
         modifier
-            .heightIn(min = 48.dp)
+            .height(Grid.ROW - Grid.INSET * 2)
+            .then(if (label == "NO DAC") Modifier.width(compactWidth) else Modifier.widthIn(min = compactWidth))
+            .lift(shape, Lift.RAISED)
+            .clip(shape)
+            .background(p.surface)
             .combinedClickable(
                 indication = null,
                 interactionSource = null,
-                onClick = { device.requestPermission() },
+                onClick = { device.connect() },
                 onLongClick = { haptics.longPress(); onService() },
             )
             .testTag("device_status"),
         contentAlignment = Alignment.Center,
     ) {
         Row(
-            Modifier
-                .lift(CircleShape)
-                .background(p.surface, CircleShape)
-                .padding(start = 16.dp, end = 14.dp, top = 10.dp, bottom = 10.dp),
+            Modifier.padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(label, style = Type.label, color = p.textDim)
+            Text(label, style = Type.label, color = p.textDim, maxLines = 1, softWrap = false)
             Canvas(Modifier.size(8.dp)) {
                 val r = size.minDimension / 2
                 if (on) drawCircle(LED_ON, r)

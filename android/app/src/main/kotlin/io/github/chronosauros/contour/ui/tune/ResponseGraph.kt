@@ -33,6 +33,7 @@ import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.model.AppModel
 import io.github.chronosauros.contour.ui.Type
 import io.github.chronosauros.contour.ui.lift
+import io.github.chronosauros.contour.ui.Radii
 import io.github.chronosauros.contour.ui.pal
 import io.github.chronosauros.contour.ui.kit.LiftGuard
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
@@ -57,7 +58,7 @@ class PlotMap(private val w: Float, private val h: Float, private val pad: Float
 
 private val PAD = 18.dp
 private val NODE_RADIUS = 12.dp
-private val GRAPH_SHAPE = RoundedCornerShape(18.dp)
+private val GRAPH_SHAPE = RoundedCornerShape(Radii.L)
 private val GRID_F = doubleArrayOf(20.0, 50.0, 100.0, 200.0, 500.0, 1000.0, 2000.0, 5000.0, 10_000.0, 20_000.0)
 private val LABEL_F = listOf(100.0 to "100", 1000.0 to "1K", 10_000.0 to "10K")
 private val GRID_DB = doubleArrayOf(-12.0, -6.0, 0.0, 6.0, 12.0)
@@ -69,7 +70,7 @@ private val GRID_DB = doubleArrayOf(-12.0, -6.0, 0.0, 6.0, 12.0)
  * the value it rested on ([LiftGuard]).
  */
 @Composable
-fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifier) {
+fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifier, bypassed: Boolean = false, enabled: Boolean = true) {
     val c = pal
     val haptics = LocalHaptics.current
     val pagerLock = LocalPagerLock.current
@@ -91,8 +92,9 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
             .testTag("graph")
             // a node drag that starts near a screen edge must not become the system back gesture
             .systemGestureExclusion()
-            .holdsPager(pagerLock)
-            .pointerInput(Unit) {
+            .then(if (enabled) Modifier.holdsPager(pagerLock) else Modifier)
+            .pointerInput(enabled) {
+                if (!enabled) return@pointerInput
                 val pad = PAD.toPx()
                 val hitR = 24.dp.toPx()
                 val nodeGuard = LiftGuard<Pair<Double, Double>>(density, "NODE")
@@ -251,6 +253,7 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
         }
 
         val bands: List<Band> = profile.bands
+        val ghostAlpha = if (bypassed) 0.24f else 1f
         val validCurve = runCatching { Dsp.responseDb(bands, Dsp.DISPLAY_GRID, curve) }.isSuccess
         path.reset()
         val freqs = Dsp.DISPLAY_GRID.freqs
@@ -260,28 +263,29 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                 val y = map.y(curve[i])
                 if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
             }
-            drawPath(path, c.text, style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
+            drawPath(path, c.text.copy(alpha = ghostAlpha), style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
         } else {
             drawText(measurer, "INVALID EQ — adjust shelf gain or Q", Offset(pad, pad), Type.graph.copy(color = c.text))
         }
 
         val r = NODE_RADIUS.toPx()
         // nodes stand a little above the plot: a small soft shadow under each enabled node
-        val shadowA = 0.5f * c.shadowAlpha
+        val shadowA = 0.5f * c.shadowAlpha * ghostAlpha
         bands.forEachIndexed { i, b ->
             val o = Offset(map.x(b.freqHz), map.y(b.gainDb))
             val sel = i == selected
-            val fill = if (sel) c.accent else c.fill
+            val fill = (if (sel) c.accent else c.fill).copy(alpha = ghostAlpha)
             if (b.enabled) {
                 nodePaint.color = fill.toArgb()
                 nodePaint.setShadowLayer(4.dp.toPx(), 0f, 1.5.dp.toPx(), c.shadow.copy(alpha = shadowA).toArgb())
                 drawIntoCanvas { it.nativeCanvas.drawCircle(o.x, o.y, r, nodePaint) }
             } else {
-                drawCircle(c.surface, r, o)
+                drawCircle(c.surface.copy(alpha = ghostAlpha), r, o)
                 drawCircle(fill, r - 1.dp.toPx(), o, style = Stroke(2.dp.toPx()))
             }
-            val t = measurer.measure("${i + 1}", numberStyle.copy(color = if (!b.enabled) fill else if (sel) c.onAccent else c.bg))
+            val t = measurer.measure("${i + 1}", numberStyle.copy(color = (if (!b.enabled) fill else if (sel) c.onAccent else c.bg).copy(alpha = ghostAlpha)))
             drawText(t, topLeft = Offset(o.x - t.size.width / 2f, o.y - t.size.height / 2f))
         }
+        if (bypassed) drawLine(c.text, Offset(pad, map.y(0.0)), Offset(size.width - pad, map.y(0.0)), 2.5.dp.toPx(), cap = StrokeCap.Round)
     }
 }

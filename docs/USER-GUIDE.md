@@ -76,21 +76,22 @@ While your finger is on a slider or a point on the graph, the page stays put.
 
 ## Status and connecting
 
-The pill in the top right corner of both pages tells you what the DAC is doing:
+The pill in the top right corner of the Library tells you what the DAC is doing:
 
 | Status | Meaning |
 |---|---|
-| **NO DAC** | No Protocol Micro is plugged in. |
+| **NO DAC** | No Protocol Micro is plugged in. Tap it to check again - if the DAC is there, Contour connects. |
 | **TAP TO CONNECT** | The DAC is there, but Android has not given Contour access yet. Tap it and allow. |
 | **CONNECTED** (green dot) | Ready to send. |
 | **BUSY** | Contour is talking to the DAC right now. Wait a moment. |
+
+On the EQ page the big send button shows the same states (see below), and tapping **NO DAC** there also checks the port and connects.
 
 Contour only ever looks for the Protocol Micro. Other USB devices are ignored.
 
 ## EQ page: editing a profile
 
-The top of the page shows the profile's icon and name. Below it are the response graph, the band
-chips, the filter type and the sliders.
+The top of the page shows the profile's icon and name, with **CLEAR EQ** on the right: one tap leaves a single flat band with the preamp on AUTO, and the undo arrow brings your curve back. It turns orange while there is something to clear and dims when the EQ is already flat or switched off by A/B. Below are the response graph, the band chips, the filter type and the sliders.
 
 ### The response graph
 
@@ -138,10 +139,11 @@ Ranges: FREQ 20 Hz to 20 kHz, GAIN -10 to +10 dB, Q 0.1 to 10.
 
 Boosting bands can make the signal clip. The preamp lowers the whole volume to make room.
 
+- The bar next to the value switches between **MANUAL** and **AUTO**. Tap the side you want.
 - With **AUTO** on (the default), Contour works out the lowest preamp that keeps the curve from
   clipping and updates it as you edit.
-- With **AUTO** off, drag the dB value sideways, or tap it to type a value. The Protocol Micro takes
-  whole dB from -30 to 0.
+- With **MANUAL** on, the bar becomes a slider: drag it sideways, or tap the dB value to type a value.
+  The Protocol Micro takes whole dB from -30 to 0.
 
 Everything you change is saved on the phone immediately. There is no save button and nothing to lose
 if you close the app.
@@ -152,8 +154,7 @@ The arrows beside the profile name step back and forward through your edits. One
 however far a slider or point travelled, and a drag that ends where it started leaves no step. Each
 profile keeps its own history of up to 100 steps, and it survives closing the app.
 
-**LAST SENT** appears beside **HOLD TO SEND** when the EQ differs from the version last verified on the
-DAC. Tap it to bring that version back; the undo arrow can take you back again.
+**LAST SENT** appears beside **HOLD TO SEND** when the EQ differs from the version saved as LAST SENT: the one last verified on the DAC, or the one you saved from the Library (see below). Tap it to bring that version back; the undo arrow can take you back again.
 
 ## Sending to the DAC
 
@@ -175,14 +176,23 @@ The button then shows what happened:
 | **SENDING** | Writing and checking. Keep the DAC plugged in. |
 | **ON DAC** | This exact profile is on the DAC and saved in its memory. |
 | **FAILED - HOLD TO RETRY** | Something did not match or the DAC was unplugged. Hold again. |
-| **NO DAC** / **TAP TO CONNECT** | Plug the DAC in, or tap to allow access. |
+| **NO DAC** / **TAP TO CONNECT** | Plug the DAC in, or tap to check and allow access. |
 
 The Library marks the profile last sent with **ON DAC**, so you always know what the dongle holds.
+
+### Quick A/B
+
+While the profile is **ON DAC**, an **A/B** button sits in the top right corner of the graph. Tap it to hear
+the music without the EQ: the orange button turns grey and reads **EQ OFF - PREAMP KEPT**, so the volume stays
+the same and only the curve is switched off. Tap again to bring the EQ back.
+
+A/B changes only what the DAC plays right now. It never saves anything to the DAC's memory, so if you unplug
+the dongle it goes back to the EQ you last sent. Sending, changing profile or leaving the EQ page brings the
+EQ back first.
 
 ## Library page: your profiles
 
 Every profile is a card with its icon, name, a short description and a small picture of its curve.
-The number next to LIBRARY is how many profiles you have.
 
 - **Tap** a card to make it the current profile and open it on the EQ page.
 - **Long-press** a card to edit it: change the **NAME** and description, pick an **ICON**,
@@ -197,6 +207,8 @@ A good habit: one profile per pair of earphones or headphones, named after them.
 ## Making new profiles
 
 Tap the empty card with **+** at the end of the Library.
+
+**Swipe that card left** for **LAST SENT**: after a confirmation it saves every profile, archived ones too, as its LAST SENT version, without sending anything to the DAC. It replaces the previous LAST SENT versions and cannot be undone.
 
 <p align="center"><img src="images/new-profile.png" width="300" alt="New profile options"></p>
 
@@ -227,7 +239,7 @@ open-source licences of Contour and everything it uses (also reachable from the 
 
 ## Service screen
 
-Long-press the status pill (top right) to open the service screen. You will rarely need it:
+Long-press the status pill (top right of the Library) to open the service screen. You will rarely need it:
 
 - the raw state the DAC reports, band by band;
 - a log of the USB conversation, useful for bug reports;

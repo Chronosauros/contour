@@ -243,6 +243,11 @@ object WalkPlay {
     /** One report and the pause after it. */
     class Step(val report: ByteArray, val delayAfterMs: Long)
 
+    /** Changed bands only, then TEMP_WRITE: RAM-only, no preamp, ramp or flash commit. */
+    fun temporaryBandSequence(bands: List<BandWrite>, slot: Int): List<Step> =
+        bands.map { Step(bandWriteReport(it, slot), 20) } +
+            Step(report(WRITE, 0x0A, 0x04, 0x00, 0x00, 0xFF, 0xFF, END), 0)
+
     /**
      * `write_state(...)` in research/protocol/write_test.py: every band with 20 ms after it, 100 ms more,
      * the preamp and 50 ms, then (when [commit]) the commit sequence with devicePEQ's delays; 200 ms at the end.

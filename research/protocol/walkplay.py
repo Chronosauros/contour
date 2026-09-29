@@ -41,9 +41,11 @@ class Log:
 
 
 def find_path():
-    devs = [d for d in hid.enumerate(VID, PID) if d["interface_number"] == 3]
+    # The Micro exposes one HID interface; its number differs per host (MI_03 on the
+    # first PC, MI_02 on 2026-09-29), so match on the Consumer Control collection.
+    devs = [d for d in hid.enumerate(VID, PID) if d["usage_page"] == 0x0C] or hid.enumerate(VID, PID)
     if not devs:
-        raise SystemExit("Protocol Micro HID interface (MI_03) not found")
+        raise SystemExit("Protocol Micro HID interface not found")
     return devs[0]["path"]
 
 

@@ -36,7 +36,7 @@ object Page {
  * (snackbar gone, or the app stops), so UNDO can put the row back.
  *
  * Every change to a profile's EQ (bands, preamp) also records the state before it in that profile's history
- * (history.json): [undo] / [redo] step through it and [revertToSent] brings back the EQ last verified on the DAC.
+ * (history.json): [undo] / [redo] step through it and [revertToSent] brings back the LAST SENT checkpoint.
  * A touch on Tune ([beginGesture] .. [endGesture]) is one step however many values the drag went through.
  */
 class AppModel(private val store: ProfileStore, private val scope: CoroutineScope, private val beforeLoad: () -> Unit = {}) {
@@ -340,7 +340,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     fun canUndo(p: Profile?): Boolean = p != null && history[p.id]?.undo?.isNotEmpty() == true
     fun canRedo(p: Profile?): Boolean = p != null && history[p.id]?.redo?.isNotEmpty() == true
 
-    /** LAST SENT has something to bring back: a verified send exists and the EQ has changed since. */
+    /** LAST SENT has something to bring back: a checkpoint exists and the EQ has changed since. */
     fun canRevertToSent(p: Profile?): Boolean {
         val s = p?.let { history[it.id]?.sent } ?: return false
         return s != EqState(p)
@@ -362,7 +362,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         applyEq(p.id, s)
     }
 
-    /** Back to the EQ last verified on the DAC; one UNDO step like any other edit. */
+    /** Back to the LAST SENT checkpoint; one UNDO step like any other edit. */
     fun revertToSent() {
         val p = current ?: return
         if (!canRevertToSent(p)) return
@@ -376,6 +376,19 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         val h = history[p.id] ?: ProfileHistory()
         history[p.id] = h.copy(sent = EqState(p))
         setLastSent(p.id)
+    }
+
+    /** Save every live profile, including archived ones, as a local LAST SENT checkpoint, without a DAC send. */
+    fun saveAllAsSent(): Int {
+        if (loading || loadError || deleting || profiles.isEmpty()) return 0
+        val snapshots = profiles.associate { it.id to EqState(it) }
+        snapshots.forEach { (id, snapshot) ->
+            val h = history[id] ?: ProfileHistory()
+            history[id] = h.copy(sent = snapshot)
+        }
+        // One queued write for the complete batch; lastSentId still identifies the actual last DAC send.
+        saveStateNow()
+        return snapshots.size
     }
 
     fun setBand(index: Int, band: Band) = update { p ->
