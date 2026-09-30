@@ -1,0 +1,45 @@
+@font-face{
+  font-family:"Google Sans Flex";
+  src:url("fonts/google-sans-flex-latin.woff") format("woff");
+  font-weight:400 700; font-style:normal; font-display:swap;
+}
+:root{
+  /* LightPalette (Theme.kt:62) */
+  --bg:#EFECE8; --surface:#FAF8F5; --surface2:#E7E3DE;
+  --track:#E2DDD7; --fill:#3A3633;
+  --text:#1D1B19; --text-dim:#6E6963; --text-mute:#9A948D;
+  --grid:#E9E5E0; --accent:#F07A3A; --on-accent:#2B1A10;
+  --sunken:#E6E2DD; --shadow:#2B2118;
+  /* a * shadowAlpha (0.3) */
+  --k-card:12.6%; --k-high:16.5%;
+  /* the status LED when connected (Common.kt:23 LED_ON) */
+  --led-on:#46D17A;
+
+  --lift-card:0 3px 12.5px color-mix(in srgb, var(--shadow) var(--k-card), transparent);
+  --lift-raised:0 2px 8px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+  --lift-hero:0 5px 17px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+  --lift-hero-held:0 1.5px 7.4px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+  --lift-raised-held:0 0.6px 3.8px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+  --sink:inset 0 2px 7px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+
+  --font:"Google Sans Flex","Google Sans","Google Sans Text",system-ui,sans-serif;
+  --r-card:20px;   /* LibraryScreen CARD */
+  --r-row:16px;    /* TuneScreen ROW_SHAPE */
+  --r-btn:24px;    /* HOLD TO SEND, LAST SENT */
+  --r-chip:14px;   /* band chips */
+  --r-option:12px; /* sheet Option, banner */
+  --r-tag:8px;     /* ON DAC tag */
+  --gap:8px;       /* TuneScreen GAP, library row spacing */
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    /* DarkPalette (Theme.kt:54) */
+    --bg:#171615; --surface:#242220; --surface2:#2E2B29;
+    --track:#3A3734; --fill:#D9D5D0;
+    --text:#F3F0EC; --text-dim:#A39E98; --text-mute:#77726C;
+    --grid:#34312E; --accent:#F07A3A; --on-accent:#2B1A10;
+    --sunken:#121110; --shadow:#000000;
+    /* a * shadowAlpha (1.0) */
+    --k-card:42%; --k-high:55%;
+  }
+}

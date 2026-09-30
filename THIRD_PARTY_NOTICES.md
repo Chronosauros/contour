@@ -109,7 +109,19 @@ Formulas and formats, no code copied:
   downloaded by Gradle, not distributed
 - JDK 21 and the Android SDK: needed to build, not distributed
 
-## 5. Trademarks
+## 5. The website (`docs/`, not inside the app)
+
+The project website at https://chronosauros.github.io/contour/ ships these files made by others:
+- cube-motion 0.1.0, https://github.com/Danilaa1/cube-motion, (c) 2026 Daniel Belyi, MIT License: the page
+  motion (rise, leave, morph, reveal), merged into one script as `docs/shared/cube-motion.js`, licence text in
+  `docs/shared/cube-motion.LICENSE.txt`.
+- Google Sans Flex (latin subset), (c) Google, SIL Open Font License 1.1: the web font in `docs/shared/fonts/`
+  and `docs/install/fonts/`, licence text in `OFL.txt` next to it.
+
+The live EQ panel (`docs/shared/contour-dsp.js`, `contour-tune.js`) is this project's own code, a port of the
+app's response maths, under the Apache License 2.0.
+
+## 6. Trademarks
 
 CrinEar, Protocol Micro, Nightfall, WalkPlay, Moondrop, Crinacle, DUSK, Google, Pixel, Google Sans, Android and all other product names belong to
 their owners. Contour is an unofficial project and is not affiliated with or endorsed by any of them. Names are

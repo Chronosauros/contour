@@ -1,0 +1,106 @@
+/*
+  contour-tune.css - the Tune panel (the app's EQ page) for ContourTune.mount().
+  Needs tokens.css. Geometry from ui/Theme.kt (Grid, Radii, Type) and ui/tune/*.kt, 1 dp = 1 CSS px.
+  Every rule is scoped under .ct so two panels on one page (or any host page) do not interfere.
+*/
+.ct{
+  --ct-row:56px; --ct-compact:48px; --ct-gap:8px; --ct-inset:4px; --ct-text:24px; --ct-value-w:108px;
+  --ct-r-l:20px; --ct-r-m:16px; --ct-r-s:12px;
+  --ct-graph-h:300px;
+  font-family:var(--font); color:var(--text);
+  display:flex; flex-direction:column; gap:var(--ct-gap);
+  font-feature-settings:"tnum"; -webkit-tap-highlight-color:transparent;
+  user-select:none; -webkit-user-select:none; position:relative; min-width:0;
+}
+.ct *,.ct *::before,.ct *::after{box-sizing:border-box}
+:where(.ct) button{font:inherit;color:inherit;border:0;background:none;padding:0;margin:0;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ct :focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* header: icon + name (Type.profileTitle), UNDO / REDO, CLEAR EQ */
+.ct-head{display:flex;align-items:center;height:56px;gap:0}
+.ct-name{flex:1 1 auto;min-width:0;display:flex;align-items:center;gap:14px;padding:0 8px 0 6px;min-height:48px}
+.ct-name svg{width:26px;height:26px;flex:none}
+.ct-name .ct-icon{display:grid;flex:none}
+.ct-name .ct-title{font-size:30px;font-weight:700;letter-spacing:-.01em;line-height:1.1;min-width:0;overflow:hidden}
+.ct-hist{width:48px;height:48px;border-radius:var(--ct-r-m);display:grid;place-items:center;color:var(--text);flex:none}
+.ct-hist svg{width:26px;height:26px}
+.ct-hist[aria-disabled="true"]{color:var(--text-mute);cursor:default}
+.ct-clear{height:var(--ct-compact);padding:0 16px;margin-left:4px;border-radius:var(--ct-r-m);box-shadow:var(--lift-raised);background:var(--accent);color:var(--on-accent);font-size:12px;font-weight:600;letter-spacing:.08em;white-space:nowrap;flex:none;transition:background-color .22s,color .22s}
+.ct-clear[aria-disabled="true"]{background:var(--surface);color:var(--text-mute);cursor:default}
+
+/* graph card: surface, radius L, CARD lift */
+.ct-graph{position:relative;height:var(--ct-graph-h);border-radius:var(--ct-r-l);background:var(--surface);box-shadow:var(--lift-card);overflow:hidden;touch-action:none}
+.ct-graph canvas{display:block;width:100%;height:100%;touch-action:none;cursor:crosshair}
+.ct-graph canvas.on-node{cursor:grab}
+.ct-graph canvas.dragging{cursor:grabbing}
+
+/* band chips: 48 tall, min 48 wide, radius M; selected accent, enabled surface2 raised, bypassed track pressed-in */
+.ct-bands{display:flex;gap:var(--ct-gap);height:var(--ct-compact);overflow-x:auto;scrollbar-width:none;padding:0 2px;margin:0 -2px}
+.ct-bands::-webkit-scrollbar{display:none}
+.ct-chip{min-width:var(--ct-compact);height:100%;padding:0 12px;border-radius:var(--ct-r-m);background:var(--surface2);color:var(--text);box-shadow:var(--lift-raised);font-size:20px;font-weight:600;display:grid;place-items:center;flex:none;touch-action:manipulation}
+.ct-chip.sel{background:var(--accent);color:var(--on-accent)}
+.ct-chip.off{background:var(--track);color:var(--text-mute);box-shadow:var(--sink)}
+.ct-chip.off.sel{background:var(--accent);color:var(--on-accent);box-shadow:var(--lift-raised)}
+.ct-chip svg{width:26px;height:26px}
+.ct-chip:disabled{opacity:.4;cursor:default}
+
+/* chip menu (the band sheet: BYPASS / ENABLE, DELETE) */
+.ct-menu{position:absolute;z-index:5;display:flex;gap:var(--ct-gap);padding:var(--ct-inset);background:var(--surface);border-radius:var(--ct-r-l);box-shadow:var(--lift-hero)}
+.ct-menu button{height:var(--ct-compact);padding:0 18px;border-radius:var(--ct-r-m);background:var(--surface2);font-size:13px;font-weight:600;letter-spacing:.06em;white-space:nowrap}
+
+/* filter type: pressed-in well (track + sink), raised accent pill that slides */
+.ct-type{position:relative;height:var(--ct-row);border-radius:var(--ct-r-l);background:var(--track);box-shadow:var(--sink);padding:var(--ct-inset);display:flex}
+.ct-type .pill{position:absolute;top:var(--ct-inset);bottom:var(--ct-inset);left:var(--ct-inset);border-radius:var(--ct-r-m);background:var(--accent);box-shadow:var(--lift-raised);transition:transform .25s cubic-bezier(.2,.8,.2,1)}
+.ct-type button{position:relative;flex:1 1 0;border-radius:var(--ct-r-m);font-size:13px;font-weight:600;letter-spacing:.06em;white-space:nowrap;color:var(--text);transition:color .2s}
+.ct-type button.sel{color:var(--on-accent);cursor:default}
+
+/* value rows: surface, radius L, CARD lift, text from 24 */
+.ct-row{display:flex;align-items:center;height:var(--ct-row);border-radius:var(--ct-r-l);background:var(--surface);box-shadow:var(--lift-card);padding-left:var(--ct-text)}
+.ct-row.dim{opacity:.4}
+.ct-val{width:calc(var(--ct-value-w) - var(--ct-text));height:100%;flex:none;display:flex;flex-direction:column;justify-content:center;border-radius:var(--ct-r-s);text-align:left;cursor:text}
+.ct-val[aria-disabled="true"]{cursor:default}
+.ct-val .lbl{font-size:8px;font-weight:600;letter-spacing:.08em;color:var(--text-dim);line-height:1.2;margin-bottom:1px}
+.ct-val .num{font-size:18px;font-weight:600;letter-spacing:.02em;line-height:1.2;white-space:nowrap;color:var(--text)}
+.ct-val .num.auto{color:var(--text-dim)}
+.ct-val .unit{font-size:8px;color:var(--text-dim);letter-spacing:.08em;margin-left:3px}
+.ct-val input{width:calc(100% - 4px);font:inherit;font-size:18px;font-weight:600;letter-spacing:.02em;color:var(--text);background:var(--sunken);border:0;border-radius:8px;padding:2px 6px;box-shadow:var(--sink);outline:none;user-select:text;-webkit-user-select:text}
+
+/* relative slider: pressed-in track, the light fill raised; at the minimum the fill is a square nub */
+.ct-slider{position:relative;flex:1 1 auto;height:100%;padding:var(--ct-inset);min-width:0;touch-action:pan-y;cursor:ew-resize}
+.ct-slider .trk{position:relative;height:100%;border-radius:var(--ct-r-m);background:var(--track);box-shadow:var(--sink);overflow:hidden}
+.ct-slider .fil{position:absolute;left:0;top:0;bottom:0;border-radius:var(--ct-r-m);background:var(--fill);box-shadow:var(--lift-raised)}
+
+/* PREAMP bar: MANUAL / AUTO with the accent pill; manual = the pill is the slider */
+.ct-pre{position:relative;flex:1 1 auto;height:100%;padding:var(--ct-inset);min-width:0}
+.ct-pre .trk{position:relative;height:100%;border-radius:var(--ct-r-m);background:var(--track);box-shadow:var(--sink);touch-action:pan-y}
+.ct-pre.manual .trk{cursor:ew-resize}
+.ct-pre .labels{position:absolute;inset:0;display:flex;pointer-events:none}
+.ct-pre .labels span{flex:1 1 0;display:grid;place-items:center;font-size:13px;font-weight:600;letter-spacing:.06em;color:var(--text)}
+.ct-pre .labels.over span{color:var(--on-accent)}
+.ct-pre .pill{position:absolute;top:0;bottom:0;left:0;border-radius:var(--ct-r-m);background:var(--accent);box-shadow:var(--lift-raised);pointer-events:none}
+.ct-pre .hit{position:absolute;top:0;bottom:0;width:50%;border-radius:var(--ct-r-m)}
+.ct-pre .hit.m{left:0}.ct-pre .hit.a{right:0}
+.ct-pre .invalid{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;font-weight:600;letter-spacing:.06em;color:var(--text-dim)}
+
+/* send row: 16 px of air above, 56 tall; LAST SENT (surface2 RAISED) + HOLD TO SEND (accent HERO) */
+.ct-send{display:flex;gap:var(--ct-gap);height:var(--ct-row);margin-top:calc(16px - var(--ct-gap))}
+.ct-last{height:100%;display:flex;align-items:center;gap:8px;padding:0 var(--ct-text);border-radius:var(--ct-r-l);background:var(--surface2);box-shadow:var(--lift-raised);font-size:12px;font-weight:600;letter-spacing:.08em;white-space:nowrap;flex:none}
+.ct-last svg{width:22px;height:22px}
+.ct-hold{position:relative;flex:1 1 auto;height:100%;border-radius:var(--ct-r-l);background:var(--accent);color:var(--on-accent);overflow:hidden;box-shadow:0 5px 17px color-mix(in srgb, var(--shadow) var(--k-high), transparent);touch-action:none;font-size:17px;font-weight:700;letter-spacing:.04em;min-width:0}
+.ct-hold .shade{position:absolute;left:0;top:0;bottom:0;width:0;background:color-mix(in srgb, var(--on-accent) 18%, transparent)}
+.ct-hold .txt{position:relative;padding:0 16px;white-space:nowrap}
+.ct-hold.grey{background:var(--surface2);color:var(--text)}
+.ct-hold.grey .shade{background:var(--accent)}
+.ct-hold.invalid{background:var(--surface2);color:var(--text-mute);box-shadow:none}
+.ct-note{margin:2px 6px 0;color:var(--text-dim);font-size:13px;line-height:1.45;min-height:1.45em}
+.ct-note strong{color:var(--text);font-weight:600}
+@media (max-width:420px){
+  .ct-name .ct-title{font-size:26px}
+  .ct-clear{padding:0 12px}
+  .ct-type button{font-size:12px;letter-spacing:.04em}
+}
+/* morph faces (cube-motion agent.md, "Morph faces in vanilla") */
+.ct-faces{position:relative;display:inline-flex;align-items:center}
+.ct-faces > *{display:inline-flex;align-items:baseline;white-space:nowrap;will-change:opacity,filter,scale}
+.ct-faces > [aria-hidden="true"]{position:absolute;inset:0;opacity:0}
+.ct-val .ct-faces.num{display:inline-flex}
