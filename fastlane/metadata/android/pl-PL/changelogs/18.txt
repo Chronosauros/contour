@@ -1,0 +1,1 @@
+Na niskich ekranach strona EQ przewija się zamiast ściskać wykres odpowiedzi częstotliwościowej, który ma teraz co najmniej 200 dp wysokości.

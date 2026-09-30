@@ -1,0 +1,1 @@
+On short screens the EQ page now scrolls instead of squeezing the frequency response graph, which keeps at least 200 dp of height.

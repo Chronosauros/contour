@@ -9,6 +9,9 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.foundation.layout.Arrangement
@@ -94,38 +97,39 @@ private val GAP = Grid.GAP
 private val ROW_H = Grid.ROW
 private val COMPACT_H = ROW_H - Grid.INSET * 2
 private val ROW_SHAPE = RoundedCornerShape(Radii.L)
+private val GRAPH_MIN = 200.dp
 
 /** Tune: the current profile - graph, bands, the selected band's values, preamp, HOLD TO SEND. */
 @Composable
 fun TuneScreen(model: AppModel, device: DeviceController, sender: Sender, actions: TuneActions, top: Dp, bottom: Dp) {
     val p = model.current
-    Column(
-        Modifier
-            .fillMaxSize()
-            // One touch = one UNDO step: opened before any child sees the first finger, closed after every
-            // child (a drag's lift-off value included) has handled the last finger going up.
-            .pointerInput(model) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val e = awaitPointerEvent(PointerEventPass.Initial)
-                        if (e.changes.any { it.changedToDown() }) model.beginGesture()
-                    }
+    val bottomPad = bottom + (Grid.GROUP - GAP)
+    val gestures = Modifier
+        .fillMaxSize()
+        // One touch = one UNDO step: opened before any child sees the first finger, closed after every
+        // child (a drag's lift-off value included) has handled the last finger going up.
+        .pointerInput(model) {
+            awaitPointerEventScope {
+                while (true) {
+                    val e = awaitPointerEvent(PointerEventPass.Initial)
+                    if (e.changes.any { it.changedToDown() }) model.beginGesture()
                 }
             }
-            .pointerInput(model) {
-                awaitPointerEventScope {
-                    while (true) {
-                        val e = awaitPointerEvent(PointerEventPass.Final)
-                        if (e.changes.none { it.pressed }) model.endGesture()
-                    }
+        }
+        .pointerInput(model) {
+            awaitPointerEventScope {
+                while (true) {
+                    val e = awaitPointerEvent(PointerEventPass.Final)
+                    if (e.changes.none { it.pressed }) model.endGesture()
                 }
             }
-            .padding(top = top, bottom = bottom + (Grid.GROUP - GAP))
-            .padding(horizontal = SIDE),
-        verticalArrangement = Arrangement.spacedBy(GAP),
-    ) {
-        Header(model, p, sender, actions)
-        if (p == null) {
+        }
+    if (p == null) {
+        Column(
+            gestures.padding(top = top, bottom = bottomPad).padding(horizontal = SIDE),
+            verticalArrangement = Arrangement.spacedBy(GAP),
+        ) {
+            Header(model, p, sender, actions)
             Box(Modifier.fillMaxWidth().weight(1f).testTag("tune_empty"), contentAlignment = Alignment.Center) {
                 Text(
                     "NO PROFILE\nSwipe to the Library to choose or create one.",
@@ -133,13 +137,51 @@ fun TuneScreen(model: AppModel, device: DeviceController, sender: Sender, action
                     color = pal.textDim,
                 )
             }
-            return@Column
         }
-        val bandsEnabled = !sender.bypassed && !sender.abBusy
-        Box(Modifier.fillMaxWidth().weight(1f)) {
-            ResponseGraph(model, p, Modifier.fillMaxSize(), bypassed = sender.bypassed, enabled = bandsEnabled)
-            if (sender.canAb(p)) AbButton(sender, p, Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 8.dp))
+        return
+    }
+    val bandsEnabled = !sender.bypassed && !sender.abBusy
+    // The graph takes whatever height is left, but never less than GRAPH_MIN; on short screens
+    // (FiiO JM21) the whole page scrolls instead of squashing the graph.
+    BoxWithConstraints(gestures) {
+        val viewport = constraints.maxHeight
+        Layout(
+            contents = listOf(
+                { Header(model, p, sender, actions) },
+                {
+                    Box {
+                        ResponseGraph(model, p, Modifier.fillMaxSize(), bypassed = sender.bypassed, enabled = bandsEnabled)
+                        if (sender.canAb(p)) AbButton(sender, p, Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 8.dp))
+                    }
+                },
+                { TuneControls(model, p, device, sender, actions, bandsEnabled) },
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(top = top, bottom = bottomPad)
+                .padding(horizontal = SIDE),
+        ) { (header, graph, controls), cs ->
+            val gap = GAP.roundToPx()
+            val loose = Constraints(maxWidth = cs.maxWidth)
+            val h = header.first().measure(loose)
+            val r = controls.first().measure(loose)
+            val free = viewport - top.roundToPx() - bottomPad.roundToPx() - h.height - r.height - gap * 2
+            val gh = maxOf(GRAPH_MIN.roundToPx(), free)
+            val g = graph.first().measure(Constraints.fixed(cs.maxWidth, gh))
+            layout(cs.maxWidth, h.height + gap + gh + gap + r.height) {
+                h.place(0, 0)
+                g.place(0, h.height + gap)
+                r.place(0, h.height + gap + gh + gap)
+            }
         }
+    }
+}
+
+/** Everything under the graph: bands, the selected band's values, preamp, HOLD TO SEND. */
+@Composable
+private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, sender: Sender, actions: TuneActions, bandsEnabled: Boolean) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(GAP)) {
         Column(Modifier.alpha(if (sender.bypassed) 0.4f else 1f), verticalArrangement = Arrangement.spacedBy(GAP)) {
             BandStrip(model, p, actions, bandsEnabled)
             val i = model.selectedBand
