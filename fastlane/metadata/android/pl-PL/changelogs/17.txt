@@ -1,0 +1,1 @@
+Po wpięciu DAC-a przy otwartym Contour od razu pojawia się TAP TO CONNECT zamiast NO DAC, także gdy zamkniesz systemowe okno „otworzyć w Contour”.

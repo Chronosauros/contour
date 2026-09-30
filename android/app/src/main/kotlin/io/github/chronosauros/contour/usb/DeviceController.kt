@@ -56,10 +56,14 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                     UsbLog.line("permission ${if (granted) "granted" else "denied"}")
                     refresh(read = granted)
                 }
+                UsbManager.ACTION_USB_DEVICE_ATTACHED -> {
+                    // The app may be open while the system dialog is dismissed or handled elsewhere: TAP TO CONNECT.
+                    if (!isDac(intent)) return
+                    UsbLog.line("attached (broadcast)")
+                    refresh(read = true)
+                }
                 UsbManager.ACTION_USB_DEVICE_DETACHED -> {
-                    val detached = if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
-                        else @Suppress("DEPRECATION") intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE)
-                    if (detached?.vendorId != WalkPlay.VENDOR_ID || detached.productId != WalkPlay.PRODUCT_ID) return
+                    if (!isDac(intent)) return
                     UsbLog.line("detached")
                     connectionEpoch++
                     abBypassed = false
@@ -71,9 +75,16 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         }
     }
 
+    private fun isDac(intent: Intent): Boolean {
+        val d = if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
+            else @Suppress("DEPRECATION") intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE)
+        return d?.vendorId == WalkPlay.VENDOR_ID && d.productId == WalkPlay.PRODUCT_ID
+    }
+
     fun start() {
         val filter = IntentFilter().apply {
             addAction(ACTION_USB_PERMISSION)
+            addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
             addAction(UsbManager.ACTION_USB_DEVICE_DETACHED)
         }
         ContextCompat.registerReceiver(context, receiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)

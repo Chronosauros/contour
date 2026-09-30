@@ -81,7 +81,7 @@ The pill in the top right corner of the Library tells you what the DAC is doing:
 | Status | Meaning |
 |---|---|
 | **NO DAC** | No Protocol Micro is plugged in. Tap it to check again - if the DAC is there, Contour connects. |
-| **TAP TO CONNECT** | The DAC is there, but Android has not given Contour access yet. Tap it and allow. |
+| **TAP TO CONNECT** | The DAC is there, but Android has not given Contour access yet. Tap it and allow. It appears as soon as you plug the DAC in while Contour is open. |
 | **CONNECTED** (green dot) | Ready to send. |
 | **BUSY** | Contour is talking to the DAC right now. Wait a moment. |
 

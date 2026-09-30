@@ -1,0 +1,1 @@
+Plugging the DAC in while Contour is open now shows TAP TO CONNECT right away instead of staying on NO DAC, even if you close Android's "open with Contour" prompt.
