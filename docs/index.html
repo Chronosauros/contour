@@ -71,11 +71,11 @@ h2.mega{margin-bottom:.36em}
 .top nav a{text-decoration:none;font-size:clamp(17px,1.5vw,22px);font-weight:600;min-height:48px;display:inline-flex;align-items:center;padding:0 4px}
 .top nav a:hover{text-decoration:underline}
 
-/* the hand and phone: one black silhouette with a screen hole; the clip plays behind it */
+/* the phone: a flat bezel around the clip, black on orange and orange on black (the box keeps the old hand-art proportions so the layout stays put) */
 .dev{position:relative;aspect-ratio:2048/2426;width:100%}
-.dev img{position:absolute;inset:0;width:100%;height:100%;z-index:2;pointer-events:none;user-select:none}
-/* screen hole (hole.json): x .18848 y .12284 w .51660 h .87716, radius .06427 / .03195; 0.15% under the bezel so the anti-aliased edge never shows orange */
-.dev .scr{position:absolute;z-index:1;left:18.7%;top:12.14%;width:51.96%;height:87.86%;border-radius:6.5% / 3.25%;overflow:hidden;background:#171615}
+.on-o .dev{--bez:var(--k)}
+.on-k .dev{--bez:var(--o)}
+.dev .scr{position:absolute;z-index:1;left:18.7%;top:12.14%;width:51.96%;height:87.86%;border-radius:6.5% / 3.25%;overflow:hidden;background:#171615;box-shadow:0 0 0 calc(var(--dw) * .02) var(--bez)}
 .dev video{display:block;width:100%;height:100%;object-fit:cover;object-position:50% 0}
 .drift{will-change:transform}
 /* the image runs 7.5% of its height past the section bottom, so the app's bottom nav bar stays below the edge; drift only moves it further down */
@@ -139,6 +139,8 @@ footer a{margin-right:14px}
   .show.left .dev-pos{left:calc(var(--gut) - var(--dw) * .07)}
   .show.right .dev-pos{right:calc(var(--gut) - var(--dw) * .295)}
   .install .mega{--mega:min(15vw,110px)}
+  /* the phone sits centred on narrow screens */
+  .hero .dev-pos,.show.left .dev-pos,.show.right .dev-pos{left:calc(50% - var(--dw) * .4468);right:auto}
 }
 @media (min-width:821px){.dev-box{display:contents}}
 
@@ -172,7 +174,6 @@ footer a{margin-right:14px}
   </div>
   <div class="dev-box"><div class="dev-pos"><div class="drift" data-drift="hero"><div class="dev">
     <div class="scr app-dark"><video id="hero-clip" muted playsinline loop preload="auto" poster="media/tune-end.jpg" aria-label="Screen recording of the Contour EQ page: dragging a band, a LOW SHELF at 80 Hz and the sliders"><source src="media/tune.mp4" type="video/mp4"></video></div>
-    <img src="media/hand-phone.webp" width="2048" height="2426" alt="">
   </div></div></div></div>
 </section>
 
@@ -190,7 +191,6 @@ footer a{margin-right:14px}
 <section class="show left on-o" id="sending" aria-labelledby="hold-h">
   <div class="dev-box"><div class="dev-pos"><div class="drift" data-drift><div class="dev">
     <div class="scr app-dark"><video id="send-clip" muted playsinline loop preload="metadata" poster="media/send-start.jpg" aria-label="Screen recording: Library, DUSK, HOLD TO SEND, ON DAC"><source src="media/send.mp4" type="video/mp4"></video></div>
-    <img src="media/hand-phone.webp" width="2048" height="2426" alt="" loading="lazy">
   </div></div></div></div>
   <div class="show-text">
     <h2 class="mega" id="hold-h" data-snap><span class="ln"><span>Hold.</span></span></h2>
@@ -203,7 +203,6 @@ footer a{margin-right:14px}
 <section class="show right on-k" id="library" aria-labelledby="keep-h">
   <div class="dev-box"><div class="dev-pos"><div class="drift" data-drift><div class="dev">
     <div class="scr app-dark"><video id="yours-clip" muted playsinline loop preload="metadata" poster="media/yours-end.jpg" aria-label="Screen recording: renaming a profile to BASS BOOSTED, picking an icon, sending"><source src="media/yours.mp4" type="video/mp4"></video></div>
-    <img src="media/hand-phone-orange.webp" width="2048" height="2426" alt="" loading="lazy">
   </div></div></div></div>
   <div class="show-text">
     <h2 class="mega" id="keep-h" data-snap><span class="ln"><span>Keep.</span></span></h2>
