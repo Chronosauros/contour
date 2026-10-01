@@ -114,6 +114,12 @@ h2.mega{margin-bottom:.36em}
 .more{display:flex;flex-wrap:wrap;gap:8px 28px;margin-top:26px;font-size:19px;font-weight:600}
 .more a{min-height:44px;display:inline-flex;align-items:center}
 
+/* film: one 4:5 video with sound, centred under the heading (not inside .dev, so the clip script leaves it alone) */
+.film{padding:clamp(80px,10vw,150px) var(--gut) clamp(64px,8vw,110px)}
+.film .mega{--mega:min(17vw,30svh,280px)}
+.film-grid{max-width:1320px;margin:0 auto}
+.film video{display:block;width:min(100%,560px);aspect-ratio:4/5;margin:clamp(28px,4vw,52px) auto 0;border-radius:8px;background:#171615}
+
 footer{padding:26px var(--gut) 34px;font-size:15px;line-height:1.55}
 footer a{margin-right:14px}
 
@@ -139,6 +145,8 @@ footer a{margin-right:14px}
   .show.left .dev-pos{left:calc(var(--gut) - var(--dw) * .07)}
   .show.right .dev-pos{right:calc(var(--gut) - var(--dw) * .295)}
   .install .mega{--mega:min(15vw,110px)}
+  .film{padding-top:72px}
+  .film .mega{--mega:min(24vw,150px)}
   /* the phone sits centred on narrow screens */
   .hero .dev-pos,.show.left .dev-pos,.show.right .dev-pos{left:calc(50% - var(--dw) * .4468);right:auto}
 }
@@ -195,7 +203,7 @@ footer a{margin-right:14px}
   <div class="show-text">
     <h2 class="mega" id="hold-h" data-snap><span class="ln"><span>Hold.</span></span></h2>
     <p class="intro" data-rev>HOLD TO SEND writes every band and the preamp, reads it all back and compares, and only then stores it in the dongle's memory. Unplug it and the EQ stays.</p>
-    <p class="intro" data-rev>ON DAC marks what the dongle actually holds; LAST SENT brings that version back after you edit.</p>
+    <p class="intro" data-rev>ON DAC marks what the dongle actually holds.</p>
     <div class="cta play-clip" data-rev><button class="btn line" type="button" data-clip="send-clip">Play the clip</button></div>
   </div>
 </section>
@@ -212,6 +220,26 @@ footer a{margin-right:14px}
   </div>
 </section>
 
+<section class="show left on-o" id="undo" aria-labelledby="undo-h">
+  <div class="dev-box"><div class="dev-pos"><div class="drift" data-drift><div class="dev">
+    <div class="scr app-dark"><video id="undo-clip" muted playsinline loop preload="metadata" poster="media/undo-end.jpg" aria-label="Screen recording: A/B, CLEAR EQ, UNDO, a change sent, then LAST SENT"><source src="media/undo.mp4" type="video/mp4"></video></div>
+  </div></div></div></div>
+  <div class="show-text">
+    <h2 class="mega" id="undo-h" data-snap><span class="ln"><span>Undo.</span></span></h2>
+    <p class="intro" data-rev>A/B turns the EQ off and back on with the preamp kept, so you hear only the curve. CLEAR EQ sets it flat, and UNDO brings it back.</p>
+    <p class="intro" data-rev>Not better after an edit? LAST SENT returns to what the dongle holds.</p>
+    <div class="cta play-clip" data-rev><button class="btn line" type="button" data-clip="undo-clip">Play the clip</button></div>
+  </div>
+</section>
+
+<section class="film on-k" id="film" aria-labelledby="film-h">
+  <div class="film-grid">
+    <h2 class="mega" id="film-h" data-snap><span class="ln"><span>Watch.</span></span></h2>
+    <p class="intro" data-rev>The whole app in a minute and a half, with sound.</p>
+    <video id="film-video" controls playsinline preload="none" poster="media/film-poster.jpg" aria-label="Contour demo film"><source src="media/film.mp4" type="video/mp4"></video>
+  </div>
+</section>
+
 <section class="install on-o" id="install" aria-labelledby="install-h">
   <div class="install-grid">
     <h2 class="mega" id="install-h" data-snap><span class="ln"><span>Free and</span></span><span class="ln"><span>open source.</span></span></h2>
@@ -222,7 +250,7 @@ footer a{margin-right:14px}
       <a class="btn line" href="https://github.com/Chronosauros/contour/releases/latest">Download APK</a>
       <a class="btn line" href="https://github.com/Chronosauros/contour">GitHub</a>
     </div>
-    <p class="more" data-rev><a href="guide/">Full guide</a><a href="https://www.youtube.com/watch?v=hMzWPuy0xfk">Watch the demo film</a></p>
+    <p class="more" data-rev><a href="guide/">Full guide</a><a href="#film">Watch the demo film</a></p>
   </div>
 </section>
 </main>
