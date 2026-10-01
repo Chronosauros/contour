@@ -90,6 +90,16 @@ class Scale(
             reset = 0.0,
         )
 
+        /** The DAC's hardware volume (Contour advBeta): the Protocol Micro's range, 0.5 dB steps, 0 dB = full. */
+        val VOLUME = Scale(
+            -60.0, 0.0, log = false, quantum = 0.5,
+            labels = listOf(-60.0 to "-60", -45.0 to "-45", -30.0 to "-30", -15.0 to "-15", 0.0 to "0"),
+            ticks = (-60..0 step 5).map { it.toDouble() },
+            stepMarks = DoubleArray(21) { -60.0 + it * 3.0 },
+            strongMarks = doubleArrayOf(-60.0, -45.0, -30.0, -15.0, 0.0),
+            reset = 0.0,
+        )
+
         val Q = Scale(
             0.1, 10.0, log = true, quantum = 0.01,
             labels = listOf(0.1 to "0.1", 0.3 to "0.3", 1.0 to "1", 3.0 to "3", 10.0 to "10"),

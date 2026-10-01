@@ -46,6 +46,11 @@ class DacClient(private val manager: UsbManager) {
 
     suspend fun readDevice(device: UsbDevice): DacSnapshot = withDevice(device) { read(it) }
 
+    /** Hardware volume (USB Audio Class), on the same USB thread as the HID operations. */
+    suspend fun readVolume(device: UsbDevice): UacVolume.State = withContext(usb) { UacVolume.read(manager, device) }
+
+    suspend fun writeVolume(device: UsbDevice, value256: Int): UacVolume.State = withContext(usb) { UacVolume.write(manager, device, value256) }
+
     /** A/B: only the supplied bands + TEMP_WRITE, on the existing USB thread. No read-back wait. */
     suspend fun writeTemporaryBands(device: UsbDevice, bands: List<WalkPlay.BandWrite>, slot: Int) = withDevice(device) { t ->
         // Encode everything before sending: invalid coefficients cannot leave a partial write.
