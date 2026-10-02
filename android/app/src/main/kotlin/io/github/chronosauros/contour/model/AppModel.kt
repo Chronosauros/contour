@@ -11,7 +11,7 @@ import androidx.compose.runtime.setValue
 import io.github.chronosauros.contour.core.Band
 import io.github.chronosauros.contour.core.FilterType
 import io.github.chronosauros.contour.core.Profile
-import io.github.chronosauros.contour.core.ProtocolMicro
+import io.github.chronosauros.contour.core.DeviceProtocol
 import java.util.UUID
 import kotlin.math.ln
 import kotlin.math.sqrt
@@ -40,6 +40,9 @@ object Page {
  * A touch on Tune ([beginGesture] .. [endGesture]) is one step however many values the drag went through.
  */
 class AppModel(private val store: ProfileStore, private val scope: CoroutineScope, private val beforeLoad: () -> Unit = {}) {
+    var protocol by mutableStateOf(DeviceProtocol.MICRO)
+    val maxBands: Int get() = protocol.caps.bands
+    fun shownPreamp(p: Profile): Double = protocol.shownPreamp(p)
     val profiles = mutableStateListOf<Profile>()
     var currentId by mutableStateOf<String?>(null)
         private set
@@ -407,7 +410,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     /** Adds a PEAK band (Q 1) at [freq] / [gain], or 0 dB in the widest gap; selects it. False when full. */
     fun addBand(freq: Double? = null, gain: Double = 0.0): Boolean {
         val p = current ?: return false
-        if (p.bands.size >= MAX_BANDS) return false
+        if (p.bands.size >= maxBands) return false
         val f = freq ?: widestGapMiddle(p.bands.map { it.freqHz })
         val band = Band(bandId(), FilterType.PEAK, Math.round(f.coerceIn(20.0, 20_000.0)).toDouble(), round1(gain.coerceIn(-10.0, 10.0)), 0.71)
         update { it.copy(bands = it.bands + band) }
@@ -456,8 +459,8 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
 
     /** Manual preamp in the curve domain, clamped so the register stays in the device range. */
     fun setPreamp(db: Double) = update {
-        val hs = ProtocolMicro.highShelfGainSum(it.bands)
-        it.copy(preampDb = round1(db.coerceIn(ProtocolMicro.PREAMP_MIN_DB - hs, ProtocolMicro.PREAMP_MAX_DB - hs)))
+        val hs = protocol.shelfOffset(it.bands)
+        it.copy(preampDb = round1(db.coerceIn(protocol.preampMin - hs, protocol.preampMax - hs)))
     }
 
     fun rename(id: String, name: String) = update(id) {
@@ -569,7 +572,6 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     }
 
     companion object {
-        const val MAX_BANDS = 8
         const val NAME_MAX = 18
         /** The UNDO window of a delete (the snackbar shows as long). */
         const val UNDO_MS = 5000L
@@ -577,14 +579,6 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         const val HISTORY_MAX = 100
     }
 }
-
-/**
- * The PREAMP row speaks in the domain of the drawn curve (like squig.link), in both modes: the device register
- * minus the HIGH SHELF gains the emulation folds out of the curve (ProtocolMicro.deviceBands). Display only -
- * what is written stays ProtocolMicro.devicePreamp.
- */
-fun shownPreamp(p: Profile): Double =
-    ProtocolMicro.devicePreamp(p.bands, p.preampDb) - ProtocolMicro.highShelfGainSum(p.bands)
 
 /** Widest gap between existing band frequencies in 20 Hz - 20 kHz (log), its geometric middle; 1 kHz if none. */
 fun widestGapMiddle(freqs: List<Double>): Double {

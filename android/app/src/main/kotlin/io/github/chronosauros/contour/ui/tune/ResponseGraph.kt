@@ -137,7 +137,7 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                         if (ev == null) { // long press on an empty spot
                             mode = 3
                             val p = prof.value
-                            if (p.bands.size >= AppModel.MAX_BANDS) haptics.reject()
+                            if (p.bands.size >= model.maxBands) haptics.reject()
                             else {
                                 haptics.longPress()
                                 model.addBand(map.f(down.position.x), map.g(down.position.y).coerceIn(-10.0, 10.0))

@@ -8,6 +8,8 @@ import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
 import android.os.SystemClock
 import io.github.chronosauros.contour.core.WalkPlay
+import io.github.chronosauros.contour.core.DeviceProtocol
+import io.github.chronosauros.contour.BuildConfig
 import java.io.Closeable
 import java.io.IOException
 
@@ -32,13 +34,23 @@ class HidTransport private constructor(
         fun open(manager: UsbManager, device: UsbDevice): HidTransport {
             val hids = (0 until device.interfaceCount).map { device.getInterface(it) }
                 .filter { it.interfaceClass == UsbConstants.USB_CLASS_HID }
-            val intf = hids.firstOrNull { it.id == 3 } ?: hids.firstOrNull()
+            val p = DeviceProtocol.find(device.vendorId, device.productId, BuildConfig.ADVANCED)
+                ?: throw IOException("Unsupported DAC")
+            val intf = if (p.experimental) {
+                val suitable = hids.filter { h -> h.alternateSetting == 0 &&
+                    (0 until h.endpointCount).any { i -> h.getEndpoint(i).let { ep ->
+                        ep.type == UsbConstants.USB_ENDPOINT_XFER_INT && ep.direction == UsbConstants.USB_DIR_IN && ep.maxPacketSize >= WalkPlay.REPORT_SIZE
+                    } }
+                }
+                suitable.singleOrNull() ?: throw IOException("TRN requires one unambiguous 64-byte HID interrupt IN interface")
+            } else hids.firstOrNull { it.id == 3 } ?: hids.firstOrNull()
                 ?: throw IOException("no HID interface on ${device.deviceName}")
             var epIn: UsbEndpoint? = null
             var epOut: UsbEndpoint? = null
             for (i in 0 until intf.endpointCount) {
                 val ep = intf.getEndpoint(i)
                 if (ep.type != UsbConstants.USB_ENDPOINT_XFER_INT) continue
+                if (p.experimental && ep.maxPacketSize < WalkPlay.REPORT_SIZE) continue
                 if (ep.direction == UsbConstants.USB_DIR_IN) epIn = epIn ?: ep else epOut = epOut ?: ep
             }
             if (epIn == null) throw IOException("HID interface ${intf.id} has no interrupt IN endpoint")

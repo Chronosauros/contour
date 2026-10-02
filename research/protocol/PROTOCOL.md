@@ -107,6 +107,38 @@ Applied on write AND inverted on read (CO; WH L281-303, L379-398). Order on writ
 - Slots: WalkPlay default config exposes one writable slot "Custom" id 101 (UC L676-684); the SchemeNo11
   group does not override it. Observed slot byte = 0 in every reply. Treat the slot byte as "echo what you read".
 
+## Experimental TRN Black Pearl (advBeta only)
+
+- Allow-list: **3302:43E8 only**, gated by `BuildConfig.ADVANCED`; no name/VID-wide matching and no
+  HiFi188 `262A:0001` clone support. Stable USB attach filter remains Micro-only.
+- The pinned [WalkPlay catalog](https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/walkplayPreprocessor/walkplay.json#L1843-L1868)
+  identifies TRN Black Pearl as SchemeNo16. UC L702-708 maps PID 43E8 to
+  [peq10Band10dBFullShelves](https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/peqConstraintsConfig.json#L733-L758):
+  10 filters, +/-10 dB, Q 0.1..10, PK/LS/HS (native codes 2/1/3), not LP/HP. Catalog `ChannelNum: 8`
+  is not the PEQ filter count. Sources use the same permissive devicePEQ licence credited above.
+- Use the shared 0x4B/64-byte format, raw frequency/Q, 96 kHz RBJ/Q30 coefficients (WH L742-837),
+  shelf Q as slope S; reject non-finite inputs/coefficients. No SchemeNo11 compensation and no
+  Micro HIGH SHELF -> negated LOW SHELF/preamp emulation. CMD03 is whole signed int8 dB (WH L480-517).
+  Contour conservatively restricts preamp to -30..0 dB; this is policy, not a proven TRN firmware limit.
+- Select a single HID interface with an interrupt IN endpoint carrying at least 64 bytes; multiple
+  suitable interfaces fail closed. SET_REPORT uses the actual interface ID. No audio interface is claimed
+  for PEQ. VERSION, bulk slot, ten individual band replies and preamp must all validate before the first
+  write. Missing/short/wrong-direction/wrong-index/unsupported-type data never produces a partial snapshot.
+  No fallback reset, alternate command probes or write-on-connect.
+- Explicit Send/confirmed flat restore writes **all ten slots**, including deterministic neutral PK
+  spares (1 kHz, 0 dB, Q 0.75; not claimed TRN factory captures). Echo the bulk-read slot byte, not UI
+  preset 101. Do not interpret individual-band slot fields as reliable preset echoes. Encode the complete
+  payload before transmission, then use documented WH L132-188 commit/delays. Read every slot and preamp
+  back and compare all registers plus the bulk slot; missing or mismatching data is failure, not ON DAC.
+- Register read-back is not proof of audible DSP response or coefficient identity: firmware may recompute
+  coefficients. No TRN has been connected or written during this implementation. Native shelves/design
+  rate, timing, interface layout, persistence and audible response still require owner hardware validation.
+  The GPL BlackPearlControl-Android comparator reports a different design rate/peaks-only behavior;
+  its implementation was not copied, and that conflict is not resolved by software tests.
+- A/B is disabled: only Micro's TEMP_WRITE path has RAM-only evidence. Hardware volume is also unavailable
+  for this experimental target rather than assuming Micro's UAC Feature Unit/range. No extra DAC commands.
+  Connecting, disconnecting or switching targets never rewrites/truncates saved profiles.
+
 ## Other WalkPlay groups (for extensibility)
 Same handler/wire format for SchemeNo10-21 (WH L7). Differences are config only:
 - SchemeNo10 (default): 8 bands, PK only.

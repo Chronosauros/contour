@@ -78,15 +78,17 @@ fun DebugScreen(device: DeviceController, onClose: () -> Unit) {
                         else -> "DAC: connected" + (snapshot?.firmware?.let { ", firmware $it" } ?: "")
                     } + (device.error?.let { " - error: $it" } ?: ""),
                 )
+                Text(device.protocol.caps.name)
+                if (device.protocol.experimental) Text("Experimental TRN Black Pearl support — not tested on hardware. 10-band PEQ with native shelves. A/B and hardware volume unavailable; RAM-only behavior is unverified.", style = MaterialTheme.typography.bodySmall)
                 if (device.link == Link.NEEDS_PERMISSION) Button(onClick = device::requestPermission) { Text("Ask for USB permission") }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onRead, enabled = connected) { Text("Read from DAC") }
                     Button(
                         onClick = { confirm = "Write band 1 gain -0.5 dB to the DAC and save it to its flash?" to onTestWrite },
-                        enabled = connected,
+                        enabled = connected && !device.protocol.experimental,
                     ) { Text("Send test: band 1 -0.5 dB") }
                     Button(
-                        onClick = { confirm = "Write the factory flat EQ (8 x 0 dB, preamp 0) to the DAC and save it to its flash?" to onRestoreFlat },
+                        onClick = { confirm = "Write the flat EQ (${device.protocol.caps.bands} x 0 dB, preamp 0) to the DAC and save it to its flash?" to onRestoreFlat },
                         enabled = connected,
                     ) { Text("Restore flat") }
                 }
@@ -95,9 +97,9 @@ fun DebugScreen(device: DeviceController, onClose: () -> Unit) {
                     ": " + v.current256.joinToString(" / ") { "%.1f dB".format(it / 256.0) } +
                         (v.range?.let { r -> "  (range %.1f..%.1f, step %.2f)".format(r.min256 / 256.0, r.max256 / 256.0, r.res256 / 256.0) } ?: "") +
                         "\n${v.target}, path ${v.path}"
-                } ?: ": not read"), fontFamily = FontFamily.Monospace, fontSize = 11.sp)
+                } ?: if (device.hardwareVolumeSupported) ": not read" else ": unavailable on experimental TRN support"), fontFamily = FontFamily.Monospace, fontSize = 11.sp)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = device::readVolume, enabled = connected) { Text("Read volume") }
+                    Button(onClick = device::readVolume, enabled = connected && device.hardwareVolumeSupported) { Text("Read volume") }
                     val now = device.volume?.current256?.maxOrNull()
                     Button(
                         onClick = { confirm = "Lower the DAC's hardware volume by 3 dB?" to { device.setVolume(now!! / 256.0 - 3) } },

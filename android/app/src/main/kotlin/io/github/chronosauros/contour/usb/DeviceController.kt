@@ -13,6 +13,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
 import io.github.chronosauros.contour.core.Profile
+import io.github.chronosauros.contour.core.DeviceProtocol
+import io.github.chronosauros.contour.BuildConfig
 import io.github.chronosauros.contour.core.WalkPlay
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -31,6 +33,10 @@ data class SendOutcome(val verified: Boolean, val reason: String?)
 class DeviceController(private val context: Context, private val scope: CoroutineScope) {
     private val manager = context.getSystemService(UsbManager::class.java)
     val client = DacClient(manager)
+    var protocol by mutableStateOf(DeviceProtocol.MICRO)
+        private set
+    private var connectedName: String? = null
+    val hardwareVolumeSupported: Boolean get() = protocol == DeviceProtocol.MICRO
 
     var link by mutableStateOf(Link.NO_DAC)
         private set
@@ -84,7 +90,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     private fun isDac(intent: Intent): Boolean {
         val d = if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
             else @Suppress("DEPRECATION") intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE)
-        return d?.vendorId == WalkPlay.VENDOR_ID && d.productId == WalkPlay.PRODUCT_ID
+        return d != null && DeviceProtocol.find(d.vendorId, d.productId, BuildConfig.ADVANCED) != null
     }
 
     fun start() {
@@ -102,12 +108,20 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     }
 
     private fun findDac(): UsbDevice? = manager.deviceList.values.firstOrNull {
-        it.vendorId == WalkPlay.VENDOR_ID && it.productId == WalkPlay.PRODUCT_ID
+        DeviceProtocol.find(it.vendorId, it.productId, BuildConfig.ADVANCED) != null
     }
 
     /** Recomputes the link; when connected and [read], reads the DAC (read-only). */
     fun refresh(read: Boolean) {
         val d = findDac()
+        if (connectedName != d?.deviceName) {
+            connectionEpoch++
+            connectedName = d?.deviceName
+            snapshot = null; lastWrite = null; volume = null; volumeError = null
+            abBypassed = false; abReference = null
+            volumeTarget = null
+        }
+        protocol = d?.let { DeviceProtocol.find(it.vendorId, it.productId, BuildConfig.ADVANCED) } ?: DeviceProtocol.MICRO
         link = when {
             d == null -> Link.NO_DAC
             !manager.hasPermission(d) -> Link.NEEDS_PERMISSION
@@ -153,6 +167,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
 
     /** Toggle against the actual A registers, not the editor's rounded or emulated band values. */
     suspend fun switchAb(bypass: Boolean): SendOutcome {
+        if (!protocol.supportsAb) return SendOutcome(false, "A/B unavailable: TRN RAM-only writes are not hardware verified")
         if (bypass == abBypassed) return SendOutcome(true, null)
         val reference = (if (bypass) snapshot else abReference) ?: return forgetAb("DAC STATE UNKNOWN")
         val d = findDac() ?: run {
@@ -200,10 +215,12 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         }
         if (busy) return SendOutcome(false, "DAC BUSY")
         busy = true
+        val epoch = connectionEpoch
         return try {
             val r = op(d)
+            if (epoch != connectionEpoch) return SendOutcome(false, "DAC DETACHED")
             lastWrite = r
-            snapshot = r.readBack
+            snapshot = if (r.verified) r.readBack else null
             error = null
             if (r.verified) SendOutcome(true, null) else SendOutcome(false, "READ-BACK MISMATCH: ${r.mismatches.firstOrNull() ?: ""}")
         } catch (e: Exception) {
@@ -234,6 +251,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
      * requests share the single USB thread with the HID operations, so they never overlap.
      */
     fun dragVolume(db: Double) {
+        if (!hardwareVolumeSupported) { volumeError = "Hardware volume unavailable on experimental TRN support"; return }
         volumeTarget = Math.round(db * 256).toInt()
         if (volumeJob?.isActive == true) return
         volumeJob = scope.launch {
@@ -260,7 +278,8 @@ class DeviceController(private val context: Context, private val scope: Coroutin
 
     private fun showWrite(r: WriteResult) {
         lastWrite = r
-        snapshot = r.readBack
+        snapshot = if (r.verified) r.readBack else null
+        if (!r.verified) throw java.io.IOException("READ-BACK MISMATCH: ${r.mismatches.firstOrNull()}")
     }
 
     /** [keepSnapshot]: the op does not touch the EQ registers, so a failure leaves ON DAC as it was. */
@@ -269,9 +288,11 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         if (!manager.hasPermission(d)) { link = Link.NEEDS_PERMISSION; snapshot = null; return }
         if (busy) return
         busy = true
+        val epoch = connectionEpoch
         scope.launch {
             try {
                 op(d)
+                if (epoch != connectionEpoch) { snapshot = null; volume = null; return@launch }
                 error = null
             } catch (e: Exception) {
                 UsbLog.line("$what failed: ${e.message}")

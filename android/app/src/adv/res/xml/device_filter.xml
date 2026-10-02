@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- advBeta only: Micro and experimental TRN Black Pearl; strict VID/PID pairs. -->
+    <usb-device vendor-id="13058" product-id="49679" />
+    <usb-device vendor-id="13058" product-id="17384" />
+</resources>

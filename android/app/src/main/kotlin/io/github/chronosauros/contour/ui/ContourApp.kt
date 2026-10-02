@@ -114,6 +114,7 @@ fun ContourApp(
     sheetRequest: Sheet?,
     onSheetRequestTaken: () -> Unit,
 ) {
+    LaunchedEffect(device.protocol) { model.protocol = device.protocol }
     if (model.loading || model.loadError) {
         Box(Modifier.fillMaxSize().background(pal.bg).padding(24.dp), contentAlignment = Alignment.Center) {
             androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
