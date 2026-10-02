@@ -90,24 +90,6 @@ fun DebugScreen(device: DeviceController, onClose: () -> Unit) {
                         enabled = connected,
                     ) { Text("Restore flat") }
                 }
-                // Hardware volume (USB Audio Class Feature Unit) - the control bit-perfect players set in exclusive mode.
-                Text("Hardware volume" + (device.volume?.let { v ->
-                    ": " + v.current256.joinToString(" / ") { "%.1f dB".format(it / 256.0) } +
-                        (v.range?.let { r -> "  (range %.1f..%.1f, step %.2f)".format(r.min256 / 256.0, r.max256 / 256.0, r.res256 / 256.0) } ?: "") +
-                        "\n${v.target}, path ${v.path}"
-                } ?: ": not read"), fontFamily = FontFamily.Monospace, fontSize = 11.sp)
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = device::readVolume, enabled = connected) { Text("Read volume") }
-                    val now = device.volume?.current256?.maxOrNull()
-                    Button(
-                        onClick = { confirm = "Lower the DAC's hardware volume by 3 dB?" to { device.setVolume(now!! / 256.0 - 3) } },
-                        enabled = connected && now != null,
-                    ) { Text("Volume -3 dB") }
-                    Button(
-                        onClick = { confirm = "Raise the DAC's hardware volume by 3 dB? Turn the phone volume down first." to { device.setVolume(now!! / 256.0 + 3) } },
-                        enabled = connected && now != null,
-                    ) { Text("Volume +3 dB") }
-                }
                 snapshot?.let { s ->
                     Text(
                         "slot ${s.slot}, preamp ${s.preampDb} dB, read ${s.readMs} ms\n" + s.bands.joinToString("\n") { b ->

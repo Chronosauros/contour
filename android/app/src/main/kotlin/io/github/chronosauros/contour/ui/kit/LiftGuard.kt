@@ -4,9 +4,7 @@ import android.util.Log
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.awaitHorizontalTouchSlopOrCancellation
-import androidx.compose.foundation.gestures.awaitVerticalTouchSlopOrCancellation
 import androidx.compose.foundation.gestures.horizontalDrag
-import androidx.compose.foundation.gestures.verticalDrag
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.PointerInputScope
@@ -171,27 +169,6 @@ suspend fun PointerInputScope.detectHorizontalDragWithEnds(
     onDrag(drag, over)
     val up = horizontalDrag(drag.id) {
         onDrag(it, it.positionChange().x)
-        it.consume()
-    }
-    onEnd(if (up) currentEvent.changes.firstOrNull()?.uptimeMillis else null)
-}
-
-/** [detectHorizontalDragWithEnds] for a vertical slider: [onDrag] gets dy (down = positive). */
-suspend fun PointerInputScope.detectVerticalDragWithEnds(
-    onStart: (down: PointerInputChange) -> Unit,
-    onEnd: (upTime: Long?) -> Unit,
-    onDrag: (change: PointerInputChange, dy: Float) -> Unit,
-) = awaitEachGesture {
-    val down = awaitFirstDown(requireUnconsumed = false)
-    var over = 0f
-    val drag = awaitVerticalTouchSlopOrCancellation(down.id) { ch, o ->
-        ch.consume()
-        over = o
-    } ?: return@awaitEachGesture
-    onStart(down)
-    onDrag(drag, over)
-    val up = verticalDrag(drag.id) {
-        onDrag(it, it.positionChange().y)
         it.consume()
     }
     onEnd(if (up) currentEvent.changes.firstOrNull()?.uptimeMillis else null)

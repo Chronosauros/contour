@@ -15,7 +15,6 @@ import androidx.core.content.ContextCompat
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.core.WalkPlay
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 enum class Link { NO_DAC, NEEDS_PERMISSION, CONNECTED }
@@ -41,10 +40,6 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     var lastWrite by mutableStateOf<WriteResult?>(null)
         private set
     var error by mutableStateOf<String?>(null)
-        private set
-
-    /** Last hardware-volume read or write (USB Audio Class Feature Unit); null until read. */
-    var volume by mutableStateOf<UacVolume.State?>(null)
         private set
 
     /** snapshot remains the A reference during B; it must not be replaced by a bypass read. */
@@ -74,7 +69,6 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                     abBypassed = false
                     abReference = null
                     snapshot = null
-                    volume = null
                     refresh(read = false)
                 }
             }
@@ -216,43 +210,6 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         }
     }
 
-    /** Reads the hardware volume. May briefly interrupt audio when the kernel does not share the control interface. */
-    fun readVolume() = launchOp("volume read", keepSnapshot = true) { d -> volume = client.readVolume(d) }
-
-    /** Sets the hardware volume on every channel to [db] (clamped to the DAC's range). Only on a user action. */
-    fun setVolume(db: Double) = launchOp("volume write", keepSnapshot = true) { d -> volume = client.writeVolume(d, Math.round(db * 256).toInt()) }
-
-    /** The value a slider is asking for; written by [volumeJob], newest value wins. */
-    private var volumeTarget: Int? = null
-    private var volumeJob: Job? = null
-    var volumeError by mutableStateOf<String?>(null)
-        private set
-
-    /**
-     * Slider writes (Contour advBeta): the latest [db] goes to the DAC as soon as the previous write is done, so a
-     * drag sends a few writes, never a queue, and the last position always arrives. Does not set [busy] - the
-     * requests share the single USB thread with the HID operations, so they never overlap.
-     */
-    fun dragVolume(db: Double) {
-        volumeTarget = Math.round(db * 256).toInt()
-        if (volumeJob?.isActive == true) return
-        volumeJob = scope.launch {
-            while (true) {
-                val v = volumeTarget ?: break
-                volumeTarget = null
-                val d = findDac() ?: break
-                if (!manager.hasPermission(d)) break
-                try {
-                    volume = client.writeVolume(d, v)
-                    volumeError = null
-                } catch (e: Exception) {
-                    UsbLog.line("volume write failed: ${e.message}")
-                    volumeError = e.message ?: e.javaClass.simpleName
-                }
-            }
-        }
-    }
-
     // ---- service screen (the v0.1 debug buttons; only the owner presses them) ----------------------------
 
     fun serviceTestWrite() = launchOp("test write") { d -> showWrite(client.sendTestBand1(d)) }
@@ -263,8 +220,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         snapshot = r.readBack
     }
 
-    /** [keepSnapshot]: the op does not touch the EQ registers, so a failure leaves ON DAC as it was. */
-    private fun launchOp(what: String, keepSnapshot: Boolean = false, op: suspend (UsbDevice) -> Unit) {
+    private fun launchOp(what: String, op: suspend (UsbDevice) -> Unit) {
         val d = findDac() ?: run { link = Link.NO_DAC; snapshot = null; return }
         if (!manager.hasPermission(d)) { link = Link.NEEDS_PERMISSION; snapshot = null; return }
         if (busy) return
@@ -275,7 +231,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                 error = null
             } catch (e: Exception) {
                 UsbLog.line("$what failed: ${e.message}")
-                if (!keepSnapshot) snapshot = null
+                snapshot = null
                 error = "$what failed: ${e.message}"
             } finally {
                 busy = false

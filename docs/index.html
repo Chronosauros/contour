@@ -118,7 +118,10 @@ h2.mega{margin-bottom:.36em}
 .film{padding:clamp(80px,10vw,150px) var(--gut) clamp(64px,8vw,110px)}
 .film .mega{--mega:min(17vw,30svh,280px)}
 .film-grid{max-width:1320px;margin:0 auto}
-.film video{display:block;width:min(100%,560px);aspect-ratio:4/5;margin:clamp(28px,4vw,52px) auto 0;border-radius:8px;background:#171615}
+.film video{display:block;width:min(100%,560px);aspect-ratio:4/5;margin:14px auto 0;border-radius:8px;background:#171615}
+.film video#guide-video{width:min(100%,1100px);aspect-ratio:16/9}
+.film .cap{font-size:clamp(19px,1.6vw,24px);font-weight:600;letter-spacing:-.01em;line-height:1.25;max-width:none;margin-top:clamp(28px,4vw,52px)}
+.film .film-link{margin-top:14px;font-size:19px;font-weight:600}
 
 footer{padding:26px var(--gut) 34px;font-size:15px;line-height:1.55}
 footer a{margin-right:14px}
@@ -189,8 +192,8 @@ footer a{margin-right:14px}
   <div class="drag-grid">
     <div>
       <h2 class="mega" id="drag-h" data-snap><span class="ln"><span>Drag.</span></span></h2>
-      <p class="intro" data-rev>This is the app's own EQ maths, live - drag a dot, then hold. Everything stays inside what the Protocol Micro can play: <strong>8 bands</strong>, PEAK, LOW SHELF and HIGH SHELF, gain from <strong>-10 to +10 dB</strong>.</p>
-      <p class="intro" data-rev>AUTO preamp keeps headroom so boosts do not clip, any value can be typed exactly, and undo keeps <strong>100 steps</strong> per profile.</p>
+      <p class="intro" data-rev>This is the app's own EQ maths, live - drag a dot, then hold. Everything stays inside the dongle's limits, so what you see is what it plays: <strong>8 bands</strong>, PEAK, LOW SHELF and HIGH SHELF, gain from <strong>-10 to +10 dB</strong>.</p>
+      <p class="intro" data-rev>With PREAMP on AUTO, Contour lowers it just enough to stop your boosts from clipping. Tap any number to type it exactly.</p>
     </div>
     <div class="live-box app-dark" data-rev><div id="live"></div></div>
   </div>
@@ -202,8 +205,8 @@ footer a{margin-right:14px}
   </div></div></div></div>
   <div class="show-text">
     <h2 class="mega" id="hold-h" data-snap><span class="ln"><span>Hold.</span></span></h2>
-    <p class="intro" data-rev>HOLD TO SEND writes every band and the preamp, reads it all back and compares, and only then stores it in the dongle's memory. Unplug it and the EQ stays.</p>
-    <p class="intro" data-rev>ON DAC marks what the dongle actually holds.</p>
+    <p class="intro" data-rev>HOLD TO SEND is the only button that writes to the dongle. Contour writes every band and the preamp, reads them back, and stores them only if everything matches. Unplug it and use it anywhere.</p>
+    <p class="intro" data-rev>ON DAC means the profile is in the dongle's memory, so you always know what it holds.</p>
     <div class="cta play-clip" data-rev><button class="btn line" type="button" data-clip="send-clip">Play the clip</button></div>
   </div>
 </section>
@@ -214,8 +217,8 @@ footer a{margin-right:14px}
   </div></div></div></div>
   <div class="show-text">
     <h2 class="mega" id="keep-h" data-snap><span class="ln"><span>Keep.</span></span></h2>
-    <p class="intro" data-rev>One profile per pair of earphones, stored on the phone. Start flat, paste AutoEQ or Equalizer APO parametric text, or read whatever is on the dongle right now with FROM DAC.</p>
-    <p class="intro" data-rev>SHARE sends a profile back out as text.</p>
+    <p class="intro" data-rev>One profile per pair of headphones, named after them, stored on the phone. Start FLAT, PASTE Equalizer APO text from AutoEQ, Squiglink or EQ by Ear, or save what the dongle holds right now with FROM DAC.</p>
+    <p class="intro" data-rev>SHARE sends a profile out as plain text. Keep a copy: profiles live only on your phone.</p>
     <div class="cta play-clip" data-rev><button class="btn line" type="button" data-clip="yours-clip">Play the clip</button></div>
   </div>
 </section>
@@ -226,8 +229,8 @@ footer a{margin-right:14px}
   </div></div></div></div>
   <div class="show-text">
     <h2 class="mega" id="undo-h" data-snap><span class="ln"><span>Undo.</span></span></h2>
-    <p class="intro" data-rev>A/B turns the EQ off and back on with the preamp kept, so you hear only the curve. CLEAR EQ sets it flat, and UNDO brings it back.</p>
-    <p class="intro" data-rev>Not better after an edit? LAST SENT returns to what the dongle holds.</p>
+    <p class="intro" data-rev>A/B switches the curve off and keeps the preamp, so you hear the difference at the same volume. Undo works like Ctrl+Z: one touch is one step, up to <strong>100 steps</strong> per profile, and CLEAR EQ is a step like any other.</p>
+    <p class="intro" data-rev>LAST SENT appears whenever the profile differs from the dongle. Tap it to go back to the version the dongle holds.</p>
     <div class="cta play-clip" data-rev><button class="btn line" type="button" data-clip="undo-clip">Play the clip</button></div>
   </div>
 </section>
@@ -235,8 +238,12 @@ footer a{margin-right:14px}
 <section class="film on-k" id="film" aria-labelledby="film-h">
   <div class="film-grid">
     <h2 class="mega" id="film-h" data-snap><span class="ln"><span>Watch.</span></span></h2>
-    <p class="intro" data-rev>The whole app in a minute and a half, with sound.</p>
+    <p class="intro" data-rev>Two films, both with sound.</p>
+    <p class="intro cap">The app in a minute and a half.</p>
     <video id="film-video" controls playsinline preload="none" poster="media/film-poster.jpg" aria-label="Contour demo film"><source src="media/film.mp4" type="video/mp4"></video>
+    <p class="intro cap">The full guide: every function, step by step, in six minutes.</p>
+    <video id="guide-video" controls playsinline preload="none" poster="media/guide-poster.jpg" aria-label="Contour guide film, 6 minutes 21 seconds, with voice-over"><source src="media/guide.mp4" type="video/mp4"></video>
+    <p class="intro film-link"><a href="guide/">Chapters and the full text on the guide page</a></p>
   </div>
 </section>
 
@@ -250,7 +257,7 @@ footer a{margin-right:14px}
       <a class="btn line" href="https://github.com/Chronosauros/contour/releases/latest">Download APK</a>
       <a class="btn line" href="https://github.com/Chronosauros/contour">GitHub</a>
     </div>
-    <p class="more" data-rev><a href="guide/">Full guide</a><a href="#film">Watch the demo film</a></p>
+    <p class="more" data-rev><a href="guide/">Guide with chapters</a><a href="#film">Watch the films</a></p>
   </div>
 </section>
 </main>
@@ -348,6 +355,11 @@ footer a{margin-right:14px}
     if (!reduced && "IntersectionObserver" in window) {
       new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) v.play().catch(function(){}); else v.pause(); }); }, { threshold: 0.25 }).observe(v);
     }
+  });
+  /* the two films: only one plays at a time */
+  var films = ["film-video", "guide-video"].map(function(id){ return document.getElementById(id); }).filter(Boolean);
+  films.forEach(function(v){
+    v.addEventListener("play", function(){ films.forEach(function(o){ if (o !== v && !o.paused) o.pause(); }); });
   });
   $$("button[data-clip]").forEach(function(b){
     var v = document.getElementById(b.getAttribute("data-clip"));

@@ -40,7 +40,6 @@ android {
     }
 
     buildTypes {
-        all { if (name != "adv") buildConfigField("boolean", "ADVANCED", "false") }
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -58,17 +57,6 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += "release"
         }
-        // "Contour advBeta": the release build plus the DAC's hardware volume (BuildConfig.ADVANCED), installed
-        // next to Contour under its own package and name. Built and published by the maintainer as a pre-release:
-        //   android/wsl-build.sh :app:assembleAdv  ->  io.github.chronosauros.contour.advbeta, "Contour advBeta"
-        create("adv") {
-            initWith(getByName("release"))
-            applicationIdSuffix = ".advbeta"
-            versionNameSuffix = "-advbeta1"
-            manifestPlaceholders["advLabel"] = "Contour advBeta"
-            buildConfigField("boolean", "ADVANCED", "true")
-            matchingFallbacks += "release"
-        }
     }
 
     // No AGP dependency-info block in the APK signature (it is encrypted for Google Play only; F-Droid rejects it).
@@ -79,7 +67,6 @@ android {
 
     buildFeatures {
         compose = true
-        buildConfig = true
     }
 
     compileOptions {

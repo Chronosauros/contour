@@ -3,371 +3,322 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Contour user guide</title>
-<meta name="description" content="Everything the Contour app does: the everyday routine, editing on the EQ page, HOLD TO SEND, the Library, new profiles, sharing, the Protocol Micro limits and troubleshooting.">
+<title>Contour guide</title>
+<meta name="description" content="How to use Contour, the EQ manager for the CrinEar Protocol Micro: a 6-minute film of every function, with chapters and the full text.">
 <link rel="canonical" href="https://chronosauros.github.io/contour/guide/">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://chronosauros.github.io/contour/guide/">
-<meta property="og:title" content="Contour user guide">
-<meta property="og:description" content="Everything the Contour app does, step by step.">
-<meta property="og:image" content="https://chronosauros.github.io/contour/images/icon-512.png">
-<meta name="twitter:card" content="summary">
+<meta property="og:title" content="Contour guide">
+<meta property="og:description" content="How to use Contour, the EQ manager for the CrinEar Protocol Micro: a 6-minute film of every function, with chapters and the full text.">
+<meta property="og:image" content="https://chronosauros.github.io/contour/media/guide-poster.jpg">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#EFECE8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#171615" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
 <link rel="icon" type="image/png" href="../images/icon-512.png">
-<link rel="stylesheet" href="../shared/tokens.css">
-<style>
-*,*::before,*::after{box-sizing:border-box}
-html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:16px}
-@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{transition:none!important}}
-body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:17px;line-height:1.55;overflow-x:hidden}
-a{color:var(--text);text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:3px;overflow-wrap:anywhere}
-h1,h2,h3,h4,p{margin:0}
-p{margin-bottom:.8em}
-strong{font-weight:600}
-code{font-family:inherit;font-feature-settings:"tnum";background:var(--sunken);padding:.05em .4em;border-radius:var(--r-tag);overflow-wrap:anywhere}
-:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
-.wrap{max-width:1240px;margin:0 auto;padding:0 40px}
-.lbl{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;line-height:1.3;color:var(--text-dim)}
-.dim{color:var(--text-dim)}
-
-.top{display:flex;align-items:center;gap:14px;height:88px}
-.top .home{display:flex;align-items:center;gap:14px;text-decoration:none;min-height:48px}
-.top img{width:40px;height:40px;border-radius:12px;box-shadow:var(--lift-raised)}
-.top .brand{font-size:20px;font-weight:700;letter-spacing:.02em;text-transform:uppercase}
-.top nav{margin-left:auto;display:flex;gap:4px}
-.top nav a{text-decoration:none;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);padding:0 14px;min-height:48px;display:inline-flex;align-items:center;border-radius:var(--r-option)}
-.top nav a:hover,.top nav a[aria-current]{color:var(--text)}
-
-.intro{max-width:760px;padding:32px 0 36px}
-.intro h1{font-size:56px;font-weight:700;letter-spacing:-.02em;line-height:1.02;text-transform:uppercase;margin-bottom:20px}
-.intro p{color:var(--text-dim);font-size:19px}
-.tools{display:flex;gap:var(--gap);margin-top:20px;flex-wrap:wrap}
-.tool{min-height:48px;padding:0 18px;border-radius:var(--r-chip);border:0;background:var(--surface2);color:var(--text);box-shadow:var(--lift-raised);font:inherit;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;cursor:pointer}
-.tool:active{box-shadow:var(--lift-raised-held)}
-
-.groups{display:grid;gap:var(--gap);max-width:880px;margin-bottom:56px}
-details.grp{background:var(--surface);border-radius:var(--r-card);box-shadow:var(--lift-card)}
-details.grp[open]{box-shadow:var(--lift-raised)}
-details.grp > summary{list-style:none;cursor:pointer;display:flex;align-items:flex-start;gap:12px;padding:18px 18px 18px 20px;border-radius:var(--r-card);min-height:48px;-webkit-tap-highlight-color:transparent}
-details.grp > summary::-webkit-details-marker{display:none}
-.sum-text{flex:1 1 auto;min-width:0}
-.sum-text h2{font-size:18px;font-weight:700;letter-spacing:-.015em;line-height:1.25;text-transform:uppercase}
-.sum-text p{margin:4px 0 0;color:var(--text-dim);font-size:15px;line-height:1.4}
-.chev{flex:none;width:24px;height:24px;display:grid;place-items:center;color:var(--text-dim);transition:transform .2s}
-.chev svg{width:24px;height:24px}
-details.grp[open] > summary .chev{transform:rotate(180deg)}
-.grp-body{padding:2px 22px 24px 20px;font-size:16px}
-.grp-body h3{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);margin:26px 0 10px}
-.grp-body > :last-child{margin-bottom:0}
-ul.plain-list{margin:0 0 .8em;padding-left:1.2em}
-ul.plain-list li{margin:6px 0}
-ul.plain-list li::marker{color:var(--text-mute)}
-ul.lead-list{list-style:none;margin:0 0 .9em;padding:0;display:grid;gap:12px}
-ul.lead-list li{padding-left:18px;position:relative}
-ul.lead-list li::before{content:"";position:absolute;left:0;top:.6em;width:8px;height:8px;border-radius:3px;background:var(--accent)}
-ul.lead-list strong{font-weight:700}
-table.st{border-collapse:collapse;width:100%;font-size:16px;margin:4px 0 14px}
-table.st td{padding:10px 12px 10px 0;border-bottom:1px solid var(--grid);vertical-align:top}
-table.st td:first-child{font-weight:600;width:36%;white-space:normal}
-table.st tr:last-child td{border-bottom:0}
-.shots{display:flex;gap:16px;margin:16px 0 18px;flex-wrap:wrap}
-.shots figure{margin:0;flex:0 1 220px}
-.shots img{display:block;width:100%;height:auto;border-radius:var(--r-card);box-shadow:var(--lift-card);background:var(--surface)}
-.shots figcaption{margin-top:10px;text-align:center}
-
-footer{padding:24px 0 64px;color:var(--text-dim);font-size:14px}
-footer p{margin:0 0 8px}
-footer .links{display:flex;flex-wrap:wrap;gap:4px 22px;margin-bottom:18px}
-
-@media (max-width:820px){
-  .wrap{padding:0 16px}
-  .top{height:72px}
-  .top nav a.opt{display:none}
-  .intro{padding:12px 0 24px}
-  .intro h1{font-size:38px}
-  .intro p{font-size:17px}
-  .grp-body{padding:2px 18px 22px 18px}
-  table.st td:first-child{width:42%}
+<link rel="apple-touch-icon" href="../images/icon-512.png">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "VideoObject",
+  "name": "Contour guide",
+  "description": "How to use Contour, the EQ manager for the CrinEar Protocol Micro: a 6-minute film of every function, with chapters and the full text.",
+  "thumbnailUrl": "https://chronosauros.github.io/contour/media/guide-poster.jpg",
+  "uploadDate": "2026-10-02",
+  "duration": "PT6M21S",
+  "contentUrl": "https://chronosauros.github.io/contour/media/guide.mp4",
+  "hasPart": [
+    {"@type": "Clip", "name": "What Contour does", "startOffset": 0, "endOffset": 26, "url": "https://chronosauros.github.io/contour/guide/#what-contour-does"},
+    {"@type": "Clip", "name": "Connecting", "startOffset": 26, "endOffset": 57, "url": "https://chronosauros.github.io/contour/guide/#connecting"},
+    {"@type": "Clip", "name": "Sending a profile", "startOffset": 57, "endOffset": 89, "url": "https://chronosauros.github.io/contour/guide/#sending"},
+    {"@type": "Clip", "name": "A new profile", "startOffset": 89, "endOffset": 114, "url": "https://chronosauros.github.io/contour/guide/#new-profile"},
+    {"@type": "Clip", "name": "Filter types and sliders", "startOffset": 114, "endOffset": 143, "url": "https://chronosauros.github.io/contour/guide/#filters"},
+    {"@type": "Clip", "name": "Name and icon", "startOffset": 143, "endOffset": 167, "url": "https://chronosauros.github.io/contour/guide/#name-and-icon"},
+    {"@type": "Clip", "name": "Bands up close", "startOffset": 167, "endOffset": 196, "url": "https://chronosauros.github.io/contour/guide/#bands"},
+    {"@type": "Clip", "name": "Exact values and preamp", "startOffset": 196, "endOffset": 226, "url": "https://chronosauros.github.io/contour/guide/#exact-values"},
+    {"@type": "Clip", "name": "Compare, undo, go back", "startOffset": 226, "endOffset": 306, "url": "https://chronosauros.github.io/contour/guide/#compare-undo"},
+    {"@type": "Clip", "name": "Organise, share, import", "startOffset": 306, "endOffset": 327, "url": "https://chronosauros.github.io/contour/guide/#organise"},
+    {"@type": "Clip", "name": "Limits and troubleshooting", "startOffset": 327, "endOffset": 365, "url": "https://chronosauros.github.io/contour/guide/#limits"},
+    {"@type": "Clip", "name": "Where to go next", "startOffset": 365, "endOffset": 381, "url": "https://chronosauros.github.io/contour/guide/#next"}
+  ]
 }
+</script>
+<style>
+/*
+  Look = the install page (same tokens, font, column, hero and footer), which follows the Contour app
+  (android/.../ui/Theme.kt). 1 dp = 1 CSS px. Colors: only Palette roles (light here, dark under prefers-color-scheme).
+  Shadows: CARD r10 y3 a.42 -> 0 3px 12.5px | RAISED r6 y2 a.55 -> 0 2px 8px.
+*/
+@font-face{
+  font-family:"Google Sans Flex";
+  src:url("../shared/fonts/google-sans-flex-latin.woff") format("woff");
+  font-weight:400 700; font-style:normal; font-display:swap;
+}
+:root{
+  --bg:#EFECE8; --surface:#FAF8F5; --surface2:#E7E3DE;
+  --text:#1D1B19; --text-dim:#6E6963; --text-mute:#9A948D;
+  --accent:#F07A3A; --on-accent:#2B1A10;
+  --sunken:#E6E2DD; --shadow:#2B2118;
+  --k-card:12.6%; --k-high:16.5%;
+  --led-on:#46D17A;
+
+  --lift-card:0 3px 12.5px color-mix(in srgb, var(--shadow) var(--k-card), transparent);
+  --lift-raised:0 2px 8px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+  --lift-raised-held:0 0.6px 3.8px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+
+  --font:"Google Sans Flex","Google Sans","Google Sans Text",system-ui,sans-serif;
+  --r-card:20px;
+  --r-chip:14px;
+  --r-option:12px;
+  --r-tag:8px;
+  --gap:8px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#171615; --surface:#242220; --surface2:#2E2B29;
+    --text:#F3F0EC; --text-dim:#A39E98; --text-mute:#77726C;
+    --accent:#F07A3A; --on-accent:#2B1A10;
+    --sunken:#121110; --shadow:#000000;
+    --k-card:42%; --k-high:55%;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-padding-top:16px}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:16px;line-height:1.5;font-weight:400;overflow-x:hidden;font-optical-sizing:auto}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px}
+a{color:var(--text);text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:3px;overflow-wrap:anywhere}
+h1,h2,h3{margin:0}
+p{margin:0 0 .75em}
+strong{font-weight:600}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+/* top line */
+.top{display:flex;gap:20px;padding:20px 6px 0;font-size:15px}
+
+/* hero */
+.hero{padding:24px 0 8px}
+.hero img.icon{width:88px;height:88px;border-radius:var(--r-card);display:block;margin-bottom:20px;box-shadow:var(--lift-card)}
+.hero h1{font-size:38px;font-weight:700;letter-spacing:-.01em;line-height:1.1;text-transform:uppercase}
+.hero .lede{color:var(--text-dim);margin:12px 0 18px;max-width:34em;font-size:17px}
+.ver{display:inline-flex;align-items:center;gap:10px;background:var(--surface);color:var(--text-dim);border-radius:999px;box-shadow:var(--lift-card);padding:10px 14px 10px 16px;margin:0 0 24px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-feature-settings:"tnum";line-height:1.3}
+.ver .dot{order:2;width:8px;height:8px;border-radius:50%;background:var(--led-on);flex:none}
+
+/* film */
+.film{margin:0}
+#guide-video{display:block;width:100%;aspect-ratio:16/9;height:auto;background:var(--sunken);border-radius:var(--r-card);box-shadow:var(--lift-card);scroll-margin-top:16px}
+.film-note{color:var(--text-dim);font-size:15px;margin:14px 6px 0}
+
+/* chapter list: library rows - surface, radius 20, CARD lift; the time is a chip */
+nav.chapters{margin:32px 0 0}
+nav.chapters > h2{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);padding:0 6px;margin-bottom:12px}
+nav.chapters ol{list-style:none;margin:0;padding:0;display:grid;gap:var(--gap)}
+nav.chapters a{display:flex;align-items:center;gap:14px;min-height:52px;padding:8px 18px 8px 10px;background:var(--surface);border-radius:var(--r-card);box-shadow:var(--lift-card);text-decoration:none;font-size:17px;font-weight:600;letter-spacing:-.01em;line-height:1.3}
+nav.chapters a .t{flex:none}
+nav.chapters a[aria-current="true"] .t{background:var(--accent);color:var(--on-accent)}
+
+/* time chip = the band chip: surface2, radius 14, RAISED */
+.t{display:inline-flex;align-items:center;justify-content:center;min-width:60px;min-height:36px;padding:4px 12px;border-radius:var(--r-chip);background:var(--surface2);color:var(--text);box-shadow:var(--lift-raised);font-size:15px;font-weight:600;font-feature-settings:"tnum";letter-spacing:0;line-height:1.2;text-decoration:none;-webkit-tap-highlight-color:transparent;transition:box-shadow .12s}
+.t:active{box-shadow:var(--lift-raised-held)}
+
+/* chapter text */
+section.plain{margin:32px 0;scroll-margin-top:16px}
+section.plain > h2{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);padding:0 6px;margin-bottom:12px}
+section.plain > h2 .t{letter-spacing:0;text-transform:none}
+.body{background:var(--surface);border-radius:var(--r-card);box-shadow:var(--lift-card);padding:18px 22px 10px 20px}
+.body > :last-child{margin-bottom:.75em}
+.body ul{margin:0 0 .75em;padding-left:1.2em}
+.body li{margin:6px 0}
+.body li::marker{color:var(--text-mute)}
+.muted{color:var(--text-dim);font-size:15px;margin:0 6px 12px}
+.body .muted{margin:0 0 .75em}
+
+/* footer */
+footer{padding:8px 6px 48px;color:var(--text-dim);font-size:14px}
+footer ul{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:6px}
+footer p{margin:0 0 8px}
+footer .links{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 14px}
+
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
 @media print{
+  :root{--bg:#EFECE8;--surface:#FAF8F5;--surface2:#E7E3DE;--text:#1D1B19;--text-dim:#6E6963;--text-mute:#9A948D;--sunken:#E6E2DD;--accent:#F07A3A}
+  body{background:var(--surface);color:var(--text)}
   *{box-shadow:none!important}
-  .tools{display:none}
-  details.grp::details-content{content-visibility:visible;display:block}
+  #guide-video,.film-note,nav.chapters{display:none!important}
 }
 </style>
 </head>
 <body>
 <div class="wrap">
 
-<header class="top">
-  <a class="home" href="../"><img src="../images/icon-512.png" width="40" height="40" alt=""><span class="brand">Contour</span></a>
-  <nav aria-label="Pages">
-    <a class="opt" href="../">Home</a><a href="./" aria-current="page">User guide</a><a href="../install/">Install</a>
-  </nav>
+<p class="top"><a href="../">Contour</a> <a href="../install/">Install</a></p>
+
+<header class="hero">
+  <img class="icon" src="../images/icon-512.png" width="88" height="88" alt="Contour app icon">
+  <h1>Contour guide</h1>
+  <p class="lede">Every function of the app in one film, with chapters. The same steps are written out below.</p>
+  <p class="ver"><span class="dot" aria-hidden="true"></span><span>Filmed on release 1.2.2 - 6 min 21 s</span></p>
 </header>
 
-<main>
-<section class="intro">
-  <p class="lbl">User guide</p>
-  <h1>Contour user guide</h1>
-  <p>Contour keeps your EQ profiles on your phone and writes the one you pick into a CrinEar Protocol Micro. The idea is simple: plug the dongle in, choose a profile, hold the button, unplug. The EQ now lives inside the dongle, so it works with every app and every device you plug the dongle into afterwards, until you send a different one.</p>
-  <p>This guide walks through everything the app does. If you only want the short version, read <a href="#the-everyday-routine">The everyday routine</a> and stop there.</p>
-  <div class="tools"><button type="button" class="tool" id="open-all">Open all</button><button type="button" class="tool" id="close-all">Close all</button></div>
+<div class="film">
+  <video id="guide-video" controls playsinline preload="metadata" poster="../media/guide-poster.jpg" aria-label="Contour guide film, 6 minutes 21 seconds, with voice-over"><source src="../media/guide.mp4" type="video/mp4"></video>
+  <p class="film-note">Short on time? The 1.5-minute demo film is on the <a href="../#film">home page</a>.</p>
+</div>
+
+<nav class="chapters" aria-label="Chapters">
+  <h2>Chapters</h2>
+  <ol>
+    <li><a href="#what-contour-does" data-t="0"><span class="t">0:00</span><span>What Contour does</span></a></li>
+    <li><a href="#connecting" data-t="26"><span class="t">0:26</span><span>Connecting</span></a></li>
+    <li><a href="#sending" data-t="57"><span class="t">0:57</span><span>Sending a profile</span></a></li>
+    <li><a href="#new-profile" data-t="89"><span class="t">1:29</span><span>A new profile</span></a></li>
+    <li><a href="#filters" data-t="114"><span class="t">1:54</span><span>Filter types and sliders</span></a></li>
+    <li><a href="#name-and-icon" data-t="143"><span class="t">2:23</span><span>Name and icon</span></a></li>
+    <li><a href="#bands" data-t="167"><span class="t">2:47</span><span>Bands up close</span></a></li>
+    <li><a href="#exact-values" data-t="196"><span class="t">3:16</span><span>Exact values and preamp</span></a></li>
+    <li><a href="#compare-undo" data-t="226"><span class="t">3:46</span><span>Compare, undo, go back</span></a></li>
+    <li><a href="#organise" data-t="306"><span class="t">5:06</span><span>Organise, share, import</span></a></li>
+    <li><a href="#limits" data-t="327"><span class="t">5:27</span><span>Limits and troubleshooting</span></a></li>
+    <li><a href="#next" data-t="365"><span class="t">6:05</span><span>Where to go next</span></a></li>
+  </ol>
+</nav>
+
+<section class="plain" id="what-contour-does">
+  <h2><a class="t" href="#what-contour-does" data-t="0">0:00</a><span>What Contour does</span></h2>
+  <div class="body">
+    <p>Contour is an EQ manager for the CrinEar Protocol Micro. The dongle keeps its EQ inside, so the EQ works with every app and every device you plug it into.</p>
+    <p>Contour changes that EQ from an Android phone, with no account and no internet. A fresh install comes with three profiles to start from: PROFILE 1 (flat), NIGHTFALL and DUSK.</p>
+  </div>
 </section>
 
-<div class="groups">
-
-<details class="grp" id="why-it-exists">
-  <summary><div class="sum-text"><h2>Why Contour exists</h2><p>The EQ lives in the dongle; changing it needed a computer.</p></div><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
-  <div class="grp-body">
-    <p>The Protocol Micro keeps its parametric EQ inside the dongle, so whatever it holds works with every app and every device you plug it into - no system equaliser, no app running in the background. But the official editor, <a href="https://eq.hangout.audio/">eq.hangout.audio</a>, is a desktop-browser tool, and phone browsers lack the WebHID it relies on.</p>
-    <p>Contour puts it on the phone. It does not process audio, does not need the internet and has no accounts. It only talks to the dongle.</p>
-  </div>
-</details>
-
-<details class="grp" id="what-you-need">
-  <summary><div class="sum-text"><h2>What you need</h2><p>The dongle, an Android phone, nothing else.</p></div><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
-  <div class="grp-body">
-    <ul class="plain-list">
-      <li>A <strong>CrinEar Protocol Micro</strong> USB DAC.</li>
-      <li>An Android phone with <strong>Android 9 or newer</strong> and USB host (USB OTG) support. Almost every phone with a USB-C port has it.</li>
-      <li>Nothing else: no account, no internet connection, no other app.</li>
+<section class="plain" id="connecting">
+  <h2><a class="t" href="#connecting" data-t="26">0:26</a><span>Connecting</span></h2>
+  <div class="body">
+    <p>Plug in the Protocol Micro. The pill in the top right corner of the Library shows its status:</p>
+    <ul>
+      <li><strong>NO DAC</strong> - nothing is plugged in. Tap it to check again.</li>
+      <li><strong>TAP TO CONNECT</strong> - the dongle is there, but Android hasn't allowed access yet. Tap it, and allow.</li>
+      <li><strong>CONNECTED</strong>, with a green dot - you're ready.</li>
     </ul>
+    <p>Tip: when Android offers to open Contour, tick "always", and next time it connects by itself.</p>
   </div>
-</details>
+</section>
 
-<details class="grp" id="install">
-  <summary><div class="sum-text"><h2>Install</h2><p>Obtainium for updates, or the APK by hand.</p></div><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
-  <div class="grp-body">
-    <p>The <a href="../install/">install page</a> has every option step by step. The easiest way to also get updates is <a href="../install/#obtainium">Obtainium</a>: in Obtainium tap Add app, paste <a href="https://github.com/Chronosauros/contour">https://github.com/Chronosauros/contour</a> and install. Or by hand:</p>
-    <ul class="lead-list">
-      <li><strong>Download.</strong> Get the newest <code>contour-&lt;version&gt;.apk</code> from the <a href="https://github.com/Chronosauros/contour/releases">Releases page</a>.</li>
-      <li><strong>Open the file</strong> on your phone. Android asks you to allow installs from your browser or file manager the first time; allow it for that app.</li>
-      <li><strong>Open Contour.</strong> The first time it starts with three profiles: <strong>PROFILE 1</strong>, holding a single flat band to play with, <strong>NIGHTFALL</strong>, the maintainer's own tuning for the CrinEar Nightfall, and <strong>DUSK</strong>, the DUSK-Default curve of Moondrop's DSP cable (as published by Crinacle), so the Moondrop x Crinacle DUSK on its analog cable sounds like it does on the DSP cable. Delete any of them whenever you like. Profiles you already have are never touched by an update, so the examples appear only on a fresh install.</li>
+<section class="plain" id="sending">
+  <h2><a class="t" href="#sending" data-t="57">0:57</a><span>Sending a profile</span></h2>
+  <div class="body">
+    <p>Tap a profile to open it on the EQ page. HOLD TO SEND is the only button that writes to the dongle. Hold it until it fills; a tap does nothing. Contour writes every band and the preamp, reads them back, and stores them only if everything matches.</p>
+    <p>ON DAC means this profile is now in the dongle's memory. Unplug it and use it anywhere. The Library marks it ON DAC too, so you always know what the dongle holds.</p>
+  </div>
+</section>
+
+<section class="plain" id="new-profile">
+  <h2><a class="t" href="#new-profile" data-t="89">1:29</a><span>A new profile</span></h2>
+  <div class="body">
+    <p>To make a new profile, tap the empty card with the plus. FLAT gives you one flat band at 1 kHz.</p>
+    <p>The white line is what your EQ does to the sound. Each numbered dot is a band: drag it sideways for frequency, up and down for gain. Long-press an empty spot to add a band right there.</p>
+  </div>
+</section>
+
+<section class="plain" id="filters">
+  <h2><a class="t" href="#filters" data-t="114">1:54</a><span>Filter types and sliders</span></h2>
+  <div class="body">
+    <p>Under the graph, pick the filter type: PEAK works around the frequency, LOW SHELF below it, HIGH SHELF above it.</p>
+    <p>The FREQ, GAIN and Q sliders move from where they are, so a touch never makes the value jump. Slow drags give fine steps, and when you lift your finger, the value stays.</p>
+    <p>With PREAMP on AUTO, Contour lowers it just enough to stop your boosts from clipping. Everything saves as you go.</p>
+  </div>
+</section>
+
+<section class="plain" id="name-and-icon">
+  <h2><a class="t" href="#name-and-icon" data-t="143">2:23</a><span>Name and icon</span></h2>
+  <div class="body">
+    <p>Long-press a card to edit its name and description, and to pick an icon. A good habit: one profile per pair of headphones, named after them. Then open it and send it with HOLD TO SEND.</p>
+  </div>
+</section>
+
+<section class="plain" id="bands">
+  <h2><a class="t" href="#bands" data-t="167">2:47</a><span>Bands up close</span></h2>
+  <div class="body">
+    <p>EQ and LIBRARY are also a swipe apart.</p>
+    <p>Tap a dot or a chip to select its band. Double-tap a dot to reset its gain to 0 dB. Pinch to make the selected band narrower or wider: that's its Q.</p>
+    <p>The + chip adds a band, up to eight. Long-press a chip to bypass a band, enable it again, or delete it.</p>
+  </div>
+</section>
+
+<section class="plain" id="exact-values">
+  <h2><a class="t" href="#exact-values" data-t="196">3:16</a><span>Exact values and preamp</span></h2>
+  <div class="body">
+    <p>One fast swipe on FREQ covers the whole range. For an exact value, tap the number and type it.</p>
+    <p>PREAMP switches between AUTO and MANUAL. In MANUAL, drag it or type a value, in whole dB from -30 to 0. A quieter sound after sending is the preamp making room for your boosts.</p>
+  </div>
+</section>
+
+<section class="plain" id="compare-undo">
+  <h2><a class="t" href="#compare-undo" data-t="226">3:46</a><span>Compare, undo, go back</span></h2>
+  <div class="body">
+    <p><strong>Compare.</strong> A/B works while the profile is ON DAC. Tap it, and the curve switches off but the preamp stays, so you hear the difference at the same volume. Tap A/B again, and your EQ is back. A/B never saves anything to the dongle.</p>
+    <p><strong>Undo.</strong> The two arrows by the profile name work like Ctrl+Z on a computer: undo takes back your last change, whatever it was, and redo steps forward again. One touch is one step, however far you drag. Each profile keeps up to 100 steps, even after you close the app.</p>
+    <p><strong>Clear.</strong> CLEAR EQ leaves one flat band. That's a change like any other, so undo brings it straight back.</p>
+    <p><strong>Last sent.</strong> LAST SENT appears whenever the profile differs from what's on the dongle. Tap it, and you're back to the version the dongle holds. Or send the new version instead.</p>
+  </div>
+</section>
+
+<section class="plain" id="organise">
+  <h2><a class="t" href="#organise" data-t="306">5:06</a><span>Organise, share, import</span></h2>
+  <div class="body">
+    <p>Duplicate is handy before you experiment: long-press a card and tap DUPLICATE.</p>
+    <p>Swipe a card left to ARCHIVE or DELETE it. Both offer UNDO for five seconds.</p>
+  </div>
+</section>
+
+<section class="plain" id="library-more">
+  <h2>More in the Library</h2>
+  <p class="muted">Not in the film yet.</p>
+  <div class="body">
+    <p>Archived profiles wait in a folded section at the bottom of the Library. Open it, and swipe a card to RESTORE it.</p>
+    <p>SHARE (long-press a card) sends a profile as plain text, in the Equalizer APO format. Keep a copy somewhere: profiles live only on your phone.</p>
+    <p>PASTE (tap the + card) reads the same format, from AutoEQ, Squiglink or an EQ by Ear export. Check the curve before sending.</p>
+    <p>FROM DAC (tap the + card) saves what the dongle holds right now as a new profile.</p>
+    <p>Swiping the + card left saves every profile as its LAST SENT version, without sending anything. It asks first, and it can't be undone.</p>
+  </div>
+</section>
+
+<section class="plain" id="service">
+  <h2>Service screen and About</h2>
+  <p class="muted">Not in the film yet.</p>
+  <div class="body">
+    <p>Long-press the status pill for the service screen. It shows the raw state of the dongle, and a USB log for bug reports. Read from DAC reads it again. Restore flat writes a flat EQ to the dongle, after asking first.</p>
+    <p>ABOUT &amp; LICENCES, at the bottom of the Library, shows the version and the open-source licences.</p>
+  </div>
+</section>
+
+<section class="plain" id="limits">
+  <h2><a class="t" href="#limits" data-t="327">5:27</a><span>Limits and troubleshooting</span></h2>
+  <div class="body">
+    <p>Contour never lets you go past the dongle's limits, so what you see is what it plays: 8 bands, gain -10 to +10 dB, Q 0.1 to 10, 20 Hz to 20 kHz, preamp -30 to 0 dB. The dongle has no real high shelf, so Contour sends a mirrored low shelf plus preamp: the same curve.</p>
+    <ul>
+      <li><strong>Stuck on NO DAC?</strong> Plug the dongle in again, without adapters or hubs.</li>
+      <li><strong>Sending failed?</strong> Hold the button again. Usually the dongle moved.</li>
+      <li><strong>PASTE greyed out?</strong> The clipboard holds no EQ that Contour understands. Copy the text again.</li>
     </ul>
-    <p>If you want to make sure the file is genuine, compare its SHA-256 with the one listed on the release.</p>
+    <p>Installing, updating and checking the APK are on the <a href="../install/">install page</a>.</p>
   </div>
-</details>
+</section>
 
-<details class="grp" id="the-everyday-routine">
-  <summary><div class="sum-text"><h2>The everyday routine</h2><p>The short version: plug in, pick, hold, unplug.</p></div><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
-  <div class="grp-body">
-    <ul class="lead-list">
-      <li><strong>Plug in.</strong> Put the Protocol Micro into the phone. Android may offer to open Contour - say yes, and tick "always" if you want it to open by itself next time.</li>
-      <li><strong>Connect.</strong> The status in the top right corner changes to <strong>CONNECTED</strong> with a green dot. If it says <strong>TAP TO CONNECT</strong>, tap it once and allow USB access.</li>
-      <li><strong>Pick.</strong> Go to <strong>LIBRARY</strong> and tap the profile you want. It opens on the EQ page.</li>
-      <li><strong>Hold.</strong> Hold the big orange <strong>HOLD TO SEND</strong> button until it fills up (under a second).</li>
-      <li><strong>Go.</strong> The button turns into <strong>ON DAC</strong>. Done - unplug the dongle and use it anywhere.</li>
-    </ul>
-    <p>That is the whole point of the app: your EQs are saved on the phone, and moving one into the dongle takes a few seconds.</p>
+<section class="plain" id="next">
+  <h2><a class="t" href="#next" data-t="365">6:05</a><span>Where to go next</span></h2>
+  <div class="body">
+    <p>Other dongles may follow, once someone confirms them on real hardware. Contour is open source: the code and the releases are on <a href="https://github.com/Chronosauros/contour">GitHub</a>, and questions and bug reports go to <a href="https://github.com/Chronosauros/contour/issues">GitHub Issues</a>.</p>
   </div>
-</details>
-
-<details class="grp" id="the-two-pages">
-  <summary><div class="sum-text"><h2>The two pages</h2><p>EQ for shaping, LIBRARY for keeping.</p></div><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
-  <div class="grp-body">
-    <p>Contour has two pages: <strong>EQ</strong>, where you shape the current profile, and <strong>LIBRARY</strong>, where you keep all of them. Switch between them with the bar at the bottom of the screen, or swipe left and right. While your finger is on a slider or a point on the graph, the page stays put.</p>
-    <div class="shots">
-      <figure><img src="../images/tune.png" width="480" height="966" loading="lazy" alt="EQ page"><figcaption class="lbl">EQ</figcaption></figure>
-      <figure><img src="../images/library.png" width="480" height="966" loading="lazy" alt="Library page"><figcaption class="lbl">Library</figcaption></figure>
-    </div>
-  </div>
-</details>
-
-<details class="grp" id="status-and-connecting">
-  <summary><div class="sum-text"><h2>Status and connecting</h2><p>What NO DAC, TAP TO CONNECT, CONNECTED and BUSY mean.</p></div><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
-  <div class="grp-body">
-    <p>The pill in the top right corner of the Library tells you what the DAC is doing:</p>
-    <table class="st">
-      <tr><td>NO DAC</td><td>No Protocol Micro is plugged in. Tap it to check again - if the DAC is there, Contour connects.</td></tr>
-      <tr><td>TAP TO CONNECT</td><td>The DAC is there, but Android has not given Contour access yet. Tap it and allow. It appears as soon as you plug the DAC in while Contour is open.</td></tr>
-      <tr><td>CONNECTED (green dot)</td><td>Ready to send.</td></tr>
-      <tr><td>BUSY</td><td>Contour is talking to the DAC right now. Wait a moment.</td></tr>
-    </table>
-    <p>On the EQ page the big send button shows the same states (see <a href="#sending-to-the-dac">Sending to the DAC</a>), and tapping <strong>NO DAC</strong> there also checks the port and connects.</p>
-    <p>Contour only ever looks for the Protocol Micro. Other USB devices are ignored.</p>
-  </div>
-</details>
-
-<details class="grp" id="eq-page-editing-a-profile">
-  <summary><div class="sum-text"><h2>EQ page: editing a profile</h2><p>The graph, band chips, filter types, sliders, preamp, undo.</p></div><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
-  <div class="grp-body">
-    <p>The top of the page shows the profile's icon and name, with <strong>CLEAR EQ</strong> on the right: one tap leaves a single flat band with the preamp on AUTO, and, like any change, it can be taken back with undo. It turns orange while there is something to clear and dims when the EQ is already flat or switched off by A/B. Below are the response graph, the band chips, the filter type and the sliders.</p>
-
-    <h3>The response graph</h3>
-    <p>The white line is what your EQ does to the sound, from 20 Hz on the left to 20 kHz on the right. Each numbered dot is one band.</p>
-    <ul class="plain-list">
-      <li><strong>Drag a dot</strong> to move a band: left and right changes its frequency, up and down its gain.</li>
-      <li><strong>Tap a dot</strong> to select it.</li>
-      <li><strong>Double-tap a dot</strong> to set its gain back to 0 dB.</li>
-      <li><strong>Pinch</strong> with two fingers to make the selected band narrower or wider (its Q).</li>
-      <li><strong>Long-press an empty spot</strong> to add a new band right there.</li>
-    </ul>
-
-    <h3>Band chips</h3>
-    <p>The numbered chips under the graph are the same bands.</p>
-    <ul class="plain-list">
-      <li><strong>Tap</strong> a chip to select that band.</li>
-      <li><strong>Long-press</strong> a chip for <strong>BYPASS</strong> (switch the band off without deleting it, and back on with <strong>ENABLE</strong>) or <strong>DELETE</strong>.</li>
-      <li><strong>+</strong> adds a band. The Protocol Micro holds up to 8.</li>
-    </ul>
-    <p>A new band starts flat: PEAK, 0 dB, Q 0.71.</p>
-
-    <h3>Filter type</h3>
-    <ul class="plain-list">
-      <li><strong>PEAK</strong> raises or lowers a range around the frequency.</li>
-      <li><strong>LOW SHELF</strong> raises or lowers everything below the frequency.</li>
-      <li><strong>HIGH SHELF</strong> raises or lowers everything above the frequency.</li>
-    </ul>
-
-    <h3>FREQ, GAIN and Q sliders</h3>
-    <p>The sliders work relative to where they are, so touching one never makes the value jump.</p>
-    <ul class="plain-list">
-      <li><strong>Slow drags</strong> move the value in fine steps, for small corrections.</li>
-      <li><strong>Lifting your finger</strong> keeps the value you were holding. A fingertip rolls a little as it leaves the screen, and Contour ignores that last nudge - also when you drag a dot on the graph, pinch for Q or drag PREAMP.</li>
-      <li><strong>Fast drags</strong> cover the whole range quickly - one fast swipe on FREQ goes all the way from 20 Hz to 20 kHz.</li>
-      <li><strong>Tap the number</strong> to type an exact value.</li>
-    </ul>
-    <p>Ranges: FREQ 20 Hz to 20 kHz, GAIN -10 to +10 dB, Q 0.1 to 10.</p>
-
-    <h3>Preamp</h3>
-    <p>Boosting bands can make the signal clip. The preamp lowers the whole volume to make room.</p>
-    <ul class="plain-list">
-      <li>The bar next to the value switches between <strong>MANUAL</strong> and <strong>AUTO</strong>. Tap the side you want.</li>
-      <li>With <strong>AUTO</strong> on (the default), Contour works out the lowest preamp that keeps the curve from clipping and updates it as you edit.</li>
-      <li>With <strong>MANUAL</strong> on, the bar becomes a slider: drag it sideways, or tap the dB value to type a value. The Protocol Micro takes whole dB from -30 to 0.</li>
-    </ul>
-    <p>Everything you change is saved on the phone immediately. There is no save button and nothing to lose if you close the app.</p>
-
-    <h3>Undo and redo</h3>
-    <p>The arrows beside the profile name step back and forward through your edits. One touch is one step, however far a slider or point travelled, and a drag that ends where it started leaves no step. Each profile keeps its own history of up to 100 steps, and it survives closing the app.</p>
-    <p><strong>LAST SENT</strong> appears beside <strong>HOLD TO SEND</strong> when the EQ differs from the version saved as LAST SENT: the one last verified on the DAC, or the one you saved from the Library (see <a href="#making-new-profiles">Making new profiles</a>). Tap it to bring that version back; the undo arrow can take you back again.</p>
-  </div>
-</details>
-
-<details class="grp" id="sending-to-the-dac">
-  <summary><div class="sum-text"><h2>Sending to the DAC</h2><p>HOLD TO SEND, what the button says, and Quick A/B.</p></div><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
-  <div class="grp-body">
-    <p><strong>HOLD TO SEND</strong> is the only button that writes to the dongle. Hold it for about 0.7 seconds: it fills from left to right. A tap alone does nothing, so you cannot send by accident.</p>
-    <p>What happens next:</p>
-    <ul class="lead-list">
-      <li><strong>Write.</strong> Contour writes every band and the preamp to the DAC.</li>
-      <li><strong>Read back.</strong> It reads everything back and compares it with what it sent.</li>
-      <li><strong>Store.</strong> Only if all of it matches does it tell the DAC to keep the EQ in its memory.</li>
-    </ul>
-    <p>The button then shows what happened:</p>
-    <table class="st">
-      <tr><td>HOLD TO SEND</td><td>Ready. The current profile is not on the DAC yet, or you changed it since.</td></tr>
-      <tr><td>SENDING</td><td>Writing and checking. Keep the DAC plugged in.</td></tr>
-      <tr><td>ON DAC</td><td>This exact profile is on the DAC and saved in its memory.</td></tr>
-      <tr><td>FAILED - HOLD TO RETRY</td><td>Something did not match or the DAC was unplugged. Hold again.</td></tr>
-      <tr><td>NO DAC / TAP TO CONNECT</td><td>Plug the DAC in, or tap to check and allow access.</td></tr>
-    </table>
-    <p>The Library marks the profile last sent with <strong>ON DAC</strong>, so you always know what the dongle holds.</p>
-
-    <h3>Quick A/B</h3>
-    <p>While the profile is <strong>ON DAC</strong>, an <strong>A/B</strong> button sits in the top right corner of the graph. Tap it to hear the music without the EQ: the orange button turns grey and reads <strong>EQ OFF - PREAMP KEPT</strong>, so the volume stays the same and only the curve is switched off. Tap again to bring the EQ back.</p>
-    <p>A/B changes only what the DAC plays right now. It never saves anything to the DAC's memory, so if you unplug the dongle it goes back to the EQ you last sent. Sending, changing profile or leaving the EQ page brings the EQ back first.</p>
-  </div>
-</details>
-
-<details class="grp" id="library-page-your-profiles">
-  <summary><div class="sum-text"><h2>Library page: your profiles</h2><p>Tap, long-press and swipe a profile card.</p></div><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
-  <div class="grp-body">
-    <p>Every profile is a card with its icon, name, a short description and a small picture of its curve.</p>
-    <ul class="plain-list">
-      <li><strong>Tap</strong> a card to make it the current profile and open it on the EQ page.</li>
-      <li><strong>Long-press</strong> a card to edit it: change the <strong>NAME</strong> and description, pick an <strong>ICON</strong>, <strong>DUPLICATE</strong> it (handy before experimenting) or <strong>SHARE</strong> it. <strong>CLEAR EQ</strong> leaves one flat band with the preamp on AUTO, and, like any change, undo on the EQ page takes it back.</li>
-      <li><strong>Swipe left</strong> on a card to <strong>ARCHIVE</strong> or <strong>DELETE</strong> it. Both show <strong>UNDO</strong> for 5 seconds. Archived profiles move to a folded section at the bottom of the list. Open it and swipe an archived card to <strong>RESTORE</strong> it.</li>
-    </ul>
-    <p>A good habit: one profile per pair of earphones or headphones, named after them.</p>
-  </div>
-</details>
-
-<details class="grp" id="making-new-profiles">
-  <summary><div class="sum-text"><h2>Making new profiles</h2><p>FLAT, PASTE, FROM DAC - and saving all as LAST SENT.</p></div><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
-  <div class="grp-body">
-    <p>Tap the empty card with <strong>+</strong> at the end of the Library.</p>
-    <p><strong>Swipe that card left</strong> for <strong>LAST SENT</strong>: after a confirmation it saves every profile, archived ones too, as its LAST SENT version, without sending anything to the DAC. It replaces the previous LAST SENT versions and cannot be undone.</p>
-    <div class="shots"><figure><img src="../images/new-profile.png" width="480" height="966" loading="lazy" alt="New profile options"><figcaption class="lbl">New profile</figcaption></figure></div>
-    <ul class="plain-list">
-      <li><strong>FLAT</strong> - one flat band at 1 kHz. Drag it or add more.</li>
-      <li><strong>PASTE</strong> - takes an EQ from the clipboard. Copy a parametric EQ first, for example from <a href="https://autoeq.app">AutoEQ</a> (the "Equalizer APO" / parametric text), a Squiglink graph tool, or an EQ by Ear JSON export, then tap PASTE. If the clipboard holds nothing Contour understands, the option is greyed out.</li>
-      <li><strong>FROM DAC</strong> - reads the EQ that is on the dongle right now and saves it as a profile. Useful the first time, to keep whatever was on it before.</li>
-    </ul>
-    <p>Pasted EQs with more than 8 bands, or values outside the Protocol Micro's ranges, are trimmed to fit; the PASTE line tells you when that happened. Check the curve before sending.</p>
-  </div>
-</details>
-
-<details class="grp" id="sharing-and-backing-up">
-  <summary><div class="sum-text"><h2>Sharing and backing up</h2><p>SHARE sends a profile as plain text you can paste back.</p></div><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
-  <div class="grp-body">
-    <p><strong>SHARE</strong> (long-press a profile) sends it as plain text in the Equalizer APO parametric format - the same format PASTE reads. Send it to yourself in a messaging app or notes app, and you have a backup you can paste back into Contour on any phone, or load into Equalizer APO and other EQ tools on a computer.</p>
-    <p>Profiles live only on your phone. Uninstalling Contour deletes them, so share the ones you care about first.</p>
-  </div>
-</details>
-
-<details class="grp" id="about-and-licences">
-  <summary><div class="sum-text"><h2>About and licences</h2><p>Version, copyright and open-source licences, inside the app.</p></div><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
-  <div class="grp-body">
-    <p><strong>ABOUT &amp; LICENCES</strong> at the very bottom of the Library shows the app version, the copyright, and the open-source licences of Contour and everything it uses (also reachable from the service screen).</p>
-  </div>
-</details>
-
-<details class="grp" id="service-screen">
-  <summary><div class="sum-text"><h2>Service screen</h2><p>Raw DAC state, the USB log, read and restore.</p></div><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
-  <div class="grp-body">
-    <p>Long-press the status pill (top right of the Library) to open the service screen. You will rarely need it:</p>
-    <ul class="plain-list">
-      <li>the raw state the DAC reports, band by band;</li>
-      <li>a log of the USB conversation, useful for bug reports;</li>
-      <li><strong>Read from DAC</strong>, and <strong>Restore flat</strong>, which writes a flat EQ to the DAC (asks for confirmation first);</li>
-      <li><strong>Licences</strong>: the open-source licences of Contour and everything it uses.</li>
-    </ul>
-  </div>
-</details>
-
-<details class="grp" id="how-the-protocol-micro-limits-work">
-  <summary><div class="sum-text"><h2>How the Protocol Micro limits work</h2><p>8 bands, three filter types, and the HIGH SHELF detail.</p></div><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
-  <div class="grp-body">
-    <p>The dongle has 8 bands, the three filter types, gain from -10 to +10 dB, Q from 0.1 to 10, frequencies from 20 Hz to 20 kHz, and a preamp in whole dB from -30 to 0. Contour never lets you set anything outside those limits, so what you see is what the dongle plays.</p>
-    <p>One detail: the Protocol Micro has no real high-shelf filter. Contour sends a HIGH SHELF as a mirrored LOW SHELF plus preamp, which gives exactly the same curve. You do not need to do anything about it; the graph and the sound match.</p>
-  </div>
-</details>
-
-<details class="grp" id="other-dacs">
-  <summary><div class="sum-text"><h2>Other DACs</h2><p>Only the Protocol Micro today.</p></div><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
-  <div class="grp-body">
-    <p>Other dongles built on WalkPlay, KT Micro and FiiO chips are possible later. Each one is enabled only after someone confirms it on real hardware. Have one and want to help test? Say so in <a href="https://github.com/Chronosauros/contour/issues">GitHub Issues</a>.</p>
-  </div>
-</details>
-
-<details class="grp" id="troubleshooting">
-  <summary><div class="sum-text"><h2>Troubleshooting</h2><p>NO DAC, TAP TO CONNECT, FAILED, PASTE greyed out, quieter sound.</p></div><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary>
-  <div class="grp-body">
-    <p><strong>The status stays on NO DAC.</strong> Unplug and plug the dongle again. Try without adapters or hubs. Check that USB OTG is on, if your phone has a setting for it.</p>
-    <p><strong>TAP TO CONNECT comes back every time.</strong> Android asks for USB access per session. When Android offers to open Contour after plugging in, tick "always" - then it opens straight away with access granted.</p>
-    <p><strong>FAILED - HOLD TO RETRY.</strong> Usually the dongle was unplugged or moved during sending. Hold the button again. If it keeps failing, open the service screen and share the USB log in a <a href="https://github.com/Chronosauros/contour/issues">GitHub issue</a>.</p>
-    <p><strong>PASTE is greyed out.</strong> The clipboard does not hold a parametric EQ Contour understands. Copy the text again - the part with lines like <code>Filter 1: ON PK Fc 105 Hz Gain 3.0 dB Q 0.71</code>.</p>
-    <p><strong>The sound is quieter after sending.</strong> That is the preamp making room for boosted bands. It keeps the sound clean. Turn the volume up a little, or reduce the boosts.</p>
-    <p><strong>Does the EQ stay on the dongle?</strong> Yes. After ON DAC it is stored in the dongle's memory and stays there when you unplug it, until you send something else.</p>
-  </div>
-</details>
-
-</div>
-</main>
+</section>
 
 <footer>
-  <div class="links">
-    <a href="../">Contour home</a>
-    <a href="https://github.com/Chronosauros/contour">Source on GitHub</a>
-    <a href="https://github.com/Chronosauros/contour/blob/main/PRIVACY.md">Privacy</a>
-    <a href="https://github.com/Chronosauros/contour/issues">Issues</a>
-  </div>
-  <p>Contour writes to hardware, so use it at your own risk (see <a href="https://github.com/Chronosauros/contour/blob/main/LICENSE">LICENSE</a>).</p>
-  <p>Contour is an unofficial project, not affiliated with or endorsed by CrinEar or any other brand. Product names belong to their owners.</p>
+  <p class="links"><a href="../">Home</a> <a href="../install/">Install</a> <a href="https://github.com/Chronosauros/contour">Source code</a></p>
+  <ul>
+    <li>Source code: <a href="https://github.com/Chronosauros/contour">github.com/Chronosauros/contour</a></li>
+    <li>Licence: Apache 2.0</li>
+    <li>Privacy: <a href="https://github.com/Chronosauros/contour/blob/main/PRIVACY.md">PRIVACY.md</a> - no internet permission, no analytics, no accounts</li>
+  </ul>
+  <p>Contour is an unofficial project, not affiliated with or endorsed by CrinEar. Product names belong to their owners.</p>
   <p>Made by Chronosaur</p>
 </footer>
 
@@ -375,27 +326,49 @@ footer .links{display:flex;flex-wrap:wrap;gap:4px 22px;margin-bottom:18px}
 <script>
 (function(){
   "use strict";
-  var KEY = "contour-guide-open";
-  var groups = Array.prototype.slice.call(document.querySelectorAll("details.grp"));
-  var restoring = true;
-  function load(){ try { return JSON.parse(localStorage.getItem(KEY) || "{}") || {}; } catch(e){ return {}; } }
-  function save(){ if (restoring) return; var s = {}; groups.forEach(function(g){ if (g.open) s[g.id] = 1; }); try { localStorage.setItem(KEY, JSON.stringify(s)); } catch(e){} }
-  var stored = load();
-  groups.forEach(function(g){ if (stored[g.id]) g.open = true; g.addEventListener("toggle", save); });
-  setTimeout(function(){ restoring = false; }, 0);
-  function openHash(){
-    var id = decodeURIComponent((location.hash || "").slice(1)), el = id && document.getElementById(id);
-    if (el && el.classList.contains("grp")) { el.open = true; requestAnimationFrame(function(){ el.scrollIntoView({block:"start"}); }); }
+  var video = document.getElementById("guide-video");
+  if (!video) return;
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---- chapter starts, from the chapter list ---- */
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.chapters a[data-t]"));
+  var starts = links.map(function(a){ return Number(a.getAttribute("data-t")); });
+
+  /* ---- seek, play, scroll to the film ---- */
+  function seek(t){
+    var go = function(){
+      try { video.currentTime = t; } catch(e){}
+      try { var p = video.play(); if (p && p.catch) p.catch(function(){}); } catch(e){}
+    };
+    if (video.readyState >= 1) go();
+    else {
+      video.addEventListener("loadedmetadata", go, { once: true });
+      try { video.load(); } catch(e){}
+    }
+    video.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
   }
-  openHash(); window.addEventListener("hashchange", openHash);
   document.addEventListener("click", function(e){
-    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var a = e.target.closest && e.target.closest("a[data-t]");
     if (!a) return;
-    var el = document.getElementById(a.getAttribute("href").slice(1));
-    if (el && el.classList.contains("grp")) { el.open = true; if (location.hash === a.getAttribute("href")) { e.preventDefault(); el.scrollIntoView({block:"start", behavior:"smooth"}); } }
+    e.preventDefault();
+    seek(Number(a.getAttribute("data-t")));
   });
-  document.getElementById("open-all").addEventListener("click", function(){ groups.forEach(function(g){ g.open = true; }); });
-  document.getElementById("close-all").addEventListener("click", function(){ groups.forEach(function(g){ g.open = false; }); });
+
+  /* ---- mark the chapter that is playing ---- */
+  var current = -1;
+  function mark(){
+    var t = video.currentTime, idx = 0, i;
+    for (i = 0; i < starts.length; i++) { if (starts[i] <= t + 0.05) idx = i; }
+    if (idx === current) return;
+    current = idx;
+    links.forEach(function(a, n){
+      if (n === idx) a.setAttribute("aria-current", "true");
+      else a.removeAttribute("aria-current");
+    });
+  }
+  video.addEventListener("timeupdate", function(){ if (!video.paused || video.currentTime > 0) mark(); });
+  video.addEventListener("seeked", function(){ if (video.currentTime > 0) mark(); });
 })();
 </script>
 </body>

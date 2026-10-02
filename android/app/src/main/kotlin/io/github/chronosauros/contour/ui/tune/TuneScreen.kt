@@ -77,7 +77,6 @@ import io.github.chronosauros.contour.ui.kit.LocalPagerLock
 import io.github.chronosauros.contour.ui.kit.detectHorizontalDragWithEnds
 import io.github.chronosauros.contour.ui.kit.holdsPager
 import io.github.chronosauros.contour.ui.kit.ProfileIcons
-import io.github.chronosauros.contour.BuildConfig
 import io.github.chronosauros.contour.ui.lift
 import io.github.chronosauros.contour.ui.Radii
 import io.github.chronosauros.contour.ui.pal
@@ -150,13 +149,9 @@ fun TuneScreen(model: AppModel, device: DeviceController, sender: Sender, action
             contents = listOf(
                 { Header(model, p, sender, actions) },
                 {
-                    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(GAP)) {
-                        Box(Modifier.weight(1f).fillMaxHeight()) {
-                            ResponseGraph(model, p, Modifier.fillMaxSize(), bypassed = sender.bypassed, enabled = bandsEnabled)
-                            if (sender.canAb(p)) AbButton(sender, p, Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 8.dp))
-                        }
-                        // Contour advBeta: the DAC's hardware volume, upright beside the graph
-                        if (BuildConfig.ADVANCED) VolumeBar(device, Modifier.width(ROW_H).fillMaxHeight())
+                    Box {
+                        ResponseGraph(model, p, Modifier.fillMaxSize(), bypassed = sender.bypassed, enabled = bandsEnabled)
+                        if (sender.canAb(p)) AbButton(sender, p, Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 8.dp))
                     }
                 },
                 { TuneControls(model, p, device, sender, actions, bandsEnabled) },

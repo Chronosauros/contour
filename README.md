@@ -5,10 +5,12 @@
 **An on-the-go EQ manager for the CrinEar Protocol Micro.** Keep all your EQ profiles on your phone, plug the
 dongle in, pick one and send it. Plug in, send, unplug - that is the whole routine.
 
+**Website: [chronosauros.github.io/contour](https://chronosauros.github.io/contour/)** - a 1.5-minute demo film, the full guide film and the install page.
+
 <p align="center">
-  <img src="docs/images/tune.png" width="300" alt="EQ page: response graph, bands, sliders, preamp and HOLD TO SEND">
+  <img src="docs/images/eq-1.2.2.png" width="300" alt="EQ page: a LOW SHELF at 80 Hz, sliders, AUTO preamp, ON DAC">
   &nbsp;&nbsp;
-  <img src="docs/images/library.png" width="300" alt="Library: saved profiles with their response curves">
+  <img src="docs/images/library-1.2.2.png" width="300" alt="Library: four profiles with their curves, BASS BOOSTED on the DAC">
 </p>
 
 ## Why it exists
@@ -35,7 +37,7 @@ Contour puts that on your phone. It is deliberately a small, simple tool:
 
 Contour does not process audio, does not need the internet and has no accounts. It only talks to the dongle.
 
-**Read the [user guide](docs/USER-GUIDE.md)** for everything the app does, step by step.
+**Watch the [guide](https://chronosauros.github.io/contour/guide/)**: every function of the app in a 6-minute film, with chapters and the full text.
 
 ## Supported hardware
 
@@ -53,9 +55,12 @@ Two pages, switched with the bar at the bottom or by swiping: **EQ** and **LIBRA
 
 - **EQ** edits the current profile: drag, tap, double-tap and pinch band nodes on the graph; PEAK, LOW
   SHELF and HIGH SHELF filters; FREQ, GAIN and Q sliders that are fine when you drag slowly and cover the
-  whole range when you drag fast; tap any number to type it; PREAMP with a MANUAL / AUTO anti-clipping bar; a quick A/B button to compare with the EQ off.
+  whole range when you drag fast; tap any number to type it; PREAMP with a MANUAL / AUTO anti-clipping bar; A/B to hear the curve off and on at the same volume (the preamp stays).
 - **HOLD TO SEND** (0.7 s hold) writes the profile to the dongle, reads it back, compares every register and
   only then saves it to the dongle's memory. The button then shows ON DAC.
+- **Undo and redo** work like Ctrl+Z: one touch is one step, up to 100 steps per profile, kept after closing
+  the app. **CLEAR EQ** leaves one flat band and is an undo step too. **LAST SENT** appears when the profile
+  differs from what the dongle holds, and goes back to that version.
 - **LIBRARY** keeps your profiles: tap to open, long-press to rename, change the icon, duplicate or share;
   swipe to archive or delete, with UNDO. New profiles start flat, come from the clipboard (Equalizer APO /
   AutoEQ parametric text or EQ by Ear JSON) or are read from the dongle.
@@ -82,8 +87,8 @@ risk (see the warranty disclaimer in `LICENSE`).
 
 Every official build is signed by the same key: package `io.github.chronosauros.contour`, certificate
 SHA-256 `C8:C8:CA:EA:76:16:28:ED:9D:50:5F:F0:73:42:EE:5E:A0:D4:66:A4:AD:71:8D:0D:B0:77:42:2B:A3:F7:E6:01`
-(CN=Chronosaur). Each release also lists the APK's SHA-256. The [user guide](docs/USER-GUIDE.md) takes it
-from there.
+(CN=Chronosaur). Each release also lists the APK's SHA-256. The [guide](https://chronosauros.github.io/contour/guide/)
+takes it from there.
 
 ## Build
 
