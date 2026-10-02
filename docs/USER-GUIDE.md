@@ -91,7 +91,7 @@ Contour only ever looks for the Protocol Micro. Other USB devices are ignored.
 
 ## EQ page: editing a profile
 
-The top of the page shows the profile's icon and name, with **CLEAR EQ** on the right: one tap leaves a single flat band with the preamp on AUTO, and the undo arrow brings your curve back. It turns orange while there is something to clear and dims when the EQ is already flat or switched off by A/B. Below are the response graph, the band chips, the filter type and the sliders.
+The top of the page shows the profile's icon and name, with **CLEAR EQ** on the right: one tap leaves a single flat band with the preamp on AUTO, and, like any change, it can be taken back with undo. It turns orange while there is something to clear and dims when the EQ is already flat or switched off by A/B. Below are the response graph, the band chips, the filter type and the sliders.
 
 ### The response graph
 
@@ -197,7 +197,7 @@ Every profile is a card with its icon, name, a short description and a small pic
 - **Tap** a card to make it the current profile and open it on the EQ page.
 - **Long-press** a card to edit it: change the **NAME** and description, pick an **ICON**,
   **DUPLICATE** it (handy before experimenting) or **SHARE** it. **CLEAR EQ** leaves one flat band
-  with the preamp on AUTO, and the undo arrow on the EQ page brings the curve back.
+  with the preamp on AUTO, and, like any change, undo on the EQ page takes it back.
 - **Swipe left** on a card to **ARCHIVE** or **DELETE** it. Both show **UNDO** for 5 seconds.
   Archived profiles move to a folded section at the bottom of the list. Open it and swipe an archived
   card to **RESTORE** it.

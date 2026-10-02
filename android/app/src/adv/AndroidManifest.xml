@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Used only by the adv build type ("Contour advBeta", see app/build.gradle.kts): a launcher name of its own. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application
+        android:label="${advLabel}"
+        tools:replace="android:label" />
+
+</manifest>
