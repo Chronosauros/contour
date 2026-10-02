@@ -23,6 +23,104 @@ import org.junit.jupiter.api.Assumptions.assumeTrue
  * tests 4-6 are skipped and 1-3 still check the protocol.
  */
 class ProtocolParityTest {
+    @Test
+    fun `Protocol Max discovery is strict and max beta only`() {
+        assertEquals(DeviceProtocol.MAX, DeviceProtocol.find(0x3302, 0x43CC, maxBeta = true))
+        assertNull(DeviceProtocol.find(0x3302, 0x43CC, maxBeta = false))
+        assertNull(DeviceProtocol.find(0x262A, 0x0001, maxBeta = true))
+        assertNull(DeviceProtocol.find(0x3302, 0x43CD, maxBeta = true))
+        assertEquals(DeviceProtocol.MICRO, DeviceProtocol.find(0x3302, 0xC20F, maxBeta = false))
+        assertEquals(DeviceProtocol.MICRO, DeviceProtocol.find(0x3302, 0xC20F, maxBeta = true))
+        // Other SchemeNo16 products (e.g. TRN Black Pearl 43E8) are not supported, beta or not.
+        assertNull(DeviceProtocol.find(0x3302, 0x43E8, maxBeta = true))
+    }
+
+    @Test
+    fun `Micro dispatch is exactly the 1_2_2 code`() {
+        val m = DeviceProtocol.MICRO
+        val hs = Band("hs", FilterType.HIGH_SHELF, 4000.0, 3.0, 0.71)
+        val pk = Band("pk", FilterType.PEAK, 120.0, 4.0, 1.2)
+        for (pre in listOf(null, -4.0)) {
+            val profile = Profile("p", "p", bands = listOf(pk, hs), preampDb = pre, createdAt = 0, updatedAt = 0)
+            assertEquals(ProtocolMicro.plan(profile), m.plan(profile))
+            assertEquals(
+                ProtocolMicro.devicePreamp(profile.bands, pre) - ProtocolMicro.highShelfGainSum(profile.bands),
+                m.shownPreamp(profile),
+            )
+        }
+        assertEquals(ProtocolMicro.flatPlan(), m.flatPlan())
+        assertEquals(8, m.caps.bands)
+        assertTrue(m.supportsAb && !m.experimental)
+        // 1.2.2 receive predicates: no length or direction hardening for the Micro.
+        val shortVersion = WalkPlay.report(0x80, 0x0C, 0).copyOf(3)
+        assertEquals(WalkPlay.isReply(shortVersion, WalkPlay.CMD_VERSION), m.isReply(shortVersion, WalkPlay.CMD_VERSION))
+        val echo = WalkPlay.bandWriteReport(WalkPlay.factoryFlat(0), 0)
+        assertEquals(WalkPlay.isReply(echo, WalkPlay.CMD_PEQ), m.isSlotReply(echo))
+        assertEquals(WalkPlay.parseBand(echo).registers, m.parseBand(echo, 0).registers)
+    }
+
+    @Test
+    fun `Protocol Max ten bands native shelves and complete deterministic spare slots`() {
+        val max = DeviceProtocol.MAX
+        val hs = Band("hs", FilterType.HIGH_SHELF, 4000.0, 3.0, 0.71)
+        val plan = max.plan(List(10) { hs.copy(id = "$it") }, -4.0) as DevicePlan.Ready
+        assertEquals(10, plan.bands.size)
+        assertEquals(9, plan.bands.last().index)
+        assertEquals(WalkPlay.TYPE_HSQ, plan.bands.last().typeCode)
+        assertEquals(-4, plan.preampDb)
+        assertEquals(9.toByte(), WalkPlay.bandWriteReport(plan.bands.last(), 101)[5])
+        assertTrue(max.plan(List(11) { hs }, -4.0) is DevicePlan.Rejected)
+        assertTrue(max.plan(listOf(hs.copy(q = Double.NaN)), -4.0) is DevicePlan.Rejected)
+        assertTrue(max.plan(listOf(hs.copy(gainDb = Double.POSITIVE_INFINITY)), -4.0) is DevicePlan.Rejected)
+        assertTrue(max.plan(listOf(hs), Double.NaN) is DevicePlan.Rejected)
+        assertTrue(max.plan(listOf(hs.copy(q = 10.0, gainDb = 10.0)), null) is DevicePlan.Rejected)
+        val short = max.plan(listOf(hs), -4.0) as DevicePlan.Ready
+        assertEquals(10, short.bands.size)
+        assertEquals(0.0, short.bands[9].gainDb)
+        assertEquals(max.flatPlan().bands[9].registers(), short.bands[9].registers())
+        assertEquals(3.0, plan.bands[0].gainDb)
+        assertEquals(8, ProtocolMicro.flatPlan().bands.size)
+        assertEquals(WalkPlay.TYPE_LSQ, (ProtocolMicro.plan(listOf(hs), -4.0) as DevicePlan.Ready).bands[0].typeCode)
+    }
+
+    private fun maxReply(w: WalkPlay.BandWrite, slot: Int = 0): ByteArray =
+        WalkPlay.bandWriteReport(w, slot).also { it[1] = WalkPlay.READ.toByte(); it[3] = 0 }
+
+    @Test
+    fun `Protocol Max parser rejects wrong direction length index type and malformed slot`() {
+        val p = DeviceProtocol.MAX
+        val good = maxReply(p.flatPlan().bands[9])
+        assertEquals(9, p.parseBand(good, 9).registers.index)
+        assertFailsWith<IllegalArgumentException> { p.parseBand(good.copyOf(36), 9) }
+        assertFailsWith<IllegalArgumentException> { p.parseBand(good.copyOf().also { it[1] = 1 }, 9) }
+        assertFailsWith<IllegalArgumentException> { p.parseBand(good.copyOf().also { it[0] = 0x03 }, 9) }
+        assertFailsWith<IllegalArgumentException> { p.parseBand(good, 8) }
+        assertFailsWith<IllegalArgumentException> { p.parseBand(good.copyOf().also { it[34] = 5 }, 9) }
+        assertFailsWith<IllegalArgumentException> { p.parseSlot(good) }
+        assertFailsWith<IllegalArgumentException> { p.parseSlot(good.copyOf(10)) }
+        assertEquals(101, p.parseSlot(maxReply(p.flatPlan().bands[0], 101)))
+        assertFailsWith<IllegalArgumentException> { p.parsePreamp(WalkPlay.report(0x01, 0x03, 0x02, 0, 0)) }
+        assertFailsWith<IllegalArgumentException> { p.parseVersion(WalkPlay.report(0x80, 0x0C, 0)) }
+    }
+
+    @Test
+    fun `Protocol Max exact import and matching include the tenth slot`() {
+        val p = DeviceProtocol.MAX
+        val bands = List(10) { Band("b$it", FilterType.PEAK, 1000.0 + it * 100, -1.0, 0.75) }.toMutableList()
+        bands[9] = bands[9].copy(type = FilterType.HIGH_SHELF, gainDb = 3.0)
+        val plan = p.plan(bands, -5.0) as DevicePlan.Ready
+        val reads = plan.bands.map { p.parseBand(maxReply(it), it.index) }
+        val imported = p.importExact(reads, plan.preampDb) as DacImport.Ready
+        assertEquals(10, imported.eq.bands.size)
+        assertEquals(FilterType.HIGH_SHELF, imported.eq.bands[9].type)
+        assertTrue(p.matches(p.plan(imported.eq.bands, imported.eq.preampDb) as DevicePlan.Ready, reads.map { it.registers }, -5))
+        assertTrue(!p.matches(plan, reads.dropLast(1).map { it.registers }, -5))
+        assertTrue(!p.matches(plan, reads.mapIndexed { i, b -> if (i == 9) b.registers.copy(gain256 = 0) else b.registers }, -5))
+        assertTrue(p.importExact(reads.dropLast(1), -5) is DacImport.Rejected)
+        val flat = p.flatPlan().bands.map { p.parseBand(maxReply(it), it.index) }
+        assertTrue(p.importExact(flat, 0) is DacImport.Ready)
+    }
+
     private val repo = File(System.getProperty("contour.repoRoot") ?: error("contour.repoRoot not set"))
     private val protocol = File(repo, "research/protocol")
     private val library = File(repo.parentFile, "eq-library")

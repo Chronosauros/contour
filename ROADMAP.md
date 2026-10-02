@@ -13,6 +13,7 @@ Ideas and devices for later. None of these is enabled until it is confirmed on r
 
 ## CrinEar Protocol Max (WalkPlay SchemeNo16)
 - 10 bands, +-10 dB, low and high shelf, no frequency/Q compensation, pregain via command 0x03.
+- Contour Max beta (separate `maxbeta` build, 1.2.2-maxbeta1): experimental 10-band PEQ with native shelves, host pregain, strict read-back; A/B off. Untested on hardware.
 
 ## KT Micro driver (Kiwi Ears Allegro Mini, Allegro PRO)
 - Second protocol family, separate from WalkPlay. devicePEQ matches VID `0x31B2` plus the USB product name ("Kiwi Ears-Allegro Mini", with a hyphen; "Kiwi Ears-Allegro PRO").

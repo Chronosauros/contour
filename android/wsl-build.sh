@@ -15,12 +15,15 @@
 #   android/wsl-build.sh :app:assemblePerf
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# An explicit caller override wins over the maintainer's default build location.
+caller_build_root="${CONTOUR_BUILD_ROOT:-}"
 if [[ -f "$here/toolchain.env" ]]; then
   # shellcheck source=toolchain.env.example
   source "$here/toolchain.env"
 else
   source "$here/toolchain.env.example"
 fi
+[[ -n "$caller_build_root" ]] && CONTOUR_BUILD_ROOT="$caller_build_root"
 cd "$here"
 
 parked=""

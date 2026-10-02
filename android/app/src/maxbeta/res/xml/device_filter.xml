@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Contour Max beta only: strict VID/PID pairs (decimal, as the USB host filter requires). -->
+    <!-- CrinEar Protocol Micro: USB 0x3302:0xC20F -->
+    <usb-device
+        vendor-id="13058"
+        product-id="49679" />
+    <!-- CrinEar Protocol Max (experimental, untested on hardware): USB 0x3302:0x43CC -->
+    <usb-device
+        vendor-id="13058"
+        product-id="17356" />
+</resources>

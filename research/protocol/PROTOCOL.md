@@ -107,6 +107,25 @@ Applied on write AND inverted on read (CO; WH L281-303, L379-398). Order on writ
 - Slots: WalkPlay default config exposes one writable slot "Custom" id 101 (UC L676-684); the SchemeNo11
   group does not override it. Observed slot byte = 0 in every reply. Treat the slot byte as "echo what you read".
 
+## Experimental CrinEar Protocol Max (Contour Max beta only, untested on hardware)
+
+- Allow-list: **3302:43CC only** (devicePEQ `walkplayHidHandler.js` L9, `usbDeviceConfig.js` "Protocol Max"),
+  gated by `BuildConfig.MAX_BETA` in the `maxbeta` build type. No VID-wide or name matching; no other
+  SchemeNo16 PID. The stable USB attach filter stays Micro-only.
+- SchemeNo16 / `peq10Band10dBFullShelves`: 10 filters, +/-10 dB, Q 0.1..10, PK/LS/HS on their native codes
+  2/1/3. Same 0x4B 64-byte format and 96 kHz RBJ/Q30 coefficients as the Micro, raw frequency and Q (no
+  compensation), no Micro HIGH SHELF -> LOW SHELF + preamp emulation. Pregain is computed by the host and
+  written with CMD 0x03 (`deviceHandlesPregain: false`); Contour keeps its -30..0 dB policy, not a proven
+  Max limit. Spare slots are neutral PKs (1 kHz, 0 dB, Q 0.75), not Max factory captures.
+- Fails closed: exactly one HID interface with a 64-byte interrupt IN endpoint, else no I/O. VERSION, bulk
+  slot, all ten bands and the preamp must parse strictly (64-byte, read direction, index, header, native
+  type, ranges) before the first write. A send writes all ten slots, echoes the bulk-read slot byte, commits
+  as on the Micro, then reads everything back; any mismatch, including the slot byte, is failure, not ON DAC.
+- Off on the Max: A/B (TEMP_WRITE is only proven RAM-only on the Micro) and the service screen's band-1 test
+  write. No extra WalkPlay commands (gain mode 0x19, DAC filter, balance, mic gain).
+- Nobody has connected a Protocol Max to Contour: interface layout, slot semantics, timing, persistence and
+  the audible result are unverified. The Protocol Micro path is unchanged from 1.2.2.
+
 ## Other WalkPlay groups (for extensibility)
 Same handler/wire format for SchemeNo10-21 (WH L7). Differences are config only:
 - SchemeNo10 (default): 8 bands, PK only.

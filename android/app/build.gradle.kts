@@ -40,6 +40,7 @@ android {
     }
 
     buildTypes {
+        all { if (name != "maxbeta") buildConfigField("boolean", "MAX_BETA", "false") }
         release {
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
@@ -57,6 +58,17 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += "release"
         }
+        // "Contour Max beta": the release build plus experimental, hardware-untested support for the CrinEar
+        // Protocol Max (BuildConfig.MAX_BETA), installed next to Contour under its own package and name:
+        //   android/wsl-build.sh :app:assembleMaxbeta  ->  io.github.chronosauros.contour.maxbeta, "Contour Max beta"
+        create("maxbeta") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".maxbeta"
+            versionNameSuffix = "-maxbeta1"
+            manifestPlaceholders["maxBetaLabel"] = "Contour Max beta"
+            buildConfigField("boolean", "MAX_BETA", "true")
+            matchingFallbacks += "release"
+        }
     }
 
     // No AGP dependency-info block in the APK signature (it is encrypted for Google Play only; F-Droid rejects it).
@@ -67,6 +79,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     compileOptions {

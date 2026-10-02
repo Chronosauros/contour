@@ -5,7 +5,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import io.github.chronosauros.contour.core.Profile
-import io.github.chronosauros.contour.core.ProtocolMicro
 import io.github.chronosauros.contour.usb.DeviceController
 import io.github.chronosauros.contour.usb.Link
 import io.github.chronosauros.contour.usb.SendOutcome
@@ -47,7 +46,7 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
         }
         model.profiles.firstOrNull { p ->
             val c = cache[p.id]
-            if (c != null && c.first === p) c.second else ProtocolMicro.matches(p, regs, s.preampDb).also { cache[p.id] = p to it }
+            if (c != null && c.first === p) c.second else s.protocol.matches(p, regs, s.preampDb).also { cache[p.id] = p to it }
         }?.id
     }
 
@@ -60,7 +59,7 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
 
     val busy: Boolean get() = device.busy || sendingId != null || abBusy
 
-    fun canAb(p: Profile): Boolean = device.link == Link.CONNECTED && onDacId == p.id
+    fun canAb(p: Profile): Boolean = device.protocol.supportsAb && device.link == Link.CONNECTED && onDacId == p.id
 
     fun toggleAb(p: Profile) {
         if (!foreground || busy || !canAb(p)) return

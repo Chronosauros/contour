@@ -39,7 +39,6 @@ import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.semantics
 import io.github.chronosauros.contour.core.DevicePlan
-import io.github.chronosauros.contour.core.ProtocolMicro
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import io.github.chronosauros.contour.core.Profile
@@ -192,7 +191,7 @@ fun holdLabel(p: Profile, device: DeviceController, sender: Sender): String = wh
     sender.sendingId == p.id -> "SENDING"
     device.link == Link.NO_DAC -> "NO DAC"
     device.link == Link.NEEDS_PERMISSION -> "TAP TO CONNECT"
-    ProtocolMicro.plan(p) is DevicePlan.Rejected -> "INVALID EQ - EDIT BAND"
+    device.protocol.plan(p) is DevicePlan.Rejected -> "INVALID EQ - EDIT BAND"
     sender.onDacId == p.id -> "ON DAC"
     sender.failedFor(p) -> "FAILED - HOLD TO RETRY"
     else -> "HOLD TO SEND"

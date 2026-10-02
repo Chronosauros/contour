@@ -64,7 +64,6 @@ import io.github.chronosauros.contour.core.DacImport
 import io.github.chronosauros.contour.core.ImportedEq
 import io.github.chronosauros.contour.model.AppModel
 import io.github.chronosauros.contour.model.Importer
-import io.github.chronosauros.contour.model.shownPreamp
 import io.github.chronosauros.contour.ui.kit.ProfileIcons
 import io.github.chronosauros.contour.ui.tune.Param
 import io.github.chronosauros.contour.usb.DeviceController
@@ -193,14 +192,14 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit) {
 fun NewProfileSheet(model: AppModel, device: DeviceController, onDone: () -> Unit) {
     val context = LocalContext.current
     var clip by remember { mutableStateOf<Pair<ImportedEq, String?>?>(null) }
-    LaunchedEffect(Unit) {
+    LaunchedEffect(model.protocol) {
         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val text = runCatching { cm.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString() }.getOrNull()
-        clip = Importer.parse(text)?.let { Importer.fit(it) }
+        clip = Importer.parse(text)?.let { Importer.fit(it, model.protocol) }
     }
     val snapshot = device.snapshot
     val dacImport = if (device.link == Link.CONNECTED && snapshot != null)
-        Importer.fromDac(snapshot.bands, snapshot.preampDb) else null
+        Importer.fromDac(snapshot.bands, snapshot.preampDb, snapshot.protocol) else null
     SheetFrame(onDone) {
         SheetTitle("NEW PROFILE")
         Option("FLAT", "One flat band at 1 kHz - drag it or add more", true, "new_empty") {
@@ -261,7 +260,7 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
     val i = model.selectedBand
     val b = p.bands.getOrNull(i)
     if (param != Param.PREAMP && b == null) return onDone()
-    val start = if (param == Param.PREAMP) runCatching { shownPreamp(p) }.getOrNull() else param.of(b!!)
+    val start = if (param == Param.PREAMP) runCatching { model.shownPreamp(p) }.getOrNull() else param.of(b!!)
     if (start == null) {
         SheetFrame(onDone) {
             SheetTitle("PREAMP")
