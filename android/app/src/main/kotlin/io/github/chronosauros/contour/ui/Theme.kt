@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.DeviceFontFamilyName
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -188,6 +189,20 @@ fun ContourTheme(dark: Boolean, content: @Composable () -> Unit) {
         MaterialTheme(colorScheme = scheme(p, dark), typography = TYPOGRAPHY, content = content)
     }
 }
+
+/** The look is laid out for phones at least this wide (the common 411 dp; the Pixel 9 Pro is 427 dp). */
+const val DESIGN_WIDTH_DP = 411f
+/** System text up to this scale fits the fixed rows; anything larger stops here. */
+const val MAX_FONT_SCALE = 1.15f
+
+/**
+ * A narrower or zoomed screen (Samsung display zoom, a small phone) gets the same layout scaled down as a whole
+ * instead of rows that cut names, chips and segments; larger system text stops at [MAX_FONT_SCALE].
+ */
+fun fitDensity(screen: Density, widthPx: Int): Density = Density(
+    density = if (widthPx > 0) minOf(screen.density, widthPx / DESIGN_WIDTH_DP) else screen.density,
+    fontScale = minOf(screen.fontScale, MAX_FONT_SCALE),
+)
 
 /** Tabular numerals for every value. */
 val Tabular = TextStyle(fontFeatureSettings = "tnum")

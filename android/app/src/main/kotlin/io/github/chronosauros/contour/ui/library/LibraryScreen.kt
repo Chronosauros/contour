@@ -134,6 +134,7 @@ private val HINT_GAP = 22.dp
 private const val NEW_SLOT_ID = "library-new-slot"
 private val SIDE = Grid.SIDE
 private val CARD = RoundedCornerShape(Radii.L)
+private val ON_DAC_RAIL = 5.dp
 
 /**
  * Library: choosing and managing profiles only - it never sends anything to the DAC.
@@ -524,6 +525,12 @@ private fun SwipeRow(
                 // the current profile stands a step higher than the others; archived rows lie flat
                 .let { if (p == null || dim) it else it.lift(CARD, if (current) Lift.RAISED else Lift.CARD) }
                 .background(if (p == null) c.track else c.surface, CARD)
+                // the profile on the DAC: an orange rail along the card's left edge, cut by its corners
+                .let {
+                    if (!onDac) it else it.clip(CARD).drawBehind {
+                        drawRect(c.accent, size = Size(ON_DAC_RAIL.toPx(), size.height))
+                    }
+                }
                 .let { if (p == null) it.sink(CARD) else it.padding(start = 20.dp, end = 22.dp) }
                 .testTag(if (p == null) "empty_slot" else "profile_card"),
             verticalAlignment = Alignment.CenterVertically,
@@ -560,19 +567,20 @@ private fun SwipeRow(
                     )
                 }
             }
-            if (onDac) {
-                Text(
-                    "ON DAC",
-                    style = Type.small,
-                    color = c.accent,
-                    modifier = Modifier
-                        .background(c.surface2, RoundedCornerShape(Radii.S))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
-                        .testTag("row_${name}_ondac"),
-                )
-                Spacer(Modifier.width(12.dp))
+            // ON DAC sits under the curve, never in the name's row: the name keeps its whole width
+            Column(Modifier.width(74.dp).height(52.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                ResponseThumb(p.bands, if (dim) c.textMute else c.textDim, Modifier.fillMaxWidth().weight(1f))
+                if (onDac) {
+                    Spacer(Modifier.height(3.dp))
+                    Text(
+                        "ON DAC",
+                        style = Type.small,
+                        color = c.accent,
+                        maxLines = 1,
+                        modifier = Modifier.testTag("row_${name}_ondac"),
+                    )
+                }
             }
-            ResponseThumb(p.bands, if (dim) c.textMute else c.textDim, Modifier.width(74.dp).height(52.dp))
         }
     }
 }

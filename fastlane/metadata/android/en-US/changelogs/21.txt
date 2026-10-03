@@ -1,0 +1,1 @@
+Fits narrow and zoomed screens: below 411 dp the whole app scales down evenly, so profile names, CONNECTED and filter types are no longer cut off. ON DAC is now an orange bar on the edge of the profile card. FREQ, GAIN and Q sliders feel the same on every screen width, and slow moves are finer.

@@ -57,29 +57,17 @@ import io.github.chronosauros.contour.ui.pal
 import io.github.chronosauros.contour.ui.sink
 import io.github.chronosauros.contour.usb.DeviceController
 import io.github.chronosauros.contour.usb.Link
+import kotlin.math.abs
+import kotlin.math.ln
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
-/**
- * Drag gain = fill travel per finger travel, by finger speed (pointer acceleration): at or below [SPEED_FINE] the
- * fill moves [SLOW] of the finger's travel (owner 26.09 chose four times finer than 1.0.3's 0.4: 0.1 dB in about
- * 8 dp, about 4.5 Hz a dp at 1 kHz), or less where the scale's [Scale.fineMax] caps it (FREQ: at most 5 Hz a dp,
- * so the top decade stays adjustable); from there it rises evenly in ratio to [FAST] at [SPEED_FAST], so one quick
- * swipe still covers the whole range (20 Hz - 20 kHz).
- *
- * Owner 26.09: the linear ramp tried first (0.12-0.15 -> 0.9 dp/ms) already sped up the owner's careful drags,
- * which run at about 0.3-0.6 dp/ms (log: mean gain 0.92 where the slow gain was 0.1) - "the whole thing is
- * definitely too fast". Now a careful drag stays near the slow gain (0.12 at 0.5 dp/ms, 0.32 at 0.9) and only a
- * real swipe is fast.
- */
-private const val SLOW = 0.1f
-private const val FAST = 2.2f
 private const val SPEED_FINE = 0.25f // dp per ms
 private const val SPEED_FAST = 1.8f
 
-/** 0 for a finger at or below [SPEED_FINE], 1 at or above [SPEED_FAST], smooth between (also PREAMP's drag). */
+/** PREAMP's speed ramp: 0 at or below [SPEED_FINE], 1 at or above [SPEED_FAST], smooth between. */
 internal fun speedRamp(speedDp: Float): Float {
     val t = ((speedDp - SPEED_FINE) / (SPEED_FAST - SPEED_FINE)).coerceIn(0f, 1f)
     return t * t * (3 - 2 * t)
@@ -88,17 +76,59 @@ internal fun speedRamp(speedDp: Float): Float {
 /** From [a] at [s] = 0 to [b] at 1, evenly in ratio: each step of speed multiplies the gain by the same amount. */
 internal fun ratioLerp(a: Float, b: Float, s: Float): Float = a * (b / a).pow(s)
 
-/** The slow finger's gain at value [v] on a fill [travelDp] long: [SLOW], capped by [Scale.fineMax]. */
-private fun slowGain(scale: Scale, v: Double, travelDp: Float): Float {
-    val cap = scale.fineMax ?: return SLOW
-    return minOf(SLOW, (cap * travelDp / scale.perPos(v)).toFloat())
-}
+/**
+ * FREQ / GAIN / Q drag, ported from EQ Sweep's Bands table (owner 03.10: refined further there). The value moves
+ * a fixed amount per dp of finger travel, whatever the slider's width - an octave per 60 dp (FREQ), 1 dB per
+ * 10 dp (GAIN), a factor of 2 per 80 dp (Q) - times a multiplier by smoothed finger speed: a slow finger (at or
+ * below 0.25 dp/ms) gets 0.1 (0.1 dB per 10 dp; FREQ at most [Scale.fineMax] Hz a dp, so the top octave stays
+ * adjustable), easing gently into 1.25 at a normal 0.6 dp/ms (-10 to +10 dB in about 160 dp) and 1.5 at a quick
+ * 1.2 dp/ms. Replaces 26.09's fill-relative gain (0.1 - 2.2 of the track over 0.25 - 1.8 dp/ms).
+ */
+internal class BandDrag(private val param: Param, initial: Double) {
+    private val scale = param.scale!!
+    private var raw = initial
+    private var speed = 0f
 
-private fun dragGain(speedDp: Float, slow: Float): Float = ratioLerp(slow, FAST, speedRamp(speedDp))
+    /** The last [move] pushed past an end of the scale. */
+    var pastEnd = false
+        private set
+
+    val value: Double get() = scale.quantize(raw)
+
+    fun move(dxDp: Float, dtMs: Long): Double {
+        speed = 0.6f * speed + 0.4f * (abs(dxDp) / dtMs.coerceAtLeast(1L))
+        val slow = scale.fineMax?.takeIf { param == Param.FREQ }
+            ?.let { minOf(SLOW, it * 60.0 / (raw * ln(2.0))) } ?: SLOW
+        val gain = if (speed <= 0.6f) {
+            blend(slow, 1.25, ((speed - 0.25f) / (0.6f - 0.25f)).coerceIn(0f, 1f).pow(1.15f))
+        } else {
+            blend(1.25, 1.5, (speed - 0.6f) / (1.2f - 0.6f))
+        }
+        val dx = dxDp * gain
+        val next = when (param) {
+            Param.FREQ -> raw * 2.0.pow(dx / 60.0)
+            Param.GAIN -> raw + dx / 10.0
+            Param.Q -> raw * 2.0.pow(dx / 80.0)
+            Param.PREAMP -> error("PREAMP has its own drag")
+        }
+        pastEnd = next < scale.min || next > scale.max
+        raw = next.coerceIn(scale.min, scale.max)
+        return value
+    }
+
+    private fun blend(from: Double, to: Double, progress: Float): Double {
+        val t = progress.coerceIn(0f, 1f).toDouble()
+        return from + (to - from) * t * t * (3 - 2 * t)
+    }
+
+    private companion object {
+        const val SLOW = 0.1
+    }
+}
 
 /**
  * A tall horizontal slider with RELATIVE drag: touch-down never moves the value, the drag moves it by the
- * distance travelled, scaled by finger speed ([dragGain]). The value is the light fill in a pressed-in track;
+ * distance travelled, scaled by finger speed ([BandDrag]). The value is the light fill in a pressed-in track;
  * at the minimum the fill is a square nub. Quantized; haptic ticks at the scale marks, a strong one at the
  * param's home value, a reject tick when pushed past an end. Lifting the finger off a value keeps that value
  * ([LiftGuard]). Horizontal drags inside it never reach the pager.
@@ -131,34 +161,26 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
             .pointerInput(param, enabled) {
                 if (!enabled) return@pointerInput
                 val guard = LiftGuard<Double>(density, param.name)
-                var pos = 0f
+                var drag = BandDrag(param, v.value)
                 var atEnd = false
-                var speed = 0f
                 var ticked = 0.0 // the value the haptics last spoke for
                 detectHorizontalDragWithEnds(
                     onStart = { down ->
-                        pos = scale.toPos(v.value)
+                        drag = BandDrag(param, v.value)
                         atEnd = false
-                        speed = 0f
                         ticked = v.value
                         guard.start(down.uptimeMillis, down.position, v.value)
                     },
                     onEnd = { up -> if (up != null) guard.release(up)?.let { change.value(it) } },
                 ) { ch, dx ->
                     ch.consume()
-                    val dt = (ch.uptimeMillis - ch.previousUptimeMillis).coerceAtLeast(1L).toFloat()
-                    speed = 0.6f * speed + 0.4f * (kotlin.math.abs(dx) / density / dt)
-                    val travel = (size.width - size.height).toFloat().coerceAtLeast(1f)
-                    val slow = slowGain(scale, scale.fromPos(pos), travel / density)
-                    val raw = pos + dx * dragGain(speed, slow) / travel
-                    if (raw < 0f || raw > 1f) {
+                    val next = drag.move(dx / density, ch.uptimeMillis - ch.previousUptimeMillis)
+                    if (drag.pastEnd) {
                         if (!atEnd) haptics.reject()
                         atEnd = true
                     } else {
                         atEnd = false
                     }
-                    pos = raw.coerceIn(0f, 1f)
-                    val next = scale.quantize(scale.fromPos(pos))
                     if (next != v.value) change.value(next)
                     guard.move(ch.uptimeMillis, ch.position, next)
                     if (next != ticked && !guard.settling(ch.uptimeMillis)) {

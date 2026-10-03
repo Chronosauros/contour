@@ -77,8 +77,8 @@ class Scale(
             stepMarks = ISO_THIRDS,
             strongMarks = doubleArrayOf(20.0, 100.0, 1000.0, 10_000.0, 20_000.0),
             reset = null,
-            // owner 26.09: 15 kHz and up is 4 % of the log bar; a slow finger there moved about 73 Hz a dp
-            fineMax = 5.0,
+            // owner 26.09: a slow finger in the top octave moved about 73 Hz a dp; 4 Hz a dp as in EQ Sweep (03.10)
+            fineMax = 4.0,
         )
 
         val GAIN = Scale(
