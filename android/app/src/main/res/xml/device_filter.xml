@@ -4,4 +4,8 @@
     <usb-device
         vendor-id="13058"
         product-id="49679" />
+    <!-- CrinEar Protocol Max: USB 0x3302:0x43CC -->
+    <usb-device
+        vendor-id="13058"
+        product-id="17356" />
 </resources>

@@ -11,7 +11,7 @@ import androidx.compose.runtime.setValue
 import io.github.chronosauros.contour.core.Band
 import io.github.chronosauros.contour.core.FilterType
 import io.github.chronosauros.contour.core.Profile
-import io.github.chronosauros.contour.core.DeviceProtocol
+import io.github.chronosauros.contour.core.DeviceTarget
 import java.util.UUID
 import kotlin.math.ln
 import kotlin.math.sqrt
@@ -40,8 +40,9 @@ object Page {
  * A touch on Tune ([beginGesture] .. [endGesture]) is one step however many values the drag went through.
  */
 class AppModel(private val store: ProfileStore, private val scope: CoroutineScope, private val beforeLoad: () -> Unit = {}) {
-    var protocol by mutableStateOf(DeviceProtocol.MICRO)
-    val maxBands: Int get() = protocol.caps.bands
+    var protocol by mutableStateOf(DeviceTarget.OFFLINE)
+    // Micro/Max: the device slot count, as in 1.3.0. Other targets (advanced builds only): 31 local filters.
+    val maxBands: Int get() = if (io.github.chronosauros.contour.BuildConfig.ADVANCED && !protocol.stable) 31 else protocol.caps.bands
     fun shownPreamp(p: Profile): Double = protocol.shownPreamp(p)
     val profiles = mutableStateListOf<Profile>()
     var currentId by mutableStateOf<String?>(null)
@@ -445,7 +446,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     fun setType(type: FilterType) {
         val p = current ?: return
         val b = p.bands.getOrNull(selectedBand) ?: return
-        if (b.type != type) setBand(selectedBand, b.copy(type = type))
+        if (type in protocol.caps.types && b.type != type) setBand(selectedBand, b.copy(type = type))
     }
 
     /** AUTO off starts manual at the shown (curve-domain) value, so the device register does not change. */
@@ -457,10 +458,16 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         }
     }
 
-    /** Manual preamp in the curve domain, clamped so the register stays in the device range. */
+    /** Manual preamp in the curve domain. Micro/Max clamp so the register stays in the device range (1.3.0);
+     * other targets (advanced builds only) reject out-of-range input, never silently clamp. */
     fun setPreamp(db: Double) = update {
         val hs = protocol.shelfOffset(it.bands)
-        it.copy(preampDb = round1(db.coerceIn(protocol.preampMin - hs, protocol.preampMax - hs)))
+        if ((protocol.stable || !io.github.chronosauros.contour.BuildConfig.ADVANCED) && protocol.walkplay != null)
+            it.copy(preampDb = round1(db.coerceIn(protocol.preampMin - hs, protocol.preampMax - hs)))
+        else if (!db.isFinite() || db !in (protocol.preampMin - hs)..(protocol.preampMax - hs)) it else {
+            val step = protocol.preampStep
+            it.copy(preampDb = round1(Math.round(db / step) * step))
+        }
     }
 
     fun rename(id: String, name: String) = update(id) {

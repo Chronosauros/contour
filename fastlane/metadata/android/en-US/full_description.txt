@@ -1,5 +1,5 @@
-<p>A parametric equalizer (PEQ) manager for the CrinEar Protocol Micro USB DAC dongle. Keep your EQ profiles on your phone, plug the dongle in, pick one and send it. Plug in, send, unplug - that is the whole routine.</p>
-<p>The Protocol Micro has a parametric EQ built into the dongle itself. Whatever it holds works with every app and every device you plug it into - no system equalizer, no app running in the background. The official tool is a desktop browser page; Contour puts it on your phone.</p>
+<p>A parametric equalizer (PEQ) manager for the CrinEar Protocol Micro and Protocol Max USB DAC dongles. Keep your EQ profiles on your phone, plug the dongle in, pick one and send it. Plug in, send, unplug - that is the whole routine.</p>
+<p>The Protocol Micro and Protocol Max have a parametric EQ built into the dongle itself. Whatever it holds works with every app and every device you plug it into - no system equalizer, no app running in the background. The official tool is a desktop browser page; Contour puts it on your phone.</p>
 <ul>
 <li><b>Your EQ profiles are saved</b> - one profile per pair of earphones (IEMs) or headphones, or per mood.</li>
 <li><b>Sending takes seconds</b> - hold HOLD TO SEND; Contour writes the profile to the DAC, reads it back to check every value and stores it in the dongle's memory.</li>
@@ -7,4 +7,5 @@
 <li><b>Examples to start from</b> - NIGHTFALL and DUSK next to a flat profile.</li>
 </ul>
 <p>Contour is free and open source (Apache-2.0). It does not process audio, needs no internet, has no accounts, no ads and no tracking. It only talks to the dongle. Requires Android 9+ and USB host (OTG) support.</p>
+<p>The Protocol Micro (8 bands) is tested on the developer's own hardware. The Protocol Max (10 bands, native shelf filters) was tested by a community member on a real device.</p>
 <p>Unofficial, not affiliated with CrinEar. It writes to the dongle only on an explicit action and only with documented commands; use at your own risk.</p>

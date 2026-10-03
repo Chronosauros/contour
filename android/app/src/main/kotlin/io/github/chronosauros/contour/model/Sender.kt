@@ -33,20 +33,31 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
     var failedAt = 0L
         private set
 
+    val pendingId: String? get() = device.pendingReceipt?.profile?.id
+    val pendingReason: String? get() = device.pendingReason
+    fun pendingFor(p: Profile): Boolean = device.pendingReceipt?.profile?.id == p.id
+    init {
+        device.profileForReceipt = { id -> model.profiles.firstOrNull { it.id == id } }
+        device.onPendingVerified = { original ->
+            if (model.profiles.any { it == original }) model.markSent(original)
+        }
+    }
     private val cache = HashMap<String, Pair<Profile, Boolean>>()
     private var cacheSnapshot: Any? = null
 
     /** Id of the library profile the DAC holds right now, or null. */
     val onDacId: String? by derivedStateOf {
         val s = device.snapshot ?: return@derivedStateOf null
-        val regs = s.bands.map { it.registers }
         if (cacheSnapshot !== s) {
             cache.clear()
             cacheSnapshot = s
         }
         model.profiles.firstOrNull { p ->
-            val c = cache[p.id]
-            if (c != null && c.first === p) c.second else s.protocol.matches(p, regs, s.preampDb).also { cache[p.id] = p to it }
+            // A replacement DAC with the same EQ must not certify the original pending save.
+            if (p.id == pendingId) false else {
+                val c = cache[p.id]
+                if (c != null && c.first === p) c.second else s.matches(p).also { cache[p.id] = p to it }
+            }
         }?.id
     }
 
@@ -66,10 +77,11 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
         abProfileId = p.id
         failedId = null
         abBusy = true
+        val generation = device.sessionGeneration
         abJob = abScope.launch(start = CoroutineStart.LAZY) {
             try {
                 val r = device.switchAb(!bypassed)
-                if (!r.verified) fail(p.id, r.reason ?: "UNKNOWN")
+                if (!r.verified && generation == device.sessionGeneration) fail(p.id, r.reason ?: "UNKNOWN")
             } finally {
                 if (abJob === currentCoroutineContext()[Job]) abBusy = false
             }
@@ -79,8 +91,9 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
 
     private suspend fun restoreAb(): Boolean {
         if (!bypassed) return true // detach resets B without writing to a replacement device
+        val generation = device.sessionGeneration
         val r = device.switchAb(false)
-        if (!r.verified) abProfileId?.let { fail(it, r.reason ?: "UNKNOWN") }
+        if (!r.verified && generation == device.sessionGeneration) abProfileId?.let { fail(it, r.reason ?: "UNKNOWN") }
         return r.verified
     }
 
@@ -106,15 +119,22 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
     fun onStop() { foreground = false; leaveAb() }
 
     /** HOLD TO SEND: writes a snapshot of [p], reads it back and compares. */
-    fun send(p: Profile) {
+    fun send(p: Profile, expectedGeneration: Long = device.sessionGeneration) {
+        if (expectedGeneration != device.sessionGeneration) return fail(p.id, "DAC SESSION CHANGED")
         if (busy) return fail(p.id, "DAC BUSY")
         sendingId = p.id
         failedId = null
+        val generation = device.sessionGeneration
         leaveAb { restored ->
             if (!restored) sendingId = null else scope.launch {
-                val r: SendOutcome = device.send(p)
+                val r: SendOutcome = device.send(p, generation)
                 sendingId = null
-                if (r.verified) model.markSent(p) else fail(p.id, r.reason ?: "UNKNOWN")
+                if (device.sessionCurrent(generation)) {
+                    if (!r.pending) {
+                        if (r.verified && model.profiles.any { it == p }) model.markSent(p)
+                        else if (!r.verified) fail(p.id, r.reason ?: "UNKNOWN")
+                    }
+                }
             }
         }
     }

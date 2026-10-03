@@ -1,5 +1,5 @@
-<p>Menedżer parametrycznego korektora (equalizera, PEQ) dla przetwornika USB CrinEar Protocol Micro. Trzymasz profile EQ w telefonie, wpinasz dongle, wybierasz profil i wysyłasz. Wpinasz, wysyłasz, wypinasz - i tyle.</p>
-<p>Protocol Micro ma korektor parametryczny wbudowany w sam dongle. Zapisane w nim EQ działa w każdej aplikacji i na każdym urządzeniu, do którego go podłączysz - bez korektora systemowego i bez aplikacji działającej w tle. Oficjalne narzędzie to strona w przeglądarce na komputer; Contour przenosi je na telefon.</p>
+<p>Menedżer parametrycznego korektora (equalizera, PEQ) dla przetworników USB CrinEar Protocol Micro i Protocol Max. Trzymasz profile EQ w telefonie, wpinasz dongle, wybierasz profil i wysyłasz. Wpinasz, wysyłasz, wypinasz - i tyle.</p>
+<p>Protocol Micro i Protocol Max mają korektor parametryczny wbudowany w sam dongle. Zapisane w nim EQ działa w każdej aplikacji i na każdym urządzeniu, do którego go podłączysz - bez korektora systemowego i bez aplikacji działającej w tle. Oficjalne narzędzie to strona w przeglądarce na komputer; Contour przenosi je na telefon.</p>
 <ul>
 <li><b>Profile EQ zostają w telefonie</b> - jeden na parę słuchawek (dokanałowych lub nausznych) albo na nastrój.</li>
 <li><b>Wysłanie zajmuje kilka sekund</b> - przytrzymaj HOLD TO SEND; Contour zapisuje profil w przetworniku, odczytuje go z powrotem, sprawdza każdą wartość i zapisuje w pamięci dongla.</li>
@@ -7,4 +7,5 @@
 <li><b>Przykłady na start</b> - NIGHTFALL i DUSK obok płaskiego profilu.</li>
 </ul>
 <p>Contour jest darmowy i open source (Apache-2.0). Nie przetwarza dźwięku, nie potrzebuje internetu, nie ma kont, reklam ani śledzenia. Rozmawia tylko z donglem. Wymaga Androida 9+ i obsługi USB host (OTG).</p>
+<p>Protocol Micro (8 pasm) jest przetestowany na sprzęcie autora. Protocol Max (10 pasm, natywne filtry półkowe) przetestował użytkownik ze społeczności na prawdziwym urządzeniu.</p>
 <p>Aplikacja nieoficjalna, niezwiązana z CrinEar. Zapisuje do dongla tylko po wyraźnej akcji i tylko udokumentowanymi poleceniami; używasz jej na własne ryzyko.</p>

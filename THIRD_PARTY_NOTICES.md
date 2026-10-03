@@ -7,10 +7,10 @@ foot of the Library, and in the service menu).
 
 Summary:
 - Every library inside the app is licensed under the Apache License 2.0.
-- The only code from another project is a port of the WalkPlay protocol and coefficient maths from
-  devicePEQ, licensed under 0BSD (section 2).
-- The app bundles no fonts, images or sounds made by others. The only outside data is the three filter
-  settings of the DUSK example profile, credited in section 3.
+- Device protocol ports, source catalogs and native protocol fixtures derive from devicePEQ, licensed
+  under 0BSD (section 2).
+- The app bundles no fonts, images or sounds made by others. Source device catalogs are credited in
+  section 2; the three DUSK example-profile settings are credited in section 3.
 
 ## 1. Libraries inside the app (all Apache License 2.0)
 
@@ -76,8 +76,14 @@ copies of four devicePEQ files. devicePEQ is licensed under 0BSD:
     OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR
     PERFORMANCE OF THIS SOFTWARE.
 
-The protocol was then checked on a real CrinEar Protocol Micro (captures in `research/protocol/`). It was not
-taken from any vendor tool or SDK.
+The Micro protocol was checked on a real CrinEar Protocol Micro (captures in `research/protocol/`). It was not
+taken from any vendor tool or SDK. Advanced beta catalogs, FiiO/KT Micro/Fosi native codecs, Moondrop read-only diagnostics and session recipes
+also use devicePEQ at that same pinned commit under the 0BSD licence above. Verbatim native fixtures in
+`android/core/src/test/resources/{fiio,ktmicro,fosi}/` and `android/core/src/test/resources/native/moondrop/` retain pinned provenance; synthetic session tests are
+labelled separately. Catalog identity, fixture parity and register readback do not establish hardware-tested
+compatibility, flash persistence or audible DSP behaviour for these new families. Exact-identity exclusions use
+that same pinned source/capture data; they never authorize USB probing. JA11/Allegro pending-save receipts
+are in-memory register-verification intent, not a durable save or persistence guarantee.
 
 Formulas and formats, no code copied:
 - Audio EQ Cookbook by Robert Bristow-Johnson: the biquad formulas for the response graph.

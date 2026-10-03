@@ -1,0 +1,581 @@
+[
+  {
+    "productName": "FIIO QX13",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -24,
+    "saveCommand": 25,
+    "userSlots": [
+      160,
+      161,
+      162,
+      163,
+      164,
+      165,
+      166,
+      167,
+      168,
+      169
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "SNOWSKY Melody",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -12,
+    "saveCommand": 25,
+    "userSlots": [
+      160,
+      161,
+      162
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "JadeAudio JIEZI",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 5,
+    "minGain": -12,
+    "saveCommand": 25,
+    "userSlots": [
+      160,
+      161,
+      162
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "JadeAudio JA11",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 5,
+    "minGain": -12,
+    "saveCommand": 25,
+    "userSlots": [
+      3
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "FIIO KA17",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -12,
+    "saveCommand": 25,
+    "userSlots": [
+      8,
+      9
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "FIIO Q7",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -24,
+    "saveCommand": 25,
+    "userSlots": [
+      8,
+      9
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "FIIO KA17 (MQA HID)",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -12,
+    "saveCommand": 25,
+    "userSlots": [
+      8,
+      9
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "FIIO BT11",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -24,
+    "saveCommand": 25,
+    "userSlots": [
+      8,
+      9
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "FIIO BT11 (UAC1.0)",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -24,
+    "saveCommand": 25,
+    "userSlots": [
+      8,
+      9
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "FIIO Air Link",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -24,
+    "saveCommand": 25,
+    "userSlots": [
+      8,
+      9
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "FIIO BTR13",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -12,
+    "saveCommand": 25,
+    "userSlots": [
+      7,
+      8,
+      9
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "FIIO BTR17",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -24,
+    "saveCommand": 33,
+    "userSlots": [
+      160,
+      161,
+      162,
+      163,
+      164,
+      165,
+      166,
+      167,
+      168,
+      169
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "BTR17",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -24,
+    "saveCommand": 33,
+    "userSlots": [
+      160,
+      161,
+      162,
+      163,
+      164,
+      165,
+      166,
+      167,
+      168,
+      169
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "FIIO K19",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 31,
+    "minGain": -24,
+    "saveCommand": 33,
+    "userSlots": [
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "FIIO K17",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 31,
+    "minGain": -24,
+    "saveCommand": 33,
+    "userSlots": [
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "FIIO K15",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -24,
+    "saveCommand": 25,
+    "userSlots": [
+      7,
+      8,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14,
+      15,
+      16
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "FIIO KA15",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -12,
+    "saveCommand": 25,
+    "userSlots": [
+      7,
+      8,
+      9
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "FIIO K13 R2R",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -24,
+    "saveCommand": 25,
+    "userSlots": [
+      160,
+      161,
+      162,
+      163,
+      164,
+      165,
+      166,
+      167,
+      168,
+      169
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "FIIO BR15 R2R",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -24,
+    "saveCommand": 25,
+    "userSlots": [
+      160,
+      161,
+      162,
+      163,
+      164,
+      165,
+      166,
+      167,
+      168,
+      169
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "FIIO FP3",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -24,
+    "saveCommand": 25,
+    "userSlots": [
+      160
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "SNOWSKY TINY A",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 5,
+    "minGain": -12,
+    "saveCommand": 25,
+    "userSlots": [
+      160,
+      161,
+      162
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "SNOWSKY TINY B",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 5,
+    "minGain": -12,
+    "saveCommand": 25,
+    "userSlots": [
+      160,
+      161,
+      162
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "FIIO FG3",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -12,
+    "saveCommand": 25,
+    "userSlots": [
+      160,
+      161,
+      162,
+      163,
+      164,
+      165,
+      166,
+      167,
+      168,
+      169
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "FIIO LS-TC2",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 5,
+    "minGain": -12,
+    "saveCommand": 25,
+    "userSlots": [
+      160
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "FIIO OAK NANO",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -24,
+    "saveCommand": 25,
+    "userSlots": [
+      160
+    ],
+    "bestGuess": true
+  },
+  {
+    "productName": "Oak Nano",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -24,
+    "saveCommand": 25,
+    "userSlots": [
+      160
+    ],
+    "bestGuess": true
+  },
+  {
+    "productName": "RETRO NANO",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -12,
+    "saveCommand": 25,
+    "userSlots": [
+      160,
+      161,
+      162
+    ],
+    "bestGuess": true
+  },
+  {
+    "productName": "FIIO QX11",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -12,
+    "saveCommand": 25,
+    "userSlots": [
+      160,
+      161,
+      162,
+      163,
+      164,
+      165,
+      166,
+      167,
+      168,
+      169
+    ],
+    "bestGuess": true
+  },
+  {
+    "productName": "FIIO AIR AMP",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -24,
+    "saveCommand": 25,
+    "userSlots": [
+      160,
+      161,
+      162,
+      163,
+      164,
+      165,
+      166,
+      167,
+      168,
+      169
+    ],
+    "bestGuess": true
+  },
+  {
+    "productName": "FIIO DM15 R2R",
+    "vendorIds": [
+      10610,
+      2578
+    ],
+    "maxFilters": 10,
+    "minGain": -24,
+    "saveCommand": 25,
+    "userSlots": [],
+    "bestGuess": true
+  },
+  {
+    "productName": "FIIO FX17",
+    "vendorIds": [
+      260,
+      283,
+      285,
+      1633,
+      1635,
+      1638,
+      1890,
+      2313,
+      3468,
+      12230,
+      13058,
+      13502,
+      13784,
+      13991,
+      14139,
+      24769,
+      24801,
+      46149,
+      46157
+    ],
+    "maxFilters": 10,
+    "minGain": -24,
+    "saveCommand": 25,
+    "userSlots": [
+      160
+    ],
+    "bestGuess": false
+  },
+  {
+    "productName": "Space Gaming IEM",
+    "vendorIds": [
+      12722
+    ],
+    "maxFilters": 5,
+    "minGain": -12,
+    "saveCommand": 25,
+    "userSlots": [],
+    "bestGuess": false
+  }
+]

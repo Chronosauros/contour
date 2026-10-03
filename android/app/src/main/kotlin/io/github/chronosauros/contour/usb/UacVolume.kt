@@ -159,10 +159,11 @@ object UacVolume {
     private fun readCurrent(c: UsbDeviceConnection, t: Target): List<Int> =
         t.channels.map { ch -> s16(get(c, t, if (t.uac2) 0x01 else 0x81, ch, 2), 0) }
 
-    private fun writeCurrent(c: UsbDeviceConnection, t: Target, value256: Int) {
+    private fun writeCurrent(c: UsbDeviceConnection, t: Target, value256: Int, guard: () -> kotlin.Unit) {
         val v = value256.coerceIn(Short.MIN_VALUE + 1, Short.MAX_VALUE.toInt())
         val buf = byteArrayOf((v and 0xFF).toByte(), ((v shr 8) and 0xFF).toByte())
         for (ch in t.channels) {
+            guard()
             val n = c.controlTransfer(0x21, 0x01, wValue(ch), wIndex(t), buf, 2, TIMEOUT_MS)
             UsbLog.line("UAC TX SET_CUR ch %d = %.2f dB (%s): %d".format(ch, v / 256.0, UsbLog.hex(buf), n))
             if (n != 2) throw IOException("SET_CUR ch $ch failed ($n)")
@@ -213,12 +214,14 @@ object UacVolume {
     }
 
     /** Sets every volume channel to [value256] (clamped to the reported range), then reads it back. */
-    fun write(manager: UsbManager, device: UsbDevice, value256: Int): State {
+    fun write(manager: UsbManager, device: UsbDevice, value256: Int, guard: () -> kotlin.Unit = {}): State {
         val (r, path) = withControl(manager, device) { c, t ->
             if (!t.writable) throw IOException("volume is read-only on this DAC")
             val range = readRange(c, t)
             val v = if (range != null) value256.coerceIn(range.min256, range.max256) else value256
-            writeCurrent(c, t, v)
+            guard()
+            writeCurrent(c, t, v, guard)
+            guard()
             Triple(t, range, readCurrent(c, t))
         }
         val (t, range, cur) = r

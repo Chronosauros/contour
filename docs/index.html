@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Contour - EQ manager for the CrinEar Protocol Micro</title>
-<meta name="description" content="Contour is a free, open-source Android app that keeps your EQ profiles on your phone and writes them into the CrinEar Protocol Micro. Try its EQ page right here.">
+<title>Contour - EQ manager for the CrinEar Protocol Micro and Max</title>
+<meta name="description" content="Contour is a free, open-source Android app that keeps your EQ profiles on your phone and writes them into the CrinEar Protocol Micro and Protocol Max. Try its EQ page right here.">
 <link rel="canonical" href="https://chronosauros.github.io/contour/">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://chronosauros.github.io/contour/">
-<meta property="og:title" content="Contour - EQ manager for the CrinEar Protocol Micro">
-<meta property="og:description" content="Keep your EQ profiles on your phone and send one to the CrinEar Protocol Micro in seconds. Free and open source.">
+<meta property="og:title" content="Contour - EQ manager for the CrinEar Protocol Micro and Max">
+<meta property="og:description" content="Keep your EQ profiles on your phone and send one to the CrinEar Protocol Micro or Protocol Max in seconds. Free and open source.">
 <meta property="og:image" content="https://chronosauros.github.io/contour/images/icon-512.png">
 <meta name="twitter:card" content="summary">
 <script>
@@ -114,6 +114,15 @@ h2.mega{margin-bottom:.36em}
 .more{display:flex;flex-wrap:wrap;gap:8px 28px;margin-top:26px;font-size:19px;font-weight:600}
 .more a{min-height:44px;display:inline-flex;align-items:center}
 
+/* film: one 4:5 video with sound, centred under the heading (not inside .dev, so the clip script leaves it alone) */
+.film{padding:clamp(80px,10vw,150px) var(--gut) clamp(64px,8vw,110px)}
+.film .mega{--mega:min(17vw,30svh,280px)}
+.film-grid{max-width:1320px;margin:0 auto}
+.film video{display:block;width:min(100%,560px);aspect-ratio:4/5;margin:14px auto 0;border-radius:8px;background:#171615}
+.film video#guide-video{width:min(100%,1100px);aspect-ratio:16/9}
+.film .cap{font-size:clamp(19px,1.6vw,24px);font-weight:600;letter-spacing:-.01em;line-height:1.25;max-width:none;margin-top:clamp(28px,4vw,52px)}
+.film .film-link{margin-top:14px;font-size:19px;font-weight:600}
+
 footer{padding:26px var(--gut) 34px;font-size:15px;line-height:1.55}
 footer a{margin-right:14px}
 
@@ -139,6 +148,8 @@ footer a{margin-right:14px}
   .show.left .dev-pos{left:calc(var(--gut) - var(--dw) * .07)}
   .show.right .dev-pos{right:calc(var(--gut) - var(--dw) * .295)}
   .install .mega{--mega:min(15vw,110px)}
+  .film{padding-top:72px}
+  .film .mega{--mega:min(24vw,150px)}
   /* the phone sits centred on narrow screens */
   .hero .dev-pos,.show.left .dev-pos,.show.right .dev-pos{left:calc(50% - var(--dw) * .4468);right:auto}
 }
@@ -165,7 +176,7 @@ footer a{margin-right:14px}
   <div class="hero-text">
     <h1 class="mega" data-snap><span class="ln"><span>One</span></span><span class="ln"><span>thumb.</span></span></h1>
     <p class="sub" data-fade>Your EQ lives in the dongle.</p>
-    <p class="intro" data-fade>Contour sets the CrinEar Protocol Micro's parametric EQ from an Android phone. That used to take a computer and a desktop-browser tool, because phone browsers lack the WebHID it needs. The dongle keeps the EQ, so it works with every app and every device you plug it into.</p>
+    <p class="intro" data-fade>Contour sets the parametric EQ of the CrinEar Protocol Micro and Protocol Max from an Android phone. That used to take a computer and a desktop-browser tool, because phone browsers lack the WebHID it needs. The dongle keeps the EQ, so it works with every app and every device you plug it into.</p>
     <div class="cta" data-fade>
       <a class="btn" href="install/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Install for Android</a>
       <a class="btn line" href="https://github.com/Chronosauros/contour">GitHub</a>
@@ -181,8 +192,8 @@ footer a{margin-right:14px}
   <div class="drag-grid">
     <div>
       <h2 class="mega" id="drag-h" data-snap><span class="ln"><span>Drag.</span></span></h2>
-      <p class="intro" data-rev>This is the app's own EQ maths, live - drag a dot, then hold. Everything stays inside what the Protocol Micro can play: <strong>8 bands</strong>, PEAK, LOW SHELF and HIGH SHELF, gain from <strong>-10 to +10 dB</strong>.</p>
-      <p class="intro" data-rev>AUTO preamp keeps headroom so boosts do not clip, any value can be typed exactly, and undo keeps <strong>100 steps</strong> per profile.</p>
+      <p class="intro" data-rev>This is the app's own EQ maths, live - drag a dot, then hold. Everything stays inside the dongle's limits, so what you see is what it plays: <strong>8 bands</strong>, PEAK, LOW SHELF and HIGH SHELF, gain from <strong>-10 to +10 dB</strong>. The demo uses the Protocol Micro's limits; the Protocol Max has 10 bands.</p>
+      <p class="intro" data-rev>With PREAMP on AUTO, Contour lowers it just enough to stop your boosts from clipping. Tap any number to type it exactly.</p>
     </div>
     <div class="live-box app-dark" data-rev><div id="live"></div></div>
   </div>
@@ -194,8 +205,8 @@ footer a{margin-right:14px}
   </div></div></div></div>
   <div class="show-text">
     <h2 class="mega" id="hold-h" data-snap><span class="ln"><span>Hold.</span></span></h2>
-    <p class="intro" data-rev>HOLD TO SEND writes every band and the preamp, reads it all back and compares, and only then stores it in the dongle's memory. Unplug it and the EQ stays.</p>
-    <p class="intro" data-rev>ON DAC marks what the dongle actually holds; LAST SENT brings that version back after you edit.</p>
+    <p class="intro" data-rev>HOLD TO SEND is the only button that writes to the dongle. Contour writes every band and the preamp, reads them back, and stores them only if everything matches. Unplug it and use it anywhere.</p>
+    <p class="intro" data-rev>ON DAC means the profile is in the dongle's memory, so you always know what it holds.</p>
     <div class="cta play-clip" data-rev><button class="btn line" type="button" data-clip="send-clip">Play the clip</button></div>
   </div>
 </section>
@@ -206,23 +217,47 @@ footer a{margin-right:14px}
   </div></div></div></div>
   <div class="show-text">
     <h2 class="mega" id="keep-h" data-snap><span class="ln"><span>Keep.</span></span></h2>
-    <p class="intro" data-rev>One profile per pair of earphones, stored on the phone. Start flat, paste AutoEQ or Equalizer APO parametric text, or read whatever is on the dongle right now with FROM DAC.</p>
-    <p class="intro" data-rev>SHARE sends a profile back out as text.</p>
+    <p class="intro" data-rev>One profile per pair of headphones, named after them, stored on the phone. Start FLAT, PASTE Equalizer APO text from AutoEQ, Squiglink or EQ by Ear, or save what the dongle holds right now with FROM DAC.</p>
+    <p class="intro" data-rev>SHARE sends a profile out as plain text. Keep a copy: profiles live only on your phone.</p>
     <div class="cta play-clip" data-rev><button class="btn line" type="button" data-clip="yours-clip">Play the clip</button></div>
+  </div>
+</section>
+
+<section class="show left on-o" id="undo" aria-labelledby="undo-h">
+  <div class="dev-box"><div class="dev-pos"><div class="drift" data-drift><div class="dev">
+    <div class="scr app-dark"><video id="undo-clip" muted playsinline loop preload="metadata" poster="media/undo-end.jpg" aria-label="Screen recording: A/B, CLEAR EQ, UNDO, a change sent, then LAST SENT"><source src="media/undo.mp4" type="video/mp4"></video></div>
+  </div></div></div></div>
+  <div class="show-text">
+    <h2 class="mega" id="undo-h" data-snap><span class="ln"><span>Undo.</span></span></h2>
+    <p class="intro" data-rev>A/B switches the curve off and keeps the preamp, so you hear the difference at the same volume (Protocol Micro only for now). Undo works like Ctrl+Z: one touch is one step, up to <strong>100 steps</strong> per profile, and CLEAR EQ is a step like any other.</p>
+    <p class="intro" data-rev>LAST SENT appears whenever the profile differs from the dongle. Tap it to go back to the version the dongle holds.</p>
+    <div class="cta play-clip" data-rev><button class="btn line" type="button" data-clip="undo-clip">Play the clip</button></div>
+  </div>
+</section>
+
+<section class="film on-k" id="film" aria-labelledby="film-h">
+  <div class="film-grid">
+    <h2 class="mega" id="film-h" data-snap><span class="ln"><span>Watch.</span></span></h2>
+    <p class="intro" data-rev>Two films, both with sound.</p>
+    <p class="intro cap">The app in a minute and a half.</p>
+    <video id="film-video" controls playsinline preload="none" poster="media/film-poster.jpg" aria-label="Contour demo film"><source src="media/film.mp4" type="video/mp4"></video>
+    <p class="intro cap">The full guide: every function, step by step, in six minutes.</p>
+    <video id="guide-video" controls playsinline preload="none" poster="media/guide-poster.jpg" aria-label="Contour guide film, 6 minutes 21 seconds, with voice-over"><source src="media/guide.mp4" type="video/mp4"></video>
+    <p class="intro film-link"><a href="guide/">Chapters and the full text on the guide page</a></p>
   </div>
 </section>
 
 <section class="install on-o" id="install" aria-labelledby="install-h">
   <div class="install-grid">
     <h2 class="mega" id="install-h" data-snap><span class="ln"><span>Free and</span></span><span class="ln"><span>open source.</span></span></h2>
-    <p class="intro" data-rev>Android 9 or newer with USB OTG, and a Protocol Micro. Android asks for USB access when you plug the dongle in.</p>
+    <p class="intro" data-rev>Android 9 or newer with USB OTG, and a Protocol Micro or Protocol Max. Android asks for USB access when you plug the dongle in.</p>
     <p class="intro" data-rev>No internet permission, no accounts, no analytics - nothing leaves the phone.</p>
     <div class="cta" data-rev>
       <a class="btn" href="install/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Install for Android</a>
       <a class="btn line" href="https://github.com/Chronosauros/contour/releases/latest">Download APK</a>
       <a class="btn line" href="https://github.com/Chronosauros/contour">GitHub</a>
     </div>
-    <p class="more" data-rev><a href="guide/">Full guide</a><a href="https://www.youtube.com/watch?v=hMzWPuy0xfk">Watch the demo film</a></p>
+    <p class="more" data-rev><a href="guide/">Guide with chapters</a><a href="#film">Watch the films</a></p>
   </div>
 </section>
 </main>
@@ -320,6 +355,11 @@ footer a{margin-right:14px}
     if (!reduced && "IntersectionObserver" in window) {
       new IntersectionObserver(function(es){ es.forEach(function(e){ if (e.isIntersecting) v.play().catch(function(){}); else v.pause(); }); }, { threshold: 0.25 }).observe(v);
     }
+  });
+  /* the two films: only one plays at a time */
+  var films = ["film-video", "guide-video"].map(function(id){ return document.getElementById(id); }).filter(Boolean);
+  films.forEach(function(v){
+    v.addEventListener("play", function(){ films.forEach(function(o){ if (o !== v && !o.paused) o.pause(); }); });
   });
   $$("button[data-clip]").forEach(function(b){
     var v = document.getElementById(b.getAttribute("data-clip"));

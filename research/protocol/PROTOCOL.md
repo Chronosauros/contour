@@ -110,22 +110,22 @@ Applied on write AND inverted on read (CO; WH L281-303, L379-398). Order on writ
 ## Experimental TRN Black Pearl (advBeta only)
 
 - Allow-list: **3302:43E8 only**, gated by `BuildConfig.ADVANCED`; no name/VID-wide matching and no
-  HiFi188 `262A:0001` clone support. Stable USB attach filter remains Micro-only.
+  HiFi188 `262A:0001` clone support. Stable USB attach filter lists only the Micro and the Max.
 - The pinned [WalkPlay catalog](https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/walkplayPreprocessor/walkplay.json#L1843-L1868)
   identifies TRN Black Pearl as SchemeNo16. UC L702-708 maps PID 43E8 to
   [peq10Band10dBFullShelves](https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/peqConstraintsConfig.json#L733-L758):
   10 filters, +/-10 dB, Q 0.1..10, PK/LS/HS (native codes 2/1/3), not LP/HP. Catalog `ChannelNum: 8`
   is not the PEQ filter count. Sources use the same permissive devicePEQ licence credited above.
-- Use the shared 0x4B/64-byte format, raw frequency/Q, 96 kHz RBJ/Q30 coefficients (WH L742-837),
+- Use report 0x4B with lengths proved by the device's report descriptor (no blanket 64-byte assumption), raw frequency/Q, 96 kHz RBJ/Q30 coefficients (WH L742-837),
   shelf Q as slope S; reject non-finite inputs/coefficients. No SchemeNo11 compensation and no
   Micro HIGH SHELF -> negated LOW SHELF/preamp emulation. CMD03 is whole signed int8 dB (WH L480-517).
   Contour conservatively restricts preamp to -30..0 dB; this is policy, not a proven TRN firmware limit.
-- Select a single HID interface with an interrupt IN endpoint carrying at least 64 bytes; multiple
-  suitable interfaces fail closed. SET_REPORT uses the actual interface ID. No audio interface is claimed
+- Read each HID report descriptor, select a single vendor Input/Output report 0x4B collection and
+  matching interrupt IN endpoint; multiple suitable interfaces fail closed. SET_REPORT uses the actual interface ID. No audio interface is claimed
   for PEQ. VERSION, bulk slot, ten individual band replies and preamp must all validate before the first
   write. Missing/short/wrong-direction/wrong-index/unsupported-type data never produces a partial snapshot.
   No fallback reset, alternate command probes or write-on-connect.
-- Explicit Send/confirmed flat restore writes **all ten slots**, including deterministic neutral PK
+- Explicit HOLD TO SEND (including a user-selected flat profile) writes **all ten slots**, including deterministic neutral PK
   spares (1 kHz, 0 dB, Q 0.75; not claimed TRN factory captures). Echo the bulk-read slot byte, not UI
   preset 101. Do not interpret individual-band slot fields as reliable preset echoes. Encode the complete
   payload before transmission, then use documented WH L132-188 commit/delays. Read every slot and preamp
@@ -139,13 +139,88 @@ Applied on write AND inverted on read (CO; WH L281-303, L379-398). Order on writ
   for this experimental target rather than assuming Micro's UAC Feature Unit/range. No extra DAC commands.
   Connecting, disconnecting or switching targets never rewrites/truncates saved profiles.
 
-## Other WalkPlay groups (for extensibility)
-Same handler/wire format for SchemeNo10-21 (WH L7). Differences are config only:
-- SchemeNo10 (default): 8 bands, PK only.
-- SchemeNo16 (incl. CrinEar Protocol Max, UC L940-950): 10 bands, +-10 dB, LS+HS, no freq/Q compensation, pregain via CMD 0x03 as well; extras gain mode 0x19.
-- SchemeNo15: 8 bands full shelves; SchemeNo18 (NiceHCK Octave): 10 bands full shelves.
-- Note PID 0x4302 appears in both SchemeNo11 and SchemeNo16 lists - first match (No11) wins in devicePEQ.
-- Group match is by VID in the WalkPlay vendor list (incl. 0x3302) + PID in the group list; model-name entries override.
+## WalkPlay catalog support (advBeta3 only, source-backed beta recipes)
+
+`WalkPlayCatalog.kt` retains all 367 catalog rows from devicePEQ commit
+`0617f382e76629792a5933e6933e4b396a756a93`, 366 valid unique exact pairs, all 29 literal
+WalkPlay/KT USB names and the 18 alternate-handler exclusions. Data/config sources:
+[walkplay.json](https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/walkplayPreprocessor/walkplay.json),
+[usbDeviceConfig.js](https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/usbDeviceConfig.js),
+[constraints](https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/peqConstraintsConfig.json).
+These are identifiers/command recipes, NOT hardware-tested compatibility or a count of DACs.
+
+- Discovery is exact catalog/captured VID:PID or exact USB productName under its source vendor set.
+  No VID Cartesian product, PID-wide inference, chipset/marketing-title matching or generic VID fallback.
+  Three additional captured pairs absent from the catalog are 3302:4367 (SPACE PRO), 3302:39C3
+  (Octave), 3302:43D4 (STARGATE II); these still require the exact literal model name.
+  Protocol Max 3302:43CC is not a catalog route: it resolves to the stable 1.3.0 MAX target in every
+  build, before the catalog (section below). Micro and TRN retain dedicated identities. Stable builds
+  resolve only Micro and Max and keep the stable attach resource.
+- Before USB permission, an exact pair is only a candidate. Permission/name acquisition is read-only.
+  If the USB name is absent after permission, fail closed rather than ignoring a model override.
+  Literal names are case/space-sensitive, including `ES9039 ` and `TANCHJIM-FISSION  DSP`.
+  Name overrides choose capabilities before catalog defaults; OLA II inherits the known pair's scheme.
+- Schemes 10/11/15/21 have 8 slots, 13/16/18/20 have 10, 17 has 5 and 19 has 6.
+  Scheme 10/20/21 are PK-only; Scheme11 admits PK/LS; other documented schemes admit PK/LS/HS.
+  SPACE PRO/STARGATE II are PK-only, OLA II is PK-only/Q<=5. LP/HP are always blocked:
+  upstream's LP/HP coefficient path is the PK formula, not a validated LP/HP codec.
+- Hold unknown schemes (1/24), malformed literal `0x43H1` (never repaired), catalog/first-group
+  conflicts 0666:0883, 0663:0880, 3302:4302, 373B:129F, conflicting named catalog rows and
+  alternate-handler routes. All ten KT names are retained but blocked in this WalkPlay driver.
+  Upstream-experimental names may use their unambiguous recipe only as beta after exact matching;
+  an experimental catalog row is admitted only with a same-scheme exact name, never from its label.
+- Contour intentionally omits unverified acoustic frequency/Q compensation for every new Scheme11
+  target: raw metadata uses the same explicit policy as Micro. This is an application policy, not
+  proof of acoustic parity. New targets quantize frequency/Q/gain to representable registers before
+  coefficient calculation so coefficients and metadata share the same device-domain values.
+  Native shelves have NO Micro HS offset. Micro's arithmetic/factory-fill/report/commit/A-B bytes
+  and raw frequency/Q policy remain unchanged.
+- Validate all input values/types/ranges (including disabled saved filters), finite coefficients and
+  the whole encoded sequence before the first mutation. Write exactly the capability's slot count,
+  with explicit neutral PK spares (1 kHz, Q0.75, 0 dB), not fabricated factory captures. CMD03 whole-dB
+  preamp uses conservative floor[-30,0] policy; files retain the user's fractional preamp intent.
+- New targets require GET_DESCRIPTOR(report) with the configuration-declared length, a complete
+  vendor report 0x4B Input/Output collection and one unambiguous matching HID interface. Input must
+  have exactly the descriptor-proved report length; output pads/trims only proven zero padding.
+  No audio interface is claimed. Micro's captured transport selection remains unchanged.
+- A complete VERSION + bulk slot + every band + preamp strict read is mandatory before the first
+  mutating report. Unknown native type, disabled/uninitialized slot, malformed header/range/length or
+  missing reply aborts without a partial snapshot. Explicit HOLD TO SEND uses the
+  existing documented band pacing/preamp/commit recipe; full readback compares every register,
+  preamp and bulk slot. New non-TRN targets additionally compare coefficient bytes. Individual-band slot
+  fields are read but not treated as authoritative; the bulk slot alone is echoed.
+  A mismatch is failure, never ON DAC. Register readback is NOT proof of DSP response/persistence.
+- New targets have no A/B, UAC volume, service test/reset writes or extras. No write on connect, EQ drag or profile selection.
+  Multiple candidate DACs disable operations; no firstOrNull retarget. Every queued operation,
+  report, pause and snapshot/error/final publication is guarded by physical attachment generation.
+  Volume coalescing stays bound to its original Micro session and is cleared on detach/replacement.
+- The adv editor permits 31 local filters even with a smaller DAC attached; target capabilities determine send limits.
+  Connecting/importing never truncates/clamps/quantizes/drops saved data. Incompatible saved types
+  and values remain visible; sends are rejected with reasons. Clipboard imports preserve fractional
+  preamp and all filters, including those that cannot be sent to the connected target.
+- No new target has been connected or hardware-tested during this implementation. Source-backed
+  tests exercise codec/planning/safety only. Hardware descriptor layouts, DSP response and persistence
+  remain owner validation gates. Build identity is 1.3.0-advbeta1, versionCode 22 (on stable 1.3.0); no stable version change.
+
+## CrinEar Protocol Max (supported in Contour 1.3.0)
+
+- Allow-list: **3302:43CC only** (devicePEQ `walkplayHidHandler.js` L9, `usbDeviceConfig.js` "Protocol Max"),
+  recognised in every build type; the USB attach filter lists it next to the Micro. No VID-wide or name
+  matching; no other SchemeNo16 PID.
+- SchemeNo16 / `peq10Band10dBFullShelves`: 10 filters, +/-10 dB, Q 0.1..10, PK/LS/HS on their native codes
+  2/1/3. Same 0x4B 64-byte format and 96 kHz RBJ/Q30 coefficients as the Micro, raw frequency and Q (no
+  compensation), no Micro HIGH SHELF -> LOW SHELF + preamp emulation. Pregain is computed by the host and
+  written with CMD 0x03 (`deviceHandlesPregain: false`); Contour keeps its -30..0 dB policy, not a proven
+  Max limit. Spare slots are neutral PKs (1 kHz, 0 dB, Q 0.75), not Max factory captures.
+- Fails closed: exactly one HID interface with a 64-byte interrupt IN endpoint, else no I/O. VERSION, bulk
+  slot, all ten bands and the preamp must parse strictly (64-byte, read direction, index, header, native
+  type, ranges) before the first write. A send writes all ten slots, echoes the bulk-read slot byte, commits
+  as on the Micro, then reads everything back; any mismatch, including the slot byte, is failure, not ON DAC.
+- Off on the Max: A/B (TEMP_WRITE is only proven RAM-only on the Micro) and the service screen's band-1 test
+  write. No extra WalkPlay commands (gain mode 0x19, DAC filter, balance, mic gain).
+- Hardware test: a community member connected a Protocol Max on 02.10.2026 (Max beta build, 1.2.2-maxbeta1): 8 bands, peak and
+  shelf filters, no crashes. A small pop when sending is normal - the dongle saves the EQ to its memory.
+  Not yet checked: A/B (stays off), long-term persistence details. The Protocol Micro path is unchanged from 1.2.2.
 
 ## Android mapping (UsbManager / UsbDeviceConnection)
 - Claim only the HID interface (interface number 3, class 0x03); never touch the audio interfaces 0-2.
@@ -162,7 +237,76 @@ Same handler/wire format for SchemeNo10-21 (WH L7). Differences are config only:
 - Keep devicePEQ pacing (>= 20 ms between writes, 50 ms between band reads is generous; replies take ~8 ms,
   so request-reply lock-step without fixed sleeps should read all 8 bands in < 100 ms - untested).
 
-## FiiO roadmap note (config/handler only; nothing was sent to the FiiO device)
+## Native FiiO / KT Micro / Fosi integration (advBeta3 only)
+
+All recipes/catalogs and original test fixtures are pinned to devicePEQ
+`0617f382e76629792a5933e6933e4b396a756a93` (0BSD). No new DAC was physically tested.
+`DeviceTarget` routes independently of WalkPlay; `NativeState` retains native integers/float bits and
+fractional preamp without constructing WalkPlay band writes. Android calls the same guarded `NativeSession`
+used by explicitly synthetic fake-port tests. Reads never select a bank, enable EQ, clear or save.
+
+- Six exact FiiO capture VID/PID/name routes precede WalkPlay (including KA15 2972:0104).
+  Other literal `sourceRule` names under their exact vendor sets are runtime candidates only: explicit
+  Connect consent, descriptor qualification and a complete read are mandatory. Best-guess names and
+  codec blockers remain read-only; no VID-wide/PID-wide writer fallback or invented PID.
+  Only `config.userSlots` are destinations; the lowest admitted slot and label are visible before HOLD.
+  Conflicting KA17-style maps exclude stock 7 and allow only 8/9. Full preflight -> select -> confirm
+  slot -> complete destination backup -> parameter writes -> save -> complete raw readback.
+  Native tenths pregain and model-specific -24 dB ranges are retained. AA/BB payloads exclude report ID;
+  transport pads to descriptor size, prefixes once and validates exact raw Input length.
+- KT routes only literal admitted models/known PIDs; CDSP's unknown PID is runtime-qualified only.
+  Custom 3 only, selection acknowledgement before bands; exact maps and JCally-only 2X retained.
+  No write to pregain 0x66, clear command or assumed headroom. Manual/AUTO profiles needing nonzero
+  attenuation are rejected. Full raw readback includes all ten band registers, pregain and slot tails.
+- Fosi only 152A:88DB plus literal `Fosi Audio DS3`, READ ONLY. Report 1 Output and Feature each
+  require 63-byte descriptor payloads (64 raw), same collection. State 9E, format 9F and the first eight
+  bands of the current bank are partial diagnostics, read without selection. Pinned handler L54-57 says
+  firmware >=1.4.15 has 32-band user banks while factory banks remain eight; no evidenced 0xA6 response
+  layout/count qualification exists here. Never infer Custom 1=7 completeness from eight reads. No
+  mode/enable/parameter/save mutations, whole-profile import, profile match or sent/verified status.
+  Eight-band codec plans remain isolated explicitly SYNTHETIC fixtures, never runtime qualification.
+- Disconnect-on-save JA11/Allegro retains an in-memory immutable complete quantized plan immediately
+  before SAVE is attempted. It binds exact VID/PID/name, optional serial, original profile/id/updatedAt,
+  original generation and explicit HOLD intent. SAVE-triggered detach does not discard this intent,
+  but it aborts every later USB operation/publication. No resend, retry or write occurs on reconnect.
+  Complete explicit Connect/Read can resolve it only against the original unmodified profile and target:
+  FiiO bank/count/pregain/all native fields; KT all registers including pregain/slot/reserved bytes.
+  Serial-less matching requires explicit user verification with a same-physical-unit warning; only a
+  matching serial permits automatic verification after a new attachment. New read/current generation
+  is checked before publication. Wrong target, changed profile, partial read or mismatch stays PENDING.
+  Only the receipt-verified snapshot can match these families ON DAC and mark the original LAST SENT.
+  App restart loses the receipt; there is no new profile schema or durable persistence claim. A matching
+  register read proves neither flash survival nor DSP/audio behaviour. Another HOLD is blocked while
+  the original save remains unresolved.
+- Input/Output/Feature sizes and IDs are independent. HID only is claimed, never audio. Each request,
+  report, pause and publication is generation guarded. HOLD binds its original generation/profile to
+  prevent replacement-DAC retargeting mid-gesture. Multiple candidates disable operations. Micro
+  codec/A-B/UAC stay separate; Micro-only mutation controls are hidden for other families. Local data
+  never changes on attach/detach/import; incompatible types, excess bands and fractional preamp survive.
+
+## Native Moondrop read-only and blocked routing (advBeta3 only)
+
+- The 14 literal pinned source rules retain 12 conditional read-only candidates and two exclusions:
+  Old Fashioned has unproven response echo semantics; MOONDROP Marigold conflicts with the captured
+  WalkPlay 35D8:011C recipe. Exact source VID plus case/space-sensitive name is necessary; unknown PID
+  candidates always require explicit Connect consent. A missing pre-permission name permits only
+  permission/diagnostic discovery, not HID reads or a wildcard writer.
+- Native report 4B needs vendor Input/Output in the same collection: Output payload >=6 bytes and
+  Input >=36 complete coefficient/metadata bytes. KT 10-byte payloads are not Moondrop qualification.
+  Reads bracket all eight indexed bands and observed 03 offset with slot reads, without bank selection.
+  Transport discards queued stale input and has one request outstanding; parsers require exact actual
+  descriptor length and native opcode/index/bank echo. Missing echoes fail closed, never WalkPlay.
+- Effective pregain stays nullable/UNKNOWN_EFFECTIVE, not zero, AUTO or a value inferred from 23.
+  Raw native coefficients, metadata, slot and every response remain diagnostic only. READ ONLY and
+  import/write reasons are shown; HOLD, FROM DAC, native matching, UAC, A/B and service resets cannot
+  mutate or claim an equivalent profile. No native Moondrop hardware/RX qualification is claimed.
+- BlockedUsbCatalog and known Moondrop exclusions precede every positive DeviceTarget route, including
+  unreadable names for known pairs: Conexant 35D8:1496/149B, Qudelix 0A12:4005, Topping 152A:8750,
+  serial FiiO 1A86:55D3/JDS 152A:88FA and Marigold 35D8:011C. Literal Space Gaming/DM15 exclusions
+  are diagnostic, not invented PID evidence. Permission must not lead to HID probing for blocked
+  identities. Legitimate same-VID Micro/FiiO/DS3 routes remain independent; stable admits Micro only.
+
+## Historical FiiO research note (superseded by admission rules above)
 - FiiO is matched by VID 0x2972 (and 0x0A12) + **USB product name string**, not by PID (UC L16, L360-400).
   "FIIO KA15": supported, 10 bands, +-12 dB, 7 types (PK/LS/HS/LP/HP/BP/AP), writable user slots 7-9
   (USER1-3), "Close EQ" = 10. "FIIO K13 R2R": supported, 10 bands, -24..+12 dB, all FiiO types, user slots

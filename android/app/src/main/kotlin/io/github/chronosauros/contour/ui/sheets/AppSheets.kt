@@ -199,7 +199,7 @@ fun NewProfileSheet(model: AppModel, device: DeviceController, onDone: () -> Uni
     }
     val snapshot = device.snapshot
     val dacImport = if (device.link == Link.CONNECTED && snapshot != null)
-        Importer.fromDac(snapshot.bands, snapshot.preampDb, snapshot.protocol) else null
+        snapshot.importExact() else null
     SheetFrame(onDone) {
         SheetTitle("NEW PROFILE")
         Option("FLAT", "One flat band at 1 kHz - drag it or add more", true, "new_empty") {
@@ -223,7 +223,7 @@ fun NewProfileSheet(model: AppModel, device: DeviceController, onDone: () -> Uni
             when (dacImport) {
                 is DacImport.Ready -> "Re-encodes to the DAC's registers; exact original coefficients are not guaranteed"
                 is DacImport.Rejected -> dacImport.issues.joinToString("; ")
-                null -> "Connect the DAC first"
+                null -> if (device.protocol.moondrop != null) io.github.chronosauros.contour.core.native.MoondropCodec.IMPORT_BLOCKED_REASON else "Connect the DAC first"
             },
             dacImport is DacImport.Ready,
             "new_dac",
@@ -253,14 +253,14 @@ private fun Option(title: String, detail: String, enabled: Boolean, tag: String,
     }
 }
 
-/** A typed value: the system numeric keyboard, Done = set (clamped and quantized to the device range). */
+/** Typed values reject unsupported ranges; native pregain steps/ranges are displayed explicitly. */
 @Composable
 fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
     val p = model.current ?: return onDone()
     val i = model.selectedBand
     val b = p.bands.getOrNull(i)
     if (param != Param.PREAMP && b == null) return onDone()
-    val start = if (param == Param.PREAMP) runCatching { model.shownPreamp(p) }.getOrNull() else param.of(b!!)
+    val start = if (param == Param.PREAMP) p.preampDb ?: runCatching { model.shownPreamp(p) }.getOrNull() else param.of(b!!)
     if (start == null) {
         SheetFrame(onDone) {
             SheetTitle("PREAMP")
@@ -282,8 +282,10 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
             onDone()
             return@commit
         }
-        val parsed = param.parse(text.text)
-        if (parsed == null) {
+        val parsed = param.parse(text.text, model.protocol.caps)
+        val preampFits = param != Param.PREAMP || (parsed != null && parsed in
+            (model.protocol.preampMin - model.protocol.shelfOffset(live.bands))..(model.protocol.preampMax - model.protocol.shelfOffset(live.bands)))
+        if (parsed == null || !preampFits) {
             invalid = true
         } else {
             if (band == null) model.setPreamp(parsed)
@@ -294,17 +296,17 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
     SheetFrame(onDone) {
         SheetTitle(if (param == Param.PREAMP) "PREAMP" else "BAND ${i + 1} - ${param.label}")
         val range = when (param) {
-            Param.FREQ -> "20 - 20 000 Hz"
-            Param.GAIN -> "-10.0 - +10.0 dB"
-            Param.Q -> "0.10 - 10.00"
-            Param.PREAMP -> "curve preamp, device -30 - 0 dB"
+            Param.FREQ -> "${model.protocol.caps.freqMinHz} - ${model.protocol.caps.freqMaxHz} Hz"
+            Param.GAIN -> "${model.protocol.caps.gainMinDb} - ${model.protocol.caps.gainMaxDb} dB"
+            Param.Q -> "${model.protocol.caps.qMin} - ${model.protocol.caps.qMax}"
+            Param.PREAMP -> if (model.protocol.native && model.protocol.fiio == null) "No DAC preamp: only 0 dB can be sent" else "${model.protocol.preampMin} - ${model.protocol.preampMax} dB, step ${model.protocol.preampStep}"
         }
         OutlinedTextField(
             value = text,
             onValueChange = { text = it; invalid = false },
             label = { Text(range) },
             isError = invalid,
-            supportingText = if (invalid) ({ Text("Enter a valid number") }) else null,
+            supportingText = if (invalid) ({ Text("Enter a value within the displayed supported range") }) else null,
             suffix = { if (param.unit.isNotEmpty()) Text(param.unit) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),

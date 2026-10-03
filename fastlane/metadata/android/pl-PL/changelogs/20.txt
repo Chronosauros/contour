@@ -1,0 +1,1 @@
+Dodaje obsługę CrinEar Protocol Max (10 pasm, natywne filtry półkowe), przetestowaną przez użytkownika ze społeczności na prawdziwym urządzeniu.

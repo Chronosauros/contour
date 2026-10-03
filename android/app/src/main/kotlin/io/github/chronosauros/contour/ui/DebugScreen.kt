@@ -34,6 +34,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
+import io.github.chronosauros.contour.core.DeviceProtocol
 import io.github.chronosauros.contour.usb.DeviceController
 import io.github.chronosauros.contour.usb.Link
 import io.github.chronosauros.contour.usb.UsbLog
@@ -79,25 +80,35 @@ fun DebugScreen(device: DeviceController, onClose: () -> Unit) {
                     } + (device.error?.let { " - error: $it" } ?: ""),
                 )
                 Text(device.protocol.caps.name)
-                if (device.protocol.experimental) Text("Experimental TRN Black Pearl support — not tested on hardware. 10-band PEQ with native shelves. A/B and hardware volume unavailable; RAM-only behavior is unverified.", style = MaterialTheme.typography.bodySmall)
+                if (device.protocol.walkplay == DeviceProtocol.MAX) Text(
+                    "10-band PEQ with native shelves. A/B is unavailable on the ${device.protocol.caps.name}.",
+                    style = MaterialTheme.typography.bodySmall,
+                )
+                else if (device.protocol.experimental) Text("Source-backed beta recipe — not hardware verified. ${if (device.protocol.fosi) "First eight diagnostic bands; whole-bank count/layout UNKNOWN" else "${device.protocol.caps.bands} PEQ slots"}; ${device.protocol.caps.types.joinToString()}. A/B, UAC and extra commands are unavailable. ${if (device.protocol.writeBlocker != null) "READ ONLY: ${device.protocol.writeBlocker}" else "Use HOLD TO SEND for EQ writes."}", style = MaterialTheme.typography.bodySmall)
                 if (device.link == Link.NEEDS_PERMISSION) Button(onClick = device::requestPermission) { Text("Ask for USB permission") }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onRead, enabled = connected) { Text("Read from DAC") }
+                    if (device.hardwareVolumeSupported) {
                     Button(
                         onClick = { confirm = "Write band 1 gain -0.5 dB to the DAC and save it to its flash?" to onTestWrite },
                         enabled = connected && !device.protocol.experimental,
                     ) { Text("Send test: band 1 -0.5 dB") }
                     Button(
-                        onClick = { confirm = "Write the flat EQ (${device.protocol.caps.bands} x 0 dB, preamp 0) to the DAC and save it to its flash?" to onRestoreFlat },
-                        enabled = connected,
+                        onClick = {
+                            confirm = (if (device.protocol.experimental) "Write the flat EQ (${device.protocol.caps.bands} x 0 dB, preamp 0) to the DAC and save it to its flash?"
+                                else "Write the factory flat EQ (8 x 0 dB, preamp 0) to the DAC and save it to its flash?") to onRestoreFlat
+                        },
+                        enabled = connected && (!device.protocol.experimental || device.protocol.walkplay == DeviceProtocol.MAX),
                     ) { Text("Restore flat") }
+                    }
                 }
                 // Hardware volume (USB Audio Class Feature Unit) - the control bit-perfect players set in exclusive mode.
+                if (device.hardwareVolumeSupported) {
                 Text("Hardware volume" + (device.volume?.let { v ->
                     ": " + v.current256.joinToString(" / ") { "%.1f dB".format(it / 256.0) } +
                         (v.range?.let { r -> "  (range %.1f..%.1f, step %.2f)".format(r.min256 / 256.0, r.max256 / 256.0, r.res256 / 256.0) } ?: "") +
                         "\n${v.target}, path ${v.path}"
-                } ?: if (device.hardwareVolumeSupported) ": not read" else ": unavailable on experimental TRN support"), fontFamily = FontFamily.Monospace, fontSize = 11.sp)
+                } ?: if (device.hardwareVolumeSupported) ": not read" else ": unavailable on this target"), fontFamily = FontFamily.Monospace, fontSize = 11.sp)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = device::readVolume, enabled = connected && device.hardwareVolumeSupported) { Text("Read volume") }
                     val now = device.volume?.current256?.maxOrNull()
@@ -110,18 +121,20 @@ fun DebugScreen(device: DeviceController, onClose: () -> Unit) {
                         enabled = connected && now != null,
                     ) { Text("Volume +3 dB") }
                 }
+                }
                 snapshot?.let { s ->
                     Text(
-                        "slot ${s.slot}, preamp ${s.preampDb} dB, read ${s.readMs} ms\n" + s.bands.joinToString("\n") { b ->
+                        "slot ${s.slot}, preamp ${s.shownPreamp?.let { "$it dB" } ?: "UNKNOWN"}, read ${s.readMs} ms\n" + (s.nativeState?.describe() ?: s.bands.joinToString("\n") { b ->
                             val r = b.registers
                             "%d  %s %7.1f Hz %6.2f dB Q %.3f   raw f=%d q=%d g=%d t=%d".format(
                                 r.index + 1, b.type.name.take(2), b.freqHz, b.gainDb, b.q, r.freq, r.q256, r.gain256, r.typeCode,
                             )
-                        },
+                        }),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 11.sp,
                     )
                 }
+                device.pendingReason?.let { Text("PENDING: $it", style = MaterialTheme.typography.bodySmall) }
                 lastWrite?.let { w ->
                     Text(
                         "last write: verified ${if (w.verified) "YES" else "NO"}, write ${w.writeMs} ms, read-back ${w.readBackMs} ms" +

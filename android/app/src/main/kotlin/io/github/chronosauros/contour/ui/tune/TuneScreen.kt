@@ -192,7 +192,7 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
             if (b != null) {
                 TypeRow(model, b.type, bandsEnabled)
                 for (param in listOf(Param.FREQ, Param.GAIN, Param.Q)) {
-                    ParamRow(param, param.of(b), enabled = bandsEnabled, onTap = { actions.value(param) }) { v ->
+                    ParamRow(param, param.of(b), enabled = bandsEnabled, scale = param.scaleFor(model.protocol.caps)!!, onTap = { actions.value(param) }) { v ->
                         if (!sender.bypassed && !sender.abBusy)
                             model.transformBandIfCurrent(p.id, i, b.id) { current -> param.set(current, v) }
                     }
@@ -200,6 +200,18 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
             }
         }
         PreampRow(model, p, sender, actions)
+        if (device.link == io.github.chronosauros.contour.usb.Link.CONNECTED) {
+            if (device.protocol.native) Text("Native beta recipe: not hardware tested. Readback verifies registers, not audio/persistence.", color = pal.textDim, style = Type.paramLabel)
+            device.protocol.destinationLabel?.let { Text("DESTINATION: $it", color = pal.textDim, style = Type.paramLabel) }
+            device.sendIssues(p).firstOrNull()?.let { Text("SEND BLOCKED: $it (saved values unchanged)", color = pal.textDim, style = Type.paramLabel) }
+        }
+        sender.pendingReason?.let { Text("PENDING: $it", color = pal.textDim, style = Type.paramLabel) }
+        if (device.protocol.moondrop != null && device.link == io.github.chronosauros.contour.usb.Link.CONNECTED) {
+            Text("READ ONLY — effective preamp UNKNOWN; import and all writes unavailable.", color = pal.textDim, style = Type.paramLabel)
+            androidx.compose.material3.TextButton(onClick = { device.read() }, enabled = !device.busy) { Text("READ DAC DIAGNOSTICS") }
+            device.snapshot?.nativeState?.describe()?.let { Text(it, color = pal.textDim, style = Type.paramLabel) }
+        }
+        device.error?.let { Text(it, color = pal.textDim, style = Type.paramLabel) }
         Row(Modifier.padding(top = Grid.GROUP - GAP).fillMaxWidth().height(ROW_H), horizontalArrangement = Arrangement.spacedBy(GAP)) {
             if (model.canRevertToSent(p)) LastSentButton(model, sender)
             HoldToSend(p, device, sender, actions::sendDetails, Modifier.weight(1f).fillMaxHeight())
@@ -380,8 +392,9 @@ private fun BandStrip(model: AppModel, p: Profile, actions: TuneActions, enabled
 private fun TypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
     val c = pal
     val haptics = LocalHaptics.current
-    val types = listOf(FilterType.PEAK to "PEAK", FilterType.LOW_SHELF to "LOW SHELF", FilterType.HIGH_SHELF to "HIGH SHELF")
-        .filter { it.first in model.protocol.caps.types }
+    val offered = listOf(FilterType.PEAK to "PEAK", FilterType.LOW_SHELF to "LOW SHELF", FilterType.HIGH_SHELF to "HIGH SHELF")
+    val types = (offered + if (offered.none { it.first == type }) listOf(type to type.name.replace('_', ' ')) else emptyList())
+        .filter { it.first in model.protocol.caps.types || it.first == type }
     val well = RoundedCornerShape(Radii.L)
     val pill = RoundedCornerShape(Radii.M)
     val idx = types.indexOfFirst { it.first == type }.coerceAtLeast(0)
@@ -396,7 +409,7 @@ private fun TypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
             .padding(Grid.INSET),
     ) {
         val w = maxWidth / types.size
-        Box(
+        if (type in model.protocol.caps.types) Box(
             Modifier
                 .offset(x = w * at)
                 .width(w)
@@ -412,7 +425,7 @@ private fun TypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
                         .weight(1f)
                         .fillMaxHeight()
                         .clip(pill)
-                        .clickable(enabled = enabled) { if (!sel) { haptics.segment(); model.setType(t) } }
+                        .clickable(enabled = enabled && t in model.protocol.caps.types) { if (!sel) { haptics.segment(); model.setType(t) } }
                         .testTag("type_${t.name.lowercase()}"),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -447,7 +460,7 @@ private val VALUE_W = 108.dp
 
 /** One value row: the label over the value (tap = type it), and the slider as tall as the card allows. */
 @Composable
-private fun ParamRow(param: Param, value: Double, enabled: Boolean, onTap: () -> Unit, onChange: (Double) -> Unit) {
+private fun ParamRow(param: Param, value: Double, enabled: Boolean, scale: io.github.chronosauros.contour.ui.kit.Scale, onTap: () -> Unit, onChange: (Double) -> Unit) {
     val c = pal
     Row(
         Modifier
@@ -469,7 +482,7 @@ private fun ParamRow(param: Param, value: Double, enabled: Boolean, onTap: () ->
         ) {
             StackedValue(param.label, param.number(value), param.unit, c.text)
         }
-        RelSlider(param, value, onChange, Modifier.weight(1f).fillMaxHeight().padding(Grid.INSET), enabled = enabled)
+        RelSlider(param, value, onChange, Modifier.weight(1f).fillMaxHeight().padding(Grid.INSET), enabled = enabled, scale = scale)
     }
 }
 
@@ -595,7 +608,8 @@ private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, v
                             atEnd = false
                         }
                         acc = raw.coerceIn(lo, hi)
-                        val next = Math.round(acc * 10) / 10.0
+                        val step = model.protocol.preampStep
+                        val next = Math.round(acc / step) * step
                         if (next != now) model.setPreamp(next)
                         guard.move(ch.uptimeMillis, ch.position, next)
                         if (next != ticked && !guard.settling(ch.uptimeMillis)) {

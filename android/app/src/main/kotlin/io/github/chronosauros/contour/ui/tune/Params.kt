@@ -11,6 +11,13 @@ enum class Param(val label: String, val unit: String, val scale: Scale?, val hom
     Q("Q", "", Scale.Q, 1.0),
     PREAMP("PREAMP", "dB", null, 0.0);
 
+    fun scaleFor(caps: io.github.chronosauros.contour.core.DeviceCapabilities): Scale? = when (this) {
+        FREQ -> Scale.FREQ.bounded(caps.freqMinHz, caps.freqMaxHz)
+        GAIN -> Scale.GAIN.bounded(caps.gainMinDb, caps.gainMaxDb)
+        Q -> Scale.Q.bounded(caps.qMin, caps.qMax)
+        PREAMP -> null
+    }
+
     fun of(b: Band): Double = when (this) {
         FREQ -> b.freqHz
         GAIN -> b.gainDb
@@ -49,11 +56,14 @@ enum class Param(val label: String, val unit: String, val scale: Scale?, val hom
     }
 
     /** Typed text -> the stored value (clamped and quantized to the device range), null if not a number. */
-    fun parse(text: String): Double? {
+    fun parse(text: String, caps: io.github.chronosauros.contour.core.DeviceCapabilities? = null): Double? {
         val v = text.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() } ?: return null
         return when (this) {
             PREAMP -> Math.round(v * 10) / 10.0 // clamped by AppModel.setPreamp (device range minus HS gains)
-            else -> scale!!.quantize(v.coerceIn(scale.min, scale.max))
+            else -> {
+                val s = if (caps == null) scale!! else scaleFor(caps)!!
+                if (v !in s.min..s.max) null else s.quantize(v)
+            }
         }
     }
 

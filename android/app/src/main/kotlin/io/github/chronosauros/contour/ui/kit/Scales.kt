@@ -24,6 +24,11 @@ class Scale(
     val reset: Double?,
     val fineMax: Double? = null,
 ) {
+    fun bounded(lo: Double, hi: Double): Scale = if (lo == min && hi == max) this else Scale(lo, hi, log, quantum,
+        labels.filter { it.first in lo..hi }, ticks.filter { it in lo..hi },
+        stepMarks.filter { it in lo..hi }.toDoubleArray(), strongMarks.filter { it in lo..hi }.toDoubleArray(),
+        reset?.takeIf { it in lo..hi }, fineMax)
+
     /** How much the value moves per 1 of position at [v] (the scale's slope). */
     fun perPos(v: Double): Double = if (log) v.coerceIn(min, max) * ln(max / min) else max - min
 
@@ -77,8 +82,8 @@ class Scale(
             stepMarks = ISO_THIRDS,
             strongMarks = doubleArrayOf(20.0, 100.0, 1000.0, 10_000.0, 20_000.0),
             reset = null,
-            // owner 26.09: 15 kHz and up is 4 % of the log bar; a slow finger there moved about 73 Hz a dp
-            fineMax = 5.0,
+            // owner 26.09: a slow finger in the top octave moved about 73 Hz a dp; 4 Hz a dp as in EQ Sweep (03.10)
+            fineMax = 4.0,
         )
 
         val GAIN = Scale(

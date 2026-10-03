@@ -190,7 +190,7 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                             } else {
                                 val i = model.selectedBand
                                 val b = prof.value.bands.getOrNull(i) ?: continue
-                                val q = Scale.Q.quantize(pinchQ0 * pinchD0 / d.coerceAtLeast(1f))
+                                val q = Param.Q.scaleFor(model.protocol.caps)!!.quantize(pinchQ0 * pinchD0 / d.coerceAtLeast(1f))
                                 if (q != b.q) model.setBand(i, b.copy(q = q))
                                 pinchGuard.move(lastUptime, Offset(d, 0f), q)
                                 if (q != qTicked && !pinchGuard.settling(lastUptime)) {

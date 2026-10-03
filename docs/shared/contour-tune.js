@@ -115,7 +115,7 @@
   }
 
   var NOTE = "Hold for 0.7 s. On the web nothing is sent - in the app this writes the dongle and reads it back.";
-  var NOTE_SENT = "<strong>Nothing was sent</strong> - this is the web. In the app, HOLD TO SEND writes every band and the preamp to the Protocol Micro, reads it all back, compares, and only then stores it in the dongle's memory.";
+  var NOTE_SENT = "<strong>Nothing was sent</strong> - this is the web. In the app, HOLD TO SEND writes every band and the preamp to the dongle, reads it all back, compares, and only then stores it in the dongle's memory.";
 
   function Tune(el, opts) {
     var self = this;

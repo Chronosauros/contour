@@ -24,8 +24,8 @@ android {
         minSdk = 28
         targetSdk = 36
         // v0.2 (versionCode 2) is on the Pixel; `install -r` refuses a lower code, and keeps the data only on update.
-        versionCode = 18
-        versionName = "1.2.2" // literal: F-Droid reads it for update checks
+        versionCode = 21
+        versionName = "1.3.1" // literal: F-Droid reads it for update checks
     }
 
     signingConfigs {
@@ -64,7 +64,7 @@ android {
         create("adv") {
             initWith(getByName("release"))
             applicationIdSuffix = ".advbeta"
-            versionNameSuffix = "-advbeta2"
+            versionNameSuffix = "-advbeta1"
             manifestPlaceholders["advLabel"] = "Contour advBeta"
             buildConfigField("boolean", "ADVANCED", "true")
             matchingFallbacks += "release"
@@ -112,7 +112,7 @@ val copyLicences = tasks.register<CopyLicences>("copyLicences") {
 
 androidComponents {
     onVariants { variant ->
-        if (variant.buildType == "adv") variant.outputs.forEach { it.versionCode.set(19) }
+        if (variant.buildType == "adv") variant.outputs.forEach { it.versionCode.set(22) }
         variant.sources.assets?.addGeneratedSourceDirectory(copyLicences, CopyLicences::outputDir)
     }
 }

@@ -2,18 +2,20 @@
 
 # Contour
 
-**An on-the-go EQ manager for the CrinEar Protocol Micro.** Keep all your EQ profiles on your phone, plug the
+**An on-the-go EQ manager for the CrinEar Protocol Micro and Protocol Max.** Keep all your EQ profiles on your phone, plug the
 dongle in, pick one and send it. Plug in, send, unplug - that is the whole routine.
 
+**Website: [chronosauros.github.io/contour](https://chronosauros.github.io/contour/)** - a 1.5-minute demo film, the full guide film and the install page.
+
 <p align="center">
-  <img src="docs/images/tune.png" width="300" alt="EQ page: response graph, bands, sliders, preamp and HOLD TO SEND">
+  <img src="docs/images/eq-1.2.2.png" width="300" alt="EQ page: a LOW SHELF at 80 Hz, sliders, AUTO preamp, ON DAC">
   &nbsp;&nbsp;
-  <img src="docs/images/library.png" width="300" alt="Library: saved profiles with their response curves">
+  <img src="docs/images/library-1.2.2.png" width="300" alt="Library: four profiles with their curves, BASS BOOSTED on the DAC">
 </p>
 
 ## Why it exists
 
-The Protocol Micro has a parametric EQ built into the dongle itself. Whatever EQ it holds works with every
+The Protocol Micro and Protocol Max have a parametric EQ built into the dongle itself. Whatever EQ a dongle holds works with every
 app and every device you plug it into - no system equaliser, no app running in the background. But
 the official way to change it is CrinEar's browser tool at [eq.hangout.audio](https://eq.hangout.audio/),
 which the maker lists for desktop (PC and macOS) browsers. There is no official mobile app, and phone
@@ -35,12 +37,15 @@ Contour puts that on your phone. It is deliberately a small, simple tool:
 
 Contour does not process audio, does not need the internet and has no accounts. It only talks to the dongle.
 
-**Read the [user guide](docs/USER-GUIDE.md)** for everything the app does, step by step.
+**Watch the [guide](https://chronosauros.github.io/contour/guide/)**: every function of the app in a 6-minute film, with chapters and the full text.
 
 ## Supported hardware
 
 - **CrinEar Protocol Micro** (USB `3302:C20F`, WalkPlay chip): 8 bands, PEAK, LOW SHELF and HIGH SHELF,
-  gain -10 to +10 dB, Q 0.1 to 10, 20 Hz to 20 kHz, preamp -30 to 0 dB in whole dB.
+  gain -10 to +10 dB, Q 0.1 to 10, 20 Hz to 20 kHz, preamp -30 to 0 dB in whole dB. Tested on the developer's own hardware.
+- **CrinEar Protocol Max** (USB `3302:43CC`, WalkPlay chip): 10 bands, PEAK, LOW SHELF and HIGH SHELF as native filters,
+  gain -10 to +10 dB, Q 0.1 to 10, 20 Hz to 20 kHz, preamp -30 to 0 dB in whole dB, computed and sent by the app.
+  Tested by a Reddit community member on a real Protocol Max (8 bands, peak and shelf filters, no crashes).
 
 Contour is unofficial and not affiliated with CrinEar. Other WalkPlay and FiiO dongles are possible later
 (see `ROADMAP.md`); they are not enabled until someone confirms one on real hardware.
@@ -53,15 +58,18 @@ Two pages, switched with the bar at the bottom or by swiping: **EQ** and **LIBRA
 
 - **EQ** edits the current profile: drag, tap, double-tap and pinch band nodes on the graph; PEAK, LOW
   SHELF and HIGH SHELF filters; FREQ, GAIN and Q sliders that are fine when you drag slowly and cover the
-  whole range when you drag fast; tap any number to type it; PREAMP with a MANUAL / AUTO anti-clipping bar; a quick A/B button to compare with the EQ off.
+  whole range when you drag fast; tap any number to type it; PREAMP with a MANUAL / AUTO anti-clipping bar; A/B to hear the curve off and on at the same volume (the preamp stays; Protocol Micro only for now).
 - **HOLD TO SEND** (0.7 s hold) writes the profile to the dongle, reads it back, compares every register and
   only then saves it to the dongle's memory. The button then shows ON DAC.
+- **Undo and redo** work like Ctrl+Z: one touch is one step, up to 100 steps per profile, kept after closing
+  the app. **CLEAR EQ** leaves one flat band and is an undo step too. **LAST SENT** appears when the profile
+  differs from what the dongle holds, and goes back to that version.
 - **LIBRARY** keeps your profiles: tap to open, long-press to rename, change the icon, duplicate or share;
   swipe to archive or delete, with UNDO. New profiles start flat, come from the clipboard (Equalizer APO /
   AutoEQ parametric text or EQ by Ear JSON) or are read from the dongle.
 
-HIGH SHELF bands are sent to the Protocol Micro as a mirrored LOW SHELF plus preamp, which gives exactly the
-same curve shape (the maths is in `android/core/src/main/kotlin/io/github/chronosauros/contour/core/Device.kt`).
+On the Protocol Micro only, HIGH SHELF bands are sent as a mirrored LOW SHELF plus preamp, which gives exactly the
+same curve shape (the Protocol Max has native shelf filters and needs no mirroring) (the maths is in `android/core/src/main/kotlin/io/github/chronosauros/contour/core/Device.kt`).
 
 ## Safety
 
@@ -82,8 +90,8 @@ risk (see the warranty disclaimer in `LICENSE`).
 
 Every official build is signed by the same key: package `io.github.chronosauros.contour`, certificate
 SHA-256 `C8:C8:CA:EA:76:16:28:ED:9D:50:5F:F0:73:42:EE:5E:A0:D4:66:A4:AD:71:8D:0D:B0:77:42:2B:A3:F7:E6:01`
-(CN=Chronosaur). Each release also lists the APK's SHA-256. The [user guide](docs/USER-GUIDE.md) takes it
-from there.
+(CN=Chronosaur). Each release also lists the APK's SHA-256. The [guide](https://chronosauros.github.io/contour/guide/)
+takes it from there.
 
 ## Build
 
@@ -128,5 +136,5 @@ example profile uses the DUSK-Default DSP curve
 all of this is under **ABOUT & LICENCES** at the bottom of the Library.
 
 Contour is an unofficial project, not affiliated with or endorsed by CrinEar or any other brand. CrinEar,
-Protocol Micro, Nightfall, WalkPlay, Moondrop, Crinacle, DUSK and other product names belong to their owners
+Protocol Micro, Protocol Max, Nightfall, WalkPlay, Moondrop, Crinacle, DUSK and other product names belong to their owners
 and are used only to say what Contour works with.

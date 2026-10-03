@@ -1,0 +1,1 @@
+Adds support for the CrinEar Protocol Max (10 bands, native shelf filters), tested by a community member on a real device.

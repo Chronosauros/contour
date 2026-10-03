@@ -1,0 +1,37 @@
+{
+  "pinnedCommit": "0617f382e76629792a5933e6933e4b396a756a93",
+  "source": "https://github.com/jeromeof/devicePEQ",
+  "files": [
+    {
+      "name": "fiio_fiio_ka15.json",
+      "sha256": "240ee8283a9fcdaa300f15eeb8d6cb15a6a50ac4528162080d9d65df9968f93c",
+      "url": "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/tests/captures/fiio_fiio_ka15.json"
+    },
+    {
+      "name": "fiio_fiio_ka17.json",
+      "sha256": "f8b0b698a47c8a60647e790e932e516f80999de64c14fc086e467d53419aa9b6",
+      "url": "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/tests/captures/fiio_fiio_ka17.json"
+    },
+    {
+      "name": "fiio_fiio_oak_nano.json",
+      "sha256": "82968e50aa1c8b551e4e6050af2f296346f8a3db18d8f85b31e2a301a0677d3c",
+      "url": "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/tests/captures/fiio_fiio_oak_nano.json"
+    },
+    {
+      "name": "fiio_fiio_qx13.json",
+      "sha256": "d6ad10cbdb7cdec9489ab3b9e6cfb6c814c40aa056c92c6f758a39c7186b911f",
+      "url": "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/tests/captures/fiio_fiio_qx13.json"
+    },
+    {
+      "name": "fiio_jadeaudio_ja11.json",
+      "sha256": "3b83bf5a15f6524938b598ba76fec0cebb4347d36ad5f1c2b0f767b2422eeb29",
+      "url": "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/tests/captures/fiio_jadeaudio_ja11.json"
+    },
+    {
+      "name": "fiio_snowsky_melody.json",
+      "sha256": "e24a4d2256a5f4314f0b942d2183d8a20b6a028cb4c98b4e0df9d16b74086a45",
+      "url": "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/tests/captures/fiio_snowsky_melody.json"
+    }
+  ],
+  "note": "Byte-identical upstream captures; exchanges can be asynchronous, duplicated, or null wildcard write expectations. No synthetic packets are labelled captures."
+}

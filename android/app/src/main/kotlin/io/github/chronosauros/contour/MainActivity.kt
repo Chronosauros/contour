@@ -10,10 +10,14 @@ import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalWindowInfo
+import androidx.compose.ui.unit.Density
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.Lifecycle
 import io.github.chronosauros.contour.model.AppModel
@@ -23,6 +27,7 @@ import io.github.chronosauros.contour.model.ProfileStore
 import io.github.chronosauros.contour.model.Sender
 import io.github.chronosauros.contour.ui.ContourApp
 import io.github.chronosauros.contour.ui.ContourTheme
+import io.github.chronosauros.contour.ui.fitDensity
 import io.github.chronosauros.contour.ui.sheets.Sheet
 import io.github.chronosauros.contour.ui.tune.Param
 import io.github.chronosauros.contour.usb.DeviceController
@@ -46,6 +51,8 @@ class MainActivity : ComponentActivity() {
     /** Theme override from the launch intent (debug and perf builds only): null = follow the system. */
     private var forcedDark by mutableStateOf<Boolean?>(null)
     private var sheetRequest by mutableStateOf<Sheet?>(null)
+    /** Screen emulation from the launch intent (perf and debug only): width in dp and font scale, null = the real screen. */
+    private var emulate by mutableStateOf<Pair<Float, Float>?>(null)
     private var initialPage = Page.LIBRARY
 
     private val reviewBuild: Boolean
@@ -71,8 +78,12 @@ class MainActivity : ComponentActivity() {
             val dark = forcedDark ?: isSystemInDarkTheme()
             val style = if (dark) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)
             LaunchedEffect(dark) { enableEdgeToEdge(statusBarStyle = style, navigationBarStyle = style) }
-            ContourTheme(dark) {
-                ContourApp(model, device, sender, initialPage, sheetRequest, onSheetRequestTaken = { sheetRequest = null })
+            val widthPx = LocalWindowInfo.current.containerSize.width
+            val screen = emulate?.let { (widthDp, fontScale) -> Density(widthPx / widthDp, fontScale) } ?: LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides fitDensity(screen, widthPx)) {
+                ContourTheme(dark) {
+                    ContourApp(model, device, sender, initialPage, sheetRequest, onSheetRequestTaken = { sheetRequest = null })
+                }
             }
         }
     }
@@ -84,6 +95,11 @@ class MainActivity : ComponentActivity() {
      */
     private fun applyReviewExtras(i: Intent?, first: Boolean) {
         if (i == null || !reviewBuild || model.loadError) return
+        // `--es emulate 320x1.3`: a narrow / zoomed phone (width in dp, font scale); `--es emulate off` = the real screen
+        i.getStringExtra("emulate")?.let { e ->
+            val parts = e.split("x")
+            emulate = parts.getOrNull(0)?.toFloatOrNull()?.let { w -> w to (parts.getOrNull(1)?.toFloatOrNull() ?: 1f) }
+        }
         when (i.getStringExtra("theme")) {
             "light" -> forcedDark = false
             "dark" -> forcedDark = true

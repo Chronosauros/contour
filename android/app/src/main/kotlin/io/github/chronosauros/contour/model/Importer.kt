@@ -5,6 +5,8 @@ import io.github.chronosauros.contour.core.DacImport
 import io.github.chronosauros.contour.core.EqByEarJson
 import io.github.chronosauros.contour.core.ImportedEq
 import io.github.chronosauros.contour.core.DeviceProtocol
+import io.github.chronosauros.contour.core.DeviceTarget
+import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.core.WalkPlay
 import kotlin.math.roundToLong
 
@@ -13,7 +15,18 @@ internal fun round2(x: Double) = (x * 100).roundToLong() / 100.0
 
 /** Import rules: device ranges, supported types, the selected device slot count. Returns the bands and a one-line report. */
 object Importer {
-    fun fit(eq: ImportedEq, protocol: DeviceProtocol = DeviceProtocol.MICRO): Pair<ImportedEq, String?> {
+    fun fit(eq: ImportedEq, protocol: DeviceTarget = DeviceTarget.MICRO): Pair<ImportedEq, String?> {
+        // Micro/Max: the 1.3.0 clamp-and-drop fit in every build.
+        // (Release builds only ever select Micro/Max; the build check keeps their pre-connection state as before.)
+        if (protocol.stable || !io.github.chronosauros.contour.BuildConfig.ADVANCED) protocol.walkplay?.let { return fitStable(eq, it) }
+        // Other targets (advanced builds only): preserve all file intent (including fractional preamp and incompatible saved filters).
+        // Connection/import never truncates, clamps, quantizes or drops library data.
+        val issues = protocol.issues(Profile("import", "import", bands = eq.bands, preampDb = eq.preampDb, createdAt = 0, updatedAt = 0)).takeIf { it.isNotEmpty() }
+        return eq to issues?.joinToString("; ")?.let { "Preserved unchanged; send blocked: $it" }
+    }
+
+    /** Stable 1.3.0 rules: device ranges, supported types, the selected device slot count. */
+    private fun fitStable(eq: ImportedEq, protocol: DeviceProtocol): Pair<ImportedEq, String?> {
         val caps = protocol.caps
         val notes = ArrayList<String>()
         var bands = eq.bands

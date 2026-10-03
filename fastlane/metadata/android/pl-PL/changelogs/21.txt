@@ -1,0 +1,1 @@
+Lepiej na wąskich i powiększonych ekranach: poniżej 411 dp cała aplikacja zmniejsza się równo, więc nazwy profili, CONNECTED i typy filtrów nie są już ucinane. ON DAC to teraz pomarańczowa listwa na krawędzi karty profilu. Suwaki FREQ, GAIN i Q działają tak samo na każdej szerokości ekranu, a powolny ruch jest dokładniejszy.
