@@ -1,0 +1,85 @@
+name: Device report
+description: Tell us what happened when you tried a USB DAC with Contour.
+title: "Device report: "
+labels: ["device-report"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for testing. Check the [supported devices page](https://chronosauros.github.io/contour/devices/) first: the buttons there open this form with the device already filled in.
+        A device moves to "Confirmed on hardware" after the maintainer has checked a report. Please do not attach anything you do not want to be public.
+  - type: input
+    id: device_name
+    attributes:
+      label: Device name
+      description: The product name on the box, for example "CrinEar Protocol Max".
+    validations:
+      required: true
+  - type: input
+    id: vid_pid
+    attributes:
+      label: VID:PID
+      description: Vendor and product ID in hex, for example 3302:C20F. The compatibility page explains how to find it.
+      placeholder: "3302:C20F"
+    validations:
+      required: true
+  - type: input
+    id: usb_name
+    attributes:
+      label: USB product name, exactly as shown
+      description: Copy it character by character. Some names end in a space or contain a double space; say so if yours does.
+    validations:
+      required: true
+  - type: input
+    id: listed_as
+    attributes:
+      label: How the compatibility page lists it
+      description: Filled in by the page. Leave it as it is, or write "not listed" for a new device.
+  - type: dropdown
+    id: app
+    attributes:
+      label: App
+      options:
+        - Contour 1.3.1
+        - Contour advBeta 1.3.1-advbeta1
+        - Other (say which in the notes)
+    validations:
+      required: true
+  - type: input
+    id: phone_android
+    attributes:
+      label: Phone and Android version
+      placeholder: "Example: Pixel 8, Android 15"
+    validations:
+      required: true
+  - type: checkboxes
+    id: results
+    attributes:
+      label: What worked
+      description: Tick everything that worked. Leave the rest empty.
+      options:
+        - label: Contour recognised the device
+        - label: Reading the EQ worked
+        - label: Importing a profile worked
+        - label: Hold to send wrote the EQ and the read-back matched
+        - label: Hardware volume worked
+  - type: textarea
+    id: problem
+    attributes:
+      label: What went wrong
+      description: What you did, what you expected and what happened. Say which step failed. Write "nothing" if everything worked.
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs (optional)
+      description: Long-press the status pill in the Library to open the service screen and paste what its log shows. Remove anything private.
+      render: text
+  - type: checkboxes
+    id: risk
+    attributes:
+      label: Before you test
+      options:
+        - label: I keep a backup profile of what the device holds now, and I accept the risk of experimental writes.
+          required: true

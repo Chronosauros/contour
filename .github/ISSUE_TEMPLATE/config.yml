@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Supported devices
+    url: https://chronosauros.github.io/contour/devices/
+    about: Check whether your DAC is listed, and find its VID:PID, before you report.
