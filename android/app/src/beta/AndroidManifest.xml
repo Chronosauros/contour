@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Used only by the beta build type ("Contour Beta", see app/build.gradle.kts): a launcher name of its own. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <application
+        android:label="${betaLabel}"
+        tools:replace="android:label" />
+
+</manifest>

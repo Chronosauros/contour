@@ -4,17 +4,17 @@ import io.github.chronosauros.contour.core.ApoText
 import io.github.chronosauros.contour.core.DacImport
 import io.github.chronosauros.contour.core.EqByEarJson
 import io.github.chronosauros.contour.core.ImportedEq
-import io.github.chronosauros.contour.core.ProtocolMicro
+import io.github.chronosauros.contour.core.DeviceProtocol
 import io.github.chronosauros.contour.core.WalkPlay
 import kotlin.math.roundToLong
 
 internal fun round1(x: Double) = (x * 10).roundToLong() / 10.0
 internal fun round2(x: Double) = (x * 100).roundToLong() / 100.0
 
-/** Import rules: device ranges, supported types, at most 8 bands. Returns the bands and a one-line report. */
+/** Import rules: device ranges, supported types, the selected device slot count. Returns the bands and a one-line report. */
 object Importer {
-    fun fit(eq: ImportedEq): Pair<ImportedEq, String?> {
-        val caps = ProtocolMicro.CAPABILITIES
+    fun fit(eq: ImportedEq, protocol: DeviceProtocol = DeviceProtocol.MICRO): Pair<ImportedEq, String?> {
+        val caps = protocol.caps
         val notes = ArrayList<String>()
         var bands = eq.bands
         val unsupported = bands.count { it.type !in caps.types }
@@ -23,7 +23,7 @@ object Importer {
             notes += "$unsupported unsupported filter${if (unsupported > 1) "s" else ""} dropped"
         }
         if (bands.size > caps.bands) {
-            notes += "${bands.size - caps.bands} band${if (bands.size - caps.bands > 1) "s" else ""} over 8 dropped"
+            notes += "${bands.size - caps.bands} band${if (bands.size - caps.bands > 1) "s" else ""} over ${caps.bands} dropped"
             bands = bands.take(caps.bands)
         }
         var clamped = 0
@@ -36,7 +36,7 @@ object Importer {
         }
         if (clamped > 0) notes += "$clamped band${if (clamped > 1) "s" else ""} rounded or clamped to the device ranges"
         val pre = eq.preampDb?.let {
-            Math.round(it.coerceIn(ProtocolMicro.PREAMP_MIN_DB.toDouble(), ProtocolMicro.PREAMP_MAX_DB.toDouble())).toDouble()
+            Math.round(it.coerceIn(protocol.preampMin.toDouble(), protocol.preampMax.toDouble())).toDouble()
         }
         return ImportedEq(bands, pre) to notes.joinToString("; ").ifEmpty { null }
     }
@@ -51,7 +51,7 @@ object Importer {
     }
 
     /** Exact DAC conversion; never pass through the lossy clipboard fitter. */
-    fun fromDac(bands: List<WalkPlay.DeviceBand>, preampDb: Int): DacImport =
-        ProtocolMicro.importExact(bands, preampDb)
+    fun fromDac(bands: List<WalkPlay.DeviceBand>, preampDb: Int, protocol: DeviceProtocol = DeviceProtocol.MICRO): DacImport =
+        protocol.importExact(bands, preampDb)
 }
 

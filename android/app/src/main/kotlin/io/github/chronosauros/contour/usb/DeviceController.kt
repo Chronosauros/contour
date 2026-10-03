@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import io.github.chronosauros.contour.core.DeviceProtocol
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.core.WalkPlay
 import kotlinx.coroutines.CoroutineScope
@@ -30,6 +31,12 @@ data class SendOutcome(val verified: Boolean, val reason: String?)
 class DeviceController(private val context: Context, private val scope: CoroutineScope) {
     private val manager = context.getSystemService(UsbManager::class.java)
     val client = DacClient(manager)
+
+    /** The DAC found on the bus (MICRO when none). MAX for the Protocol Max. */
+    var protocol by mutableStateOf(DeviceProtocol.MICRO)
+        private set
+    /** The last DAC model seen; a different one resets every device-specific state (see [refresh]). */
+    private var lastProtocol: DeviceProtocol? = null
 
     var link by mutableStateOf(Link.NO_DAC)
         private set
@@ -78,7 +85,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     private fun isDac(intent: Intent): Boolean {
         val d = if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
             else @Suppress("DEPRECATION") intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE)
-        return d?.vendorId == WalkPlay.VENDOR_ID && d.productId == WalkPlay.PRODUCT_ID
+        return d != null && DeviceProtocol.find(d.vendorId, d.productId) != null
     }
 
     fun start() {
@@ -96,12 +103,25 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     }
 
     private fun findDac(): UsbDevice? = manager.deviceList.values.firstOrNull {
-        it.vendorId == WalkPlay.VENDOR_ID && it.productId == WalkPlay.PRODUCT_ID
+        DeviceProtocol.find(it.vendorId, it.productId) != null
     }
 
     /** Recomputes the link; when connected and [read], reads the DAC (read-only). */
     fun refresh(read: Boolean) {
         val d = findDac()
+        val found = d?.let { DeviceProtocol.find(it.vendorId, it.productId) }
+        if (found != null && lastProtocol != null && found != lastProtocol) {
+            // Another DAC model (Micro <-> Max): nothing read, written or switched on the old one carries over.
+            UsbLog.line("DAC changed: ${lastProtocol?.caps?.name} -> ${found.caps.name}")
+            connectionEpoch++
+            snapshot = null
+            lastWrite = null
+            error = null
+            abBypassed = false
+            abReference = null
+        }
+        if (found != null) lastProtocol = found
+        protocol = found ?: DeviceProtocol.MICRO
         link = when {
             d == null -> Link.NO_DAC
             !manager.hasPermission(d) -> Link.NEEDS_PERMISSION
@@ -147,6 +167,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
 
     /** Toggle against the actual A registers, not the editor's rounded or emulated band values. */
     suspend fun switchAb(bypass: Boolean): SendOutcome {
+        if (!protocol.supportsAb) return SendOutcome(false, "A/B unavailable on ${protocol.caps.name}")
         if (bypass == abBypassed) return SendOutcome(true, null)
         val reference = (if (bypass) snapshot else abReference) ?: return forgetAb("DAC STATE UNKNOWN")
         val d = findDac() ?: run {
@@ -194,10 +215,15 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         }
         if (busy) return SendOutcome(false, "DAC BUSY")
         busy = true
+        val epoch = connectionEpoch
+        val started = protocol
         return try {
             val r = op(d)
+            // Experimental device, or the DAC model changed under the write: never keep a result for the wrong DAC.
+            if ((started.experimental || protocol != started) && epoch != connectionEpoch) return SendOutcome(false, "DAC DETACHED")
             lastWrite = r
-            snapshot = r.readBack
+            // Protocol Max fails closed: a mismatching read-back is not ON DAC. The Micro keeps the 1.2.2 behaviour.
+            snapshot = if (r.readBack.protocol.experimental && !r.verified) null else r.readBack
             error = null
             if (r.verified) SendOutcome(true, null) else SendOutcome(false, "READ-BACK MISMATCH: ${r.mismatches.firstOrNull() ?: ""}")
         } catch (e: Exception) {
@@ -217,6 +243,10 @@ class DeviceController(private val context: Context, private val scope: Coroutin
 
     private fun showWrite(r: WriteResult) {
         lastWrite = r
+        if (r.readBack.protocol.experimental && !r.verified) {
+            snapshot = null
+            throw java.io.IOException("READ-BACK MISMATCH: ${r.mismatches.firstOrNull()}")
+        }
         snapshot = r.readBack
     }
 
@@ -225,9 +255,12 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         if (!manager.hasPermission(d)) { link = Link.NEEDS_PERMISSION; snapshot = null; return }
         if (busy) return
         busy = true
+        val epoch = connectionEpoch
+        val started = protocol
         scope.launch {
             try {
                 op(d)
+                if ((started.experimental || protocol != started) && epoch != connectionEpoch) { snapshot = null; return@launch }
                 error = null
             } catch (e: Exception) {
                 UsbLog.line("$what failed: ${e.message}")

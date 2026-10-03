@@ -64,10 +64,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import io.github.chronosauros.contour.core.FilterType
 import io.github.chronosauros.contour.core.Profile
-import io.github.chronosauros.contour.core.ProtocolMicro
 import io.github.chronosauros.contour.model.AppModel
 import io.github.chronosauros.contour.model.Sender
-import io.github.chronosauros.contour.model.shownPreamp
 import io.github.chronosauros.contour.ui.Grid
 import io.github.chronosauros.contour.ui.Lift
 import io.github.chronosauros.contour.ui.Type
@@ -353,7 +351,7 @@ private fun BandStrip(model: AppModel, p: Profile, actions: TuneActions, enabled
                 )
             }
         }
-        if (p.bands.size < AppModel.MAX_BANDS) {
+        if (p.bands.size < model.maxBands) {
             Box(
                 Modifier
                     .widthIn(min = COMPACT_H)
@@ -378,7 +376,7 @@ private fun TypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
     val c = pal
     val haptics = LocalHaptics.current
     val types = listOf(FilterType.PEAK to "PEAK", FilterType.LOW_SHELF to "LOW SHELF", FilterType.HIGH_SHELF to "HIGH SHELF")
-        .filter { it.first in ProtocolMicro.CAPABILITIES.types }
+        .filter { it.first in model.protocol.caps.types }
     val well = RoundedCornerShape(Radii.L)
     val pill = RoundedCornerShape(Radii.M)
     val idx = types.indexOfFirst { it.first == type }.coerceAtLeast(0)
@@ -484,7 +482,7 @@ private const val PREAMP_SLOW = 0.25f
 private fun PreampRow(model: AppModel, p: Profile, sender: Sender, actions: TuneActions) {
     val c = pal
     val auto = p.preampDb == null
-    val autoDb = runCatching { shownPreamp(p.copy(preampDb = null)) }.getOrNull()
+    val autoDb = runCatching { model.shownPreamp(p.copy(preampDb = null)) }.getOrNull()
     val db = if (auto) autoDb else p.preampDb
     Row(
         Modifier
@@ -546,9 +544,9 @@ private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, v
     val shape = RoundedCornerShape(Radii.M)
     val pill = shape // same corners as the slider fill: the pill is the whole bar height
     val adjustable = !auto && db != null && !sender.bypassed && !sender.abBusy
-    val hs = ProtocolMicro.highShelfGainSum(p.bands)
-    val lo = ProtocolMicro.PREAMP_MIN_DB - hs
-    val hi = ProtocolMicro.PREAMP_MAX_DB - hs
+    val hs = model.protocol.shelfOffset(p.bands)
+    val lo = model.protocol.preampMin - hs
+    val hi = model.protocol.preampMax - hs
     val pos = if (db == null || hi <= lo) 0f else ((db - lo) / (hi - lo)).toFloat().coerceIn(0f, 1f)
     val manual by animateFloatAsState(if (auto) 0f else 1f, label = "preamp-mode")
     val switchTo = { toAuto: Boolean -> haptics.segment(); sender.leaveAb { model.setPreampAuto(toAuto) } }
@@ -578,9 +576,9 @@ private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, v
                     ) { ch, dx ->
                         ch.consume()
                         val now = prof.value.preampDb ?: return@detectHorizontalDragWithEnds
-                        val hs = ProtocolMicro.highShelfGainSum(prof.value.bands)
-                        val lo = ProtocolMicro.PREAMP_MIN_DB - hs
-                        val hi = ProtocolMicro.PREAMP_MAX_DB - hs
+                        val hs = model.protocol.shelfOffset(prof.value.bands)
+                        val lo = model.protocol.preampMin - hs
+                        val hi = model.protocol.preampMax - hs
                         val dt = (ch.uptimeMillis - ch.previousUptimeMillis).coerceAtLeast(1L).toFloat()
                         speed = 0.6f * speed + 0.4f * (kotlin.math.abs(dx) / density / dt)
                         val rate = PREAMP_DB_PER_DP * ratioLerp(PREAMP_SLOW, 1f, speedRamp(speed))

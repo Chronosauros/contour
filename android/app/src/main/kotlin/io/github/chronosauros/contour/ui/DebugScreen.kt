@@ -78,15 +78,25 @@ fun DebugScreen(device: DeviceController, onClose: () -> Unit) {
                         else -> "DAC: connected" + (snapshot?.firmware?.let { ", firmware $it" } ?: "")
                     } + (device.error?.let { " - error: $it" } ?: ""),
                 )
+                if (device.protocol.experimental) {
+                    Text(device.protocol.caps.name)
+                    Text(
+                        "10-band PEQ with native shelves. A/B is unavailable on the ${device.protocol.caps.name}.",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                }
                 if (device.link == Link.NEEDS_PERMISSION) Button(onClick = device::requestPermission) { Text("Ask for USB permission") }
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = onRead, enabled = connected) { Text("Read from DAC") }
                     Button(
                         onClick = { confirm = "Write band 1 gain -0.5 dB to the DAC and save it to its flash?" to onTestWrite },
-                        enabled = connected,
+                        enabled = connected && !device.protocol.experimental,
                     ) { Text("Send test: band 1 -0.5 dB") }
                     Button(
-                        onClick = { confirm = "Write the factory flat EQ (8 x 0 dB, preamp 0) to the DAC and save it to its flash?" to onRestoreFlat },
+                        onClick = {
+                            confirm = (if (device.protocol.experimental) "Write the flat EQ (${device.protocol.caps.bands} x 0 dB, preamp 0) to the DAC and save it to its flash?"
+                                else "Write the factory flat EQ (8 x 0 dB, preamp 0) to the DAC and save it to its flash?") to onRestoreFlat
+                        },
                         enabled = connected,
                     ) { Text("Restore flat") }
                 }

@@ -28,7 +28,7 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- CrinEar Protocol Micro plugged in: open Contour (the system asks once, "use by default"). -->
+            <!-- CrinEar Protocol Micro or Protocol Max plugged in: open Contour (the system asks once, "use by default"). -->
             <intent-filter>
                 <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
             </intent-filter>
