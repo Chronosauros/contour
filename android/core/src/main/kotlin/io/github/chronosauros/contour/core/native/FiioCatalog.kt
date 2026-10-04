@@ -1,6 +1,7 @@
 package io.github.chronosauros.contour.core.native
 
 import io.github.chronosauros.contour.core.FilterType
+import kotlin.math.sqrt
 
 /** Source rules are evidence, not transport authorisation or hardware support claims. */
 data class FiioCaptureIdentity(val vendorId: Int, val productId: Int, val productName: String, val fixturePath: String)
@@ -53,7 +54,20 @@ data class FiioConfig(
     // Official web app (KA15 capture, 03.10.2026): command 0x30 reads and writes the USER slot names,
     // index = position in the sorted userSlots (USER1 = 0).
     val userSlotNames: Boolean = false,
+    // Hardware-measured (KA15, 04.10.2026, line-in sweeps against Close EQ): LS/HS shelves play Q = register / sqrt(2)
+    // for every type, frequency, gain and Q, so the register holds intended Q * shelfQScale. PK Q is played as stored.
+    // Not combinable with shelfAlphaCompensation (the devicePEQ slope law measured wrong on the KA15).
+    val shelfQScale: Double = 1.0,
+    // Hardware-measured (KA15, 04.10.2026): with any USER preset active, output = input - 12 dB + preamp register,
+    // so the register holds intended preamp + preampOffsetDb.
+    val preampOffsetDb: Double = 0.0,
 ) {
+    /** Intended (acoustic) preamp range: the register range minus [preampOffsetDb]. */
+    val preampMinDb: Double get() = minGainDb - preampOffsetDb
+    val preampMaxDb: Double get() = maxGainDb - preampOffsetDb
+    /** Intended (acoustic) shelf Q range: the register Q range divided by [shelfQScale]. */
+    val shelfQMin: Double get() = minQ / shelfQScale
+    val shelfQMax: Double get() = maxQ / shelfQScale
     val hardwareGates: List<String> get() = listOf(
         "Verify exact USB identity and HID interface/descriptor/report size before I/O",
         "Verify selection, complete backup, post-save native readback on actual firmware",
@@ -536,6 +550,10 @@ object FiioCatalog {
             checksumFrames = true,
             needsAudioStream = true,
             userSlotNames = true,
+            // Measured 04.10.2026 (research/protocol/PROTOCOL.md, FiiO KA15): shelf Q register = Q * sqrt(2),
+            // preamp register = preamp + 12 dB. Intended ranges: shelf Q up to 10 / sqrt(2), preamp -24..0 dB.
+            shelfQScale = sqrt(2.0),
+            preampOffsetDb = 12.0,
         ),
         FiioConfig(
             productName = "FIIO K13 R2R",

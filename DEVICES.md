@@ -1,8 +1,8 @@
 # Contour advanced beta - supported devices
 
-Contour is an Android EQ manager for USB DACs. The advanced beta (`1.3.2-advbeta1`, package suffix `.advbeta`) is a separate, experimental build: it has its own package name and ships as a GitHub pre-release on the `advbeta` branch. It recognises far more devices than the stable app, and most of them have never been seen on real hardware. This file says which devices the beta recognises, at which level, and which it refuses.
+Contour is an Android EQ manager for USB DACs. The advanced beta (`1.3.3-advbeta1`, package suffix `.advbeta`) is a separate, experimental build: it has its own package name and ships as a GitHub pre-release on the `advbeta` branch. It recognises far more devices than the stable app, and most of them have never been seen on real hardware. This file says which devices the beta recognises, at which level, and which it refuses.
 
-The list is generated from the code of the beta (commit `15ba41b` merged with stable 1.3.1, plus the FiiO KA15 work tested on 03-04.10.2026 and one correction described under Known limitations). It describes what the code does, not what has been tested.
+The list is generated from the code of the beta (commit `15ba41b` merged with stable 1.3.1, plus the FiiO KA15 work tested on 03-04.10.2026, the KA15 shelf and preamp correction measured on 04.10.2026 and one correction described under Known limitations). It describes what the code does, not what has been tested.
 
 ## Summary
 
@@ -31,7 +31,7 @@ Writing to a device that is not in the first level is at your own risk. Read the
 
 ## Confirmed on hardware
 
-Three devices have a hardware test behind them, and stable 1.3.2 supports exactly these three. The Micro and the Max use the same code path as in stable; they have not yet been re-tested on this beta build. The FiiO KA15 was tested on this beta line (read, write to USER1-3 with read-back, slot names and rename) before the same code went into stable 1.3.2.
+Three devices have a hardware test behind them, and stable 1.3.3 supports exactly these three. The Micro and the Max use the same code path as in stable; they have not yet been re-tested on this beta build. The FiiO KA15 was tested on this beta line (read, write to USER1-3 with read-back, slot names and rename) before the same code went into stable 1.3.2.
 
 | VID:PID | Device | Bands | Filter types | Tested by | Stable since |
 |---|---|---|---|---|---|

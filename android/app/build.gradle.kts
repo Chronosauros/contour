@@ -24,8 +24,8 @@ android {
         minSdk = 28
         targetSdk = 36
         // v0.2 (versionCode 2) is on the Pixel; `install -r` refuses a lower code, and keeps the data only on update.
-        versionCode = 22
-        versionName = "1.3.2" // literal: F-Droid reads it for update checks
+        versionCode = 23
+        versionName = "1.3.3" // literal: F-Droid reads it for update checks
     }
 
     signingConfigs {
@@ -112,7 +112,7 @@ val copyLicences = tasks.register<CopyLicences>("copyLicences") {
 
 androidComponents {
     onVariants { variant ->
-        if (variant.buildType == "adv") variant.outputs.forEach { it.versionCode.set(23) }
+        if (variant.buildType == "adv") variant.outputs.forEach { it.versionCode.set(24) }
         variant.sources.assets?.addGeneratedSourceDirectory(copyLicences, CopyLicences::outputDir)
     }
 }

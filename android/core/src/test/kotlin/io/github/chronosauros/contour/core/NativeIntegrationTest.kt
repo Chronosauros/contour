@@ -372,6 +372,10 @@ class NativeIntegrationTest {
         assertEquals(31, DeviceTarget.OFFLINE.caps.bands)
         val t = fiio("FIIO QX13"); assertEquals(-24.0, t.preampMin); assertEquals(0.1, t.preampStep)
         assertEquals(-23.7, t.shownPreamp(profile(preamp = -23.7)))
+        // KA15: intended range = register -12..+12 dB minus the measured 12 dB offset (04.10.2026).
+        val ka = fiio(); assertEquals(-24.0, ka.preampMin); assertEquals(0.0, ka.preampMax)
+        assertTrue(ka.issues(profile(preamp = -24.0)).isEmpty()); assertTrue(ka.issues(profile(preamp = 0.0)).isEmpty())
+        assertTrue(ka.issues(profile(preamp = -24.1)).isNotEmpty()); assertTrue(ka.issues(profile(preamp = 0.1)).isNotEmpty())
         assertFalse(t.supportsAb); assertFalse(kt().supportsAb); assertFalse(fosi().supportsAb)
     }
     private fun receipt(t: DeviceTarget, port: FakePort, p: Profile = profile(), serial: String? = null): NativePendingReceipt {

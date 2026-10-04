@@ -17,8 +17,8 @@ data class DeviceTarget private constructor(
     val stable: Boolean get() = walkplay == DeviceProtocol.MICRO || walkplay == DeviceProtocol.MAX
     val descriptorRequired: Boolean get() = !supportsAb
     val native: Boolean get() = walkplay == null
-    val preampMin: Double get() = if (moondrop != null) DeviceProtocol.OFFLINE.preampMin.toDouble() else fiio?.minGainDb ?: if (native) 0.0 else walkplay!!.preampMin.toDouble()
-    val preampMax: Double get() = if (moondrop != null) DeviceProtocol.OFFLINE.preampMax.toDouble() else fiio?.maxGainDb ?: if (native) 0.0 else walkplay!!.preampMax.toDouble()
+    val preampMin: Double get() = if (moondrop != null) DeviceProtocol.OFFLINE.preampMin.toDouble() else fiio?.preampMinDb ?: if (native) 0.0 else walkplay!!.preampMin.toDouble()
+    val preampMax: Double get() = if (moondrop != null) DeviceProtocol.OFFLINE.preampMax.toDouble() else fiio?.preampMaxDb ?: if (native) 0.0 else walkplay!!.preampMax.toDouble()
     val preampStep: Double get() = if (fiio != null || walkplay != null || moondrop != null) 0.1 else 1.0
     val caps: DeviceCapabilities get() = walkplay?.caps ?: moondrop?.let { model ->
         // Read-only diagnostics: retain local editor ranges, not Fosi/native write assumptions.
@@ -55,10 +55,17 @@ data class DeviceTarget private constructor(
             require(profile.bands.size <= caps.bands) { "${profile.bands.size} bands; ${caps.name} accepts ${caps.bands}; no truncation" }
             profile.bands.forEachIndexed { i, b ->
                 require(b.type in caps.types && b.freqHz.isFinite() && b.gainDb.isFinite() && b.q.isFinite() &&
-                    b.freqHz in caps.freqMinHz..caps.freqMaxHz && b.gainDb in caps.gainMinDb..caps.gainMaxDb && b.q in caps.qMin..caps.qMax) { "Band ${i + 1}: unsupported type/range" }
+                    b.freqHz in caps.freqMinHz..caps.freqMaxHz && b.gainDb in caps.gainMinDb..caps.gainMaxDb) { "Band ${i + 1}: unsupported type/range" }
+                // Shelves have their own intended Q range when the DAC stores a scaled Q (KA15: up to 7.07).
+                val f = fiio
+                val shelf = f != null && b.type != FilterType.PEAK && f.shelfQScale != 1.0
+                val (qLo, qHi) = if (shelf) f!!.shelfQMin to f.shelfQMax else caps.qMin to caps.qMax
+                require(b.q in qLo..qHi) {
+                    "Band ${i + 1}: ${if (shelf) "shelf " else ""}Q %.2f outside %.2f-%.2f".format(java.util.Locale.ROOT, b.q, qLo, qHi)
+                }
             }
             val gain = profile.effectivePreampDb()
-            require(gain.isFinite() && gain in preampMin..preampMax) { if (fiio == null) "Manual/AUTO attenuation unsupported; required preamp $gain dB cannot be sent" else "Pregain outside $preampMin..$preampMax dB" }
+            require(gain.isFinite() && gain in preampMin..preampMax) { if (fiio == null) "Manual/AUTO attenuation unsupported; required preamp $gain dB cannot be sent" else "Pregain %.1f outside %.1f..%.1f dB".format(java.util.Locale.ROOT, gain, preampMin, preampMax) }
             fiio?.let { FiioCodec(it).planOnExplicitSend(profile.copy(preampDb = gain), destinationSlot!!, true) }
         }.exceptionOrNull()?.let { listOf(it.message ?: "Unrepresentable EQ") }.orEmpty()
     }

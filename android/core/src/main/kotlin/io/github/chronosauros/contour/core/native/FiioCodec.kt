@@ -81,7 +81,14 @@ class FiioCodec(val config: FiioConfig) {
         require(config.typeCodes.isNotEmpty() && config.typeCodes.values.toSet().size == config.typeCodes.size)
         require(config.typeCodes.values.all { it in 0..255 })
         require(config.userSlots.all { it in 0..255 && it in config.declaredWritableSlots && it !in config.stockSlots && it != config.bypassSlot })
+        require(config.shelfQScale.isFinite() && config.shelfQScale > 0) { "Invalid shelf Q scale" }
+        require(config.shelfQScale == 1.0 || !config.shelfAlphaCompensation) { "Shelf Q scale and shelf slope compensation are exclusive" }
+        require(config.preampOffsetDb.isFinite() && abs(config.preampOffsetDb * 10 - offsetTenths) < 1e-9) { "Preamp offset must be whole 0.1 dB" }
     }
+    /** [FiioConfig.preampOffsetDb] in register tenths: register = intended tenths + offset. */
+    private val offsetTenths: Int get() = Math.round(config.preampOffsetDb * 10).toInt()
+    /** The intended (acoustic) preamp for a preamp register, see [FiioConfig.preampOffsetDb]. */
+    fun intendedPreampDb(registerTenths: Int): Double = (registerTenths - offsetTenths) / 10.0
 
     private var sequence = 0
     private fun frame(cmd: Int, data: List<Int>, effect: FiioEffect): FiioFrame {
@@ -231,7 +238,7 @@ class FiioCodec(val config: FiioConfig) {
             require(radicand.isFinite() && radicand > 0) { "Unrepresentable shelf slope" }
             return 1 / sqrt(radicand)
         }
-        return q
+        return if (type == FilterType.PEAK) q else q * config.shelfQScale
     }
     private fun intendedQ(type: FilterType, q: Double, gain: Double): Double {
         if (type == FilterType.PEAK && config.peakingGainCompensation) return q / amplitude(gain)
@@ -241,7 +248,7 @@ class FiioCodec(val config: FiioConfig) {
             require(denominator.isFinite() && denominator > 0) { "Unsupported stored shelf slope" }
             return 1 / denominator
         }
-        return q
+        return if (type == FilterType.PEAK) q else q / config.shelfQScale
     }
     private fun compileBand(band: Band, index: Int): FiioRegisters {
         val code = config.typeCodes[band.type] ?: throw IllegalArgumentException("Unsupported filter type ${band.type}")
@@ -256,7 +263,11 @@ class FiioCodec(val config: FiioConfig) {
         // Only an ULP-scale inverse-transform allowance, never clamp an unrepresentable Q.
         // This lets exact native boundary registers survive floating-point inverse/import.
         require(q.isFinite() && q >= config.minQ - 4 * Math.ulp(config.minQ) &&
-            q <= config.maxQ + 4 * Math.ulp(config.maxQ)) { "Compensated native Q out of range: $q" }
+            q <= config.maxQ + 4 * Math.ulp(config.maxQ)) {
+            if (band.type != FilterType.PEAK && config.shelfQScale != 1.0)
+                "Shelf Q outside %.2f..%.2f: %.2f".format(java.util.Locale.ROOT, config.shelfQMin, config.shelfQMax, band.q)
+            else "Compensated native Q out of range: $q"
+        }
         return FiioRegisters(index, band.freqHz.toInt(), gain, quantize(q, 100), code).also { validateRegisters(it) }
     }
     private fun pair(v: Int) = listOf((v ushr 8) and 255, v and 255)
@@ -277,9 +288,10 @@ class FiioCodec(val config: FiioConfig) {
         requireUserSlot(targetSlot)
         validateCount(bands.size)
         val preamp = requireNotNull(preampDb) { "Explicit pregain required; missing is not zero" }
-        range(preamp, config.minGainDb, config.maxGainDb, "Pregain")
+        // Checked in the intended domain (register range minus the offset) so the message names what the user sets.
+        range(preamp, config.preampMinDb, config.preampMaxDb, "Pregain")
         val registers = bands.mapIndexed { index, band -> compileBand(band, index) }
-        val expected = FiioSnapshot(config.productName, targetSlot, bands.size, quantize(preamp, 10), registers)
+        val expected = FiioSnapshot(config.productName, targetSlot, bands.size, quantize(preamp, 10) + offsetTenths, registers)
         val writes = listOf(frame(PREAMP, pair(expected.preampTenths), FiioEffect.WRITE_ACTIVE_BANK),
             frame(COUNT, listOf(expected.count), FiioEffect.WRITE_ACTIVE_BANK)) + registers.map { writeBand(it) }
         return FiioWritePlan(config.productName, targetSlot, expected, selectUserSlot(targetSlot), querySlot(),
@@ -327,7 +339,8 @@ class FiioCodec(val config: FiioConfig) {
         return FiioVerification.RegistersMatchPersistenceUnproven
     }
     /** Exact inverse import. Unknown type or unrepresentable shelf is rejected, never mapped to PK.
-     * Recompilation must recover ALL registers before returning an editable local EQ.
+     * Recompilation must recover ALL registers before returning an editable local EQ. Shelf Q and pregain come back
+     * in the intended domain ([FiioConfig.shelfQScale], [FiioConfig.preampOffsetDb]); registers stay native.
      */
     fun importExact(snapshot: FiioSnapshot): FiioExactEq {
         validateSnapshot(snapshot)
@@ -337,6 +350,8 @@ class FiioCodec(val config: FiioConfig) {
                 intendedQ(type, r.qHundredths / 100.0, r.gainTenths / 10.0), enabled = true)
         }
         require(bands.mapIndexed { i, b -> compileBand(b, i) } == snapshot.bands.sortedBy { it.index }) { "Import cannot reproduce exact native registers" }
-        return FiioExactEq(bands, snapshot.preampTenths / 10.0)
+        val preamp = intendedPreampDb(snapshot.preampTenths)
+        require(quantize(preamp, 10) + offsetTenths == snapshot.preampTenths) { "Import cannot reproduce exact native pregain" }
+        return FiioExactEq(bands, preamp)
     }
 }

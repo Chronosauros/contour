@@ -36,7 +36,7 @@ sealed interface NativeState {
     data class Fiio(val codec: FiioCodec, val raw: FiioSnapshot, val receiptProfile: Profile? = null,
                     val names: Map<Int, String> = emptyMap()) : NativeState {
         override val slot get() = raw.activeSlot
-        override val preamp get() = raw.preampTenths / 10.0
+        override val preamp get() = codec.intendedPreampDb(raw.preampTenths)
         override fun importExact(): ImportedEq = codec.importExact(raw).let { ImportedEq(it.bands, it.preampDb) }
         override fun matches(profile: Profile): Boolean = (!codec.config.disconnectOnSave || receiptProfile == profile) && runCatching {
             codec.matches(codec.planOnExplicitSend(profile.copy(bands = codec.padToDeviceCount(profile.bands), preampDb = profile.effectivePreampDb()), slot, true).expected, raw)

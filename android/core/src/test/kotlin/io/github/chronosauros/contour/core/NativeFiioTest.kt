@@ -109,7 +109,8 @@ class NativeFiioTest {
             assertTrue(s.count <= c.config.maxFilters)
             val imported = c.importExact(s)
             assertEquals(s.count, imported.bands.size)
-            assertEquals(s.preampTenths / 10.0, imported.preampDb)
+            // Intended pregain = register - offset (KA15: -12 dB, measured 04.10.2026).
+            assertEquals((s.preampTenths - c.config.preampOffsetDb * 10) / 10.0, imported.preampDb, 1e-9)
             // Reading a stock/ambiguous slot is permitted; re-saving to it is not.
             val target = c.config.userSlots.first()
             val p = plan(c, imported.bands, imported.preampDb, target)
@@ -188,7 +189,7 @@ class NativeFiioTest {
         val s = plan(c, listOf(peak(0), peak(1))).expected
         val slot = reply(FiioCodec.SLOT, listOf(s.activeSlot))
         val count = reply(FiioCodec.COUNT, listOf(2))
-        val pg = reply(FiioCodec.PREAMP, pair(0))
+        val pg = reply(FiioCodec.PREAMP, pair(s.preampTenths)) // KA15: intended 0 dB is register 120
         val r = s.bands.map { bandReply(it) }
         assertEquals(s, c.snapshot(slot, count, pg, r.reversed(), slot))
         for (bad in listOf(listOf(r[0], r[0]), r.dropLast(1), r + r[0], listOf(r[0], bandReply(s.bands[1].copy(index = 2))))) {
@@ -205,13 +206,16 @@ class NativeFiioTest {
     @Test fun `native quantization negative pregain zero is written and disabled band is zero gain`() {
         val c = codec("FIIO KA15")
         val b = peak().copy(freqHz = 1000.9, gainDb = -3.26, q = 0.716)
+        // KA15 register = intended pregain + 12 dB (measured 04.10.2026): -4.35 -> -43 + 120 = 77.
         val p = plan(c, listOf(b), -4.35)
         assertEquals(FiioRegisters(0, 1000, -32, 72, 0), p.expected.bands.single())
-        assertEquals(-43, p.expected.preampTenths)
-        assertEquals(listOf(255, 213), p.writes.first().bytes.subList(6, 8))
+        assertEquals(77, p.expected.preampTenths)
+        assertEquals(listOf(0, 77), p.writes.first().bytes.subList(6, 8))
         assertEquals(-43, c.parsePreamp(reply(FiioCodec.PREAMP, pair(-43))))
-        val zero = plan(c, preamp = 0.0)
+        val zero = plan(c, preamp = -12.0)
         assertEquals(listOf(0, 0), zero.writes.first().bytes.subList(6, 8))
+        val negative = FiioCodec(c.config.copy(preampOffsetDb = 0.0))
+        assertEquals(listOf(255, 213), plan(negative, listOf(b), -4.35).writes.first().bytes.subList(6, 8))
         assertEquals(0, plan(c, listOf(b.copy(enabled = false))).expected.bands.single().gainTenths)
         assertEquals(1, plan(c, listOf(peak().copy(type = FilterType.LOW_SHELF))).expected.bands.single().typeCode)
         assertEquals(2, plan(c, listOf(peak().copy(type = FilterType.HIGH_SHELF))).expected.bands.single().typeCode)
@@ -219,15 +223,15 @@ class NativeFiioTest {
     @Test fun `each model preserves capacity range save command and denies every forbidden slot`() {
         for (c in FiioCatalog.rules.filter { it.codecBlockers.isEmpty() }.map { FiioCodec(it) }) {
             val bands = List(c.config.maxFilters) { peak(it) }
-            val p = plan(c, bands, c.config.minGainDb)
+            val p = plan(c, bands, c.config.preampMinDb)
             assertEquals(c.config.maxFilters, p.expected.count)
             assertEquals(c.config.maxFilters + 2, p.writes.size)
             assertEquals(c.config.saveCommand, p.save.bytes[4])
             assertEquals(c.config.maxFilters - 1, p.expected.bands.last().index)
             assertEquals(p.expected, snapshot(c, p.expected))
             assertFailsWith<IllegalArgumentException> { plan(c, bands + peak(), 0.0) }
-            assertFailsWith<IllegalArgumentException> { plan(c, preamp = c.config.minGainDb - 0.1) }
-            assertFailsWith<IllegalArgumentException> { plan(c, preamp = c.config.maxGainDb + 0.1) }
+            assertFailsWith<IllegalArgumentException> { plan(c, preamp = c.config.preampMinDb - 0.1) }
+            assertFailsWith<IllegalArgumentException> { plan(c, preamp = c.config.preampMaxDb + 0.1) }
             for (slot in (0..255).filter { it !in c.config.userSlots }) {
                 assertFailsWith<IllegalArgumentException> { plan(c, slot = slot) }
                 assertFailsWith<IllegalArgumentException> { c.selectUserSlot(slot) }
@@ -312,8 +316,9 @@ class NativeFiioTest {
     @Test fun `raw register boundaries unsupported shapes and compensated exact edges`() {
         val c = codec("FIIO KA15")
         for (gain in listOf(-12.0, 12.0)) {
-            val p = plan(c, listOf(peak().copy(freqHz = 20000.0, gainDb = gain, q = 10.0)), gain)
+            val p = plan(c, listOf(peak().copy(freqHz = 20000.0, gainDb = gain, q = 10.0)), gain - c.config.preampOffsetDb)
             assertEquals((gain * 10).toInt(), p.expected.bands.single().gainTenths)
+            assertEquals((gain * 10).toInt(), p.expected.preampTenths)
             assertEquals(1000, p.expected.bands.single().qHundredths)
             assertEquals(p.expected, snapshot(c, p.expected))
         }
@@ -345,6 +350,75 @@ class NativeFiioTest {
         assertEquals(emptyList(), c.activeBandQueries(0))
         assertEquals(zero.expected, snapshot(c, zero.expected))
         assertEquals(0, c.importExact(zero.expected).bands.size)
+    }
+    /** KA15 acoustics measured 04.10.2026 (PROTOCOL.md, FiiO KA15): shelves play register Q / sqrt(2) and the output
+     * sits at -12 dB + preamp register, so registers carry intended shelf Q * sqrt(2) and intended preamp + 12 dB. */
+    @Test fun `KA15 shelf Q and pregain are written and read in the measured acoustic domain`() {
+        val c = codec("FIIO KA15")
+        assertEquals(kotlin.math.sqrt(2.0), c.config.shelfQScale)
+        assertEquals(12.0, c.config.preampOffsetDb)
+        assertFalse(c.config.shelfAlphaCompensation)
+        // Only the KA15 carries non-neutral corrections; the defaults are neutral.
+        assertTrue(FiioCatalog.rules.filter { it.productName != "FIIO KA15" }.all { it.shelfQScale == 1.0 && it.preampOffsetDb == 0.0 })
+        val neutral = FiioCodec(c.config.copy(shelfQScale = 1.0, preampOffsetDb = 0.0))
+        assertEquals(71, plan(neutral, listOf(peak().copy(type = FilterType.LOW_SHELF)), 0.0).expected.bands.single().qHundredths)
+        for (bad in listOf(c.config.copy(shelfAlphaCompensation = true), c.config.copy(shelfQScale = 0.0),
+            c.config.copy(shelfQScale = Double.NaN), c.config.copy(preampOffsetDb = 12.05))) {
+            assertFailsWith<IllegalArgumentException> { FiioCodec(bad) }
+        }
+
+        // The owner's profiles: shelves x sqrt(2), PK as set, preamp + 12 dB.
+        val owner = plan(c, listOf(Band("ls", FilterType.LOW_SHELF, 80.0, 4.0, 0.71), Band("hs", FilterType.HIGH_SHELF, 1000.0, -1.2, 1.40),
+            Band("p1", FilterType.PEAK, 120.0, -2.0, 0.71), Band("p2", FilterType.PEAK, 3000.0, 3.0, 3.80),
+            Band("p3", FilterType.PEAK, 6000.0, -4.0, 5.30)), -4.0).expected
+        assertEquals(listOf(100, 198, 71, 380, 530), owner.bands.map { it.qHundredths })
+        assertEquals(listOf(1, 2, 0, 0, 0), owner.bands.map { it.typeCode })
+        assertEquals(80, owner.preampTenths)
+        assertEquals(90, plan(c, preamp = -3.0).expected.preampTenths)
+        assertEquals(110, plan(c, preamp = -1.0).expected.preampTenths)
+
+        // Readback: register Q 100 -> 0.7071, preamp 80 -> -4.0, and the exact registers come back on recompile.
+        val stored = FiioSnapshot("FIIO KA15", 7, 1, 80, listOf(FiioRegisters(0, 80, 40, 100, 1)))
+        val read = c.importExact(stored)
+        assertEquals(0.7071, read.bands.single().q, 1e-4)
+        assertEquals(-4.0, read.preampDb)
+        assertEquals(stored, plan(c, read.bands, read.preampDb, 7).expected)
+        for (type in listOf(1, 2)) for (gain in listOf(-120, -35, 0, 12, 40, 120)) for (q in 10..1000) {
+            val native = FiioSnapshot("FIIO KA15", 7, 1, 0, listOf(FiioRegisters(0, 1000, gain, q, type)))
+            val eq = c.importExact(native)
+            assertEquals(native, plan(c, eq.bands, eq.preampDb, 7).expected, "type $type gain $gain Q $q")
+        }
+        for (r in -120..120) {
+            val eq = c.importExact(FiioSnapshot("FIIO KA15", 7, 1, r, listOf(FiioRegisters(0, 1000, 0, 100, 0))))
+            assertEquals(r, plan(c, eq.bands, eq.preampDb, 7).expected.preampTenths)
+        }
+
+        // Boundaries: shelf Q 7.07 -> register 1000, 7.08 refused with the intended range; PK keeps Q 10.
+        val shelf = Band("s", FilterType.HIGH_SHELF, 2000.0, -10.0, 7.07)
+        assertEquals(1000, plan(c, listOf(shelf)).expected.bands.single().qHundredths)
+        for (s in listOf(shelf.copy(q = 7.08), shelf.copy(type = FilterType.LOW_SHELF, q = 7.08), shelf.copy(q = 10.0))) {
+            assertTrue(assertFailsWith<IllegalArgumentException> { plan(c, listOf(s)) }.message!!.contains("0.07..7.07"))
+        }
+        assertEquals(1000, plan(c, listOf(peak().copy(q = 10.0))).expected.bands.single().qHundredths)
+        assertEquals(-120, plan(c, preamp = -24.0).expected.preampTenths)
+        assertEquals(120, plan(c, preamp = 0.0).expected.preampTenths)
+        for (x in listOf(0.1, -24.1)) {
+            assertTrue(assertFailsWith<IllegalArgumentException> { plan(c, preamp = x) }.message!!.contains("[-24.0, 0.0]"))
+        }
+
+        // The same limits block HOLD TO SEND with a message before any write (DeviceTarget.issues).
+        fun profile(b: Band, preamp: Double?) = Profile("p", "p", bands = listOf(b), preampDb = preamp, createdAt = 0, updatedAt = 0)
+        val t = requireNotNull(DeviceTarget.find(0x2972, 0x0104, true, "FIIO KA15"))
+        assertTrue(t.issues(profile(shelf, 0.0)).isEmpty())
+        for (q in listOf(10, 1000)) { // the extreme shelf registers read back stay sendable
+            val eq = c.importExact(FiioSnapshot("FIIO KA15", 7, 1, -120, listOf(FiioRegisters(0, 2000, -100, q, 2))))
+            assertTrue(t.issues(profile(eq.bands.single(), eq.preampDb)).isEmpty())
+        }
+        assertEquals(listOf("Band 1: shelf Q 7.08 outside 0.07-7.07"), t.issues(profile(shelf.copy(q = 7.08), 0.0)))
+        assertTrue(t.issues(profile(peak().copy(q = 10.0), 0.0)).isEmpty())
+        assertEquals(listOf("Pregain 0.1 outside -24.0..0.0 dB"), t.issues(profile(peak(), 0.1)))
+        assertEquals(listOf("Pregain -24.1 outside -24.0..0.0 dB"), t.issues(profile(peak(), -24.1)))
+        assertTrue(t.issues(profile(peak(), -24.0)).isEmpty())
     }
     @Test fun `KA15 keeps ten filters so the tail is padded neutral and Q readback drift is tolerated`() {
         val ka = codec("FIIO KA15")
