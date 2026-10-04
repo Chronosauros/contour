@@ -81,7 +81,7 @@ fun DebugScreen(device: DeviceController, onClose: () -> Unit) {
                 if (device.protocol.experimental) {
                     Text(device.protocol.caps.name)
                     Text(
-                        "10-band PEQ with native shelves. A/B is unavailable on the ${device.protocol.caps.name}.",
+                        "${device.protocol.caps.bands}-band PEQ with native shelves. A/B is unavailable on the ${device.protocol.caps.name}.",
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -97,17 +97,17 @@ fun DebugScreen(device: DeviceController, onClose: () -> Unit) {
                             confirm = (if (device.protocol.experimental) "Write the flat EQ (${device.protocol.caps.bands} x 0 dB, preamp 0) to the DAC and save it to its flash?"
                                 else "Write the factory flat EQ (8 x 0 dB, preamp 0) to the DAC and save it to its flash?") to onRestoreFlat
                         },
-                        enabled = connected,
+                        enabled = connected && !device.protocol.native,
                     ) { Text("Restore flat") }
                 }
                 snapshot?.let { s ->
                     Text(
-                        "slot ${s.slot}, preamp ${s.preampDb} dB, read ${s.readMs} ms\n" + s.bands.joinToString("\n") { b ->
+                        "slot ${s.slot}, preamp ${s.preampDb ?: s.shownPreamp} dB, read ${s.readMs} ms\n" + (s.nativeState?.describe() ?: s.bands.joinToString("\n") { b ->
                             val r = b.registers
                             "%d  %s %7.1f Hz %6.2f dB Q %.3f   raw f=%d q=%d g=%d t=%d".format(
                                 r.index + 1, b.type.name.take(2), b.freqHz, b.gainDb, b.q, r.freq, r.q256, r.gain256, r.typeCode,
                             )
-                        },
+                        }),
                         fontFamily = FontFamily.Monospace,
                         fontSize = 11.sp,
                     )

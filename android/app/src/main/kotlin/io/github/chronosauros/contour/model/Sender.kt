@@ -39,14 +39,13 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
     /** Id of the library profile the DAC holds right now, or null. */
     val onDacId: String? by derivedStateOf {
         val s = device.snapshot ?: return@derivedStateOf null
-        val regs = s.bands.map { it.registers }
         if (cacheSnapshot !== s) {
             cache.clear()
             cacheSnapshot = s
         }
         model.profiles.firstOrNull { p ->
             val c = cache[p.id]
-            if (c != null && c.first === p) c.second else s.protocol.matches(p, regs, s.preampDb).also { cache[p.id] = p to it }
+            if (c != null && c.first === p) c.second else s.matches(p).also { cache[p.id] = p to it }
         }?.id
     }
 

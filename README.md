@@ -2,22 +2,22 @@
 
 # Contour
 
-**An on-the-go EQ manager for the CrinEar Protocol Micro and Protocol Max.** Keep all your EQ profiles on your phone, plug the
+**An on-the-go EQ manager for the CrinEar Protocol Micro, Protocol Max and FiiO KA15.** Keep all your EQ profiles on your phone, plug the
 dongle in, pick one and send it. Plug in, send, unplug - that is the whole routine.
 
 **Website: [chronosauros.github.io/contour](https://chronosauros.github.io/contour/)** - a 1.5-minute demo film, the full guide film and the install page.
 
 <p align="center">
-  <img src="docs/images/eq-1.2.2.png" width="300" alt="EQ page: a LOW SHELF at 80 Hz, sliders, AUTO preamp, ON DAC">
+  <img src="docs/images/eq-1.3.2.png" width="300" alt="EQ page on a FiiO KA15: a PEAK at 3 kHz, AUTO preamp, USER1-3 slot names, ON DAC">
   &nbsp;&nbsp;
-  <img src="docs/images/library-1.2.2.png" width="300" alt="Library: four profiles with their curves, BASS BOOSTED on the DAC">
+  <img src="docs/images/library-1.3.2.png" width="300" alt="Library: eight profiles with their curves, TEA PRO OG on the DAC">
 </p>
 
 ## Why it exists
 
-The Protocol Micro and Protocol Max have a parametric EQ built into the dongle itself. Whatever EQ a dongle holds works with every
+The Protocol Micro, Protocol Max and KA15 have a parametric EQ built into the dongle itself. Whatever EQ a dongle holds works with every
 app and every device you plug it into - no system equaliser, no app running in the background. But
-the official way to change it is CrinEar's browser tool at [eq.hangout.audio](https://eq.hangout.audio/),
+the official way to change it on the Protocol dongles is CrinEar's browser tool at [eq.hangout.audio](https://eq.hangout.audio/),
 which the maker lists for desktop (PC and macOS) browsers. There is no official mobile app, and phone
 browsers lack the WebHID support the tool relies on - so in practice you need a computer nearby.
 
@@ -46,8 +46,13 @@ Contour does not process audio, does not need the internet and has no accounts. 
 - **CrinEar Protocol Max** (USB `3302:43CC`, WalkPlay chip): 10 bands, PEAK, LOW SHELF and HIGH SHELF as native filters,
   gain -10 to +10 dB, Q 0.1 to 10, 20 Hz to 20 kHz, preamp -30 to 0 dB in whole dB, computed and sent by the app.
   Tested by a Reddit community member on a real Protocol Max (8 bands, peak and shelf filters, no crashes).
+- **FiiO KA15** (USB `2972:0104`, FiiO protocol): 10 bands, PEAK, LOW SHELF and HIGH SHELF, gain -12 to +12 dB,
+  Q 0.1 to 10, 20 Hz to 20 kHz. Pick USER1, USER2 or USER3 above HOLD TO SEND; Contour writes the profile to that
+  slot and names the slot after it (up to 7 letters and digits). Long-press a slot to rename it. The KA15 answers
+  only while audio is streaming to it, so Contour plays a silent stream to it while it reads or writes (no audio
+  focus, your music keeps playing). Tested on the developer's own hardware.
 
-Contour is unofficial and not affiliated with CrinEar. Other WalkPlay and FiiO dongles are possible later
+Contour is unofficial and not affiliated with CrinEar or FiiO. Other WalkPlay and FiiO dongles are possible later
 (see `ROADMAP.md`); they are not enabled until someone confirms one on real hardware.
 
 Needs Android 9 or newer and a phone with USB host (USB OTG) support.
@@ -69,7 +74,7 @@ Two pages, switched with the bar at the bottom or by swiping: **EQ** and **LIBRA
   AutoEQ parametric text or EQ by Ear JSON) or are read from the dongle.
 
 On the Protocol Micro only, HIGH SHELF bands are sent as a mirrored LOW SHELF plus preamp, which gives exactly the
-same curve shape (the Protocol Max has native shelf filters and needs no mirroring) (the maths is in `android/core/src/main/kotlin/io/github/chronosauros/contour/core/Device.kt`).
+same curve shape (the Protocol Max and KA15 have native shelf filters and need no mirroring) (the maths is in `android/core/src/main/kotlin/io/github/chronosauros/contour/core/Device.kt`).
 
 ## Safety
 
@@ -109,7 +114,7 @@ cd android
 `android/app/build.gradle.kts`.
 
 Code layout:
-- `android/core` - pure Kotlin/JVM: profile model, DSP, text codecs, the WalkPlay device protocol;
+- `android/core` - pure Kotlin/JVM: profile model, DSP, text codecs, the WalkPlay and FiiO KA15 device protocols;
 - `android/app` - the Jetpack Compose app, USB HID transport, storage;
 - `research/protocol` - protocol notes, Python reference tools and the device captures the parity test
   checks against.
@@ -128,13 +133,13 @@ Issues and pull requests are welcome, especially reports from other WalkPlay-bas
 
 Contour is licensed under the Apache License, Version 2.0 (`LICENSE`).
 
-The WalkPlay protocol and the biquad coefficient maths are ported from
+The WalkPlay and FiiO protocols and the biquad coefficient maths are ported from
 [devicePEQ](https://github.com/jeromeof/devicePEQ) by Jerome O'Flaherty (0BSD). Every third-party
 component and its licence is listed in `THIRD_PARTY_NOTICES.md`; attributions are in `NOTICE`. The DUSK
 example profile uses the DUSK-Default DSP curve
 [published by Crinacle](https://crinacle.com/2024/04/10/moondrop-x-crinacle-dusk-eq-dsp-values/). In the app,
 all of this is under **ABOUT & LICENCES** at the bottom of the Library.
 
-Contour is an unofficial project, not affiliated with or endorsed by CrinEar or any other brand. CrinEar,
-Protocol Micro, Protocol Max, Nightfall, WalkPlay, Moondrop, Crinacle, DUSK and other product names belong to their owners
+Contour is an unofficial project, not affiliated with or endorsed by CrinEar, FiiO or any other brand. CrinEar,
+Protocol Micro, Protocol Max, FiiO, KA15, Nightfall, WalkPlay, Moondrop, Crinacle, DUSK and other product names belong to their owners
 and are used only to say what Contour works with.

@@ -24,6 +24,12 @@ class Scale(
     val reset: Double?,
     val fineMax: Double? = null,
 ) {
+    /** The same scale over [lo]..[hi] (a DAC's own range, e.g. the KA15's -12..+12 dB gain); this one when equal. */
+    fun bounded(lo: Double, hi: Double): Scale = if (lo == min && hi == max) this else Scale(lo, hi, log, quantum,
+        labels.filter { it.first in lo..hi }, ticks.filter { it in lo..hi },
+        stepMarks.filter { it in lo..hi }.toDoubleArray(), strongMarks.filter { it in lo..hi }.toDoubleArray(),
+        reset?.takeIf { it in lo..hi }, fineMax)
+
     /** How much the value moves per 1 of position at [v] (the scale's slope). */
     fun perPos(v: Double): Double = if (log) v.coerceIn(min, max) * ln(max / min) else max - min
 

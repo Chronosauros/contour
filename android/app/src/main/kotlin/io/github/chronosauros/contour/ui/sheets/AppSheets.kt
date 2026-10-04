@@ -199,7 +199,7 @@ fun NewProfileSheet(model: AppModel, device: DeviceController, onDone: () -> Uni
     }
     val snapshot = device.snapshot
     val dacImport = if (device.link == Link.CONNECTED && snapshot != null)
-        Importer.fromDac(snapshot.bands, snapshot.preampDb, snapshot.protocol) else null
+        snapshot.importExact() else null
     SheetFrame(onDone) {
         SheetTitle("NEW PROFILE")
         Option("FLAT", "One flat band at 1 kHz - drag it or add more", true, "new_empty") {
@@ -282,8 +282,11 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
             onDone()
             return@commit
         }
-        val parsed = param.parse(text.text)
-        if (parsed == null) {
+        val parsed = param.parse(text.text, model.protocol.caps)
+        // KA15: the preamp is not clamped (AppModel.setPreamp), so an out-of-range value is refused here.
+        val preampFits = param != Param.PREAMP || model.protocol.walkplay != null || (parsed != null && parsed in
+            (model.protocol.preampMin - model.protocol.shelfOffset(live.bands))..(model.protocol.preampMax - model.protocol.shelfOffset(live.bands)))
+        if (parsed == null || !preampFits) {
             invalid = true
         } else {
             if (band == null) model.setPreamp(parsed)
@@ -293,18 +296,20 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
     }
     SheetFrame(onDone) {
         SheetTitle(if (param == Param.PREAMP) "PREAMP" else "BAND ${i + 1} - ${param.label}")
+        val caps = model.protocol.caps
         val range = when (param) {
             Param.FREQ -> "20 - 20 000 Hz"
-            Param.GAIN -> "-10.0 - +10.0 dB"
+            Param.GAIN -> "%.1f - +%.1f dB".format(java.util.Locale.ROOT, caps.gainMinDb, caps.gainMaxDb)
             Param.Q -> "0.10 - 10.00"
-            Param.PREAMP -> "curve preamp, device -30 - 0 dB"
+            Param.PREAMP -> if (model.protocol.walkplay != null) "curve preamp, device -30 - 0 dB"
+                else "%.1f - +%.1f dB, step 0.1".format(java.util.Locale.ROOT, model.protocol.preampMin, model.protocol.preampMax)
         }
         OutlinedTextField(
             value = text,
             onValueChange = { text = it; invalid = false },
             label = { Text(range) },
             isError = invalid,
-            supportingText = if (invalid) ({ Text("Enter a valid number") }) else null,
+            supportingText = if (invalid) ({ Text(if (param == Param.PREAMP && model.protocol.native) "Enter a value within the range above" else "Enter a valid number") }) else null,
             suffix = { if (param.unit.isNotEmpty()) Text(param.unit) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),

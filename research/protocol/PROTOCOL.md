@@ -150,7 +150,36 @@ Same handler/wire format for SchemeNo10-21 (WH L7). Differences are config only:
 - Keep devicePEQ pacing (>= 20 ms between writes, 50 ms between band reads is generous; replies take ~8 ms,
   so request-reply lock-step without fixed sleeps should read all 8 bands in < 100 ms - untested).
 
-## FiiO roadmap note (config/handler only; nothing was sent to the FiiO device)
+## FiiO KA15 (2972:0104, supported in Contour 1.3.2)
+
+Captured from FiiO's official web app (fiiocontrol.fiio.com, WebHID hook, 03.10.2026) and verified on a Pixel
+and on Windows with a real KA15 (03-04.10.2026).
+
+- Transport: HID interface 0, report ID 7, 64-byte reports. Exact match on `2972:0104`.
+- Frame: `HDR1 HDR2 00 SEQ CMD LEN DATA... CRC EE`; `HDR` = `bb 0b` (get) or `aa 0a` (set). SEQ = host counter,
+  +1 per frame. CRC = CRC-8/MAXIM (poly 0x31, reflected, init 0) over `HDR1`..last data byte. The KA15 also
+  answers SEQ=0/CRC=0 frames (devicePEQ style). Replies arrive in a reused buffer: bytes after `EE` are stale,
+  so parse by `LEN`, never to the end of the report.
+- Commands: `0x15` band (index + 7 bytes), `0x16` active preset, `0x17` global gain, `0x18` filter count
+  (always 10; a lower count is ignored, so unused bands are written as 0 dB peaks), `0x19` save,
+  `0x30` USER slot name.
+- Slots: USER1-3 = presets 7-9; stock presets 0-6 and "Close EQ" (10) are never written. `0x19` saves the
+  *active* preset whatever its slot byte says, so writing another USER slot needs `aa 0a .. 16 01 <slot>`
+  first. Contour switches only when the chosen slot is not active, like the official app on save.
+- Save reply is malformed (`.. 00 ee 00 SEQ`, no `aa 0a` header); the KA15 is busy for about 2 s after a save.
+  Band echoes round Q up by one or two steps, so read-back allows that slack.
+- Names (missing upstream): read `bb 0b 00 SEQ 30 01 IDX CRC ee`, IDX 0-2 = USER1-3. The reply carries a
+  9-byte field, but only the first 7 bytes are the name; bytes 8-9 can be the tail of the previous frame.
+  Write `aa 0a 00 SEQ 30 08 IDX <name NUL-padded to 7> CRC ee` (a shorter, unpadded write leaves the old tail).
+  Names are A-Z and 0-9. Renaming does not touch the EQ.
+- On Android the KA15 answers HID only while a USB audio stream is open (on Windows the FiiO driver keeps it
+  open). Contour plays a silent AudioTrack routed to the KA15 for each read or write session, without audio
+  focus, so other playback continues.
+- 04.10.2026 on the Pixel: ten saves with and without a preset switch, nine answered and read back; once
+  the save got no reply and every later query timed out until a replug (the switch had stuck, the save had
+  not). Not reproduced.
+
+## FiiO roadmap note (config/handler only; written before the KA15 work above)
 - FiiO is matched by VID 0x2972 (and 0x0A12) + **USB product name string**, not by PID (UC L16, L360-400).
   "FIIO KA15": supported, 10 bands, +-12 dB, 7 types (PK/LS/HS/LP/HP/BP/AP), writable user slots 7-9
   (USER1-3), "Close EQ" = 10. "FIIO K13 R2R": supported, 10 bands, -24..+12 dB, all FiiO types, user slots

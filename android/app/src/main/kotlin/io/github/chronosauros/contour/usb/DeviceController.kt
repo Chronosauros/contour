@@ -12,9 +12,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
-import io.github.chronosauros.contour.core.DeviceProtocol
+import io.github.chronosauros.contour.core.DeviceTarget
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.core.WalkPlay
+import io.github.chronosauros.contour.core.native.NativeState
+import java.io.IOException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -30,13 +32,13 @@ data class SendOutcome(val verified: Boolean, val reason: String?)
  */
 class DeviceController(private val context: Context, private val scope: CoroutineScope) {
     private val manager = context.getSystemService(UsbManager::class.java)
-    val client = DacClient(manager)
+    val client = DacClient(manager, { d -> sessionGuard(d) }, { d -> UsbAudioKeepAlive.start(context, d) })
 
-    /** The DAC found on the bus (MICRO when none). MAX for the Protocol Max. */
-    var protocol by mutableStateOf(DeviceProtocol.MICRO)
+    /** The DAC found on the bus (MICRO when none). MAX for the Protocol Max, KA15 for the FiiO KA15. */
+    var protocol by mutableStateOf(DeviceTarget.MICRO)
         private set
     /** The last DAC model seen; a different one resets every device-specific state (see [refresh]). */
-    private var lastProtocol: DeviceProtocol? = null
+    private var lastProtocol: DeviceTarget? = null
 
     var link by mutableStateOf(Link.NO_DAC)
         private set
@@ -53,7 +55,48 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     var abBypassed by mutableStateOf(false)
         private set
     private var abReference: DacSnapshot? = null
-    private var connectionEpoch = 0L
+    @Volatile private var connectionEpoch = 0L
+
+    /** The USER slot HOLD TO SEND writes on a DAC with a slot picker (KA15); null = the slot playing now. */
+    var selectedSlot by mutableStateOf<Int?>(null)
+        private set
+    val slotPicker: Boolean get() = protocol.fiio?.userSlotNames == true
+    fun destinationSlot(): Int? = if (!slotPicker) protocol.destinationSlot
+        else selectedSlot ?: snapshot?.slot?.takeIf { it in protocol.fiio!!.userSlots } ?: protocol.destinationSlot
+    fun selectSlot(slot: Int) { if (slotPicker && slot in protocol.fiio!!.userSlots) selectedSlot = slot }
+    /** The chosen slot is the one playing: only then does the read state say what that slot holds (ON DAC). */
+    val destinationActive: Boolean get() = !slotPicker || snapshot?.slot == destinationSlot()
+
+    /** Long press on a slot (KA15): writes only the name, then shows the name the DAC reads back. */
+    fun renameSlot(slot: Int, name: String) {
+        if (!slotPicker || slot !in protocol.fiio!!.userSlots) return
+        launchOp("rename", keepSnapshot = true) { d ->
+            val read = client.renameSlot(d, slot, name)
+            val s = snapshot; val state = s?.nativeState as? NativeState.Fiio
+            if (s != null && state != null) snapshot = s.copy(nativeState = state.copy(names = state.names + (slot to read)))
+            if (read != name) throw IOException("name reads back as $read")
+        }
+    }
+
+    /** KA15 operations: throws once the attachment the operation started on is gone (detach, other DAC). */
+    private fun sessionGuard(d: UsbDevice): () -> Unit {
+        val epoch = connectionEpoch
+        val id = d.deviceId
+        return {
+            if (epoch != connectionEpoch || manager.deviceList.values.none { it.deviceId == id } || !manager.hasPermission(d))
+                throw IOException("DAC SESSION CHANGED; reconnect and retry")
+        }
+    }
+
+    /** Why [profile] cannot be sent to the DAC now; empty = HOLD TO SEND may write. */
+    fun sendIssues(profile: Profile): List<String> {
+        val issues = protocol.issues(profile)
+        if (issues.isNotEmpty() || !protocol.native) return issues
+        val state = snapshot?.nativeState as? NativeState.Fiio ?: return listOf("Read the DAC first")
+        return runCatching {
+            state.codec.planOnExplicitSend(profile.copy(bands = state.codec.padToDeviceCount(profile.bands), preampDb = profile.effectivePreampDb()), destinationSlot()!!, true)
+        }.exceptionOrNull()?.let { listOf(it.message ?: "Unrepresentable EQ") }.orEmpty()
+    }
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -85,7 +128,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     private fun isDac(intent: Intent): Boolean {
         val d = if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
             else @Suppress("DEPRECATION") intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE)
-        return d != null && DeviceProtocol.find(d.vendorId, d.productId) != null
+        return d != null && DeviceTarget.find(d.vendorId, d.productId) != null
     }
 
     fun start() {
@@ -103,15 +146,15 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     }
 
     private fun findDac(): UsbDevice? = manager.deviceList.values.firstOrNull {
-        DeviceProtocol.find(it.vendorId, it.productId) != null
+        DeviceTarget.find(it.vendorId, it.productId) != null
     }
 
     /** Recomputes the link; when connected and [read], reads the DAC (read-only). */
     fun refresh(read: Boolean) {
         val d = findDac()
-        val found = d?.let { DeviceProtocol.find(it.vendorId, it.productId) }
+        val found = d?.let { DeviceTarget.find(it.vendorId, it.productId) }
         if (found != null && lastProtocol != null && found != lastProtocol) {
-            // Another DAC model (Micro <-> Max): nothing read, written or switched on the old one carries over.
+            // Another DAC model (Micro <-> Max <-> KA15): nothing read, written or switched on the old one carries over.
             UsbLog.line("DAC changed: ${lastProtocol?.caps?.name} -> ${found.caps.name}")
             connectionEpoch++
             snapshot = null
@@ -119,9 +162,10 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             error = null
             abBypassed = false
             abReference = null
+            selectedSlot = null
         }
         if (found != null) lastProtocol = found
-        protocol = found ?: DeviceProtocol.MICRO
+        protocol = found ?: DeviceTarget.MICRO
         link = when {
             d == null -> Link.NO_DAC
             !manager.hasPermission(d) -> Link.NEEDS_PERMISSION
@@ -132,6 +176,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             snapshot = null
             abBypassed = false
             abReference = null
+            selectedSlot = null
         }
         if (read && link == Link.CONNECTED && !abBypassed) read()
     }
@@ -163,7 +208,11 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     }
 
     /** Writes [profile] (plan, commit, read back, compare). The result's read-back becomes the snapshot. */
-    suspend fun send(profile: Profile): SendOutcome = sendWith("send") { d -> client.writeProfile(d, profile) }
+    suspend fun send(profile: Profile): SendOutcome {
+        if (protocol.native) sendIssues(profile).takeIf { it.isNotEmpty() }?.let { return SendOutcome(false, it.joinToString("; ")) }
+        val slot = if (slotPicker) destinationSlot() else null
+        return sendWith("send") { d -> client.writeProfile(d, profile, slot) }
+    }
 
     /** Toggle against the actual A registers, not the editor's rounded or emulated band values. */
     suspend fun switchAb(bypass: Boolean): SendOutcome {
@@ -222,9 +271,10 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             // Experimental device, or the DAC model changed under the write: never keep a result for the wrong DAC.
             if ((started.experimental || protocol != started) && epoch != connectionEpoch) return SendOutcome(false, "DAC DETACHED")
             lastWrite = r
-            // Protocol Max fails closed: a mismatching read-back is not ON DAC. The Micro keeps the 1.2.2 behaviour.
-            snapshot = if (r.readBack.protocol.experimental && !r.verified) null else r.readBack
-            error = null
+            // Protocol Max and KA15 fail closed: a mismatching read-back is not ON DAC. The Micro keeps the 1.2.2 behaviour.
+            snapshot = if (r.readBack.target.experimental && !r.verified) null else r.readBack
+            // A verified write can still carry a note (KA15: the slot name did not read back).
+            error = if (r.verified) r.mismatches.firstOrNull() else null
             if (r.verified) SendOutcome(true, null) else SendOutcome(false, "READ-BACK MISMATCH: ${r.mismatches.firstOrNull() ?: ""}")
         } catch (e: Exception) {
             UsbLog.line("$what failed: ${e.message}")
@@ -239,18 +289,21 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     // ---- service screen (the v0.1 debug buttons; only the owner presses them) ----------------------------
 
     fun serviceTestWrite() = launchOp("test write") { d -> showWrite(client.sendTestBand1(d)) }
-    fun serviceRestoreFlat() = launchOp("restore flat") { d -> showWrite(client.restoreFlat(d)) }
+    fun serviceRestoreFlat() {
+        if (protocol.native) return // Micro and Max only; the KA15 resets through a flat profile and HOLD TO SEND
+        launchOp("restore flat") { d -> showWrite(client.restoreFlat(d)) }
+    }
 
     private fun showWrite(r: WriteResult) {
         lastWrite = r
-        if (r.readBack.protocol.experimental && !r.verified) {
+        if (r.readBack.target.experimental && !r.verified) {
             snapshot = null
             throw java.io.IOException("READ-BACK MISMATCH: ${r.mismatches.firstOrNull()}")
         }
         snapshot = r.readBack
     }
 
-    private fun launchOp(what: String, op: suspend (UsbDevice) -> Unit) {
+    private fun launchOp(what: String, keepSnapshot: Boolean = false, op: suspend (UsbDevice) -> Unit) {
         val d = findDac() ?: run { link = Link.NO_DAC; snapshot = null; return }
         if (!manager.hasPermission(d)) { link = Link.NEEDS_PERMISSION; snapshot = null; return }
         if (busy) return
@@ -264,7 +317,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                 error = null
             } catch (e: Exception) {
                 UsbLog.line("$what failed: ${e.message}")
-                snapshot = null
+                if (!keepSnapshot || epoch != connectionEpoch) snapshot = null
                 error = "$what failed: ${e.message}"
             } finally {
                 busy = false

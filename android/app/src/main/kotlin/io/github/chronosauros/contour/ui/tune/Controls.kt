@@ -134,8 +134,7 @@ internal class BandDrag(private val param: Param, initial: Double) {
  * ([LiftGuard]). Horizontal drags inside it never reach the pager.
  */
 @Composable
-fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
-    val scale = param.scale!!
+fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, scale: Scale = param.scale!!) {
     val haptics = LocalHaptics.current
     val pagerLock = LocalPagerLock.current
     val p = pal
@@ -158,7 +157,7 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
                 }
             }
             .then(if (enabled) Modifier.holdsPager(pagerLock) else Modifier)
-            .pointerInput(param, enabled) {
+            .pointerInput(param, enabled, scale.min, scale.max) {
                 if (!enabled) return@pointerInput
                 val guard = LiftGuard<Double>(density, param.name)
                 var drag = BandDrag(param, v.value)
@@ -213,8 +212,8 @@ fun holdLabel(p: Profile, device: DeviceController, sender: Sender): String = wh
     sender.sendingId == p.id -> "SENDING"
     device.link == Link.NO_DAC -> "NO DAC"
     device.link == Link.NEEDS_PERMISSION -> "TAP TO CONNECT"
-    device.protocol.plan(p) is DevicePlan.Rejected -> "INVALID EQ - EDIT BAND"
-    sender.onDacId == p.id -> "ON DAC"
+    device.sendIssues(p).isNotEmpty() -> "INVALID EQ - EDIT BAND"
+    sender.onDacId == p.id && device.destinationActive -> "ON DAC"
     sender.failedFor(p) -> "FAILED - HOLD TO RETRY"
     else -> "HOLD TO SEND"
 }

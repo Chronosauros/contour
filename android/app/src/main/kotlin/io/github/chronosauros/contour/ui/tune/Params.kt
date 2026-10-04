@@ -1,6 +1,7 @@
 package io.github.chronosauros.contour.ui.tune
 
 import io.github.chronosauros.contour.core.Band
+import io.github.chronosauros.contour.core.DeviceCapabilities
 import io.github.chronosauros.contour.ui.kit.Fmt
 import io.github.chronosauros.contour.ui.kit.Scale
 
@@ -48,12 +49,23 @@ enum class Param(val label: String, val unit: String, val scale: Scale?, val hom
         PREAMP -> Fmt.gain(v).removePrefix("+")
     }
 
+    /** The slider scale for the connected DAC's ranges (Micro/Max: [scale] itself; KA15: gain -12..+12 dB). */
+    fun scaleFor(caps: DeviceCapabilities): Scale? = when (this) {
+        FREQ -> Scale.FREQ.bounded(caps.freqMinHz, caps.freqMaxHz)
+        GAIN -> Scale.GAIN.bounded(caps.gainMinDb, caps.gainMaxDb)
+        Q -> Scale.Q.bounded(caps.qMin, caps.qMax)
+        PREAMP -> null
+    }
+
     /** Typed text -> the stored value (clamped and quantized to the device range), null if not a number. */
-    fun parse(text: String): Double? {
+    fun parse(text: String, caps: DeviceCapabilities? = null): Double? {
         val v = text.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() } ?: return null
         return when (this) {
             PREAMP -> Math.round(v * 10) / 10.0 // clamped by AppModel.setPreamp (device range minus HS gains)
-            else -> scale!!.quantize(v.coerceIn(scale.min, scale.max))
+            else -> {
+                val s = if (caps == null) scale!! else scaleFor(caps)!!
+                s.quantize(v.coerceIn(s.min, s.max))
+            }
         }
     }
 

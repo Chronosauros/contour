@@ -3,10 +3,9 @@
 Ideas and devices for later. None of these is enabled until it is confirmed on real hardware.
 
 ## FiiO KA15
-- Supported by devicePEQ (`research/protocol/devicepeq-ref/fiioUsbHidHandler.js`): HID, report ID 7, 10 bands, +-12 dB, 7 filter types (PK, LS, HS, LP, HP, BP, AP).
-- Writable user slots 7-9 (USER1-3), "Close EQ" = 10. Save command `AA 0A 00 00 19 01 <slot> 00 EE`.
-- devicePEQ matches FiiO devices by VID plus the USB product name, not by PID. Its handler does not stop writes to stock presets, so Contour must allow only user slots.
-- App needs: a slot picker, 10-band capability, slot names kept in Contour (FiiO does not store names).
+- Supported since Contour 1.3.2, tested on the developer's own hardware (Pixel, 04.10.2026): read on connect, USER1-3 slot picker above HOLD TO SEND, writes only to USER slots (never the stock presets), slot names read from and written to the DAC (up to 7 letters and digits), long-press a slot to rename it.
+- Protocol: HID, report ID 7, 10 bands, +-12 dB, PEAK, LOW SHELF and HIGH SHELF (the other FiiO filter types are not used). USB `2972:0104` matched exactly. The KA15 answers HID only while a USB audio stream runs, so Contour plays a silent stream during reads and writes.
+- Open: one save out of ten on 04.10 got no answer until the dongle was replugged; not reproduced since.
 
 ## FiiO K13 R2R
 - devicePEQ: 10 bands, -24..+12 dB, all FiiO types, user slots 160-169, bypass 240. Product-name match unverified.
@@ -29,7 +28,7 @@ Source: devicePEQ `usbDeviceConfig.js` (26.09.2026). One driver unlocks the whol
 
 - **WalkPlay (the driver Contour already has)** - only IDs and capability profiles to add: Tanchjim (Space Pro, Ola II DSP, Stargate II), NiceHCK Octave, Truthear KeyX, ddHiFi DSP Cable, Moondrop Dawn Pro 2, CrinEar Protocol Max, generic CS43131 / CS43198 / ES9039 dongles. Experimental there: BGVP MX1, Letshuoer DT04, Moondrop MD-QT-042 / HiFi with PD. Band layouts vary per scheme: 5, 6, 8 or 10 bands, +-10 dB, some peaking only.
 - **KT Micro (the driver above)** - besides both Allegros: Kiwi Ears Chorus and other KT_* chips (matched by PID, registers laid out differently per chip), JCally KT02H20, Tanchjim One DSP / Bunny DSP / Fission, Moondrop CDSP and Chu 2 DSP. All 5 bands, +-12 dB, no pregain.
-- **FiiO / JadeAudio** - the largest group, framed HID protocol (`fiioUsbHidHandler.js` is already in our copy): KA15, KA17, K13 R2R, K15, K17, K19, BTR13, BTR17, BT11, QX11, QX13, FX17, Oak Nano, Retro Nano, Air Link, Air Amp, FP3, FG3, BR15 R2R, JadeAudio JA11 / JIEZI, Snowsky Melody / Tiny A / Tiny B. 5 to 31 bands, user slots differ per model (see FiiO KA15 and K13 R2R above).
+- **FiiO / JadeAudio** - the largest group, framed HID protocol (`fiioUsbHidHandler.js` is already in our copy): KA15, KA17, K13 R2R, K15, K17, K19, BTR13, BTR17, BT11, QX11, QX13, FX17, Oak Nano, Retro Nano, Air Link, Air Amp, FP3, FG3, BR15 R2R, JadeAudio JA11 / JIEZI, Snowsky Melody / Tiny A / Tiny B. 5 to 31 bands, user slots differ per model (see FiiO KA15, supported since 1.3.2, and K13 R2R above).
 - **Moondrop (own protocol)** - Rays, AG Rays, Marigold, FreeDSP Mini / Pro, Moonriver 3, Dawn Pro 2, Echo A, DHA15, Deco, ddHiFi DSP IEM. Mostly 8 bands, +-12 dB. Old Fashioned uses an older, separate Moondrop protocol (5 bands, max +3 dB).
 - **Conexant** - Moondrop FreeDSP and Echo-B (9 bands, +-12 dB).
 - **Fosi Audio / Topping** (VID `0x152A`, shared with Topping) - Fosi DS3: 8 bands, +-12 dB, all filter types, no pregain. The driver is experimental in devicePEQ.

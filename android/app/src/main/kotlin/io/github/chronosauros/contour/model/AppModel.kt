@@ -11,7 +11,7 @@ import androidx.compose.runtime.setValue
 import io.github.chronosauros.contour.core.Band
 import io.github.chronosauros.contour.core.FilterType
 import io.github.chronosauros.contour.core.Profile
-import io.github.chronosauros.contour.core.DeviceProtocol
+import io.github.chronosauros.contour.core.DeviceTarget
 import java.util.UUID
 import kotlin.math.ln
 import kotlin.math.sqrt
@@ -40,7 +40,7 @@ object Page {
  * A touch on Tune ([beginGesture] .. [endGesture]) is one step however many values the drag went through.
  */
 class AppModel(private val store: ProfileStore, private val scope: CoroutineScope, private val beforeLoad: () -> Unit = {}) {
-    var protocol by mutableStateOf(DeviceProtocol.MICRO)
+    var protocol by mutableStateOf(DeviceTarget.MICRO)
     val maxBands: Int get() = protocol.caps.bands
     fun shownPreamp(p: Profile): Double = protocol.shownPreamp(p)
     val profiles = mutableStateListOf<Profile>()
@@ -457,10 +457,13 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         }
     }
 
-    /** Manual preamp in the curve domain, clamped so the register stays in the device range. */
+    /** Manual preamp in the curve domain. Micro/Max clamp so the register stays in the device range (1.3.x);
+     * the KA15 rejects out-of-range input, never silently clamps, in its 0.1 dB steps. */
     fun setPreamp(db: Double) = update {
         val hs = protocol.shelfOffset(it.bands)
-        it.copy(preampDb = round1(db.coerceIn(protocol.preampMin - hs, protocol.preampMax - hs)))
+        if (protocol.walkplay != null) it.copy(preampDb = round1(db.coerceIn(protocol.preampMin - hs, protocol.preampMax - hs)))
+        else if (!db.isFinite() || db !in (protocol.preampMin - hs)..(protocol.preampMax - hs)) it
+        else it.copy(preampDb = round1(Math.round(db / protocol.preampStep) * protocol.preampStep))
     }
 
     fun rename(id: String, name: String) = update(id) {

@@ -8,4 +8,8 @@
     <usb-device
         vendor-id="13058"
         product-id="17356" />
+    <!-- FiiO KA15: USB 0x2972:0x0104 -->
+    <usb-device
+        vendor-id="10610"
+        product-id="260" />
 </resources>
