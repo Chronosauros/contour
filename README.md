@@ -47,10 +47,14 @@ Contour does not process audio, does not need the internet and has no accounts. 
   gain -10 to +10 dB, Q 0.1 to 10, 20 Hz to 20 kHz, preamp -30 to 0 dB in whole dB, computed and sent by the app.
   Tested by a Reddit community member on a real Protocol Max (8 bands, peak and shelf filters, no crashes).
 - **FiiO KA15** (USB `2972:0104`, FiiO protocol): 10 bands, PEAK, LOW SHELF and HIGH SHELF, gain -12 to +12 dB,
-  Q 0.1 to 10, 20 Hz to 20 kHz. Pick USER1, USER2 or USER3 above HOLD TO SEND; Contour writes the profile to that
-  slot and names the slot after it (up to 7 letters and digits). Long-press a slot to rename it. The KA15 answers
-  only while audio is streaming to it, so Contour plays a silent stream to it while it reads or writes (no audio
-  focus, your music keeps playing). Tested on the developer's own hardware.
+  Q 0.1 to 10 (shelves up to 7.07), 20 Hz to 20 kHz, preamp -24 to 0 dB. Pick USER1, USER2 or USER3 above HOLD TO
+  SEND; Contour writes the profile to that slot and names the slot after it (up to 7 letters and digits). Long-press
+  a slot to rename it. The KA15 answers only while audio is streaming to it, so Contour plays a silent stream to it
+  while it reads or writes (no audio focus, your music keeps playing). Tested on the developer's own hardware.
+  The KA15 plays its shelf filters with a Q 1.41 times lower than the value it stores, and every USER preset 12 dB
+  quieter than EQ off. Since 1.3.3 Contour compensates both, so the curve and preamp you see are what it plays
+  (measured on the device, see `research/protocol/PROTOCOL.md`). The FiiO app shows the stored values, so its
+  shelf Q and preamp look higher.
 
 Contour is unofficial and not affiliated with CrinEar or FiiO. Other WalkPlay and FiiO dongles are possible later
 (see `ROADMAP.md`); they are not enabled until someone confirms one on real hardware.

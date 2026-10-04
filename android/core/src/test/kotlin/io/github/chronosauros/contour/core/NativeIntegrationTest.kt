@@ -146,7 +146,8 @@ class NativeIntegrationTest {
         assertFails { NativeSession(t, port).write(profile(), false) }
         assertFails { NativeSession(t, port).write(profile(count = 11), true) }
         assertFails { NativeSession(t, port).write(profile().copy(bands = profile().bands + Band("bad", FilterType.LOW_PASS, 1000.0, 0.0, 1.0)), true) }
-        assertFails { NativeSession(t, port).write(profile(preamp = -12.1), true) }
+        assertFails { NativeSession(t, port).write(profile(preamp = -24.1), true) }
+        assertFails { NativeSession(t, port).write(profile(preamp = 0.1), true) }
         assertTrue(port.events.none { it.startsWith("write") })
     }
     @Test fun `generation guard aborts after every read before snapshot or mutation`() {
@@ -171,11 +172,15 @@ class NativeIntegrationTest {
         assertFalse(port.live)
     }
     @Test fun `KA15 pregain is fractional within its own range and A B stays Micro only`() {
-        val t = fiio(); assertEquals(-12.0, t.preampMin); assertEquals(12.0, t.preampMax); assertEquals(0.1, t.preampStep)
+        // Intended range: register -12..+12 dB minus the measured 12 dB offset (04.10.2026).
+        val t = fiio(); assertEquals(-24.0, t.preampMin); assertEquals(0.0, t.preampMax); assertEquals(0.1, t.preampStep)
         assertEquals(-11.7, t.shownPreamp(profile(preamp = -11.7)))
         assertFalse(t.supportsAb); assertTrue(t.native); assertFalse(t.stable)
         assertEquals(10, t.caps.bands); assertEquals(-12.0, t.caps.gainMinDb); assertEquals(12.0, t.caps.gainMaxDb)
-        assertTrue(t.issues(profile(preamp = -12.1)).isNotEmpty())
+        assertTrue(t.issues(profile(preamp = -24.1)).isNotEmpty())
+        assertTrue(t.issues(profile(preamp = 0.1)).isNotEmpty())
+        assertTrue(t.issues(profile(preamp = -24.0)).isEmpty())
+        assertTrue(t.issues(profile(preamp = 0.0)).isEmpty())
         assertTrue(t.issues(profile(count = 11)).isNotEmpty())
         assertTrue(t.issues(profile(count = 10)).isEmpty())
     }

@@ -16,8 +16,9 @@ data class DeviceTarget private constructor(
     /** Micro and Protocol Max: the 1.3.x targets, with their editor/import/preamp policy. */
     val stable: Boolean get() = walkplay != null
     val native: Boolean get() = walkplay == null
-    val preampMin: Double get() = fiio?.minGainDb ?: walkplay!!.preampMin.toDouble()
-    val preampMax: Double get() = fiio?.maxGainDb ?: walkplay!!.preampMax.toDouble()
+    /** KA15: the intended (acoustic) range, register range minus [FiioConfig.preampOffsetDb] (-24..0 dB). */
+    val preampMin: Double get() = fiio?.preampMinDb ?: walkplay!!.preampMin.toDouble()
+    val preampMax: Double get() = fiio?.preampMaxDb ?: walkplay!!.preampMax.toDouble()
     val preampStep: Double get() = 0.1
     val caps: DeviceCapabilities get() = walkplay?.caps ?: requireNotNull(fiio).let { f ->
         DeviceCapabilities(f.productName, f.capture?.vendorId ?: 0, f.capture?.productId ?: 0, f.maxFilters,
@@ -37,10 +38,16 @@ data class DeviceTarget private constructor(
             require(profile.bands.size <= caps.bands) { "${profile.bands.size} bands; ${caps.name} accepts ${caps.bands}; no truncation" }
             profile.bands.forEachIndexed { i, b ->
                 require(b.type in caps.types && b.freqHz.isFinite() && b.gainDb.isFinite() && b.q.isFinite() &&
-                    b.freqHz in caps.freqMinHz..caps.freqMaxHz && b.gainDb in caps.gainMinDb..caps.gainMaxDb && b.q in caps.qMin..caps.qMax) { "Band ${i + 1}: unsupported type/range" }
+                    b.freqHz in caps.freqMinHz..caps.freqMaxHz && b.gainDb in caps.gainMinDb..caps.gainMaxDb) { "Band ${i + 1}: unsupported type/range" }
+                // Shelves have their own intended Q range when the DAC stores a scaled Q (KA15: up to 7.07).
+                val shelf = b.type != FilterType.PEAK && f.shelfQScale != 1.0
+                val (qLo, qHi) = if (shelf) f.shelfQMin to f.shelfQMax else caps.qMin to caps.qMax
+                require(b.q in qLo..qHi) {
+                    "Band ${i + 1}: ${if (shelf) "shelf " else ""}Q %.2f outside %.2f-%.2f".format(java.util.Locale.ROOT, b.q, qLo, qHi)
+                }
             }
             val gain = profile.effectivePreampDb()
-            require(gain.isFinite() && gain in preampMin..preampMax) { "Pregain outside $preampMin..$preampMax dB" }
+            require(gain.isFinite() && gain in preampMin..preampMax) { "Pregain %.1f outside %.1f..%.1f dB".format(java.util.Locale.ROOT, gain, preampMin, preampMax) }
             FiioCodec(f).planOnExplicitSend(profile.copy(preampDb = gain), destinationSlot!!, true)
         }.exceptionOrNull()?.let { listOf(it.message ?: "Unrepresentable EQ") }.orEmpty()
     }

@@ -22,7 +22,7 @@ sealed interface NativeState {
     /** [names]: USER slot -> name read from the DAC (KA15), empty where the device has no names. */
     data class Fiio(val codec: FiioCodec, val raw: FiioSnapshot, val names: Map<Int, String> = emptyMap()) : NativeState {
         override val slot get() = raw.activeSlot
-        override val preamp get() = raw.preampTenths / 10.0
+        override val preamp get() = codec.intendedPreampDb(raw.preampTenths)
         override fun importExact(): ImportedEq = codec.importExact(raw).let { ImportedEq(it.bands, it.preampDb) }
         override fun matches(profile: Profile): Boolean = runCatching {
             codec.matches(codec.planOnExplicitSend(profile.copy(bands = codec.padToDeviceCount(profile.bands), preampDb = profile.effectivePreampDb()), slot, true).expected, raw)

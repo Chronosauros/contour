@@ -1,0 +1,1 @@
+FiiO KA15: shelf filters and preamp now play what the graph shows. The KA15 plays LOW and HIGH SHELF with a Q 1.41 times lower than it stores, and every USER preset 12 dB quieter than EQ off; Contour now compensates both, measured on the device. Send your KA15 profiles again after updating. The FiiO app shows the stored values, so its shelf Q and preamp look higher.

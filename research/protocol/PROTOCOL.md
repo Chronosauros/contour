@@ -179,6 +179,18 @@ and on Windows with a real KA15 (03-04.10.2026).
   the save got no reply and every later query timed out until a replug (the switch had stuck, the save had
   not). Not reproduced.
 
+### Measured acoustic behaviour (04.10.2026)
+Sweeps 10 Hz-22 kHz through the KA15 to a line input, each result minus Close EQ, median of 4 runs
+(repeatability 0.06-0.08 dB), registers read back over HID, current firmware.
+- LS/HS shelves play Q = register Q / sqrt(2) for every type, frequency, gain and Q tried (LS 80 Hz +4 dB 0.70 -> 0.501,
+  HS 1 kHz -1.2 dB 1.40 -> 0.978, LS 200 Hz +10 dB 1.00 -> 0.708, HS 2 kHz -10 dB 2.00 -> 1.412): fit error 0.010-0.017
+  dB rms, against 0.12-0.82 dB with the register Q. devicePEQ's shelf slope law is wrong here (0.588 dB at HS 2 kHz).
+- PK bands play the register Q (factor 0.986), without gain-dependent bandwidth (Q/A law 0.107 dB, register Q 0.041 dB).
+- With any USER preset active, output = input - 12 dB + preamp register (checked at -6, -4, -3, -1, 0, +12). Preamp
+  +12 with flat bands at -1 dBFS equals Close EQ within 0.1 dB, without extra harmonics; a +12 dB shelf at preamp 0 does not clip.
+- Contour writes shelf Q register = Q x sqrt(2) and preamp register = preamp + 12 dB (shown range -24..0 dB, shelf Q up
+  to 7.07), so squig.link/AutoEQ profiles play as designed. FiiO's app and web app show the raw registers.
+
 ## FiiO roadmap note (config/handler only; written before the KA15 work above)
 - FiiO is matched by VID 0x2972 (and 0x0A12) + **USB product name string**, not by PID (UC L16, L360-400).
   "FIIO KA15": supported, 10 bands, +-12 dB, 7 types (PK/LS/HS/LP/HP/BP/AP), writable user slots 7-9
