@@ -135,13 +135,16 @@ class NativeFiioTest {
     }
     @Test fun `exact requests frame directions effects and no hidden slot change on read`() {
         val c = codec("FIIO KA15")
-        assertEquals(listOf(187, 11, 0, 0, 22, 0, 0, 238), c.querySlot().bytes)
-        assertEquals(listOf(187, 11, 0, 0, 24, 0, 0, 238), c.queryCount().bytes)
-        assertEquals(listOf(187, 11, 0, 0, 23, 0, 0, 238), c.queryPreamp().bytes)
-        assertEquals(listOf(187, 11, 0, 0, 21, 1, 9, 0, 238), c.queryBand(9).bytes)
+        // Sequence byte and CRC-8/MAXIM exactly as captured from fiiocontrol.fiio.com (03.10.2026, frames seq 3 and 4).
+        repeat(3) { c.queryPreamp() }
+        assertEquals(listOf(0xBB, 0x0B, 0, 3, 0x18, 0, 0xF1, 0xEE), c.queryCount().bytes)
+        assertEquals(listOf(0xBB, 0x0B, 0, 4, 0x16, 0, 0x57, 0xEE), c.querySlot().bytes)
+        fun masked(f: FiioFrame) = f.bytes.toMutableList().also { it[3] = 0; it[it.size - 2] = 0 }
+        assertEquals(listOf(187, 11, 0, 0, 23, 0, 0, 238), masked(c.queryPreamp()))
+        assertEquals(listOf(187, 11, 0, 0, 21, 1, 9, 0, 238), masked(c.queryBand(9)))
         assertTrue(c.activeReadQueries(10).all { it.effect == FiioEffect.READ_ONLY && it.bytes.first() == 0xBB })
         val p = plan(c, slot = 9)
-        assertEquals(listOf(170, 10, 0, 0, 22, 1, 9, 0, 238), p.selection.bytes)
+        assertEquals(listOf(170, 10, 0, 0, 22, 1, 9, 0, 238), masked(p.selection))
         assertEquals(FiioEffect.SELECT_ACTIVE_USER_BANK, p.selection.effect)
         assertTrue(p.writes.all { it.effect == FiioEffect.WRITE_ACTIVE_BANK && it.bytes.first() == 0xAA })
         assertEquals(FiioEffect.SAVE_USER_BANK, p.save.effect)
@@ -342,5 +345,24 @@ class NativeFiioTest {
         assertEquals(emptyList(), c.activeBandQueries(0))
         assertEquals(zero.expected, snapshot(c, zero.expected))
         assertEquals(0, c.importExact(zero.expected).bands.size)
+    }
+    @Test fun `KA15 keeps ten filters so the tail is padded neutral and Q readback drift is tolerated`() {
+        val ka = codec("FIIO KA15")
+        val three = List(3) { peak(it).copy(gainDb = -3.0, q = 3.9) }
+        val padded = ka.padToDeviceCount(three)
+        assertEquals(10, padded.size)
+        assertTrue(padded.drop(3).all { it.gainDb == 0.0 && it.type == FilterType.PEAK })
+        val p = plan(ka, padded, -3.0)
+        assertEquals(10, p.expected.count)
+        assertEquals(10, p.writes.count { it.bytes[4] == FiioCodec.BAND })
+        val drift = p.expected.copy(bands = p.expected.bands.map { if (it.index < 3) it.copy(qHundredths = it.qHundredths + 2) else it })
+        assertTrue(ka.matches(p.expected, drift))
+        assertFalse(ka.matches(p.expected, p.expected.copy(bands = p.expected.bands.map { if (it.index == 0) it.copy(qHundredths = it.qHundredths + 40) else it })))
+        assertFalse(ka.matches(p.expected, p.expected.copy(bands = p.expected.bands.map { if (it.index == 0) it.copy(gainTenths = -29) else it })))
+        // Every other FiiO config stays exact and unpadded.
+        val c = codec("FIIO K13 R2R")
+        assertEquals(three, c.padToDeviceCount(three))
+        val q = plan(c, listOf(peak().copy(q = 3.9))).expected
+        assertFalse(c.matches(q, q.copy(bands = q.bands.map { it.copy(qHundredths = it.qHundredths + 1) })))
     }
 }

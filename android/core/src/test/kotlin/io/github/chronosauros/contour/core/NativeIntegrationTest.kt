@@ -38,9 +38,11 @@ class NativeIntegrationTest {
         private val c = FiioCodec(requireNotNull(target.fiio))
         var state = c.planOnExplicitSend(profileStatic(), target.destinationSlot!!, true).expected
         var selectionWorks = true; var brokenBackup = false; var savedMismatch = false; var selected = false; var saved = false; var detachOnSave = false
+        val names = mutableMapOf(0 to "TEST1", 1 to "FF5", 2 to "FH3")
         private fun word(v: Int) = listOf((v ushr 8) and 255, v and 255)
+        // KA15 name replies say LEN 8 but carry IDX + a 9-byte name field (Pixel, 04.10.2026).
         private fun reply(cmd: Int, data: List<Int>) =
-            (listOf(0xBB, 0x0B, 0, 0, cmd, data.size) + data + listOf(0, 0xEE)).map { it.toByte() }.toByteArray().copyOf(63)
+            (listOf(0xBB, 0x0B, 0, 0, cmd, if (cmd == FiioCodec.NAME) 8 else data.size) + data + listOf(0, 0xEE)).map { it.toByte() }.toByteArray().copyOf(63)
         override fun send(id: Int, kind: NativeHidReports.Kind, payload: ByteArray) {
             assertEquals(c.config.reportId, id); assertEquals(NativeHidReports.Kind.OUTPUT, kind)
             val cmd = payload[4].toInt() and 255; events += "write:$cmd"
@@ -52,12 +54,18 @@ class NativeIntegrationTest {
                 FiioCodec.PREAMP -> state = state.copy(preampTenths = v(6).toShort().toInt())
                 FiioCodec.BAND -> state = state.copy(bands = state.bands.map { if (it.index == u(6)) FiioRegisters(u(6), v(9), v(7).toShort().toInt(), v(11), u(13)) else it })
                 c.config.saveCommand -> { saved = true; if (savedMismatch) state = state.copy(preampTenths = state.preampTenths - 1) }
+                FiioCodec.NAME -> names[u(6)] = (7 until 7 + u(5) - 1).map { u(it) }.takeWhile { it != 0 }.map { it.toChar() }.joinToString("")
                 else -> error("Unexpected mutation")
             }
             mutationFinished()
             if (saved && detachOnSave) live = false
         }
         override fun request(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean): ByteArray {
+            if ((payload[0].toInt() and 255) == 0xAA) {
+                // write with its AA echo (devices that must have every echo consumed)
+                send(id, NativeHidReports.Kind.OUTPUT, payload)
+                return finishedRequest(payload.copyOf(63), matches)
+            }
             assertEquals(0xBB, payload[0].toInt() and 255)
             val cmd = payload[4].toInt() and 255; events += "read:$cmd"
             if (brokenBackup && selected && cmd == FiioCodec.BAND) error("Incomplete destination backup")
@@ -66,6 +74,7 @@ class NativeIntegrationTest {
                 FiioCodec.COUNT -> listOf(state.count)
                 FiioCodec.PREAMP -> word(state.preampTenths)
                 FiioCodec.BAND -> state.bands[payload[6].toInt() and 255].let { listOf(it.index) + word(it.gainTenths) + word(it.frequencyHz) + word(it.qHundredths) + it.typeCode }
+                FiioCodec.NAME -> (payload[6].toInt() and 255).let { i -> listOf(i) + names.getValue(i).map { it.code }.plus(List(9) { 0 }).take(9) }
                 else -> error("Unexpected read")
             }
             return finishedRequest(reply(cmd, data), matches)
@@ -226,7 +235,26 @@ class NativeIntegrationTest {
         assertEquals(-2.3, result.readback!!.preamp)
         val select = port.events.indexOf("write:22"); val pregain = port.events.indexOf("write:23")
         assertTrue(select >= 0 && pregain > select)
-        assertEquals(listOf("read:22", "read:22", "read:24", "read:23", "read:21", "read:22"), port.events.subList(select + 1, pregain))
+        assertEquals(listOf("pause:300", "read:22", "read:48", "read:48", "read:48", "read:22", "read:24", "read:23", "read:21", "read:22"), port.events.subList(select + 1, pregain))
+    }
+    @Test fun `KA15 save to another USER slot switches to it and names it after the profile`() {
+        val t = fiio(); val port = FiioPort(t)
+        val p = profile().copy(name = "Nightfall Łąka")
+        val r = NativeSession(t, port).write(p, true, targetSlot = 8)
+        assertTrue(r.verified); assertNull(r.reason)
+        assertEquals(8, port.state.activeSlot)
+        assertEquals("NIGHTFA", port.names[1]); assertEquals("TEST1", port.names[0])
+        assertEquals("NIGHTFA", (r.readback as NativeState.Fiio).names[8])
+        assertTrue(port.events.indexOf("write:22") < port.events.indexOf("write:25"))
+        assertTrue(port.events.indexOf("write:25") < port.events.indexOf("write:48"))
+    }
+    @Test fun `KA15 name reply from the Pixel parses with its 9-byte name field`() {
+        val c = FiioCodec(requireNotNull(fiio().fiio))
+        val rx = "bb 0b 00 00 30 08 00 54 45 53 54 31 00 00 00 00 ac ee".split(" ").map { it.toInt(16).toByte() }.toByteArray().copyOf(63)
+        assertEquals("TEST1", c.parseName(c.logicalReply(7, rx, 63), 7))
+        // Pixel 04.10 00:38:59: the field's last two bytes held the tail of the previous frame
+        val stale = "bb 0b 00 00 30 08 01 4e 49 47 48 54 46 41 ab ee c8 ee".split(" ").map { it.toInt(16).toByte() }.toByteArray().copyOf(63)
+        assertEquals("NIGHTFA", c.parseName(c.logicalReply(7, stale, 63), 8))
     }
     @Test fun `FiiO failed selection blocks band mutations`() {
         val t = fiio(); val port = FiioPort(t); port.state = port.state.copy(activeSlot = 0); port.selectionWorks = false
@@ -234,9 +262,15 @@ class NativeIntegrationTest {
         assertEquals(listOf("write:22"), port.events.filter { it.startsWith("write") })
     }
     @Test fun `FiiO incomplete backup blocks all parameter writes`() {
-        val t = fiio(); val port = FiioPort(t); port.brokenBackup = true
+        val t = fiio(); val port = FiioPort(t); port.state = port.state.copy(activeSlot = 0); port.brokenBackup = true
         assertFails { NativeSession(t, port).write(profile(), true) }
         assertEquals(listOf("write:22"), port.events.filter { it.startsWith("write") })
+    }
+    @Test fun `FiiO destination already active is written without a preset switch`() {
+        val t = fiio(); val port = FiioPort(t)
+        val r = NativeSession(t, port).write(profile(), true)
+        assertTrue(r.verified)
+        assertTrue(port.events.none { it == "write:22" })
     }
     @Test fun `FiiO save mismatch cannot verify or mark ON DAC`() {
         val t = fiio(); val port = FiioPort(t); port.savedMismatch = true

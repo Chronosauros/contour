@@ -53,7 +53,7 @@ data class WriteResult(
  * USB thread and releases the interface again. Writes happen only when the user asks (debug buttons).
  */
 class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevice) -> (() -> Unit) = { {} },
-    private val generationFor: () -> Long = { 0L }) {
+    private val generationFor: () -> Long = { 0L }, private val audioKeepAlive: (UsbDevice) -> AutoCloseable? = { null }) {
     private val executor = Executors.newSingleThreadExecutor { Thread(it, "contour-usb") }
     private val usb = executor.asCoroutineDispatcher()
 
@@ -61,7 +61,11 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
 
     private suspend fun <T> withDevice(device: UsbDevice, block: (HidTransport) -> T): T {
         val guard = guardFor(device)
-        return withContext(usb) { guard(); HidTransport.open(manager, device, guard).use(block).also { guard() } }
+        return withContext(usb) {
+            guard()
+            val stream = if (runCatching { target(device).fiio?.needsAudioStream }.getOrNull() == true) audioKeepAlive(device) else null
+            try { HidTransport.open(manager, device, guard).use(block).also { guard() } } finally { stream?.close() }
+        }
     }
 
     private fun protocol(device: UsbDevice): DeviceProtocol =
@@ -76,8 +80,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
         override fun pause(ms: Long) { t.checkSession(); Thread.sleep(ms); t.checkSession() }
         override fun send(id: Int, kind: NativeHidReports.Kind, payload: ByteArray) = t.sendNative(id, kind, payload)
         override fun request(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean) = t.requestNative(id, payload, matches)
-        override fun feature(id: Int) = t.featureNative(id)
-    })
+        override fun feature(id: Int) = t.featureNative(id)    })
     private fun nativeSnapshot(target: DeviceTarget, state: NativeState, ms: Long) =
         DacSnapshot("native / hardware unverified", state.slot, emptyList(), null, ms,
             protocol = null, nativeState = state, target = target)
@@ -88,6 +91,11 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
             val state = nativeSession(device, t, target).read(); t.checkSession()
             nativeSnapshot(target, state, SystemClock.elapsedRealtime() - start)
         }
+    }
+    /** KA15: renames one USER slot and returns the name read back; the EQ on the DAC is untouched. */
+    suspend fun renameSlot(device: UsbDevice, slot: Int, name: String): String = withDevice(device) { t ->
+        UsbLog.line("native rename: slot $slot -> $name")
+        nativeSession(device, t, target(device)).renameSlot(slot, name, explicitUserAction = true).also { t.checkSession() }
     }
 
     /** Hardware volume (USB Audio Class), on the same USB thread as the HID operations. */
@@ -122,7 +130,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
     }
 
     /** Profile -> device plan -> write -> read back and compare. Throws with the issues when it does not fit. */
-    suspend fun writeProfile(device: UsbDevice, profile: Profile, retainPending: (NativePendingExpected) -> Unit = {}): WriteResult {
+    suspend fun writeProfile(device: UsbDevice, profile: Profile, targetSlot: Int? = null, retainPending: (NativePendingExpected) -> Unit = {}): WriteResult {
         val target = target(device)
         if (!target.native) return when (val plan = requireNotNull(target.walkplay).plan(profile)) {
             is DevicePlan.Rejected -> throw IOException(plan.issues.joinToString("; "))
@@ -131,8 +139,10 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
         require(target.issues(profile).isEmpty()) { target.issues(profile).joinToString("; ") }
         return withDevice(device) { t ->
             val start = SystemClock.elapsedRealtime()
-            val r = nativeSession(device, t, target).write(profile, explicitHold = true, retainPending = retainPending)
+            UsbLog.line("native write: target slot ${targetSlot ?: target.destinationSlot}")
+            val r = nativeSession(device, t, target).write(profile, explicitHold = true, retainPending = retainPending, targetSlot = targetSlot)
             t.checkSession()
+            r.reason?.let { UsbLog.line("native write: ${if (r.verified) "VERIFIED, note" else "NOT VERIFIED"}: $it") }
             WriteResult(r.verified, listOfNotNull(r.reason), SystemClock.elapsedRealtime() - start, 0,
                 r.readback?.let { nativeSnapshot(target, it, 0) }, r.pending)
         }

@@ -5,6 +5,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.horizontalScroll
@@ -41,7 +42,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.changedToDown
 import androidx.compose.ui.input.pointer.pointerInput
@@ -201,8 +205,9 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
         }
         PreampRow(model, p, sender, actions)
         if (device.link == io.github.chronosauros.contour.usb.Link.CONNECTED) {
-            if (device.protocol.native) Text("Native beta recipe: not hardware tested. Readback verifies registers, not audio/persistence.", color = pal.textDim, style = Type.paramLabel)
-            device.protocol.destinationLabel?.let { Text("DESTINATION: $it", color = pal.textDim, style = Type.paramLabel) }
+            // KA15 (slot picker): read, write and persistence tested on the Pixel 04.10.2026
+            if (device.protocol.native && !device.slotPicker) Text("Native beta recipe: not hardware tested. Readback verifies registers, not audio/persistence.", color = pal.textDim, style = Type.paramLabel)
+            if (!device.slotPicker) device.protocol.destinationLabel?.let { Text("DESTINATION: $it", color = pal.textDim, style = Type.paramLabel) }
             device.sendIssues(p).firstOrNull()?.let { Text("SEND BLOCKED: $it (saved values unchanged)", color = pal.textDim, style = Type.paramLabel) }
         }
         sender.pendingReason?.let { Text("PENDING: $it", color = pal.textDim, style = Type.paramLabel) }
@@ -212,7 +217,10 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
             device.snapshot?.nativeState?.describe()?.let { Text(it, color = pal.textDim, style = Type.paramLabel) }
         }
         device.error?.let { Text(it, color = pal.textDim, style = Type.paramLabel) }
-        Row(Modifier.padding(top = Grid.GROUP - GAP).fillMaxWidth().height(ROW_H), horizontalArrangement = Arrangement.spacedBy(GAP)) {
+        // The slot row sits right above HOLD TO SEND, one group with it, so the page still fits the Pixel.
+        val slots = device.slotPicker && device.link == io.github.chronosauros.contour.usb.Link.CONNECTED
+        if (slots) SlotRow(device, Modifier.padding(top = Grid.GROUP - GAP))
+        Row(Modifier.padding(top = if (slots) 0.dp else Grid.GROUP - GAP).fillMaxWidth().height(ROW_H), horizontalArrangement = Arrangement.spacedBy(GAP)) {
             if (model.canRevertToSent(p)) LastSentButton(model, sender)
             HoldToSend(p, device, sender, actions::sendDetails, Modifier.weight(1f).fillMaxHeight())
         }
@@ -306,6 +314,83 @@ private fun HistoryButton(icon: androidx.compose.ui.graphics.vector.ImageVector,
     ) {
         Icon(icon, name, tint = if (enabled) c.text else c.textMute, modifier = Modifier.size(26.dp))
     }
+}
+
+/** KA15: USER1-3 with the names read from the DAC. Tap = the slot HOLD TO SEND writes (orange frame);
+ * by default the slot playing now, so a plain HOLD never switches presets. Long press = rename the slot. */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun SlotRow(device: DeviceController, modifier: Modifier = Modifier) {
+    val c = pal
+    val haptics = LocalHaptics.current
+    val fiio = device.protocol.fiio ?: return
+    val names = (device.snapshot?.nativeState as? io.github.chronosauros.contour.core.native.NativeState.Fiio)?.names.orEmpty()
+    val target = device.destinationSlot()
+    val shape = RoundedCornerShape(Radii.M)
+    var renaming by remember { mutableStateOf<Int?>(null) }
+    renaming?.let { slot -> RenameSlotDialog(fiio.slotLabels[slot] ?: "SLOT $slot", names[slot].orEmpty(), { renaming = null }) { device.renameSlot(slot, it) } }
+    Row(modifier.fillMaxWidth().height(COMPACT_H), horizontalArrangement = Arrangement.spacedBy(GAP)) {
+        fiio.userSlots.sorted().forEach { slot ->
+            val sel = slot == target
+            Column(
+                Modifier
+                    .weight(1f)
+                    .fillMaxHeight()
+                    .lift(shape, Lift.RAISED)
+                    .clip(shape)
+                    .background(c.surface2)
+                    .then(if (sel) Modifier.border(2.dp, c.accent, shape) else Modifier)
+                    .combinedClickable(
+                        enabled = !device.busy,
+                        onClick = { if (!sel) haptics.tap(); device.selectSlot(slot) },
+                        onLongClick = { haptics.longPress(); renaming = slot },
+                    )
+                    .testTag("slot_$slot"),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(fiio.slotLabels[slot] ?: "SLOT $slot", style = Type.paramLabel, color = if (sel) c.text else c.textDim, maxLines = 1)
+                Text(names[slot] ?: "-", style = Type.label, color = if (sel) c.text else c.textDim, maxLines = 1)
+            }
+        }
+    }
+}
+
+/** New USER slot name: A-Z and 0-9, at most 7 (all the KA15 takes). Only the name changes, not the EQ. */
+@Composable
+private fun RenameSlotDialog(label: String, current: String, onDismiss: () -> Unit, onRename: (String) -> Unit) {
+    var name by remember { mutableStateOf(current) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        shape = RoundedCornerShape(Radii.L),
+        containerColor = pal.surface2,
+        titleContentColor = pal.text,
+        textContentColor = pal.textDim,
+        title = { Text("RENAME $label", style = Type.rowName) },
+        text = {
+            androidx.compose.material3.OutlinedTextField(
+                value = name,
+                onValueChange = { name = io.github.chronosauros.contour.core.native.FiioCodec.slotName(it) },
+                label = { Text("NAME, UP TO 7: A-Z 0-9") },
+                singleLine = true,
+                keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                    capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Characters,
+                    imeAction = androidx.compose.ui.text.input.ImeAction.Done,
+                ),
+                modifier = Modifier.fillMaxWidth().testTag("slot_name"),
+            )
+        },
+        confirmButton = {
+            androidx.compose.material3.TextButton(
+                enabled = name.isNotEmpty() && name != current,
+                onClick = { onDismiss(); onRename(name) },
+                modifier = Modifier.testTag("slot_rename_confirm"),
+            ) { Text("RENAME", style = Type.label, color = pal.accent) }
+        },
+        dismissButton = {
+            androidx.compose.material3.TextButton(onClick = onDismiss) { Text("CANCEL", style = Type.label, color = pal.textDim) }
+        },
+    )
 }
 
 /** LAST SENT, beside HOLD TO SEND while the EQ differs from the one last verified on the DAC: tap = back to it. */

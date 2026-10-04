@@ -37,6 +37,22 @@ data class FiioConfig(
     // Conservative source connector input range, not an acoustic/firmware guarantee.
     val minFrequencyHz: Int = 20,
     val maxFrequencyHz: Int = 20000,
+    // Hardware-observed (KA15, 03.10.2026): the DAC ignores a lower filter count and keeps reading back
+    // maxFilters, so the unused tail must be written as neutral filters instead of shortening the count.
+    val fixedBandCount: Boolean = false,
+    // Hardware-observed: stored Q reads back 1-2 hundredths higher for Q above ~3.5 (390 -> 391, 605 -> 607).
+    val qReadbackSlack: Boolean = false,
+    // KA15 echoes every AA write; reading each echo keeps request and reply in lockstep.
+    val consumeWriteEchoes: Boolean = false,
+    // Official web app (fiiocontrol.fiio.com, captured 03.10.2026): byte 3 = host sequence, byte before EE =
+    // CRC-8/MAXIM over header..data. The device also answers zeros, so this is fidelity, not a requirement.
+    val checksumFrames: Boolean = false,
+    // Hardware-observed (KA15 on Android, 03.10.2026): HID replies stop while no USB audio is streaming;
+    // the app keeps a silent output track on the DAC for the whole HID session.
+    val needsAudioStream: Boolean = false,
+    // Official web app (KA15 capture, 03.10.2026): command 0x30 reads and writes the USER slot names,
+    // index = position in the sorted userSlots (USER1 = 0).
+    val userSlotNames: Boolean = false,
 ) {
     val hardwareGates: List<String> get() = listOf(
         "Verify exact USB identity and HID interface/descriptor/report size before I/O",
@@ -514,6 +530,12 @@ object FiioCatalog {
             capture = FiioCaptureIdentity(10610, 260, "FIIO KA15", "tests/captures/fiio_fiio_ka15.json"),
             codecBlockers = listOf(),
             evidenceCaveats = listOf("Explicit FiiO route for exact FIIO KA15 2972:0104; ignore upstream WalkPlay-SchemeNo10 collision"),
+            fixedBandCount = true,
+            qReadbackSlack = true,
+            consumeWriteEchoes = true,
+            checksumFrames = true,
+            needsAudioStream = true,
+            userSlotNames = true,
         ),
         FiioConfig(
             productName = "FIIO K13 R2R",

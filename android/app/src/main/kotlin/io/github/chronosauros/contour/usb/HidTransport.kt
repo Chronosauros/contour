@@ -95,11 +95,14 @@ class HidTransport private constructor(
                     val targets = hids.filter { it.alternateSetting == 0 }.mapNotNull { h ->
                         runCatching {
                             guard()
+                            // usbfs refuses interface-recipient requests while the kernel HID driver owns it.
+                            if (!connection.claimInterface(h, true)) throw IOException("claimInterface failed before descriptor read")
                             val length = descriptorLength(connection.rawDescriptors, h)
                             val descriptor = ByteArray(length)
                             val n = connection.controlTransfer(0x81, 0x06, 0x2200, h.id, descriptor, length, WRITE_TIMEOUT_MS)
                             guard()
-                            require(n == length) { "Short HID descriptor read" }
+                            require(n == length) { "Short HID descriptor read ($n of $length)" }
+                            UsbLog.line("HID if ${h.id} report descriptor ${UsbLog.hex(descriptor)}")
                             val epsNative = (0 until h.endpointCount).map { h.getEndpoint(it) }.filter { it.type == UsbConstants.USB_ENDPOINT_XFER_INT }
                             if (p.native) {
                                 val shape = NativeHidReports.parse(descriptor)
@@ -119,8 +122,12 @@ class HidTransport private constructor(
                                     epsNative.filter { it.direction == UsbConstants.USB_DIR_IN && it.maxPacketSize >= inSize }.singleOrNull()
                                         ?: error("No matching native interrupt IN")
                                 }
-                                // Native Output SET_REPORT remains distinct from Feature SET_REPORT.
-                                return@runCatching Target(h, input, null, null, shape)
+                                // FiiO: send like the web tool (WebHID writes to the interrupt OUT endpoint when there is one).
+                                // The KA15 silence first blamed on SET_REPORT was the USB audio stream going idle (03.10.2026).
+                                // Native Output SET_REPORT remains distinct from Feature SET_REPORT for the other families.
+                                val out = if (p.fiio != null) epsNative.firstOrNull { it.direction == UsbConstants.USB_DIR_OUT && it.maxPacketSize >= outSize } else null
+                                UsbLog.line("HID if ${h.id} native output via ${if (out != null) "interrupt OUT 0x${Integer.toHexString(out.address)}" else "SET_REPORT control"}")
+                                return@runCatching Target(h, input, out, null, shape)
                             }
                             val shape = WalkPlayCatalog.reports(descriptor)
                             val eps = (0 until h.endpointCount).map { h.getEndpoint(it) }.filter { it.type == UsbConstants.USB_ENDPOINT_XFER_INT }
@@ -130,7 +137,7 @@ class HidTransport private constructor(
                             val output = if (outs.isEmpty()) null else outs.singleOrNull()?.takeIf { it.maxPacketSize >= shape.outputBytes }
                                 ?: error("Ambiguous/undersized interrupt OUT")
                             Target(h, input, output, shape)
-                        }.getOrNull()
+                        }.onFailure { connection.releaseInterface(h); UsbLog.line("HID if ${h.id} rejected: ${it.message ?: it.javaClass.simpleName}") }.getOrNull()
                     }
                     targets.singleOrNull() ?: throw IOException("No unambiguous descriptor-proven family HID interface")
                 }
@@ -200,9 +207,10 @@ class HidTransport private constructor(
         require(kind != NativeHidReports.Kind.INPUT && id == nativeReportId)
         val wire = requireNotNull(nativeReports).wire(id, kind, payload)
         UsbLog.tx(wire)
-        val n = connection.controlTransfer(0x21, 0x09, (kind.controlType shl 8) or id, intf.id, wire, wire.size, WRITE_TIMEOUT_MS)
+        val n = if (epOut != null) connection.bulkTransfer(epOut, wire, wire.size, WRITE_TIMEOUT_MS)
+            else connection.controlTransfer(0x21, 0x09, (kind.controlType shl 8) or id, intf.id, wire, wire.size, WRITE_TIMEOUT_MS)
         checkSession()
-        require(n == wire.size) { "Short native SET_REPORT: $n/${wire.size}" }
+        require(n == wire.size) { "Short native output report: $n/${wire.size}" }
     }
     fun requestNative(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean): ByteArray {
         // One outstanding request; discard stale queued input before issuing a new query.

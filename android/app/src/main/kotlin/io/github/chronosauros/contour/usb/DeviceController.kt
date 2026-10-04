@@ -34,7 +34,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     @Volatile private var connectionEpoch = 0L
     @Volatile private var connectedName: String? = null
     val sessionGeneration: Long get() = connectionEpoch
-    val client = DacClient(manager, { d -> sessionGuard(d) }, { connectionEpoch })
+    val client = DacClient(manager, { d -> sessionGuard(d) }, { connectionEpoch }, { d -> UsbAudioKeepAlive.start(context, d) })
     var protocol by mutableStateOf(if (BuildConfig.ADVANCED) DeviceTarget.OFFLINE else DeviceTarget.MICRO)
         private set
     /** The last DAC model seen; a different one resets every device-specific state (see [refresh]). */
@@ -56,6 +56,25 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         private set
     var abBypassed by mutableStateOf(false)
         private set
+    /** The USER slot HOLD TO SEND writes on a DAC with a slot picker (KA15); null = the slot playing now. */
+    var selectedSlot by mutableStateOf<Int?>(null)
+        private set
+    val slotPicker: Boolean get() = protocol.fiio?.userSlotNames == true
+    fun destinationSlot(): Int? = if (!slotPicker) protocol.destinationSlot
+        else selectedSlot ?: snapshot?.slot?.takeIf { it in protocol.fiio!!.userSlots } ?: protocol.destinationSlot
+    fun selectSlot(slot: Int) { if (slotPicker && slot in protocol.fiio!!.userSlots) selectedSlot = slot }
+    /** Long press on a slot (KA15): writes only the name, then shows the name the DAC reads back. */
+    fun renameSlot(slot: Int, name: String) {
+        if (!slotPicker || slot !in protocol.fiio!!.userSlots) return
+        launchOp("rename", keepSnapshot = true) { d, guard ->
+            val read = client.renameSlot(d, slot, name); guard()
+            val s = snapshot; val state = s?.nativeState as? NativeState.Fiio
+            if (s != null && state != null) snapshot = s.copy(nativeState = state.copy(names = state.names + (slot to read)))
+            if (read != name) throw IOException("name reads back as $read")
+        }
+    }
+    /** The chosen slot is the one playing: only then does the read state say what that slot holds (ON DAC). */
+    val destinationActive: Boolean get() = !slotPicker || snapshot?.slot == destinationSlot()
     private var abReference: DacSnapshot? = null
     private var volumeTarget: Int? = null
     private var volumeJob: Job? = null
@@ -113,7 +132,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         explicitReadConsent = false
         busy = false
         snapshot = null; lastWrite = null; volume = null; volumeError = null
-        abBypassed = false; abReference = null; volumeTarget = null
+        abBypassed = false; abReference = null; volumeTarget = null; selectedSlot = null
         volumeJob?.cancel(); volumeJob = null
     }
     private val receiver = object : BroadcastReceiver() {
@@ -233,7 +252,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             val state = snapshot?.nativeState ?: return listOf("Complete descriptor-qualified read required before HOLD")
             return runCatching {
                 when (state) {
-                    is NativeState.Fiio -> state.codec.planOnExplicitSend(profile.copy(preampDb = profile.effectivePreampDb()), protocol.destinationSlot!!, true)
+                    is NativeState.Fiio -> state.codec.planOnExplicitSend(profile.copy(preampDb = profile.effectivePreampDb()), destinationSlot()!!, true)
                     is NativeState.Kt -> KtMicroCodec.compile(profile, state.raw)
                     is NativeState.Fosi -> FosiCodec.compile(profile, state.raw)
                     is NativeState.Moondrop -> error(state.raw.model.reasonReadOnly)
@@ -247,9 +266,10 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         if (expectedGeneration != connectionEpoch) return SendOutcome(false, "DAC SESSION CHANGED")
         val issues = sendIssues(profile)
         if (issues.isNotEmpty()) return SendOutcome(false, issues.joinToString("; "))
+        val slot = destinationSlot()
         return sendWith("send") { d ->
             val origin = identity(d); val originTarget = protocol
-            client.writeProfile(d, profile) { expected ->
+            client.writeProfile(d, profile, slot) { expected ->
                 // Captured immediately before SAVE; survives a SAVE-triggered detach, not earlier failures.
                 pendingReceipt = NativePendingReceipt(origin, originTarget, profile, expectedGeneration, expected)
                 pendingReason = pendingReceipt?.pendingReason
@@ -294,7 +314,9 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             guard(); val r = op(d); guard()
             // Strict targets (Max, catalog, native) fail closed: a mismatching read-back is not ON DAC.
             // The Micro keeps the 1.2.2/1.3.0 behaviour: its read-back stays the snapshot.
-            lastWrite = r; snapshot = if (r.verified || r.readBack?.protocol == DeviceProtocol.MICRO) r.readBack else null; error = null
+            lastWrite = r; snapshot = if (r.verified || r.readBack?.protocol == DeviceProtocol.MICRO) r.readBack else null
+            // A verified write can still carry a note (KA15: the slot name did not read back).
+            error = if (r.verified) r.mismatches.firstOrNull() else null
             if (r.pending) SendOutcome(false, pendingReason ?: r.mismatches.firstOrNull(), pending = true)
             else if (r.verified) SendOutcome(true, null) else SendOutcome(false, "READ-BACK MISMATCH: ${r.mismatches.firstOrNull()}")
         } catch (e: Exception) {

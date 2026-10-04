@@ -215,7 +215,7 @@ fun holdLabel(p: Profile, device: DeviceController, sender: Sender): String = wh
     device.link == Link.NEEDS_PERMISSION -> "TAP TO CONNECT"
     device.protocol.writeBlocker != null -> "READ ONLY"
     device.sendIssues(p).isNotEmpty() -> "INVALID EQ - EDIT BAND"
-    sender.onDacId == p.id -> "ON DAC"
+    sender.onDacId == p.id && device.destinationActive -> "ON DAC"
     sender.failedFor(p) -> "FAILED - HOLD TO RETRY"
     else -> "HOLD TO SEND"
 }

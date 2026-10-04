@@ -1,15 +1,15 @@
 # Contour advanced beta - supported devices
 
-Contour is an Android EQ manager for USB DACs. The advanced beta (`1.3.1-advbeta1`, package suffix `.advbeta`) is a separate, experimental build: it has its own package name and ships as a GitHub pre-release on the `advbeta` branch. It recognises far more devices than the stable app, and most of them have never been seen on real hardware. This file says which devices the beta recognises, at which level, and which it refuses.
+Contour is an Android EQ manager for USB DACs. The advanced beta (`1.3.2-advbeta1`, package suffix `.advbeta`) is a separate, experimental build: it has its own package name and ships as a GitHub pre-release on the `advbeta` branch. It recognises far more devices than the stable app, and most of them have never been seen on real hardware. This file says which devices the beta recognises, at which level, and which it refuses.
 
-The list is generated from the code of the beta (commit `15ba41b` merged with stable 1.3.1, plus one correction described under Known limitations). It describes what the code does, not what has been tested.
+The list is generated from the code of the beta (commit `15ba41b` merged with stable 1.3.1, plus the FiiO KA15 work tested on 03-04.10.2026 and one correction described under Known limitations). It describes what the code does, not what has been tested.
 
 ## Summary
 
 | Level | Rules | What it means |
 |---|---|---|
-| Confirmed on hardware | 2 | Writes enabled, tested on real devices (in the stable app) |
-| Implemented, needs a tester | 403 | Writes enabled, never seen on hardware |
+| Confirmed on hardware | 3 | Writes enabled, tested on real devices (in the stable app) |
+| Implemented, needs a tester | 402 | Writes enabled, never seen on hardware |
 | Read-only diagnostics | 18 | Reads the current EQ, never writes |
 | Recognised but blocked | 52 | Detected, then refused with a reason |
 | Not supported | - | No driver or transport in this beta |
@@ -31,12 +31,13 @@ Writing to a device that is not in the first level is at your own risk. Read the
 
 ## Confirmed on hardware
 
-Two devices have a hardware test behind them. In this beta they use the same code path as in stable 1.3.1. They have not yet been re-tested on this beta build.
+Three devices have a hardware test behind them, and stable 1.3.2 supports exactly these three. The Micro and the Max use the same code path as in stable; they have not yet been re-tested on this beta build. The FiiO KA15 was tested on this beta line (read, write to USER1-3 with read-back, slot names and rename) before the same code went into stable 1.3.2.
 
 | VID:PID | Device | Bands | Filter types | Tested by | Stable since |
 |---|---|---|---|---|---|
 | `3302:C20F` | CrinEar Protocol Micro | 8 | PK, LS, HS | Project owner | 1.0 |
 | `3302:43CC` | CrinEar Protocol Max | 10 | PK, LS, HS | Community tester | 1.3.0 |
+| `2972:0104` | FiiO KA15 | 10 | PK, LS, HS | Project owner | 1.3.2 |
 
 The Micro is the only device that also has A/B comparison and hardware volume control.
 
@@ -448,7 +449,7 @@ These three pairs are write-enabled only when the USB product name equals one of
 
 Accepted names: `BGVP MX1`, `DT04`, `MD-QT-042`, `MOONDROP HiFi with PD`, `DAWN PRO 2`, `CS431XX`, `ES9039 ` (trailing space), `TANCHJIM-STARGATE II`, `didiHiFi DSP Cable - Memory`, `ddHiFi DSP Cable - Memory`, `Dual CS43198`, `ES9039 HiFi DSP Audio`, `TRUTHEAR KEYX`.
 
-### FiiO (25)
+### FiiO (24)
 
 Native HID routes. The report type is the FiiO protocol variant. Rows matched by name on any product ID ask for a tap on Connect before they are used.
 
@@ -470,7 +471,6 @@ Native HID routes. The report type is the FiiO protocol variant. Rows matched by
 | `FIIO K19` | name on any PID of `2972` / `0A12` | 7 | 31 | -24..+12 | tap Connect |
 | `FIIO K17` | name on any PID of `2972` / `0A12` | 7 | 31 | -24..+12 | tap Connect |
 | `FIIO K15` | name on any PID of `2972` / `0A12` | 7 | 10 | -24..+12 | tap Connect |
-| `FIIO KA15` | `2972:0104` + exact name; the same name on any other PID of `2972` / `0A12` also opens the route after a tap on Connect | 7 | 10 | -12..+12 | - |
 | `FIIO K13 R2R` | name on any PID of `2972` / `0A12` | 7 | 10 | -24..+12 | tap Connect |
 | `FIIO BR15 R2R` | name on any PID of `2972` / `0A12` | 7 | 10 | -24..+12 | tap Connect |
 | `FIIO FP3` | name on any PID of `2972` / `0A12` | 7 | 10 | -24..+12 | tap Connect |
@@ -664,7 +664,7 @@ Contour has no driver for these, so it does not recognise them at all:
 ## Known limitations and issues
 
 - Hardware status: only the two devices in the first level have been tested, and not yet on this beta build. Everything else with writes enabled is untested.
-- `3302:43CC` (CrinEar Protocol Max) resolves in every build to the MAX target, the same code path as stable 1.3.1, which has a community hardware test. It no longer uses the generic WalkPlay row or name rule. The `Protocol Max` name rule on any other product ID still goes to the generic scheme-16 catalog path.
+- `3302:43CC` (CrinEar Protocol Max) resolves in every build to the MAX target, the same code path as stable 1.3.2, which has a community hardware test. It no longer uses the generic WalkPlay row or name rule. The `Protocol Max` name rule on any other product ID still goes to the generic scheme-16 catalog path.
 - Exception to the previous point, advanced build only: the Moondrop, FiiO, KT Micro and Fosi checks run before the WalkPlay shortcuts. The FiiO `FIIO FX17` rule includes vendor `3302`, so a `3302:C20F` or `3302:43CC` device that reports the name `FIIO FX17` or a Moondrop name leaves the Micro or Max path. This only happens with a deliberately odd USB name.
 - Known issue: a blocked KT Micro name currently shows a misleading message ("KT Micro requires its separate driver"). The device is blocked on purpose; the text is wrong. The same message appears for a KT Micro name on PIDs `0001`, `1132`, `3006` and `3016`.
 - Name rules on any product ID cannot be in the Android USB attach filter, so they are detected only while the app is open.

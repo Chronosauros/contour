@@ -14,7 +14,7 @@ import kotlin.math.sqrt
  * Replies contain opaque sequence/checksum bytes and sometimes stale trailing report data.
  * Neither is a proven acknowledgement, checksum algorithm, or persistence guarantee.
  */
-enum class FiioEffect { READ_ONLY, SELECT_ACTIVE_USER_BANK, WRITE_ACTIVE_BANK, SAVE_USER_BANK }
+enum class FiioEffect { READ_ONLY, SELECT_ACTIVE_USER_BANK, WRITE_ACTIVE_BANK, SAVE_USER_BANK, RENAME_USER_BANK }
 data class FiioFrame(val reportId: Int, val bytes: List<Int>, val effect: FiioEffect) {
     fun payload(): ByteArray = bytes.map { it.toByte() }.toByteArray()
 }
@@ -40,6 +40,9 @@ data class FiioWritePlan(
     val saveVerification: FiioSaveVerification,
     val delayAfterCountMs: Int = 100,
     val delayBeforeSaveMs: Int = 100,
+    // KA15 stops answering for a while after a bank switch and after a flash save (200 ms was too short).
+    val delayAfterSelectMs: Int = 300,
+    val delayAfterSaveMs: Int = 800,
 )
 sealed interface FiioVerification {
     data object RegistersMatchPersistenceUnproven : FiioVerification
@@ -53,6 +56,14 @@ class FiioCodec(val config: FiioConfig) {
         const val SLOT = 0x16
         const val PREAMP = 0x17
         const val COUNT = 0x18
+        const val NAME = 0x30
+        const val NAME_LENGTH = 7
+        private const val NAME_REPLY_LEN = 8
+        private const val NAME_REPLY_DATA = 10
+        /** A USER slot name the DAC is known to take: A-Z and 0-9 only (all the KA15 capture shows), at most 7. */
+        fun slotName(text: String): String =
+            java.text.Normalizer.normalize(text.replace('ł', 'l').replace('Ł', 'L'), java.text.Normalizer.Form.NFD)
+                .uppercase().filter { it in 'A'..'Z' || it in '0'..'9' }.take(NAME_LENGTH)
         private fun u(b: Byte) = b.toInt() and 255
         private fun word(p: ByteArray, offset: Int) = (u(p[offset]) shl 8) or u(p[offset + 1])
         private fun signed(p: ByteArray, offset: Int) = word(p, offset).toShort().toInt()
@@ -72,10 +83,22 @@ class FiioCodec(val config: FiioConfig) {
         require(config.userSlots.all { it in 0..255 && it in config.declaredWritableSlots && it !in config.stockSlots && it != config.bypassSlot })
     }
 
+    private var sequence = 0
     private fun frame(cmd: Int, data: List<Int>, effect: FiioEffect): FiioFrame {
         require(data.all { it in 0..255 })
         val header = if (effect == FiioEffect.READ_ONLY) listOf(0xBB, 0x0B) else listOf(0xAA, 0x0A)
-        return FiioFrame(config.reportId, header + listOf(0, 0, cmd, data.size) + data + listOf(0, 0xEE), effect)
+        if (!config.checksumFrames) return FiioFrame(config.reportId, header + listOf(0, 0, cmd, data.size) + data + listOf(0, 0xEE), effect)
+        val body = header + listOf(0, sequence++ and 255, cmd, data.size) + data
+        return FiioFrame(config.reportId, body + listOf(crc8Maxim(body), 0xEE), effect)
+    }
+    /** CRC-8/MAXIM (poly 0x31 reflected, init 0), as the official web app computes it. */
+    private fun crc8Maxim(bytes: List<Int>): Int {
+        var crc = 0
+        for (b in bytes) {
+            crc = crc xor b
+            repeat(8) { crc = if (crc and 1 != 0) (crc ushr 1) xor 0x8C else crc ushr 1 }
+        }
+        return crc
     }
     fun querySlot() = frame(SLOT, emptyList(), FiioEffect.READ_ONLY)
     fun queryCount() = frame(COUNT, emptyList(), FiioEffect.READ_ONLY)
@@ -102,6 +125,25 @@ class FiioCodec(val config: FiioConfig) {
         requireUserSlot(slot)
         return frame(SLOT, listOf(slot), FiioEffect.SELECT_ACTIVE_USER_BANK)
     }
+    private fun nameIndex(slot: Int): Int {
+        require(config.userSlotNames) { "${config.productName}: USER names are not proven" }
+        requireUserSlot(slot)
+        return config.userSlots.sorted().indexOf(slot)
+    }
+    fun queryName(slot: Int) = frame(NAME, listOf(nameIndex(slot)), FiioEffect.READ_ONLY)
+    /** Always the full 7-byte field, NUL padded: a shorter write leaves the old name's tail on the DAC. */
+    fun writeName(slot: Int, name: String): FiioFrame {
+        require(name.isNotEmpty() && name == slotName(name)) { "Unsupported USER name: $name" }
+        return frame(NAME, listOf(nameIndex(slot)) + name.map { it.code } + List(NAME_LENGTH - name.length) { 0 }, FiioEffect.RENAME_USER_BANK)
+    }
+    /** The name reply says LEN 8 but carries IDX plus a 9-byte field (CRC-checked on the Pixel, 04.10.2026).
+     * Only its first 7 bytes are the name: after a save the last two held stale report bytes (`ab ee`). */
+    fun parseName(payload: ByteArray, slot: Int): String {
+        reply(payload, NAME, NAME_REPLY_DATA, NAME_REPLY_LEN)
+        require(u(payload[6]) == nameIndex(slot)) { "Uncorrelated USER name index" }
+        return (7 until 7 + NAME_LENGTH).map { u(payload[it]) }.takeWhile { it != 0 }
+            .filter { it in 0x20..0x7E }.map { it.toChar() }.joinToString("")
+    }
     private fun validateCount(count: Int) { require(count in 0..config.maxFilters) { "Invalid active count: $count" } }
     private fun range(value: Double, min: Double, max: Double, field: String) {
         require(value.isFinite() && value in min..max) { "$field outside [$min, $max]: $value" }
@@ -110,10 +152,10 @@ class FiioCodec(val config: FiioConfig) {
     /** Strict logical reply, excluding report ID and padding. Opaque bytes 2/3 and trailer are
      * preserved by the caller's capture but not interpreted (non-zero in genuine captures).
      */
-    private fun reply(payload: ByteArray, cmd: Int, dataLength: Int) {
+    private fun reply(payload: ByteArray, cmd: Int, dataLength: Int, lenField: Int = dataLength) {
         require(payload.size == dataLength + 8) { "Wrong logical reply length" }
         require(u(payload[0]) == 0xBB && u(payload[1]) == 0x0B) { "Wrong reply header/direction" }
-        require(u(payload[4]) == cmd && u(payload[5]) == dataLength) { "Wrong command/data length" }
+        require(u(payload[4]) == cmd && u(payload[5]) == lenField) { "Wrong command/data length" }
         require(u(payload.last()) == 0xEE) { "Missing reply terminator" }
     }
     /** Explicit transport adapter: descriptor-derived actualPayloadSize, not a family default.
@@ -123,10 +165,10 @@ class FiioCodec(val config: FiioConfig) {
     fun logicalReply(reportId: Int, payload: ByteArray, actualPayloadSize: Int): ByteArray {
         require(reportId == config.reportId && payload.size == actualPayloadSize && actualPayloadSize >= 8)
         val cmd = u(payload[4])
-        val n = when (cmd) { SLOT, COUNT -> 1; PREAMP -> 2; BAND -> 8; config.saveCommand -> 1; else -> throw IllegalArgumentException("Unsupported reply command: $cmd") }
+        val n = when (cmd) { SLOT, COUNT -> 1; PREAMP -> 2; BAND -> 8; NAME -> NAME_REPLY_DATA; config.saveCommand -> 1; else -> throw IllegalArgumentException("Unsupported reply command: $cmd") }
         require(payload.size >= n + 8) { "Short transport payload" }
         val logical = payload.copyOf(n + 8)
-        reply(logical, cmd, n)
+        reply(logical, cmd, n, if (cmd == NAME) NAME_REPLY_LEN else n)
         return logical
     }
     fun parseSlot(payload: ByteArray): Int { reply(payload, SLOT, 1); return u(payload[6]) }
@@ -256,11 +298,25 @@ class FiioCodec(val config: FiioConfig) {
         require(destinationBackup.activeSlot == plan.targetSlot) { "Backup is not the selected destination" }
         return plan.writes
     }
-    /** Raw native-register comparison; no float tolerance hiding loss or mismatched count/slot. */
+    /** Devices that always keep [FiioConfig.maxFilters] filters get a neutral peaking tail (0 dB, 100 Hz, Q 1.00,
+     * the padding the upstream web tool captured on the KA15). Zero gain makes the tail inaudible. */
+    fun padToDeviceCount(bands: List<Band>): List<Band> {
+        if (!config.fixedBandCount || bands.size >= config.maxFilters) return bands
+        return bands + List(config.maxFilters - bands.size) { Band("pad-${bands.size + it}", FilterType.PEAK, 100.0, 0.0, 1.0, enabled = true) }
+    }
+
+    /** Raw native-register comparison; no float tolerance hiding loss or mismatched count/slot.
+     * Only configs with [FiioConfig.qReadbackSlack] accept the device's small Q readback drift, nothing else. */
     fun matches(expected: FiioSnapshot, actual: FiioSnapshot): Boolean {
         validateSnapshot(expected)
         validateSnapshot(actual)
-        return expected.copy(bands = expected.bands.sortedBy { it.index }) == actual.copy(bands = actual.bands.sortedBy { it.index })
+        val e = expected.copy(bands = expected.bands.sortedBy { it.index })
+        val a = actual.copy(bands = actual.bands.sortedBy { it.index })
+        if (!config.qReadbackSlack) return e == a
+        return e.copy(bands = emptyList()) == a.copy(bands = emptyList()) && e.bands.size == a.bands.size &&
+            e.bands.zip(a.bands).all { (x, y) ->
+                x.copy(qHundredths = 0) == y.copy(qHundredths = 0) && abs(x.qHundredths - y.qHundredths) <= 1 + x.qHundredths / 250
+            }
     }
     fun verification(plan: FiioWritePlan, postSave: FiioSnapshot?, reconnected: Boolean = false): FiioVerification {
         require(plan.productName == config.productName && plan.expected.activeSlot == plan.targetSlot)
