@@ -117,7 +117,7 @@ Formulas and formats, no code copied:
 
 ## 5. The website (`docs/`, not inside the app)
 
-The project website at https://chronosauros.github.io/contour/ ships these files made by others:
+The project website at https://contoureq.app/ ships these files made by others:
 - cube-motion 0.1.0, https://github.com/Danilaa1/cube-motion, (c) 2026 Daniel Belyi, MIT License: the page
   motion (rise, leave, morph, reveal), merged into one script as `docs/shared/cube-motion.js`, licence text in
   `docs/shared/cube-motion.LICENSE.txt`.
