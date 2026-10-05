@@ -120,8 +120,9 @@ h2.mega{margin-bottom:.36em}
 .film-grid{max-width:1320px;margin:0 auto}
 .film video{display:block;width:min(100%,560px);aspect-ratio:4/5;margin:14px auto 0;border-radius:8px;background:#171615}
 .film video#guide-video{width:min(100%,1100px);aspect-ratio:16/9}
-.film .cap{font-size:clamp(19px,1.6vw,24px);font-weight:600;letter-spacing:-.01em;line-height:1.25;max-width:none;margin-top:clamp(28px,4vw,52px)}
-.film .film-link{margin-top:14px;font-size:19px;font-weight:600}
+.film .cap{font-size:clamp(19px,1.6vw,24px);font-weight:600;letter-spacing:-.01em;line-height:1.25;max-width:none;margin:clamp(28px,4vw,52px) auto 0;text-align:center}
+.film .mega + .cap{margin-top:clamp(16px,2vw,28px)}
+.film .film-link{margin:14px auto 0;max-width:none;font-size:19px;font-weight:600;text-align:center}
 
 footer{padding:26px var(--gut) 34px;font-size:15px;line-height:1.55}
 footer a{margin-right:14px}
@@ -238,7 +239,6 @@ footer a{margin-right:14px}
 <section class="film on-k" id="film" aria-labelledby="film-h">
   <div class="film-grid">
     <h2 class="mega" id="film-h" data-snap><span class="ln"><span>Watch.</span></span></h2>
-    <p class="intro" data-rev>Two films, both with sound.</p>
     <p class="intro cap">The app in a minute and a half.</p>
     <video id="film-video" controls playsinline preload="none" poster="media/film-poster.jpg" aria-label="Contour demo film"><source src="media/film.mp4" type="video/mp4"></video>
     <p class="intro cap">The full guide: every function, step by step, in six minutes.</p>
