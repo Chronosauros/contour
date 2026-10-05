@@ -5,7 +5,7 @@
 **An on-the-go EQ manager for the CrinEar Protocol Micro, Protocol Max and FiiO KA15.** Keep all your EQ profiles on your phone, plug the
 dongle in, pick one and send it. Plug in, send, unplug - that is the whole routine.
 
-**Website: [chronosauros.github.io/contour](https://chronosauros.github.io/contour/)** - a 1.5-minute demo film, the full guide film and the install page.
+**Website: [contoureq.app](https://contoureq.app/)** - a 1.5-minute demo film, the full guide film and the install page.
 
 <p align="center">
   <img src="docs/images/eq-1.3.2.png" width="300" alt="EQ page on a FiiO KA15: a PEAK at 3 kHz, AUTO preamp, USER1-3 slot names, ON DAC">
@@ -37,7 +37,7 @@ Contour puts that on your phone. It is deliberately a small, simple tool:
 
 Contour does not process audio, does not need the internet and has no accounts. It only talks to the dongle.
 
-**Watch the [guide](https://chronosauros.github.io/contour/guide/)**: every function of the app in a 6-minute film, with chapters and the full text.
+**Watch the [guide](https://contoureq.app/guide/)**: every function of the app in a 6-minute film, with chapters and the full text.
 
 ## Supported hardware
 
@@ -89,17 +89,17 @@ risk (see the warranty disclaimer in `LICENSE`).
 
 ## Install
 
-**Step-by-step instructions: [chronosauros.github.io/contour/install](https://chronosauros.github.io/contour/install/)**
+**Step-by-step instructions: [contoureq.app/install](https://contoureq.app/install/)**
 
 - **[Obtainium](https://obtainium.imranr.dev/)** (recommended, updates itself): in Obtainium tap Add app and
   paste `https://github.com/Chronosauros/contour`, or on your phone tap
-  [Add Contour to Obtainium](https://chronosauros.github.io/contour/install/#obtainium).
+  [Add Contour to Obtainium](https://contoureq.app/install/#obtainium).
 - **APK**: download `contour-<version>.apk` from the [latest release](../../releases/latest) and open it on
   your phone (Android asks you to allow installs from that source).
 
 Every official build is signed by the same key: package `io.github.chronosauros.contour`, certificate
 SHA-256 `C8:C8:CA:EA:76:16:28:ED:9D:50:5F:F0:73:42:EE:5E:A0:D4:66:A4:AD:71:8D:0D:B0:77:42:2B:A3:F7:E6:01`
-(CN=Chronosaur). Each release also lists the APK's SHA-256. The [guide](https://chronosauros.github.io/contour/guide/)
+(CN=Chronosaur). Each release also lists the APK's SHA-256. The [guide](https://contoureq.app/guide/)
 takes it from there.
 
 ## Build

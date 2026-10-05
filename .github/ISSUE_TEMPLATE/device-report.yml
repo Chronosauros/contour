@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for testing. Check the [supported devices page](https://chronosauros.github.io/contour/devices/) first: the buttons there open this form with the device already filled in.
+        Thanks for testing. Check the [supported devices page](https://contoureq.app/devices/) first: the buttons there open this form with the device already filled in.
         A device moves to "Confirmed on hardware" after the maintainer has checked a report. Please do not attach anything you do not want to be public.
   - type: input
     id: device_name
