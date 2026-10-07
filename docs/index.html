@@ -126,6 +126,11 @@ h2.mega{margin-bottom:.36em}
 
 footer{padding:26px var(--gut) 34px;font-size:15px;line-height:1.55}
 footer a{margin-right:14px}
+/* a quiet pointer to other projects, above the licence line */
+.elsewhere{padding-bottom:22px;margin-bottom:22px;border-bottom:1px solid rgba(240,122,58,.25)}
+.elsewhere ul{margin:6px 0 0;padding:0;list-style:none}
+.elsewhere li{opacity:.75}
+.elsewhere a{margin-right:0;text-decoration-thickness:1px}
 
 /* phone */
 @media (max-width:820px){
@@ -162,7 +167,7 @@ footer a{margin-right:14px}
 .motion-wait .hero .dev{transform:translateY(40%)}
 .pend .ln > span{transform:translateY(108%)}
 .dev.pend{transform:translateY(34%)}
-@media print{.drift,.dev-pos,.cta,.live-box{display:none!important}}
+@media print{.drift,.dev-pos,.cta,.live-box,.elsewhere{display:none!important}}
 </style>
 <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
 <script defer src="/_vercel/insights/script.js"></script>
@@ -265,6 +270,13 @@ footer a{margin-right:14px}
 </main>
 
 <footer class="on-k">
+  <aside class="elsewhere" aria-label="Other projects">
+    <p>Curious what else I'm working on?</p>
+    <ul>
+      <li><a href="https://eqsweep.app" rel="noopener" target="_blank">EQ Sweep</a> - tune your headphones by ear.</li>
+      <li><a href="https://github.com/Chronosauros" rel="noopener" target="_blank">Other projects on GitHub</a></li>
+    </ul>
+  </aside>
   <p><a href="https://github.com/Chronosauros/contour/blob/main/LICENSE">Apache 2.0</a><a href="https://github.com/Chronosauros/contour/blob/main/THIRD_PARTY_NOTICES.md">Credits</a>Made by Chronosaur. Unofficial, not affiliated with or endorsed by CrinEar; it writes to hardware, so use it at your own risk.</p>
 </footer>
 
