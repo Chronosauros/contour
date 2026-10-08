@@ -3,6 +3,8 @@ package io.github.chronosauros.contour.ui.sheets
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -40,6 +42,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -63,12 +66,16 @@ import io.github.chronosauros.contour.core.ApoText
 import io.github.chronosauros.contour.core.DacImport
 import io.github.chronosauros.contour.core.ImportedEq
 import io.github.chronosauros.contour.model.AppModel
+import io.github.chronosauros.contour.model.ImportFile
 import io.github.chronosauros.contour.model.Importer
 import io.github.chronosauros.contour.ui.kit.ProfileIcons
 import io.github.chronosauros.contour.ui.tune.Param
 import io.github.chronosauros.contour.usb.DeviceController
 import io.github.chronosauros.contour.usb.Link
 import io.github.chronosauros.contour.usb.UsbLog
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** The bottom sheets of the app. */
 sealed interface Sheet {
@@ -104,9 +111,9 @@ private fun SheetTitle(text: String) {
     Text(text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
 }
 
-/** NAME, HEADPHONES, icon grid, DUPLICATE, SHARE. Every change is saved as you type. */
+/** NAME, HEADPHONES, icon grid, SHARE, SAVE .TXT, DUPLICATE, CLEAR EQ. Every change is saved as you type. */
 @Composable
-fun EditSheet(model: AppModel, id: String, onDone: () -> Unit) {
+fun EditSheet(model: AppModel, id: String, onDone: () -> Unit, onSaveTxt: (profileId: String, fileName: String) -> Unit) {
     val p = model.byId(id) ?: return onDone()
     val context = LocalContext.current
     var name by remember(id) { mutableStateOf(p.name) }
@@ -155,14 +162,9 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit) {
         }
         Row(horizontalArrangement = Arrangement.spacedBy(Grid.GAP)) {
             OutlinedButton(
-                onClick = { model.duplicate(id); onDone() },
-                modifier = Modifier.weight(1f).height(Grid.ROW).testTag("edit_duplicate"),
-            ) { Text("DUPLICATE") }
-            OutlinedButton(
                 onClick = {
                     val cur = model.byId(id) ?: return@OutlinedButton
-                    val preamp = runCatching { cur.effectivePreampDb() }.getOrNull() ?: return@OutlinedButton
-                    val text = ApoText.format(cur.bands, preamp)
+                    val text = runCatching { ApoText.formatProfile(cur) }.getOrNull() ?: return@OutlinedButton
                     val send = Intent(Intent.ACTION_SEND).setType("text/plain")
                         .putExtra(Intent.EXTRA_SUBJECT, cur.name)
                         .putExtra(Intent.EXTRA_TEXT, text)
@@ -171,14 +173,29 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit) {
                 enabled = sharePreamp != null,
                 modifier = Modifier.weight(1f).height(Grid.ROW).testTag("edit_share"),
             ) { Text("SHARE") }
+            OutlinedButton(
+                onClick = {
+                    val cur = model.byId(id) ?: return@OutlinedButton
+                    // the system file dialog and its answer live in MainActivity, which survives this sheet (and process death)
+                    onSaveTxt(id, ApoText.fileNameFor(cur.name))
+                },
+                enabled = sharePreamp != null,
+                modifier = Modifier.weight(1f).height(Grid.ROW).testTag("edit_save_txt"),
+            ) { Text("SAVE .TXT") }
         }
         if (sharePreamp == null) Text("Cannot share: AUTO preamp unavailable for invalid EQ")
         val clear = model.byId(id)?.let { model.isClear(it) } ?: true
-        OutlinedButton(
-            onClick = { model.clearEq(id); onDone() },
-            enabled = !clear,
-            modifier = Modifier.fillMaxWidth().height(Grid.ROW).testTag("edit_clear"),
-        ) { Text("CLEAR EQ") }
+        Row(horizontalArrangement = Arrangement.spacedBy(Grid.GAP)) {
+            OutlinedButton(
+                onClick = { model.duplicate(id); onDone() },
+                modifier = Modifier.weight(1f).height(Grid.ROW).testTag("edit_duplicate"),
+            ) { Text("DUPLICATE") }
+            OutlinedButton(
+                onClick = { model.clearEq(id); onDone() },
+                enabled = !clear,
+                modifier = Modifier.weight(1f).height(Grid.ROW).testTag("edit_clear"),
+            ) { Text("CLEAR EQ") }
+        }
         Text(
             "One flat band, preamp AUTO. UNDO on the EQ page brings the curve back.",
             style = MaterialTheme.typography.bodySmall,
@@ -187,11 +204,29 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit) {
     }
 }
 
-/** FLAT (one 1 kHz band), PASTE (clipboard APO / AutoEQ / EQ by Ear JSON), FROM DAC. The new profile opens in Tune. */
+/** FLAT (one 1 kHz band), PASTE (clipboard APO / AutoEQ / EQ by Ear JSON), OPEN FILE (a .txt), FROM DAC. The new profile opens in Tune. */
 @Composable
 fun NewProfileSheet(model: AppModel, device: DeviceController, onDone: () -> Unit) {
     val context = LocalContext.current
     var clip by remember { mutableStateOf<Pair<ImportedEq, String?>?>(null) }
+    val scope = rememberCoroutineScope()
+    var reading by remember { mutableStateOf(false) }
+    var fileMessage by remember { mutableStateOf<String?>(null) }
+    // OPEN FILE: the system file picker (no storage permission); browsers save squig.link's .txt with odd MIME types.
+    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        if (uri != null) {
+            reading = true
+            scope.launch {
+                val incoming = withContext(Dispatchers.IO) { ImportFile.fromUri(context.contentResolver, uri) }
+                reading = false
+                if (incoming.eq != null && ImportFile.create(model, incoming)) onDone()
+                else {
+                    fileMessage = incoming.error ?: model.notice
+                    model.notice = null
+                }
+            }
+        }
+    }
     LaunchedEffect(model.protocol) {
         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val text = runCatching { cm.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString() }.getOrNull()
@@ -219,9 +254,19 @@ fun NewProfileSheet(model: AppModel, device: DeviceController, onDone: () -> Uni
             onDone()
         }
         Option(
+            "OPEN FILE",
+            fileMessage ?: if (reading) "Reading the file..." else "A .txt from squig.link, graph.hangout.audio or AutoEQ",
+            !reading,
+            "new_file",
+        ) {
+            fileMessage = null
+            picker.launch(arrayOf("text/plain", "application/octet-stream", "*/*"))
+        }
+        Option(
             "FROM DAC",
             when (dacImport) {
-                is DacImport.Ready -> "Re-encodes to the DAC's registers; exact original coefficients are not guaranteed"
+                is DacImport.Ready -> dacImport.warning?.let { "WARNING: $it" }
+                    ?: "Re-encodes to the DAC's registers; exact original coefficients are not guaranteed"
                 is DacImport.Rejected -> dacImport.issues.joinToString("; ")
                 null -> "Connect the DAC first"
             },
@@ -260,7 +305,8 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
     val i = model.selectedBand
     val b = p.bands.getOrNull(i)
     if (param != Param.PREAMP && b == null) return onDone()
-    val start = if (param == Param.PREAMP) runCatching { model.shownPreamp(p) }.getOrNull() else param.of(b!!)
+    // The stored value opens as it is, even one outside the range (a preserved import): Done unchanged then keeps it.
+    val start = if (param == Param.PREAMP) p.preampDb ?: runCatching { model.shownPreamp(p) }.getOrNull() else param.of(b!!)
     if (start == null) {
         SheetFrame(onDone) {
             SheetTitle("PREAMP")
@@ -269,10 +315,11 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
         }
         return
     }
-    val initial = param.edit(start)
+    val initial = param.edit(start) // the preamp in full when it is not on a 0.1 step (Param.edit)
     val opening = remember { Triple(p.id, if (param == Param.PREAMP) null else i to b!!.id, initial) }
     var text by remember { mutableStateOf(TextFieldValue(opening.third, TextRange(0, opening.third.length))) }
     var invalid by remember { mutableStateOf(false) }
+    var reason by remember { mutableStateOf<String?>(null) }
     val focus = remember { FocusRequester() }
     val commit = commit@{
         val live = model.current
@@ -282,15 +329,30 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
             onDone()
             return@commit
         }
+        if (param == Param.PREAMP) {
+            // Nothing typed: write nothing; a stored value the device would not take stays open with the planner's reason.
+            // Typed text goes to the setter exactly as validated (it does its own 0.1 rounding); if it is not applied the
+            // sheet stays open. The sheet never closes after an edit that was not applied.
+            val typed = text.text.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() }
+            if (text.text == opening.third) {
+                val why = live.preampDb?.let { model.storedPreampRefusal(live.bands, it) }
+                if (why == null) onDone() else { reason = why; invalid = true }
+            } else if (typed == null) {
+                reason = "Enter a number"
+                invalid = true
+            } else if (model.setPreamp(typed)) {
+                onDone()
+            } else {
+                reason = model.preampRefusal(live.bands, typed) ?: "Enter a value within the range above"
+                invalid = true
+            }
+            return@commit
+        }
         val parsed = param.parse(text.text, model.protocol.caps)
-        // KA15: the preamp is not clamped (AppModel.setPreamp), so an out-of-range value is refused here.
-        val preampFits = param != Param.PREAMP || model.protocol.walkplay != null || (parsed != null && parsed in
-            (model.protocol.preampMin - model.protocol.shelfOffset(live.bands))..(model.protocol.preampMax - model.protocol.shelfOffset(live.bands)))
-        if (parsed == null || !preampFits) {
+        if (parsed == null || band == null) {
             invalid = true
         } else {
-            if (band == null) model.setPreamp(parsed)
-            else model.setBand(band.first, param.set(live.bands[band.first], parsed))
+            model.setBand(band.first, param.set(live.bands[band.first], parsed))
             onDone()
         }
     }
@@ -306,10 +368,10 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
         }
         OutlinedTextField(
             value = text,
-            onValueChange = { text = it; invalid = false },
+            onValueChange = { text = it; invalid = false; reason = null },
             label = { Text(range) },
             isError = invalid,
-            supportingText = if (invalid) ({ Text(if (param == Param.PREAMP && model.protocol.native) "Enter a value within the range above" else "Enter a valid number") }) else null,
+            supportingText = if (invalid) ({ Text(reason ?: (if (param == Param.PREAMP) "Enter a value within the range above" else "Enter a valid number")) }) else null,
             suffix = { if (param.unit.isNotEmpty()) Text(param.unit) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),

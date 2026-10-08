@@ -244,7 +244,7 @@ footer .links{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 14px}
   <div class="body">
     <p>EQ and LIBRARY are also a swipe apart.</p>
     <p>Tap a dot or a chip to select its band. Double-tap a dot to reset its gain to 0 dB. Pinch to make the selected band narrower or wider: that's its Q.</p>
-    <p>The + chip adds a band, up to eight. Long-press a chip to bypass a band, enable it again, or delete it.</p>
+    <p>The + chip adds a band, up to eight. Tap the selected chip once more to BYPASS the band, enable it again, or DELETE it; a bypassed band shows as an outlined chip. The minus chip next to + deletes the selected band. Undo brings it back.</p>
   </div>
 </section>
 
@@ -253,6 +253,7 @@ footer .links{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 14px}
   <div class="body">
     <p>One fast swipe on FREQ covers the whole range. For an exact value, tap the number and type it.</p>
     <p>PREAMP switches between AUTO and MANUAL. In MANUAL, drag it or type a value, in whole dB from -30 to 0. A quieter sound after sending is the preamp making room for your boosts.</p>
+    <p>Every value that goes to the dongle is rounded toward quieter, never louder. If AUTO would need more than -30 dB, or a band can't be stored exactly as you set it (a big treble boost with HIGH SHELF on the Protocol Max), HOLD TO SEND is blocked with a red line that says why. Lower the boost and send again.</p>
   </div>
 </section>
 
@@ -279,8 +280,8 @@ footer .links{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 14px}
   <p class="muted">Not in the film yet.</p>
   <div class="body">
     <p>Archived profiles wait in a folded section at the bottom of the Library. Open it, and swipe a card to RESTORE it.</p>
-    <p>SHARE (long-press a card) sends a profile as plain text, in the Equalizer APO format. Keep a copy somewhere: profiles live only on your phone.</p>
-    <p>PASTE (tap the + card) reads the same format, from AutoEQ, Squiglink or an EQ by Ear export. Check the curve before sending.</p>
+    <p>SHARE (long-press a card) sends a profile as plain text, in the Equalizer APO format. SAVE .TXT, next to it, saves the same text as a file that squig.link and graph.hangout.audio can import. Keep a copy somewhere: profiles live only on your phone.</p>
+    <p>PASTE (tap the + card) reads the same format, from AutoEQ, Squiglink or an EQ by Ear export. OPEN FILE, next to it, reads a .txt file, and Contour also shows up in Open with and Share for .txt files. Empty 0 dB filters are skipped. Check the curve before sending.</p>
     <p>FROM DAC (tap the + card) saves what the dongle holds right now as a new profile.</p>
     <p>Swiping the + card left saves every profile as its LAST SENT version, without sending anything. It asks first, and it can't be undone.</p>
   </div>

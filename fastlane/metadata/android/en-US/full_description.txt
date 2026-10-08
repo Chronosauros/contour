@@ -3,7 +3,7 @@
 <ul>
 <li><b>Your EQ profiles are saved</b> - one profile per pair of earphones (IEMs) or headphones, or per mood.</li>
 <li><b>Sending takes seconds</b> - hold HOLD TO SEND; Contour writes the profile to the DAC, reads it back to check every value and stores it in the dongle's memory.</li>
-<li><b>Tune on the go</b> - drag bands on the response graph, fine-tune with sliders, paste an AutoEQ or Equalizer APO parametric profile from the clipboard, or read the current EQ off the dongle. Profiles can be shared as Equalizer APO text.</li>
+<li><b>Tune on the go</b> - drag bands on the response graph, fine-tune with sliders, paste or open an AutoEQ, squig.link or Equalizer APO parametric profile (clipboard or .txt file), or read the current EQ off the dongle. Profiles can be shared as Equalizer APO text or saved as .txt files.</li>
 <li><b>Examples to start from</b> - NIGHTFALL and DUSK next to a flat profile.</li>
 </ul>
 <p>Contour is free and open source (Apache-2.0). It does not process audio, needs no internet, has no accounts, no ads and no tracking. It only talks to the dongle. Requires Android 9+ and USB host (OTG) support.</p>

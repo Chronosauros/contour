@@ -38,10 +38,13 @@ import androidx.compose.material.icons.automirrored.rounded.Redo
 import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -49,11 +52,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.changedToDown
 import androidx.compose.ui.input.pointer.pointerInput
+import kotlin.math.ceil
 import kotlin.math.floor
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
@@ -66,6 +72,7 @@ import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import io.github.chronosauros.contour.core.BandStripPlan
 import io.github.chronosauros.contour.core.FilterType
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.model.AppModel
@@ -202,12 +209,22 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
             }
         }
         PreampRow(model, p, sender, actions)
+        // AUTO that needs more than the device takes: it stays AUTO (MANUAL does not swap in -30) and says why.
+        if (p.preampDb == null) model.protocol.walkplay?.autoRefusal(p.bands)?.let {
+            Text("AUTO PREAMP: $it", color = pal.textDim, style = Type.paramLabel)
+        }
+        p.preampDb?.let { db ->
+            if (!model.protocol.preampFits(p.bands, db)) {
+                Text("PREAMP ${Param.PREAMP.number(db)} dB is outside the device range. Tap the number to type a new value, or switch to AUTO.", color = pal.textDim, style = Type.paramLabel)
+            }
+        }
         // FiiO KA15 (read, USER1-3 writes, slot names and rename tested on a Pixel 04.10.2026): why a send is blocked,
         // a note or failure from the DAC, and the USER slot row right above HOLD TO SEND (one group, so the page fits).
         val slots = device.slotPicker && device.link == Link.CONNECTED
-        if (device.protocol.native && device.link == Link.CONNECTED) {
+        // Micro/Max too: a band that does not fit the DAC's filter format, or an AUTO preamp below its floor, says why.
+        if (device.link == Link.CONNECTED) {
             device.sendIssues(p).firstOrNull()?.let { Text("SEND BLOCKED: $it (saved values unchanged)", color = pal.textDim, style = Type.paramLabel) }
-            device.error?.let { Text(it, color = pal.textDim, style = Type.paramLabel) }
+            if (device.protocol.native) device.error?.let { Text(it, color = pal.textDim, style = Type.paramLabel) }
         }
         if (slots) SlotRow(device, Modifier.padding(top = Grid.GROUP - GAP))
         Row(Modifier.padding(top = if (slots) 0.dp else Grid.GROUP - GAP).fillMaxWidth().height(ROW_H), horizontalArrangement = Arrangement.spacedBy(GAP)) {
@@ -406,47 +423,84 @@ private fun LastSentButton(model: AppModel, sender: Sender) {
     }
 }
 
+/**
+ * The band chips 1..N (scrolling), then "+" and "-" pinned at the right so they stay in reach whatever the band count.
+ * Tap = select; tap on the selected chip, or a long press on any, = BYPASS / ENABLE / DELETE sheet; "-" = delete the
+ * selected band (UNDO brings it back). A disabled band is an outlined, empty chip - like its ring on the graph.
+ */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun BandStrip(model: AppModel, p: Profile, actions: TuneActions, enabled: Boolean) {
     val c = pal
     val haptics = LocalHaptics.current
     val shape = RoundedCornerShape(Radii.M)
+    val scroll = rememberScrollState()
+    var viewport by remember { mutableIntStateOf(0) }
+    val density = LocalDensity.current
+    BoxWithConstraints(Modifier.fillMaxWidth().height(COMPACT_H)) {
+    // Everything fits: 48 dp chips, only the gap tightens a little, nothing is cut. Otherwise the numbers scroll in an
+    // area that ends at the middle of a chip (so the cut reads as "more"), and "+" / "-" stay pinned after it.
+    val showPlus = p.bands.size < model.maxBands
+    val plan = BandStripPlan.plan(maxWidth.value.toDouble(), p.bands.size, showPlus)
+    val chipW = plan.chipDp.dp
+    val gap = plan.gapDp.dp
+    // the selected chip stays in view: a band just added at the end, or one picked on the graph
+    LaunchedEffect(model.selectedBand, p.bands.size, viewport, plan.scroll, plan.chipDp) {
+        if (!plan.scroll) return@LaunchedEffect
+        val step = with(density) { (chipW + gap).toPx() }
+        val start = model.selectedBand * step
+        val end = start + with(density) { chipW.toPx() }
+        if (viewport > 0) {
+            if (start < scroll.value) scroll.animateScrollTo(start.toInt())
+            else if (end > scroll.value + viewport) scroll.animateScrollTo(ceil(end - viewport).toInt())
+        }
+    }
     Row(
-        Modifier.fillMaxWidth().height(COMPACT_H).horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(GAP),
+        Modifier.fillMaxSize(),
+        horizontalArrangement = Arrangement.spacedBy(gap),
     ) {
-        p.bands.forEachIndexed { i, b ->
-            val sel = i == model.selectedBand
-            // enabled bands stand up from the page, a disabled one is pressed into it
-            val chip = Modifier
-                .widthIn(min = COMPACT_H)
+        Row(
+            (if (plan.scroll) Modifier.width(plan.areaDp.dp) else Modifier)
                 .fillMaxHeight()
-                .let { if (b.enabled || sel) it.lift(shape, Lift.RAISED) else it }
-                .clip(shape)
-                .background(if (sel) c.accent else if (b.enabled) c.surface2 else c.track)
-                .let { if (b.enabled || sel) it else it.sink(shape) }
-            Box(
-                chip
-                    .combinedClickable(
-                        enabled = enabled,
-                        onClick = { haptics.tap(); model.selectBand(i) },
-                        onLongClick = { haptics.longPress(); model.selectBand(i); actions.band(i) },
+                .onSizeChanged { viewport = it.width }
+                .then(if (plan.scroll) Modifier.horizontalScroll(scroll) else Modifier),
+            horizontalArrangement = Arrangement.spacedBy(gap),
+        ) {
+            p.bands.forEachIndexed { i, b ->
+                val sel = i == model.selectedBand
+                // an enabled band stands up from the page; a disabled one is an empty outline (accent when selected)
+                val chip = Modifier
+                    .width(chipW)
+                    .fillMaxHeight()
+                    .let { if (b.enabled) it.lift(shape, Lift.RAISED) else it }
+                    .clip(shape)
+                    .let {
+                        if (b.enabled) it.background(if (sel) c.accent else c.surface2)
+                        else it.border(2.dp, if (sel) c.accent else c.textMute, shape)
+                    }
+                Box(
+                    chip
+                        .combinedClickable(
+                            enabled = enabled,
+                            // a first tap selects; a tap on the band that is already selected opens its sheet
+                            onClick = { haptics.tap(); if (sel) actions.band(i) else model.selectBand(i) },
+                            onLongClick = { haptics.longPress(); model.selectBand(i); actions.band(i) },
+                        )
+                        .testTag("chip_${i + 1}"),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        "${i + 1}",
+                        style = Type.chip,
+                        color = if (b.enabled) (if (sel) c.onAccent else c.text) else (if (sel) c.accent else c.textMute),
                     )
-                    .testTag("chip_${i + 1}"),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    "${i + 1}",
-                    style = Type.chip,
-                    color = if (sel) c.onAccent else if (b.enabled) c.text else c.textMute,
-                )
+                }
             }
         }
-        if (p.bands.size < model.maxBands) {
+        if (showPlus) {
             Box(
                 Modifier
-                    .widthIn(min = COMPACT_H)
+                    .width(BandStripPlan.TOUCH.dp)
                     .fillMaxHeight()
                     .lift(shape, Lift.RAISED)
                     .clip(shape)
@@ -458,7 +512,22 @@ private fun BandStrip(model: AppModel, p: Profile, actions: TuneActions, enabled
                 Icon(Icons.Rounded.Add, "add band", tint = c.text, modifier = Modifier.size(26.dp))
             }
         }
-
+        // "-": deletes the selected band; dimmed while it is the only band and while sending or A/B is busy (when "+" is dead too)
+        val canDelete = enabled && p.bands.size > 1
+        Box(
+            Modifier
+                .width(BandStripPlan.TOUCH.dp)
+                .fillMaxHeight()
+                .let { if (canDelete) it.lift(shape, Lift.RAISED) else it }
+                .clip(shape)
+                .background(if (canDelete) c.surface2 else c.surface)
+                .clickable(enabled = canDelete) { haptics.tap(); model.deleteBand(model.selectedBand) }
+                .testTag("chip_remove"),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(Icons.Rounded.Remove, "delete selected band", tint = if (canDelete) c.text else c.textMute, modifier = Modifier.size(26.dp))
+        }
+    }
     }
 }
 
@@ -654,9 +723,14 @@ private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, v
                     var atEnd = false
                     var speed = 0f
                     var ticked = 0.0 // the value the haptics last spoke for
+                    // A stored value the device would not take (a preserved import, or a HIGH SHELF edit that pushed it out)
+                    // is never touched by a drag: the slider would snap it into range and unblock the send.
+                    var blocked = false
                     detectHorizontalDragWithEnds(
                         onStart = { down ->
                             prof.value.preampDb?.let { start ->
+                                blocked = !model.protocol.preampFits(prof.value.bands, start)
+                                if (blocked) { haptics.reject(); return@let }
                                 acc = start
                                 atEnd = false
                                 speed = 0f
@@ -664,9 +738,10 @@ private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, v
                                 guard.start(down.uptimeMillis, down.position, acc)
                             }
                         },
-                        onEnd = { up -> if (up != null) guard.release(up)?.let { model.setPreamp(it) } },
+                        onEnd = { up -> if (up != null && !blocked) guard.release(up)?.let { model.setPreamp(it) } },
                     ) { ch, dx ->
                         ch.consume()
+                        if (blocked) return@detectHorizontalDragWithEnds
                         val now = prof.value.preampDb ?: return@detectHorizontalDragWithEnds
                         val hs = model.protocol.shelfOffset(prof.value.bands)
                         val lo = model.protocol.preampMin - hs
@@ -682,7 +757,7 @@ private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, v
                             atEnd = false
                         }
                         acc = raw.coerceIn(lo, hi)
-                        val next = Math.round(acc * 10) / 10.0
+                        val next = io.github.chronosauros.contour.core.Preamp.floorTo(acc) // down: never louder than the finger
                         if (next != now) model.setPreamp(next)
                         guard.move(ch.uptimeMillis, ch.position, next)
                         if (next != ticked && !guard.settling(ch.uptimeMillis)) {

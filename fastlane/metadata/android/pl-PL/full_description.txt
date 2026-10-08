@@ -3,7 +3,7 @@
 <ul>
 <li><b>Profile EQ zostają w telefonie</b> - jeden na parę słuchawek (dokanałowych lub nausznych) albo na nastrój.</li>
 <li><b>Wysłanie zajmuje kilka sekund</b> - przytrzymaj HOLD TO SEND; Contour zapisuje profil w przetworniku, odczytuje go z powrotem, sprawdza każdą wartość i zapisuje w pamięci dongla.</li>
-<li><b>Strojenie w drodze</b> - przeciągaj pasma na wykresie, dostrajaj suwakami, wklej ze schowka profil parametryczny AutoEQ lub Equalizer APO albo odczytaj aktualne EQ z dongla. Profil można udostępnić jako tekst Equalizer APO.</li>
+<li><b>Strojenie w drodze</b> - przeciągaj pasma na wykresie, dostrajaj suwakami, wklej lub otwórz profil parametryczny AutoEQ, squig.link lub Equalizer APO (schowek albo plik .txt) albo odczytaj aktualne EQ z dongla. Profil można udostępnić jako tekst Equalizer APO albo zapisać jako plik .txt.</li>
 <li><b>Przykłady na start</b> - NIGHTFALL i DUSK obok płaskiego profilu.</li>
 </ul>
 <p>Contour jest darmowy i open source (Apache-2.0). Nie przetwarza dźwięku, nie potrzebuje internetu, nie ma kont, reklam ani śledzenia. Rozmawia tylko z donglem. Wymaga Androida 9+ i obsługi USB host (OTG).</p>

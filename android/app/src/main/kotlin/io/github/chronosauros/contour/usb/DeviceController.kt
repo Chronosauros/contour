@@ -209,7 +209,8 @@ class DeviceController(private val context: Context, private val scope: Coroutin
 
     /** Writes [profile] (plan, commit, read back, compare). The result's read-back becomes the snapshot. */
     suspend fun send(profile: Profile): SendOutcome {
-        if (protocol.native) sendIssues(profile).takeIf { it.isNotEmpty() }?.let { return SendOutcome(false, it.joinToString("; ")) }
+        // A refusal (KA15 limits, Micro/Max Q30 or AUTO) happens here, before anything is written or any state is dropped.
+        sendIssues(profile).takeIf { it.isNotEmpty() }?.let { return SendOutcome(false, it.joinToString("; ")) }
         val slot = if (slotPicker) destinationSlot() else null
         return sendWith("send") { d -> client.writeProfile(d, profile, slot) }
     }
@@ -225,6 +226,15 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         }
         if (!manager.hasPermission(d)) { link = Link.NEEDS_PERMISSION; return forgetAb("NO PERMISSION") }
         if (busy) return forgetAb("DAC BUSY")
+        if (bypass) {
+            // B is entered only when A can be put back: the restoring sequence is encoded (and so checked) first.
+            val restore = reference.bands.map { it.registers }.filter { it.gain256 != 0 }.map { r ->
+                WalkPlay.BandWrite(r.index, r.freq.toDouble(), r.gain256 / 256.0, r.q256 / 256.0, r.typeCode)
+            }
+            if (runCatching { WalkPlay.temporaryBandSequence(restore, reference.slot) }.isFailure) {
+                return SendOutcome(false, "A/B blocked: a band on the DAC does not fit its filter format, so A could not be restored. Nothing was changed.")
+            }
+        }
         val epoch = connectionEpoch
         val bands = reference.bands.map { it.registers }.filter { it.gain256 != 0 }.map { r ->
             WalkPlay.BandWrite(r.index, r.freq.toDouble(), if (bypass) 0.0 else r.gain256 / 256.0, r.q256 / 256.0, r.typeCode)

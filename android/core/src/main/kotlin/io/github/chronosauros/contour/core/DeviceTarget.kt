@@ -28,6 +28,9 @@ data class DeviceTarget private constructor(
     /** The USER slot a send goes to when the app has not chosen one (KA15: USER1). */
     val destinationSlot: Int? get() = fiio?.userSlots?.minOrNull()
     fun shelfOffset(bands: List<Band>): Double = walkplay?.shelfOffset(bands) ?: 0.0
+    /** Does this stored explicit preamp fit the device with these bands? The planner's own rule (WalkPlay) or the KA15 range. */
+    fun preampFits(bands: List<Band>, preampDb: Double): Boolean =
+        walkplay?.preampFits(bands, preampDb) ?: (preampDb.isFinite() && preampDb in preampMin..preampMax)
     fun shownPreamp(profile: Profile): Double = if (native) profile.effectivePreampDb() else walkplay!!.shownPreamp(profile)
     fun issues(profile: Profile): List<String> {
         if (walkplay != null) return (walkplay.plan(profile) as? DevicePlan.Rejected)?.issues.orEmpty()

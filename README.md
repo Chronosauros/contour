@@ -46,6 +46,8 @@ Contour does not process audio, does not need the internet and has no accounts. 
 - **CrinEar Protocol Max** (USB `3302:43CC`, WalkPlay chip): 10 bands, PEAK, LOW SHELF and HIGH SHELF as native filters,
   gain -10 to +10 dB, Q 0.1 to 10, 20 Hz to 20 kHz, preamp -30 to 0 dB in whole dB, computed and sent by the app.
   Tested by a Reddit community member on a real Protocol Max (8 bands, peak and shelf filters, no crashes).
+  Large HIGH SHELF boosts at lower frequencies don't fit the Max's filter format; since 1.4.0 Contour refuses them
+  with a message instead of sending them.
 - **FiiO KA15** (USB `2972:0104`, FiiO protocol): 10 bands, PEAK, LOW SHELF and HIGH SHELF, gain -12 to +12 dB,
   Q 0.1 to 10 (shelves up to 7.07), 20 Hz to 20 kHz, preamp -24 to 0 dB. Pick USER1, USER2 or USER3 above HOLD TO
   SEND; Contour writes the profile to that slot and names the slot after it (up to 7 letters and digits). Long-press
@@ -67,15 +69,18 @@ Two pages, switched with the bar at the bottom or by swiping: **EQ** and **LIBRA
 
 - **EQ** edits the current profile: drag, tap, double-tap and pinch band nodes on the graph; PEAK, LOW
   SHELF and HIGH SHELF filters; FREQ, GAIN and Q sliders that are fine when you drag slowly and cover the
-  whole range when you drag fast; tap any number to type it; PREAMP with a MANUAL / AUTO anti-clipping bar; A/B to hear the curve off and on at the same volume (the preamp stays; Protocol Micro only for now).
+  whole range when you drag fast; tap any number to type it; tap the selected band chip again to bypass or
+  delete the band, or delete it with the minus chip; PREAMP with a MANUAL / AUTO anti-clipping bar; A/B to hear the curve off and on at the same volume (the preamp stays; Protocol Micro only for now).
 - **HOLD TO SEND** (0.7 s hold) writes the profile to the dongle, reads it back, compares every register and
   only then saves it to the dongle's memory. The button then shows ON DAC.
 - **Undo and redo** work like Ctrl+Z: one touch is one step, up to 100 steps per profile, kept after closing
   the app. **CLEAR EQ** leaves one flat band and is an undo step too. **LAST SENT** appears when the profile
   differs from what the dongle holds, and goes back to that version.
 - **LIBRARY** keeps your profiles: tap to open, long-press to rename, change the icon, duplicate or share;
-  swipe to archive or delete, with UNDO. New profiles start flat, come from the clipboard (Equalizer APO /
-  AutoEQ parametric text or EQ by Ear JSON) or are read from the dongle.
+  swipe to archive or delete, with UNDO. New profiles start flat, come from the clipboard or a .txt file
+  (Equalizer APO, AutoEQ, squig.link or graph.hangout.audio parametric text, or EQ by Ear JSON; Contour also
+  shows up in Open with and Share for .txt files) or are read from the dongle. SAVE .TXT saves a profile as a
+  file in the squig.link format.
 
 On the Protocol Micro only, HIGH SHELF bands are sent as a mirrored LOW SHELF plus preamp, which gives exactly the
 same curve shape (the Protocol Max and KA15 have native shelf filters and need no mirroring) (the maths is in `android/core/src/main/kotlin/io/github/chronosauros/contour/core/Device.kt`).
@@ -84,7 +89,8 @@ same curve shape (the Protocol Max and KA15 have native shelf filters and need n
 
 Contour writes to the DAC only when you hold HOLD TO SEND (or confirm an action on the service screen). It
 sends only commands documented in `research/protocol/PROTOCOL.md`, checked on a real device, and verifies
-every write by reading it back. Still, this is an unofficial tool talking to hardware: use it at your own
+every write by reading it back. Every value is rounded toward quieter, never louder, and a band or preamp the
+dongle can't store as asked is refused before anything is sent. Still, this is an unofficial tool talking to hardware: use it at your own
 risk (see the warranty disclaimer in `LICENSE`).
 
 ## Install

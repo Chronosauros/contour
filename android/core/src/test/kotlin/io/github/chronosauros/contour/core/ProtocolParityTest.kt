@@ -60,7 +60,17 @@ class ProtocolParityTest {
     @Test
     fun `Protocol Max ten bands native shelves and complete deterministic spare slots`() {
         val max = DeviceProtocol.MAX
-        val hs = Band("hs", FilterType.HIGH_SHELF, 4000.0, 3.0, 0.71)
+        // 8 kHz: a positive native shelf below about 5.5 kHz (Q 0.71, +3 dB) no longer fits signed Q30 and is refused.
+        val hs = Band("hs", FilterType.HIGH_SHELF, 8000.0, 3.0, 0.71)
+        val refused = max.plan(listOf(hs.copy(freqHz = 4000.0)), -4.0) as DevicePlan.Rejected
+        assertEquals(listOf("Max band 1 cannot be represented safely. Reduce the boost, raise the shelf frequency or adjust Q."), refused.issues)
+        // AUTO that needs more than -30 dB is refused with the number (it used to be sent as -30); an explicit -30 still sends.
+        val stacked = List(5) { Band("p$it", FilterType.PEAK, 1000.0, 10.0, 0.7) }
+        val tooLow = "this EQ needs -50 dB; Contour supports down to -30 dB for this device. Reduce the combined boosts."
+        assertEquals(listOf(tooLow), (max.plan(stacked, null) as DevicePlan.Rejected).issues)
+        assertEquals(listOf(tooLow), (ProtocolMicro.plan(stacked, null) as DevicePlan.Rejected).issues)
+        assertEquals(-30, (max.plan(stacked, -30.0) as DevicePlan.Ready).preampDb)
+        assertTrue((max.plan(stacked, -40.0) as DevicePlan.Rejected).issues.single().startsWith("Preamp -40 dB outside -30..0"))
         val plan = max.plan(List(10) { hs.copy(id = "$it") }, -4.0) as DevicePlan.Ready
         assertEquals(10, plan.bands.size)
         assertEquals(9, plan.bands.last().index)
@@ -105,7 +115,7 @@ class ProtocolParityTest {
     fun `Protocol Max exact import and matching include the tenth slot`() {
         val p = DeviceProtocol.MAX
         val bands = List(10) { Band("b$it", FilterType.PEAK, 1000.0 + it * 100, -1.0, 0.75) }.toMutableList()
-        bands[9] = bands[9].copy(type = FilterType.HIGH_SHELF, gainDb = 3.0)
+        bands[9] = bands[9].copy(type = FilterType.HIGH_SHELF, freqHz = 8000.0, gainDb = 3.0) // 1.9 kHz +3 dB no longer fits Q30
         val plan = p.plan(bands, -5.0) as DevicePlan.Ready
         val reads = plan.bands.map { p.parseBand(maxReply(it), it.index) }
         val imported = p.importExact(reads, plan.preampDb) as DacImport.Ready
@@ -501,6 +511,174 @@ class ProtocolParityTest {
         assertTrue(ProtocolMicro.importExact(disabled, 0) is DacImport.Rejected)
     }
 
+    private fun register(p: DeviceProtocol, bands: List<Band>, pre: Double?): Int? = (p.plan(bands, pre) as? DevicePlan.Ready)?.preampDb
+
+    /**
+     * Round 6: what is stored and sent is never louder than what the file, the typed number or AUTO asks for.
+     * One device rule: register = floor(d + 1e-6) must be in -30..0 (0 < d < 1 sends 0, d >= 1 is refused).
+     */
+    @Test
+    fun `preamp is rounded down and never louder than asked`() {
+        val flat = listOf(Band("p", FilterType.PEAK, 1000.0, 1.0, 0.7))
+        val hsUp = listOf(Band("h", FilterType.HIGH_SHELF, 8000.0, 4.0, 0.7))
+        val hsDown = listOf(Band("h", FilterType.HIGH_SHELF, 8000.0, -4.0, 0.7))
+        val hs394 = listOf(Band("h", FilterType.HIGH_SHELF, 8000.0, 3.94, 0.7))
+        val hs396 = listOf(Band("h", FilterType.HIGH_SHELF, 8000.0, 3.96, 0.7))
+        val max = DeviceProtocol.MAX; val micro = DeviceProtocol.MICRO
+        fun ok(p: DeviceProtocol, b: List<Band>, pre: Double) = p.plan(b, pre) is DevicePlan.Ready
+        // (protocol, bands, file value, stored value, register or null when refused)
+        class Case(val p: DeviceProtocol, val bands: List<Band>, val x: Double, val stored: Double, val reg: Int?)
+        val cases = listOf(
+            Case(max, flat, -30.04, -30.1, null), Case(max, flat, -30.4, -30.4, null),
+            Case(max, flat, -29.6, -29.6, -30), Case(max, flat, -12.3, -12.3, -13),
+            Case(max, flat, -6.4, -6.4, -7), // an AutoEQ file with max boost 6.4: register -7 (round 4 sent -6)
+            Case(max, flat, 0.16, 0.1, 0), Case(max, flat, 0.04, 0.0, 0), Case(max, flat, 5.0, 5.0, null),
+            Case(max, flat, 0.0, 0.0, 0), Case(max, flat, -6.0, -6.0, -6),
+            Case(micro, hsUp, -34.04, -34.1, null), Case(micro, hsUp, -33.6, -33.6, -30),
+            Case(micro, hsDown, -26.4, -26.4, null), Case(micro, hsDown, -25.6, -25.6, -30),
+            Case(micro, hsDown, 3.5, 3.5, -1), // round 5 sent register 0 here
+            Case(micro, hsDown, 5.0, 5.0, null),
+            Case(micro, flat, -40.0, -40.0, null),
+            Case(micro, hs394, -3.95, -4.0, -1), Case(micro, hs394, -3.94, -4.0, -1), Case(micro, hs394, -3.9, -3.9, 0),
+            Case(micro, hs396, -33.96, -34.0, null), // flooring would flip the verdict: the exact value is kept (see below)
+        )
+        for (c in cases) {
+            val stored = c.p.fitImportedPreamp(c.bands, c.x)
+            if (c.x == -33.96) { assertEquals(c.x, stored, "verdict flip keeps the exact file value") ; continue }
+            assertEquals(c.stored, stored, "stored ${c.p} ${c.x}")
+            assertEquals(c.reg != null, c.p.preampFits(c.bands, stored), "fits ${c.p} ${c.x} -> $stored")
+            assertEquals(c.reg, register(c.p, c.bands, stored), "register ${c.p} ${c.x} -> $stored")
+            assertEquals(true, stored <= c.x, "never louder: ${c.x} -> $stored")
+            // typed values use the same rounding: accepted iff the stored (floored) value passes
+            assertEquals(c.reg != null, c.p.preampFits(c.bands, Preamp.floorTo(c.x)), "typed ${c.p} ${c.x}")
+        }
+        // the kept off-grid value: accepted, register -30, and floored -34.0 would be refused
+        assertEquals(true, micro.preampFits(hs396, -33.96)); assertEquals(false, micro.preampFits(hs396, -34.0))
+        assertEquals(-30, register(micro, hs396, -33.96))
+        // refusal texts
+        val microText = "Preamp -34.1 dB needs device preamp -30.1 dB (HIGH SHELF adjustment +4 dB), outside -30..0 dB register range"
+        assertEquals(listOf(microText), (micro.plan(hsUp, -34.1) as DevicePlan.Rejected).issues)
+        assertEquals(microText, micro.preampRefusal(hsUp, -34.1))
+        assertEquals("Preamp -30.04 dB outside -30..0 dB policy", max.preampRefusal(flat, -30.04))
+        assertEquals("Preamp 5 dB outside -30..0 dB policy", max.preampRefusal(flat, 5.0))
+        assertEquals(null, max.preampRefusal(flat, 0.04)); assertEquals(null, max.preampRefusal(flat, -30.0))
+        assertEquals("-30.04", dbText(-30.04)); assertEquals("-34", dbText(-34.0)); assertEquals("-30.1", dbText(-34.1 + 4.0))
+        assertEquals("Preamp -30.00004 dB outside -30..0 dB policy", max.preampRefusal(flat, -30.00004))
+        val exact = micro.preampRefusal(hs396, -33.96004)!!
+        assertEquals(true, exact.startsWith("Preamp -33.96004 dB needs device preamp -30.0000"), exact)
+        // AUTO that needs more than -30 is refused; AUTO that fits is not
+        val stack = { n: Int -> List(n) { Band("s$it", FilterType.PEAK, 1000.0, 10.0, 0.7) } }
+        for (p in listOf(micro, max)) for (n in 1..5) {
+            assertEquals(p.plan(stack(n), null) is DevicePlan.Rejected, p.autoRefusal(stack(n)) != null, "$p AUTO with $n stacked boosts")
+        }
+        assertEquals("this EQ needs -50 dB; Contour supports down to -30 dB for this device. Reduce the combined boosts.", max.autoRefusal(stack(5)))
+        assertEquals(null, micro.autoRefusal(stack(2)))
+        // AUTO to MANUAL: the lowest 0.1 dB value with AUTO's own register (R5-1: HS +3.94 AUTO is register 0; -3.9 keeps it)
+        assertEquals(-3.9, micro.manualForAuto(hs394)); assertEquals(0, register(micro, hs394, null)); assertEquals(0, register(micro, hs394, -3.9))
+        assertEquals(-7.0, max.manualForAuto(listOf(Band("p", FilterType.PEAK, 1000.0, 6.4, 0.7))))
+        // sweep over shelf gains, peaks and stacks: the manual value reproduces AUTO's register, and one step lower would not
+        for (p in listOf(micro, max)) for (g in 0..1000) {
+            val bands = listOf(Band("h", FilterType.HIGH_SHELF, 8000.0, g / 100.0, 0.7), Band("k", FilterType.PEAK, 300.0, g % 7 / 2.0, 1.0))
+            val auto = register(p, bands, null) ?: continue
+            val m = p.manualForAuto(bands)!!
+            assertEquals(auto, register(p, bands, m), "$p AUTO->MANUAL $g")
+            assertEquals(true, (register(p, bands, m - 0.1) ?: -999) < auto, "$p lowest $g")
+            assertEquals(m, Math.round(m * 10) / 10.0, "$p one decimal $g")
+        }
+        // property sweep: imports, typed values - the stored value and the register are never above what was asked
+        for (p in listOf(micro, max)) for (bands in listOf(flat, hsUp, hsDown, hs394, hs396)) for (i in -6000..500) {
+            val x = i / 100.0
+            val stored = p.fitImportedPreamp(bands, x)
+            assertEquals(p.preampFits(bands, x), p.preampFits(bands, stored), "$p $x -> $stored verdict")
+            assertEquals(true, stored <= x + 1e-9, "$p $x -> $stored stored above asked")
+            val d = x + p.shelfOffset(bands)
+            val r = register(p, bands, stored)
+            if (r != null) assertEquals(true, r <= Math.floor(d + 1e-6).toInt(), "$p $x -> $stored register $r above floor(d)")
+            val typed = Preamp.floorTo(x)
+            assertEquals(true, typed <= x + 1e-9); assertEquals(typed, Math.round(typed * 10) / 10.0)
+            if (p.preampFits(bands, Preamp.floorTo(x)) == p.preampFits(bands, x)) assertEquals(Preamp.floorTo(x), stored, "$p $x floor")
+            assertEquals(p.preampFits(bands, stored), ok(p, bands, stored), "$p $x plan")
+        }
+        // floorTo keeps grid values and goes down otherwise
+        assertEquals(-3.2, Preamp.floorTo(-3.2)); assertEquals(-3.3, Preamp.floorTo(-3.25)); assertEquals(3.2, Preamp.floorTo(3.25))
+        assertEquals(0.0, Preamp.floorTo(0.04)); assertEquals(-0.1, Preamp.floorTo(-0.04)); assertEquals(-7.0, Preamp.floorTo(-6.4, 1.0))
+    }
+
+    /** Round 7: finite input never becomes Infinity, an exported gain/preamp is the exact value, AUTO to MANUAL finds the lowest tenth. */
+    @Test
+    fun `huge values stay finite, export is exact and AUTO to MANUAL picks the lowest tenth`() {
+        val flat = listOf(Band("p", FilterType.PEAK, 1000.0, 1.0, 0.7))
+        val big = "1" + "0".repeat(308)
+        for (sign in listOf("", "-")) {
+            val eq = ApoText.parse("Preamp: $sign$big dB\nFilter 1: ON PK Fc 1000 Hz Gain 1 dB Q 0.7\n")
+            val x = eq.preampDb!!
+            assertEquals(true, x.isFinite()); assertEquals(x, Preamp.floorTo(x))
+            for (p in listOf(DeviceProtocol.MICRO, DeviceProtocol.MAX)) {
+                val stored = p.fitImportedPreamp(eq.bands, x)
+                assertEquals(true, stored.isFinite()); assertEquals(false, p.preampFits(eq.bands, stored))
+                assertEquals(true, p.plan(eq.bands, stored) is DevicePlan.Rejected)
+                assertEquals(true, p.preampRefusal(eq.bands, stored)!!.startsWith("Preamp "))
+            }
+            val prof = Profile("i", "n", bands = eq.bands, preampDb = x, createdAt = 0, updatedAt = 0)
+            assertEquals(prof, Json.decodeFromString(Profile.serializer(), Json.encodeToString(Profile.serializer(), prof)))
+            assertEquals(x, ApoText.parse(ApoText.format(eq.bands, x)).preampDb)
+            val hugeGain = ApoText.parse("Preamp: 0 dB\nFilter 1: ON PK Fc 1000 Hz Gain $sign$big dB Q 0.7\n")
+            assertEquals(hugeGain.bands[0].gainDb, ApoText.parse(ApoText.format(hugeGain.bands, 0.0)).bands[0].gainDb)
+        }
+        assertEquals(Double.NaN.toString(), Preamp.floorTo(Double.NaN).toString())
+        // export: on-grid values exactly as before, anything else the exact decimal (never rounded up, never a different verdict)
+        assertEquals("Preamp: -6.1 dB\n", ApoText.format(emptyList(), -6.1)); assertEquals("Preamp: 0.0 dB\n", ApoText.format(emptyList(), 0.0))
+        assertEquals("Preamp: -12.0 dB\n", ApoText.format(emptyList(), -12.0)); assertEquals("Preamp: -6.25 dB\n", ApoText.format(emptyList(), -6.25))
+        val two = ApoText.format(listOf(Band("a", FilterType.PEAK, 1000.0, 3.25, 0.71), Band("b", FilterType.PEAK, 2000.0, 0.0, 1.0)), -1.0)
+        assertEquals(true, "Gain 3.25 dB" in two && "Gain 0.0 dB" in two, two)
+        val text = ApoText.format(listOf(Band("a", FilterType.PEAK, 1000.0, -2.344, 0.71)), -30.0000005)
+        assertEquals(true, "Gain -2.344 dB" in text && "Preamp: -30.0000005 dB" in text, text)
+        val back = ApoText.parse(text)
+        assertEquals(-30.0000005, back.preampDb); assertEquals(-2.344, back.bands[0].gainDb)
+        assertEquals(DeviceProtocol.MAX.preampFits(flat, -30.0000005), DeviceProtocol.MAX.preampFits(flat, back.preampDb!!))
+        val rnd = java.util.Random(5)
+        repeat(1000) {
+            val g = Math.round((rnd.nextDouble() * 24 - 12) * 10000) / 10000.0; val pre = Math.round((rnd.nextDouble() * 35 - 30) * 10000) / 10000.0
+            if (g == 0.0 || pre == 0.0) return@repeat
+            val t = ApoText.parse(ApoText.format(listOf(Band("a", FilterType.PEAK, 1000.0, g, 0.7)), pre))
+            assertEquals(pre, t.preampDb); assertEquals(g, t.bands[0].gainDb)
+        }
+        // AUTO to MANUAL: the lowest tenth, also at the tolerance edge (R6-4)
+        val hsEdge = listOf(Band("h", FilterType.HIGH_SHELF, 8000.0, 3.9999995, 0.7))
+        assertEquals(0, register(DeviceProtocol.MICRO, hsEdge, null))
+        assertEquals(-4.0, DeviceProtocol.MICRO.manualForAuto(hsEdge)); assertEquals(0, register(DeviceProtocol.MICRO, hsEdge, -4.0))
+        assertEquals(-3.9, DeviceProtocol.MICRO.manualForAuto(listOf(Band("h", FilterType.HIGH_SHELF, 8000.0, 3.94, 0.7))))
+    }
+
+    private fun fromDacBand(w: WalkPlay.BandWrite, type: FilterType) =
+        WalkPlay.DeviceBand(w.registers(), 0, ByteArray(20), true, type, w.freq, w.gainDb, w.q)
+
+    /** Round 5: a DAC that already holds a band the guard refuses to send still loads, with a warning; sending stays blocked. */
+    @Test
+    fun `FROM DAC loads a band the guard refuses with a warning and sending stays blocked`() {
+        val max = DeviceProtocol.MAX
+        val hsBad = WalkPlay.BandWrite(0, 1000.0, 3.0, 0.71, WalkPlay.TYPE_HSQ)
+        val reads = max.flatPlan().bands.map { fromDacBand(it, FilterType.PEAK) }.toMutableList()
+        assertEquals(null, (max.importExact(reads, -3) as DacImport.Ready).warning) // a normal DAC state: no warning
+        reads[0] = fromDacBand(hsBad, FilterType.HIGH_SHELF)
+        val loaded = max.importExact(reads, -3) as DacImport.Ready
+        assertEquals(FilterType.HIGH_SHELF, loaded.eq.bands[0].type)
+        assertEquals(3.0, loaded.eq.bands[0].gainDb)
+        assertEquals(true, loaded.warning!!.startsWith("Max band 1 cannot be represented safely."), loaded.warning)
+        assertEquals(true, "stays blocked" in loaded.warning!!)
+        assertEquals(true, max.plan(loaded.eq.bands, loaded.eq.preampDb) is DevicePlan.Rejected)
+        // Micro: an extreme peak written by another tool
+        val pkBad = WalkPlay.BandWrite(0, 12000.0, 10.0, 0.1, WalkPlay.TYPE_PK)
+        val microReads = ProtocolMicro.flatPlan().bands.map { fromDacBand(it, FilterType.PEAK) }.toMutableList()
+        microReads[0] = fromDacBand(pkBad, FilterType.PEAK)
+        val microLoaded = ProtocolMicro.importExact(microReads, -3) as DacImport.Ready
+        assertEquals(true, microLoaded.warning!!.startsWith("Micro band 1 cannot be represented safely."), microLoaded.warning)
+        assertEquals(true, ProtocolMicro.plan(microLoaded.eq.bands, microLoaded.eq.preampDb) is DevicePlan.Rejected)
+        // a state that does not re-encode exactly is still refused, as before
+        microReads[1] = fromDacBand(WalkPlay.BandWrite(1, 1000.0, 3.0, 0.71, WalkPlay.TYPE_HSQ), FilterType.HIGH_SHELF)
+        assertEquals(true, ProtocolMicro.importExact(microReads, -3) is DacImport.Rejected)
+    }
+
     @Test
     fun `shelf with invalid biquad cannot reach the wire`() {
         val shelf = Band("s", FilterType.LOW_SHELF, 1000.0, 10.0, 10.0)
@@ -536,7 +714,8 @@ class ProtocolParityTest {
         assertTrue(tooHigh.issues.any { it.contains("HIGH SHELF adjustment") })
         assertEquals(-30, (ProtocolMicro.plan(listOf(shelf), -34.0) as DevicePlan.Ready).preampDb)
         assertTrue(ProtocolMicro.plan(listOf(shelf), -34.1) is DevicePlan.Rejected)
-        assertEquals(0, (ProtocolMicro.plan(listOf(shelf), -3.9) as DevicePlan.Ready).preampDb)
+        assertEquals(0, (ProtocolMicro.plan(listOf(shelf), -3.9) as DevicePlan.Ready).preampDb) // +0.1 is sent as 0, never louder
+        assertTrue(ProtocolMicro.plan(listOf(shelf), -2.9) is DevicePlan.Rejected) // +1.1 is refused
     }
 
     // ---- 6: which profile is on the DAC -----------------------------------------------------------

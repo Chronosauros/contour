@@ -127,6 +127,17 @@ object Dsp {
 
 /** Auto preamp: whole dB, never positive. */
 object Preamp {
+    /**
+     * Rounds [x] dB DOWN (toward quieter, never louder) to a multiple of [step]; the 1e-6 guard keeps a value that is
+     * already on the grid (-3.2 stays -3.2). Every rounding of a stored or sent preamp goes through here.
+     */
+    fun floorTo(x: Double, step: Double = 0.1): Double {
+        // Far outside any device range there is no grid to land on, and scaling a huge finite value could overflow to
+        // Infinity: return it unchanged (the planner refuses it as before). Non-finite input is returned as is.
+        if (!x.isFinite() || kotlin.math.abs(x) >= 1e9) return x
+        return if (step == 0.1) kotlin.math.floor(x * 10 + 1e-6) / 10.0 else kotlin.math.floor(x / step + 1e-6) * step
+    }
+
     private const val SCAN_POINTS = 1024
     private val SCAN_GRID: Dsp.FreqGrid by lazy { Dsp.FreqGrid(Dsp.logFreqs(SCAN_POINTS)) }
 

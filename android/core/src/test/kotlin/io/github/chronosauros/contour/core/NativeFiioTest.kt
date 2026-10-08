@@ -183,19 +183,39 @@ class NativeFiioTest {
     @Test fun `native quantization negative pregain zero is written and disabled band is zero gain`() {
         val c = codec("FIIO KA15")
         val b = peak().copy(freqHz = 1000.9, gainDb = -3.26, q = 0.716)
-        // KA15 register = intended pregain + 12 dB (measured 04.10.2026): -4.35 -> -43 + 120 = 77.
+        // KA15 register = intended pregain + 12 dB (measured 04.10.2026). Pregain is rounded DOWN (quieter, never louder):
+        // -4.35 -> -44 tenths + 120 = 76 (it was -43 + 120 = 77 with nearest rounding). On the 0.1 dB grid nothing changes.
         val p = plan(c, listOf(b), -4.35)
-        assertEquals(FiioRegisters(0, 1000, -32, 72, 0), p.expected.bands.single())
-        assertEquals(77, p.expected.preampTenths)
-        assertEquals(listOf(0, 77), p.writes.first().bytes.subList(6, 8))
+        // Band gain -3.26 is rounded DOWN too: -33 tenths (it was -32, JS truncation toward zero, a shallower cut).
+        assertEquals(FiioRegisters(0, 1000, -33, 72, 0), p.expected.bands.single())
+        assertEquals(76, p.expected.preampTenths)
+        assertEquals(listOf(0, 76), p.writes.first().bytes.subList(6, 8))
+        assertEquals(77, plan(c, listOf(b), -4.3).expected.preampTenths) // already on the grid: unchanged
         assertEquals(-43, c.parsePreamp(reply(FiioCodec.PREAMP, pair(-43))))
         val zero = plan(c, preamp = -12.0)
         assertEquals(listOf(0, 0), zero.writes.first().bytes.subList(6, 8))
         val negative = FiioCodec(c.config.copy(preampOffsetDb = 0.0))
-        assertEquals(listOf(255, 213), plan(negative, listOf(b), -4.35).writes.first().bytes.subList(6, 8))
+        assertEquals(listOf(255, 212), plan(negative, listOf(b), -4.35).writes.first().bytes.subList(6, 8))
         assertEquals(0, plan(c, listOf(b.copy(enabled = false))).expected.bands.single().gainTenths)
         assertEquals(1, plan(c, listOf(peak().copy(type = FilterType.LOW_SHELF))).expected.bands.single().typeCode)
         assertEquals(2, plan(c, listOf(peak().copy(type = FilterType.HIGH_SHELF))).expected.bands.single().typeCode)
+    }
+    @Test fun `band gain and pregain are rounded down never louder and keep grid values`() {
+        val c = codec("FIIO KA15")
+        fun tenths(g: Double) = plan(c, listOf(peak().copy(gainDb = g))).expected.bands.single().gainTenths
+        for (k in -120..120) assertEquals(k, tenths(k / 10.0), "grid value ${k / 10.0} is unchanged")
+        assertEquals(-24, tenths(-2.34)); assertEquals(23, tenths(2.34)); assertEquals(-3, tenths(-0.21)); assertEquals(0, tenths(0.09))
+        val rnd = java.util.Random(7)
+        repeat(2000) {
+            val g = (rnd.nextDouble() * 24 - 12).let { Math.round(it * 1000) / 1000.0 } // 3 decimals, off the grid
+            val t = tenths(g)
+            assertTrue(t / 10.0 <= g + 1e-6, "gain $g sent as ${t / 10.0} is louder")
+            assertTrue(t / 10.0 > g - 0.1 - 1e-6, "gain $g sent as ${t / 10.0} is more than a step lower")
+        }
+        for (p in listOf(-30.04, -4.35, -0.01, -11.99)) {
+            val t = plan(c, preamp = p.coerceIn(c.config.preampMinDb, c.config.preampMaxDb)).expected.preampTenths - 120
+            assertTrue(t / 10.0 <= p.coerceIn(c.config.preampMinDb, c.config.preampMaxDb) + 1e-6)
+        }
     }
     @Test fun `each model preserves capacity range save command and denies every forbidden slot`() {
         for (c in FiioCatalog.rules.filter { it.codecBlockers.isEmpty() }.map { FiioCodec(it) }) {

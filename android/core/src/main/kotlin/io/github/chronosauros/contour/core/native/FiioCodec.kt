@@ -69,6 +69,8 @@ class FiioCodec(val config: FiioConfig) {
         private fun signed(p: ByteArray, offset: Int) = word(p, offset).toShort().toInt()
         // JS Math.round tie direction, not Kotlin bankers rounding.
         private fun quantize(v: Double, scale: Int) = floor(v * scale + 0.5).toInt()
+        /** Tenths of a dB (pregain, band gain) rounded DOWN: quieter, never louder; a value already on the 0.1 dB grid is unchanged. */
+        private fun tenthsDown(v: Double) = floor(v * 10 + 1e-6).toInt()
     }
 
     init {
@@ -257,8 +259,8 @@ class FiioCodec(val config: FiioConfig) {
         require(band.q.isFinite() && band.q > 0) { "Invalid Q" }
         // Disabled filters retain shape/frequency/Q but write exactly zero gain. Validate all input.
         // Source splitUnsignedValue and fiioGainBytesFromValue use JS bitwise truncation;
-        // only pregain and Q use Math.round. Compensation uses the realised native gain.
-        val gain = if (band.enabled) (band.gainDb * 10).toInt() else 0
+        // Gains and pregain round DOWN here (tenthsDown), never toward zero or nearest; only Q uses Math.round. Compensation uses the realised native gain.
+        val gain = if (band.enabled) tenthsDown(band.gainDb) else 0 // was JS truncation toward zero: a cut got shallower
         val q = nativeQ(band.type, band.q, gain / 10.0)
         // Only an ULP-scale inverse-transform allowance, never clamp an unrepresentable Q.
         // This lets exact native boundary registers survive floating-point inverse/import.
@@ -291,7 +293,7 @@ class FiioCodec(val config: FiioConfig) {
         // Checked in the intended domain (register range minus the offset) so the message names what the user sets.
         range(preamp, config.preampMinDb, config.preampMaxDb, "Pregain")
         val registers = bands.mapIndexed { index, band -> compileBand(band, index) }
-        val expected = FiioSnapshot(config.productName, targetSlot, bands.size, quantize(preamp, 10) + offsetTenths, registers)
+        val expected = FiioSnapshot(config.productName, targetSlot, bands.size, tenthsDown(preamp) + offsetTenths, registers)
         val writes = listOf(frame(PREAMP, pair(expected.preampTenths), FiioEffect.WRITE_ACTIVE_BANK),
             frame(COUNT, listOf(expected.count), FiioEffect.WRITE_ACTIVE_BANK)) + registers.map { writeBand(it) }
         return FiioWritePlan(config.productName, targetSlot, expected, selectUserSlot(targetSlot), querySlot(),
@@ -351,7 +353,7 @@ class FiioCodec(val config: FiioConfig) {
         }
         require(bands.mapIndexed { i, b -> compileBand(b, i) } == snapshot.bands.sortedBy { it.index }) { "Import cannot reproduce exact native registers" }
         val preamp = intendedPreampDb(snapshot.preampTenths)
-        require(quantize(preamp, 10) + offsetTenths == snapshot.preampTenths) { "Import cannot reproduce exact native pregain" }
+        require(tenthsDown(preamp) + offsetTenths == snapshot.preampTenths) { "Import cannot reproduce exact native pregain" }
         return FiioExactEq(bands, preamp)
     }
 }
