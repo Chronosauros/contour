@@ -183,7 +183,14 @@ class NativeKtFosiTest {
     @Test fun `KT compiles ten writes save and complete expected state before returning`() {
         val plan = KtMicroCodec.compile(profile(listOf(peak(gain = -2.25))), ktBefore())
         assertEquals(11, plan.frames.size); assertEquals(10, plan.frames.count { u(it.payload[4]) == 0x57 })
-        assertEquals(-22, plan.expectedBands.first().gainTenths)
+        assertEquals(-23, plan.expectedBands.first().gainTenths) // -2.25 rounds DOWN (a cut never gets shallower); it was -22 (nearest)
+        for (k in -100..100) assertEquals(k, KtMicroCodec.compile(profile(listOf(peak(gain = k / 10.0))), ktBefore()).expectedBands.first().gainTenths)
+        val rnd = java.util.Random(11)
+        repeat(1000) {
+            val g = Math.round((rnd.nextDouble() * 20 - 10) * 10000) / 10000.0
+            val t = KtMicroCodec.compile(profile(listOf(peak(gain = g))), ktBefore()).expectedBands.first().gainTenths
+            assertTrue(t / 10.0 <= g + 1e-6 && t / 10.0 > g - 0.1 - 1e-6, "KT gain $g sent as ${t / 10.0}")
+        }
         assertEquals(0x53, u(plan.frames.last().payload[4])); assertEquals(1000, plan.frames.last().delayAfterMs)
         assertFalse(plan.frames.last().expectsReply); assertTrue(plan.reconnectAfterSave)
         assertTrue(plan.frames.all { it.mutating && it.payload.size == 10 })

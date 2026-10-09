@@ -168,8 +168,35 @@ object WalkPlay {
     fun bandWrite(index: Int, band: Band): BandWrite =
         BandWrite(index, band.freqHz, band.gainDb, band.q, typeCode(band.type))
 
-    /** computeIIRFilter: 5 x int32 LE, Q30 - b0, b1, b2, -a1, -a2 normalised by a0, RBJ at 96 kHz. */
-    fun computeIir(freq: Double, gainDb: Double, q: Double, typeCode: Int): ByteArray {
+    /** A band whose biquad does not fit signed Q30: refused, never wrapped into a different filter. */
+    class Q30Overflow(message: String) : IllegalArgumentException(message)
+
+    private val COEFFICIENT_NAMES = arrayOf("b0", "b1", "b2", "-a1", "-a2")
+
+    /** The first of the five [scaled] values that [computeIir] could not store as an int32 after its rounding. */
+    private fun q30Violation(scaled: DoubleArray): String? {
+        scaled.forEachIndexed { i, v ->
+            val k = if (i < 3) jsRound(v) else -jsRound(-v)
+            // Compared as Double, never through toInt32; false for NaN and infinity too.
+            if (!(k >= Int.MIN_VALUE.toDouble() && k <= Int.MAX_VALUE.toDouble())) {
+                return "Coefficient ${COEFFICIENT_NAMES[i]}=$k not representable as signed Q30"
+            }
+        }
+        return null
+    }
+
+    /** Null when the biquad for these values fits signed Q30 exactly as [computeIir] writes it; else why not. */
+    fun q30Violation(freq: Double, gainDb: Double, q: Double, typeCode: Int): String? =
+        q30Violation(scaledCoefficients(freq, gainDb, q, typeCode))
+
+    /** [q30Violation] for the values the registers of [w] would hold, i.e. what a read-back decodes. */
+    fun q30ViolationQuantized(w: BandWrite): String? {
+        val r = w.registers()
+        return q30Violation(r.freq.toDouble(), r.gain256 / 256.0, r.q256 / 256.0, r.typeCode)
+    }
+
+    /** computeIIRFilter before rounding: 2^30 x [b0, b1, b2, -a1, -a2] / a0, RBJ at 96 kHz. */
+    private fun scaledCoefficients(freq: Double, gainDb: Double, q: Double, typeCode: Int): DoubleArray {
         val a = sqrt(10.0.pow(gainDb / 20))
         val w0 = freq * 6.283185307179586 / 96000
         val s = sin(w0)
@@ -198,11 +225,17 @@ object WalkPlay {
             a0 = 1 + alpha / a; a1 = -2 * c; a2 = 1 - alpha / a
         }
         val scale = 1073741824.0
-        val values = doubleArrayOf(
+        return doubleArrayOf(
             b0 / a0 * scale, b1 / a0 * scale, b2 / a0 * scale,
             -a1 / a0 * scale, -a2 / a0 * scale,
         )
+    }
+
+    /** computeIIRFilter: 5 x int32 LE, Q30 - b0, b1, b2, -a1, -a2 normalised by a0, RBJ at 96 kHz. */
+    fun computeIir(freq: Double, gainDb: Double, q: Double, typeCode: Int): ByteArray {
+        val values = scaledCoefficients(freq, gainDb, q, typeCode)
         require(values.all { it.isFinite() }) { "non-finite biquad coefficients" }
+        q30Violation(values)?.let { throw Q30Overflow(it) }
         val out = ByteArray(20)
         values.forEachIndexed { i, v ->
             val n = toInt32(if (i < 3) jsRound(v) else -jsRound(-v))
@@ -217,6 +250,7 @@ object WalkPlay {
     /** Filter write `01 09 18 00 i 00 00` + biquad + freq + q + gain + type + 00 + slot + 00. */
     fun bandWriteReport(w: BandWrite, slot: Int): ByteArray {
         val biquad = computeIir(w.freq, w.gainDb, w.q, w.typeCode)
+        q30ViolationQuantized(w)?.let { throw Q30Overflow(it) }
         val f = toInt32(w.freq) and 0xFFFF
         val q = toInt32(jsRound(w.q * 256)) and 0xFFFF
         val g = toInt32(jsRound(w.gainDb * 256)) and 0xFFFF

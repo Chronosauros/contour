@@ -25,8 +25,42 @@ sealed interface DevicePlan {
 
 /** Register-matching reconstruction; original coefficient bytes are not guaranteed, or an import error. */
 sealed interface DacImport {
-    data class Ready(val eq: ImportedEq) : DacImport
+    /** [warning]: the DAC holds something Contour would refuse to send; the profile loads, sending it stays blocked. */
+    data class Ready(val eq: ImportedEq, val warning: String? = null) : DacImport
     data class Rejected(val issues: List<String>) : DacImport
+}
+
+/**
+ * A dB value for a refusal text: whole numbers without a decimal point, otherwise rounded to 4 decimals. [stillRefused]
+ * says whether a (rounded) number is still outside the rule; when rounding would land inside, the exact value is printed
+ * so the number in the text itself fails the rule.
+ */
+internal fun dbText(x: Double, stillRefused: (Double) -> Boolean = { true }): String {
+    if (!x.isFinite()) return x.toString()
+    if (kotlin.math.abs(x) >= 1e9) return java.math.BigDecimal.valueOf(x).toPlainString()
+    val r = Math.round(x * 10000) / 10000.0
+    if (!stillRefused(r)) return java.math.BigDecimal.valueOf(x).stripTrailingZeros().toPlainString()
+    return if (r == Math.rint(r)) r.toLong().toString() else r.toString()
+}
+
+/**
+ * Why a send is refused, as the editor shows it after "SEND BLOCKED:" (the profile itself is never changed).
+ * The refusals only ever block: a profile that passes is sent byte for byte as before.
+ */
+internal object SendBlocked {
+    /** [device] is the caps name; [number] is the band's row in the editor, [type] the band as the user set it. */
+    fun band(device: String, number: Int, type: FilterType): String {
+        val hint = if (type == FilterType.HIGH_SHELF) "Reduce the boost, raise the shelf frequency or adjust Q."
+            else "Reduce the boost or adjust frequency/Q."
+        return "${device.removePrefix("CrinEar Protocol ")} band $number cannot be represented safely. $hint"
+    }
+
+    /** True for the refusal of a band that does not fit signed Q30 ([band]). */
+    fun isBandRefusal(issue: String): Boolean = " cannot be represented safely." in issue
+
+    /** AUTO needs [neededDb] of attenuation but the device takes down to [minDb] only. */
+    fun auto(neededDb: Int, minDb: Int): String =
+        "this EQ needs $neededDb dB; Contour supports down to $minDb dB for this device. Reduce the combined boosts."
 }
 
 /** CrinEar Protocol Micro (WalkPlay SchemeNo11). Unofficial; not affiliated with CrinEar. */
@@ -69,10 +103,31 @@ object ProtocolMicro {
         bands.filter { it.enabled && it.type == FilterType.HIGH_SHELF }.sumOf { it.gainDb }
 
     /**
+     * The one rule for an explicit (curve-domain) [preampDb]: with `d = preamp + sum of HS gains` the register is
+     * `floor(d + 1e-6)` and must be in [-30, 0]. So 0 < d < 1 is sent as register 0 (never louder than asked), d >= 1
+     * is refused. The sum can be negative, so the register can sit above or below the curve value.
+     * [plan], the importer, the PREAMP controls and the editor all ask this, so they cannot drift apart.
+     */
+    fun preampFits(bands: List<Band>, preampDb: Double): Boolean = deviceFits(preampDb + highShelfGainSum(bands))
+
+    private fun deviceFits(d: Double): Boolean =
+        d.isFinite() && kotlin.math.floor(d + 1e-6).let { it >= PREAMP_MIN_DB && it <= PREAMP_MAX_DB }
+
+    /** Why [preampDb] does not fit (null when it does), naming the curve-domain number the editor shows and, with a HIGH SHELF, the device's. */
+    fun preampRefusal(bands: List<Band>, preampDb: Double): String? {
+        if (preampFits(bands, preampDb)) return null
+        val hs = highShelfGainSum(bands)
+        val head = "Preamp ${dbText(preampDb) { !preampFits(bands, it) }} dB"
+        val device = { d: Double -> !deviceFits(d) }
+        return if (hs == 0.0) "$head outside $PREAMP_MIN_DB..$PREAMP_MAX_DB dB register range"
+        else "$head needs device preamp ${dbText(preampDb + hs, device)} dB (HIGH SHELF adjustment ${if (hs > 0) "+" else ""}${dbText(hs)} dB), outside $PREAMP_MIN_DB..$PREAMP_MAX_DB dB register range"
+    }
+
+    /**
      * The device preamp for [bands] with the user's preamp [preampDb] (null = AUTO), in whole dB:
      * AUTO -> `-ceil(max(device-domain curve) - 1e-6)` when that max is > 0, else 0;
      * manual -> `floor(preamp + sum of HS gains + 1e-6)`; then clamped to [-30, 0].
-     * [plan] rejects out-of-range manual values before calling this display helper.
+     * [plan] rejects out-of-range manual values, and AUTO below the floor, so the clamp only ever shapes the display.
      */
     fun devicePreamp(bands: List<Band>, preampDb: Double?): Int {
         val raw = if (preampDb == null) {
@@ -107,25 +162,33 @@ object ProtocolMicro {
             }
         }
         if (preampDb != null && !preampDb.isFinite()) issues += "Preamp $preampDb dB is not a number"
-        if (preampDb != null && preampDb.isFinite()) {
-            val adjusted = preampDb + highShelfGainSum(active)
-            val register = kotlin.math.floor(adjusted + 1e-6)
-            if (!register.isFinite() || register < PREAMP_MIN_DB || register > PREAMP_MAX_DB) {
-                issues += "Preamp with HIGH SHELF adjustment (${fmt(adjusted)} dB) outside $PREAMP_MIN_DB..$PREAMP_MAX_DB dB register range"
-            }
-        }
+        if (preampDb != null && preampDb.isFinite()) preampRefusal(active, preampDb)?.let { issues += it }
         if (issues.isNotEmpty()) return DevicePlan.Rejected(issues)
         val dev = deviceBands(active)
         val writes = List(caps.bands) { slot ->
             if (slot < dev.size) WalkPlay.bandWrite(slot, dev[slot]) else WalkPlay.factoryFlat(slot)
         }
+        // Slots follow the enabled bands in order; the editor numbers every band, enabled or not.
+        val rows = bands.indices.filter { bands[it].enabled }
         writes.forEachIndexed { slot, write ->
-            if (runCatching { WalkPlay.computeIir(write.freq, write.gainDb, write.q, write.typeCode) }.isFailure) {
-                issues += "Band ${slot + 1}: non-finite biquad coefficients; cannot send to ${caps.name}"
+            // The emulated LOW SHELF of a HIGH SHELF is what goes out, so that is what is checked (original and
+            // quantised values); a band that does not fit is refused, never wrapped.
+            when (val failure = runCatching { WalkPlay.bandWriteReport(write, 0) }.exceptionOrNull()) {
+                null -> {}
+                is WalkPlay.Q30Overflow ->
+                    issues += SendBlocked.band(caps.name, (rows.getOrNull(slot) ?: slot) + 1, active.getOrNull(slot)?.type ?: FilterType.PEAK)
+                else -> issues += "Band ${slot + 1}: non-finite biquad coefficients; cannot send to ${caps.name}"
             }
         }
         if (issues.isNotEmpty()) return DevicePlan.Rejected(issues)
-        val deviceGain = runCatching { devicePreamp(active, preampDb) }.getOrElse {
+        val deviceGain = if (preampDb == null) {
+            val needed = runCatching { Preamp.auto(dev) }.getOrElse {
+                return DevicePlan.Rejected(listOf("AUTO preamp: no finite response; cannot send to ${caps.name}"))
+            }
+            // AUTO that needs more than the device takes is refused with the number, not sent as -30.
+            if (needed < PREAMP_MIN_DB) return DevicePlan.Rejected(listOf(SendBlocked.auto(needed, PREAMP_MIN_DB)))
+            needed
+        } else runCatching { devicePreamp(active, preampDb) }.getOrElse {
             return DevicePlan.Rejected(listOf("AUTO preamp: no finite response; cannot send to ${caps.name}"))
         }
         return DevicePlan.Ready(writes, deviceGain)
@@ -138,6 +201,12 @@ object ProtocolMicro {
     fun matches(plan: DevicePlan.Ready, regs: List<WalkPlay.Registers>, preampDb: Int): Boolean =
         regs.size == plan.bands.size && plan.preampDb == preampDb &&
             plan.bands.indices.all { plan.bands[it].registers() == regs[it] }
+
+    /** AUTO's refusal for [bands] (the device-domain preamp it needs is below the floor), or null when AUTO fits or has no response. */
+    fun autoRefusal(bands: List<Band>): String? {
+        val needed = runCatching { Preamp.auto(deviceBands(bands.filter { it.enabled })) }.getOrNull() ?: return null
+        return if (needed < PREAMP_MIN_DB) SendBlocked.auto(needed, PREAMP_MIN_DB) else null
+    }
 
     /** Invert register quantisation and validate the re-encoded registers; coefficients are not compared. */
     fun importExact(bands: List<WalkPlay.DeviceBand>, preampDb: Int): DacImport {
@@ -163,6 +232,14 @@ object ProtocolMicro {
         }
         val eq = ImportedEq(reconstructed, preampDb.toDouble())
         val candidate = plan(eq.bands, eq.preampDb)
+        if (candidate is DevicePlan.Rejected && candidate.issues.all { SendBlocked.isBandRefusal(it) }) {
+            // The DAC already holds a band Contour would refuse to send (written by another tool): load what it holds,
+            // with the refusal as a warning; the plan stays Rejected, so sending it back stays blocked.
+            val writes = List(WalkPlay.BANDS) { slot -> if (slot < reconstructed.size) WalkPlay.bandWrite(slot, reconstructed[slot]) else WalkPlay.factoryFlat(slot) }
+            if (matches(DevicePlan.Ready(writes, preampDb), bands.map { it.registers }, preampDb)) {
+                return DacImport.Ready(eq, candidate.issues.joinToString(" ") + " Sending it back stays blocked until you change the band.")
+            }
+        }
         if (candidate !is DevicePlan.Ready || !matches(candidate, bands.map { it.registers }, preampDb)) {
             val issue = if (candidate is DevicePlan.Rejected) candidate.issues.joinToString("; ")
                 else "quantised registers differ on re-encode"

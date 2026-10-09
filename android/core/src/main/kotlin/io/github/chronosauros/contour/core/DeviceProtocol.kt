@@ -29,6 +29,57 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
     }
 
     /**
+     * Does this explicit curve-domain [preampDb] fit the device with these [bands]? Exactly the rule [plan] applies:
+     * Micro: register with the high-shelf offset; Max and TRN: `floor(preamp + 1e-6)` in the policy range; catalog targets: the value itself.
+     */
+    fun preampFits(bands: List<Band>, preampDb: Double): Boolean = preampDb.isFinite() && (
+        when (this) {
+            MICRO -> ProtocolMicro.preampFits(bands, preampDb)
+            MAX, TRN -> kotlin.math.floor(preampDb + 1e-6) in preampMin.toDouble()..preampMax.toDouble()
+            else -> preampDb in preampMin.toDouble()..preampMax.toDouble() // catalog targets: unchanged plain range
+        })
+
+    /** Why [preampDb] does not fit with these [bands] (null when it does): the text of the send refusal. */
+    fun preampRefusal(bands: List<Band>, preampDb: Double): String? = when {
+        preampFits(bands, preampDb) -> null
+        this == MICRO && preampDb.isFinite() -> ProtocolMicro.preampRefusal(bands, preampDb)
+        else -> "Preamp ${dbText(preampDb) { !preampFits(bands, it) }} dB outside $preampMin..$preampMax dB policy"
+    }
+
+    /**
+     * Import of a file's explicit preamp: rounded DOWN to 0.1 dB (toward quieter, never louder). If that would flip
+     * the planner's verdict (accepted to refused just above -30), the exact file value is kept instead. Nothing is
+     * capped: a positive value stays and is refused when the device preamp would be 1 dB or more.
+     */
+    fun fitImportedPreamp(bands: List<Band>, preampDb: Double): Double {
+        if (!preampDb.isFinite()) return if (preampDb.isNaN()) 0.0 else if (preampDb > 0) preampMax.toDouble() else preampMin.toDouble()
+        val down = Preamp.floorTo(preampDb)
+        return if (preampFits(bands, down) == preampFits(bands, preampDb)) down else preampDb
+    }
+
+    /**
+     * The lowest 0.1 dB manual preamp whose register equals AUTO's, so AUTO to MANUAL never changes the sound
+     * (AUTO itself is rounded toward quieter). Null when AUTO has no valid register.
+     */
+    fun manualForAuto(bands: List<Band>): Double? {
+        val register = runCatching { devicePreamp(bands, null) }.getOrNull() ?: return null
+        // The register tolerance (1e-6) applies before scaling to tenths: m + hs + 1e-6 >= register.
+        val first = kotlin.math.ceil((register - shelfOffset(bands) - 1e-6) * 10).toLong()
+        for (n in first..first + 3) {
+            val m = n / 10.0
+            if (kotlin.math.floor(m + shelfOffset(bands) + 1e-6).toInt() == register) return m
+        }
+        return null
+    }
+
+    /** AUTO's refusal for [bands] (the preamp it needs is below the floor), or null when AUTO fits or has no response. */
+    fun autoRefusal(bands: List<Band>): String? {
+        if (this == MICRO) return ProtocolMicro.autoRefusal(bands)
+        val needed = runCatching { Preamp.auto(bands.filter { it.enabled }) }.getOrNull() ?: return null
+        return if (needed < preampMin) SendBlocked.auto(needed, preampMin) else null
+    }
+
+    /**
      * The PREAMP row speaks in the domain of the drawn curve (like squig.link): the device register minus the
      * HIGH SHELF gains the Micro emulation folds out of the curve. Display only.
      */
@@ -79,10 +130,13 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
             runCatching {
                 if (this == TRN) WalkPlay.computeIir(b.freqHz, b.gainDb, b.q, WalkPlay.typeCode(b.type))
                 else WalkPlayQ30Preflight.requireRepresentable(b.freqHz, b.gainDb, b.q, WalkPlay.typeCode(b.type))
-            }.exceptionOrNull()?.let { issues += "Band ${i + 1}: ${it.message}" }
+            }.exceptionOrNull()?.let {
+                // TRN writes enabled bands only: a disabled band that does not fit is never sent, so it does not block.
+                if (this != TRN || it !is WalkPlay.Q30Overflow) issues += "Band ${i + 1}: ${it.message}"
+                else if (b.enabled) issues += SendBlocked.band(caps.name, i + 1, b.type)
+            }
         }
-        if (preampDb != null && (!preampDb.isFinite() || preampDb !in preampMin.toDouble()..preampMax.toDouble()))
-            issues += "Preamp outside $preampMin..$preampMax dB policy"
+        if (preampDb != null) preampRefusal(active, preampDb)?.let { issues += it }
         if (issues.isNotEmpty()) return DevicePlan.Rejected(issues)
         return runCatching {
             val writes = List(caps.bands) { i -> if (i < active.size) {
@@ -92,13 +146,23 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
                     WalkPlay.jsRound(b.q * 256) / 256, WalkPlay.typeCode(b.type))
             } else flatBand(i) }
             // Preflight the entire payload, including native shelves, before the first USB write.
+            // Slots follow the enabled bands in order; the editor numbers every band, enabled or not.
+            val rows = bands.indices.filter { bands[it].enabled }
+            val blocked = ArrayList<String>()
             writes.forEachIndexed { i, w ->
                 if (this != TRN) runCatching {
                     WalkPlayQ30Preflight.requireRepresentable(w.freq, w.gainDb, w.q, w.typeCode)
                 }.getOrElse { throw IllegalArgumentException("Band ${i + 1} (quantized): ${it.message}") }
-                WalkPlay.bandWriteReport(w, 0)
+                // TRN: bandWriteReport also checks the values its registers would decode to (the writes are unquantized).
+                try { WalkPlay.bandWriteReport(w, 0) } catch (e: WalkPlay.Q30Overflow) {
+                    if (this != TRN) throw e
+                    blocked += SendBlocked.band(caps.name, (rows.getOrNull(i) ?: i) + 1, active.getOrNull(i)?.type ?: FilterType.PEAK)
+                }
             }
+            if (blocked.isNotEmpty()) return@runCatching DevicePlan.Rejected(blocked)
             val gain = if (preampDb == null) Preamp.auto(active) else kotlin.math.floor(preampDb + 1e-6).toInt()
+            // AUTO that needs more than the device takes is refused with the number, not sent as -30.
+            if (preampDb == null && gain < preampMin) return@runCatching DevicePlan.Rejected(listOf(SendBlocked.auto(gain, preampMin)))
             require(gain in preampMin..preampMax) { "AUTO preamp outside supported policy" }
             DevicePlan.Ready(writes, gain)
         }.getOrElse { DevicePlan.Rejected(listOf("Invalid EQ: ${it.message}")) }
@@ -116,14 +180,27 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
                     b.gainDb !in caps.gainMinDb..caps.gainMaxDb || b.q !in caps.qMin..caps.qMax))
                 issues += "Band ${i + 1}: outside ${caps.name} supported types/ranges"
         }
-        if (preampDb != null && (!preampDb.isFinite() || kotlin.math.floor(preampDb + 1e-6) !in preampMin.toDouble()..preampMax.toDouble()))
-            issues += "Preamp outside $preampMin..$preampMax dB policy"
+        if (preampDb != null) preampRefusal(active, preampDb)?.let { issues += it }
         if (issues.isNotEmpty()) return DevicePlan.Rejected(issues)
         return runCatching {
             // Native shelves: HIGH SHELF goes out as HSQ (no Micro LOW SHELF + preamp emulation), no freq/Q compensation.
             val writes = List(caps.bands) { i -> if (i < active.size) WalkPlay.bandWrite(i, active[i]) else flatBand(i) }
-            // Preflight the entire payload, including native shelves, before the first USB write.
-            writes.forEach { WalkPlay.bandWriteReport(it, 0) }
+            // Preflight the entire payload, including native shelves, before the first USB write. A band whose
+            // biquad does not fit signed Q30 (original or quantised values) is refused, never wrapped. Slots follow
+            // the enabled bands in order; the editor numbers every band, enabled or not.
+            val rows = bands.indices.filter { bands[it].enabled }
+            val blocked = ArrayList<String>()
+            writes.forEachIndexed { i, w ->
+                try { WalkPlay.bandWriteReport(w, 0) } catch (_: WalkPlay.Q30Overflow) {
+                    blocked += SendBlocked.band(caps.name, (rows.getOrNull(i) ?: i) + 1, active.getOrNull(i)?.type ?: FilterType.PEAK)
+                }
+            }
+            if (blocked.isNotEmpty()) return@runCatching DevicePlan.Rejected(blocked)
+            // AUTO that needs more than the device takes is refused with the number, not sent as -30.
+            if (preampDb == null) {
+                val needed = Preamp.auto(active)
+                if (needed < preampMin) return@runCatching DevicePlan.Rejected(listOf(SendBlocked.auto(needed, preampMin)))
+            }
             DevicePlan.Ready(writes, devicePreamp(active, preampDb))
         }.getOrElse { DevicePlan.Rejected(listOf("Invalid EQ: ${it.message}")) }
     }
@@ -141,11 +218,11 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
                 require(w.freq.isFinite() && w.gainDb.isFinite() && w.q.isFinite())
                 require(w.freq in caps.freqMinHz..caps.freqMaxHz && w.gainDb in caps.gainMinDb..caps.gainMaxDb &&
                     w.q in (caps.qMin - 1.0 / 256)..caps.qMax)
-                if (this != TRN) {
-                    WalkPlayQ30Preflight.requireRepresentable(w.freq, w.gainDb, w.q, w.typeCode)
-                }
+                WalkPlayQ30Preflight.requireRepresentable(w.freq, w.gainDb, w.q, w.typeCode)
             }
         }
+        // MICRO and MAX (validated by their plans) are covered here too: every report, including the quantised-value
+        // check, is encoded before the first callback, so an overflow aborts the whole write.
         val steps = WalkPlay.writeSequence(plan.bands, plan.preampDb.toDouble(), slot, commit = true)
         for (step in steps) {
             guard(); send(step.report); guard()
@@ -184,6 +261,13 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
         }
         val eq = ImportedEq(reconstructed, preampDb.toDouble())
         val candidate = plan(eq.bands, eq.preampDb)
+        if ((this == MAX || this == TRN) && candidate is DevicePlan.Rejected && candidate.issues.all { SendBlocked.isBandRefusal(it) }) {
+            // The DAC already holds a band Contour would refuse to send (written by another tool): load what it holds,
+            // with the refusal as a warning; the plan stays Rejected, so sending it back stays blocked.
+            val writes = List(caps.bands) { i -> if (i < reconstructed.size) WalkPlay.bandWrite(i, reconstructed[i]) else flatBand(i) }
+            if (matches(DevicePlan.Ready(writes, preampDb), bands.map { it.registers }, preampDb))
+                return DacImport.Ready(eq, candidate.issues.joinToString(" ") + " Sending it back stays blocked until you change the band.")
+        }
         return if (candidate is DevicePlan.Ready && matches(candidate, bands.map { it.registers }, preampDb)) DacImport.Ready(eq)
             else DacImport.Rejected(listOf("DAC state cannot be re-encoded exactly"))
     }

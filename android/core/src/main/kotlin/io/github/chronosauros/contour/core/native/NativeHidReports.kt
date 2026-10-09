@@ -26,7 +26,30 @@ object NativeHidReports {
             return raw.copyOfRange(1, raw.size)
         }
     }
+    /** Raw scan result: bits per (ID, kind), owning collection and whether every item sits on a vendor usage page. */
+    private class Scan(val bits: Map<Key, Int>, val owners: Map<Key, Int>, val vendors: Map<Key, Boolean>)
+
     fun parse(descriptor: ByteArray): Shape {
+        val scan = scan(descriptor)
+        val owners = scan.owners
+        val sizes = scan.bits.filterKeys { it.id != 0 }.filterKeys { scan.vendors[it] == true }.mapValues { (_, b) ->
+            require(b % 8 == 0 && b / 8 in 1..1023) { "Unsupported report size" }; 1 + b / 8
+        }
+        return Shape(sizes, owners.filterKeys { it in sizes })
+    }
+
+    /** One declared report as the descriptor states it (diagnostics only; [bytes] counts the report ID, -1 = not whole bytes). */
+    data class Declared(val id: Int, val kind: Kind, val bytes: Int, val owner: Int, val vendor: Boolean)
+
+    /** Every report ID the descriptor declares, vendor page or not; never used to authorise I/O. */
+    fun inventory(descriptor: ByteArray): List<Declared> {
+        val scan = scan(descriptor)
+        return scan.bits.filterKeys { it.id != 0 }.map { (k, b) ->
+            Declared(k.id, k.kind, if (b % 8 == 0) 1 + b / 8 else -1, scan.owners.getValue(k), scan.vendors[k] == true)
+        }.sortedWith(compareBy({ it.id }, { it.kind.ordinal }))
+    }
+
+    private fun scan(descriptor: ByteArray): Scan {
         data class Global(val size: Int = 0, val count: Int = 0, val id: Int = 0, val page: Int = 0)
         var g = Global(); val stack = ArrayList<Global>(); val vendorStack = ArrayList<Boolean>()
         val ownerStack = ArrayList<Int>(); var nextOwner = 0
@@ -59,9 +82,6 @@ object NativeHidReports {
             }
         }
         require(stack.isEmpty() && ownerStack.isEmpty()) { "Unclosed descriptor state" }
-        val sizes = bits.filterKeys { it.id != 0 }.filterKeys { vendors[it] == true }.mapValues { (_, b) ->
-            require(b % 8 == 0 && b / 8 in 1..1023) { "Unsupported report size" }; 1 + b / 8
-        }
-        return Shape(sizes, owners.filterKeys { it in sizes })
+        return Scan(bits, owners, vendors)
     }
 }

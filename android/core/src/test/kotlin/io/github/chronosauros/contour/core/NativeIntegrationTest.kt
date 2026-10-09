@@ -398,7 +398,7 @@ class NativeIntegrationTest {
         assertFalse(raw.matches(p))
         val proof = verify(r, raw)
         assertTrue(proof.verified); assertTrue(assertNotNull(proof.state).matches(p))
-        assertEquals(-2.3, proof.state!!.preamp)
+        assertEquals(-2.4, proof.state!!.preamp) // pregain is rounded down (quieter): -2.34 -> -2.4 (it was -2.3 with nearest rounding)
         assertTrue(newPort.events.none { it.startsWith("write") }); assertNull((raw as NativeState.Fiio).receiptProfile)
         assertFalse(proof.state!!.matches(p.copy(updatedAt = 1)))
     }

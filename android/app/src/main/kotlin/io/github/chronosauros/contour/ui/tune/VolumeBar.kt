@@ -14,7 +14,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -55,7 +54,11 @@ private const val VOLUME_SLOW = 0.35f
  * Contour advBeta: the DAC's hardware volume (USB Audio Class), beside the graph. A pressed-in vertical track with
  * a white fill from the bottom, like the PREAMP bar turned upright; HARDWARE VOLUME is written along it and changes colour
  * where the fill covers it (drawn once over the track and once, clipped, over the fill). Relative vertical drag,
- * 0.5 dB steps, -60..0 dB; the DAC gets the newest value while the finger moves. Read once on connect.
+ * 0.5 dB steps, -60..0 dB; the DAC gets the newest value while the finger moves.
+ *
+ * Never read automatically: the read claims the USB Audio Control interface when the kernel refuses a shared
+ * request, which can drop the phone's audio until the DAC is replugged (freestyler7, 03.10.2026). Until the user
+ * taps the bar once, it shows TAP TO READ; that tap reads, later drags set.
  */
 @Composable
 fun VolumeBar(device: DeviceController, modifier: Modifier = Modifier) {
@@ -64,13 +67,6 @@ fun VolumeBar(device: DeviceController, modifier: Modifier = Modifier) {
     val scale = Scale.VOLUME
     val shape = RoundedCornerShape(Radii.M)
     val connected = device.link == Link.CONNECTED
-
-    // One read per connection (a failed one is retried once), never while another USB operation runs.
-    var reads by remember(connected) { mutableIntStateOf(0) }
-    val unread = device.volume == null
-    LaunchedEffect(connected, device.busy, unread) {
-        if (connected && !device.busy && unread && reads < 2) { reads++; device.readVolume() }
-    }
 
     val dacDb = device.volume?.current256?.maxOrNull()?.div(256.0)
     var shown by remember(connected) { mutableStateOf<Double?>(null) } // under the finger, ahead of the read-back
@@ -92,7 +88,7 @@ fun VolumeBar(device: DeviceController, modifier: Modifier = Modifier) {
                 .fillMaxSize()
                 .testTag("volume_bar")
                 .semantics {
-                    contentDescription = "DAC hardware volume"
+                    contentDescription = "DAC hardware volume" + if (value == null) ", tap to read. Some phones lose audio until replug when hardware volume is used." else ""
                     if (value != null) progressBarRangeInfo = ProgressBarRangeInfo(value.toFloat(), scale.min.toFloat()..scale.max.toFloat())
                 }
                 .clip(shape)
@@ -141,8 +137,8 @@ fun VolumeBar(device: DeviceController, modifier: Modifier = Modifier) {
                             }
                         }
                     } else Modifier.clickable {
-                        // no DAC: look for it / ask for permission; connected but unread: read again
-                        if (connected) { reads = 0; device.readVolume() } else device.connect()
+                        // no DAC: look for it / ask for permission; connected but unread: the explicit first read
+                        if (connected) device.readVolume() else device.connect()
                     },
                 ),
         ) {
@@ -150,7 +146,7 @@ fun VolumeBar(device: DeviceController, modifier: Modifier = Modifier) {
             val w = maxWidth
             val fillH = if (value == null) 0.dp else w + (h - w) * scale.toPos(value)
             val text = if (active) c.textDim else c.textMute
-            VolumeLabels(value, text)
+            VolumeLabels(value, text, tapToRead = connected && value == null)
             if (value != null) {
                 Box(
                     Modifier
@@ -163,7 +159,7 @@ fun VolumeBar(device: DeviceController, modifier: Modifier = Modifier) {
                 ) {
                     // the same labels at the bar's full height, pinned to the bottom: only the covered part shows
                     Box(Modifier.fillMaxWidth().wrapContentHeight(Alignment.Bottom, unbounded = true).height(h)) {
-                        VolumeLabels(value, c.bg)
+                        VolumeLabels(value, c.bg, tapToRead = false)
                     }
                 }
             }
@@ -173,7 +169,7 @@ fun VolumeBar(device: DeviceController, modifier: Modifier = Modifier) {
 
 /** The dB value at the top and HARDWARE VOLUME up the middle, both in [color]. */
 @Composable
-private fun VolumeLabels(value: Double?, color: Color) {
+private fun VolumeLabels(value: Double?, color: Color, tapToRead: Boolean) {
     Box(Modifier.fillMaxSize()) {
         Text(
             if (value == null) "-" else Fmt.gain(value),
@@ -184,7 +180,7 @@ private fun VolumeLabels(value: Double?, color: Color) {
             modifier = Modifier.align(Alignment.TopCenter).padding(top = 10.dp),
         )
         Text(
-            "HARDWARE VOLUME",
+            if (tapToRead) "TAP TO READ" else "HARDWARE VOLUME",
             style = Type.segment,
             color = color,
             maxLines = 1,

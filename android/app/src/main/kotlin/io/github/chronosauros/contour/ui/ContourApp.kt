@@ -67,6 +67,9 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.model.AppModel
+import io.github.chronosauros.contour.model.ImportFile
+import io.github.chronosauros.contour.model.Importer
+import io.github.chronosauros.contour.model.Incoming
 import io.github.chronosauros.contour.model.Page
 import io.github.chronosauros.contour.model.Sender
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
@@ -78,6 +81,7 @@ import io.github.chronosauros.contour.ui.library.LibraryScreen
 import io.github.chronosauros.contour.ui.sheets.BandSheet
 import io.github.chronosauros.contour.ui.sheets.EditSheet
 import io.github.chronosauros.contour.ui.sheets.NewProfileSheet
+import io.github.chronosauros.contour.ui.sheets.ReadFailureSheet
 import io.github.chronosauros.contour.ui.sheets.SendFailureSheet
 import io.github.chronosauros.contour.ui.sheets.Sheet
 import io.github.chronosauros.contour.ui.sheets.ValueSheet
@@ -102,7 +106,8 @@ private class UndoVisuals(override val message: String) : SnackbarVisuals {
 
 /**
  * The shell: Tune (left) and Library (right) side by side in a pager, the page bar at the bottom, sheets,
- * the undo snackbar and the service screen. [sheetRequest] comes from the review hooks.
+ * the undo snackbar and the service screen. [sheetRequest] comes from the review hooks; [incoming] is a text file opened
+ * with or shared to Contour, imported only after the user confirms.
  */
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
@@ -113,6 +118,9 @@ fun ContourApp(
     initialPage: Int,
     sheetRequest: Sheet?,
     onSheetRequestTaken: () -> Unit,
+    incoming: Incoming? = null,
+    onIncomingDone: () -> Unit = {},
+    onSaveTxt: (profileId: String, fileName: String) -> Unit = { _, _ -> },
 ) {
     LaunchedEffect(device.protocol) { model.protocol = device.protocol }
     if (model.loading || model.loadError) {
@@ -186,6 +194,17 @@ fun ContourApp(
             }
         }
 
+        // What an import from a file did (the one-line report): shown once, in its own coroutine so that clearing the
+        // notice does not cancel the snackbar.
+        val notice = model.notice
+        LaunchedEffect(notice) {
+            if (notice != null) {
+                model.notice = null
+                snackbar.currentSnackbarData?.dismiss()
+                scope.launch { snackbar.showSnackbar(notice, duration = SnackbarDuration.Long) }
+            }
+        }
+
         val recentlyDeleted = model.recentlyDeleted
         LaunchedEffect(recentlyDeleted?.id) {
             if (recentlyDeleted != null) undoable("DELETED ${recentlyDeleted.name}",
@@ -219,6 +238,7 @@ fun ContourApp(
                 override fun value(param: Param) { sender.leaveAb { sheet = Sheet.Value(param) } }
                 override fun band(index: Int) { sender.leaveAb { sheet = Sheet.BandActions(index) } }
                 override fun sendDetails() { sheet = Sheet.SendFailure(sender.failure) }
+                override fun readDetails() { sheet = Sheet.ReadFailure(device.readFailure) }
                 override fun service() { sender.leaveAb { service = true } }
             }
         }
@@ -327,13 +347,19 @@ fun ContourApp(
             )
         }
 
+        if (incoming != null) IncomingDialog(model, incoming) { import ->
+            onIncomingDone()
+            if (import) sender.leaveAb { ImportFile.create(model, incoming) }
+        }
+
         val close = { sheet = null }
         when (val s = sheet) {
-            is Sheet.Edit -> EditSheet(model, s.id, close)
+            is Sheet.Edit -> EditSheet(model, s.id, close, onSaveTxt)
             Sheet.New -> NewProfileSheet(model, device, close)
             is Sheet.Value -> ValueSheet(model, s.param, close)
             is Sheet.BandActions -> BandSheet(model, s.index, close)
             is Sheet.SendFailure -> SendFailureSheet(s.reason, close)
+            is Sheet.ReadFailure -> ReadFailureSheet(s.reason, device.busy, device.reading, { device.read() }, close)
             null -> Unit
         }
 
@@ -341,6 +367,42 @@ fun ContourApp(
             sender.leaveAb { scope.launch { pager.animateScrollToPage(Page.LIBRARY) } }
         }
     }
+}
+
+/** IMPORT? for a .txt opened with or shared to Contour: what it holds for the device in use, then IMPORT / CANCEL. */
+@Composable
+private fun IncomingDialog(model: AppModel, incoming: Incoming, onAnswer: (import: Boolean) -> Unit) {
+    val raw = incoming.eq
+    val (eq, report) = if (raw != null) Importer.fit(raw, model.protocol) else null to null
+    val ok = eq != null && eq.bands.isNotEmpty()
+    AlertDialog(
+        onDismissRequest = { onAnswer(false) },
+        shape = RoundedCornerShape(Radii.L),
+        containerColor = pal.surface2,
+        titleContentColor = pal.text,
+        textContentColor = pal.textDim,
+        title = { Text(if (ok) "IMPORT EQ FILE?" else "CANNOT IMPORT", style = Type.rowName) },
+        text = {
+            Text(
+                if (eq != null && ok) {
+                    val n = eq.bands.size
+                    "${incoming.name ?: "New profile"}: $n filter${if (n == 1) "" else "s"}" + (report?.let { " - $it" } ?: "") +
+                        ". It is added as a new profile; your other profiles stay as they are."
+                } else incoming.error ?: (report ?: ImportFile.NO_FILTERS),
+            )
+        },
+        confirmButton = {
+            TextButton(onClick = { onAnswer(ok) }, modifier = Modifier.testTag("import_confirm")) {
+                Text(if (ok) "IMPORT" else "OK", style = Type.label, color = pal.accent)
+            }
+        },
+        dismissButton = if (ok) { {
+            TextButton(onClick = { onAnswer(false) }, modifier = Modifier.testTag("import_cancel")) {
+                Text("CANCEL", style = Type.label, color = pal.textDim)
+            }
+        } } else null,
+        modifier = Modifier.testTag("import_dialog"),
+    )
 }
 
 /**

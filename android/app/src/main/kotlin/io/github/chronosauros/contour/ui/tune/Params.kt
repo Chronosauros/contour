@@ -37,13 +37,14 @@ enum class Param(val label: String, val unit: String, val scale: Scale?, val hom
         FREQ -> "${Fmt.freq(v)} Hz"
         GAIN -> "${Fmt.gain(v)} dB"
         Q -> Fmt.q(v)
-        PREAMP -> "${Fmt.gain(v)} dB"
+        PREAMP -> "${number(v)} dB"
     }
 
     /** [text] without the unit: the number the stacked value shows big, [unit] small beside it. */
     fun number(v: Double): String = when (this) {
         FREQ -> Fmt.freq(v)
-        GAIN, PREAMP -> Fmt.gain(v)
+        GAIN -> Fmt.gain(v)
+        PREAMP -> fullDb(v)?.let { if (v > 0) "+$it" else it } ?: Fmt.gain(v)
         Q -> Fmt.q(v)
     }
 
@@ -52,14 +53,14 @@ enum class Param(val label: String, val unit: String, val scale: Scale?, val hom
         FREQ -> Math.round(v).toString()
         GAIN -> Fmt.gain(v).removePrefix("+")
         Q -> Fmt.q(v)
-        PREAMP -> Fmt.gain(v).removePrefix("+")
+        PREAMP -> fullDb(v) ?: Fmt.gain(v).removePrefix("+")
     }
 
     /** Typed text -> the stored value (clamped and quantized to the device range), null if not a number. */
     fun parse(text: String, caps: io.github.chronosauros.contour.core.DeviceCapabilities? = null): Double? {
         val v = text.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() } ?: return null
         return when (this) {
-            PREAMP -> Math.round(v * 10) / 10.0 // clamped by AppModel.setPreamp (device range minus HS gains)
+            PREAMP -> io.github.chronosauros.contour.core.Preamp.floorTo(v) // range-checked by AppModel.setPreamp (device range minus HS gains), never clamped
             else -> {
                 val s = if (caps == null) scale!! else scaleFor(caps)!!
                 if (v !in s.min..s.max) null else s.quantize(v)
@@ -70,3 +71,7 @@ enum class Param(val label: String, val unit: String, val scale: Scale?, val hom
     /** Preserve the scale's strong marks (including [home]) instead of downgrading them to a step. */
     fun crossing(a: Double, b: Double): Int = scale?.crossing(a, b) ?: 0
 }
+
+/** A stored preamp that is not on a 0.1 dB step (a preserved import) in full, so the row, the editor and a refusal show one number; null otherwise. */
+private fun fullDb(v: Double): String? =
+    if (v.isFinite() && v != Math.round(v * 10) / 10.0) java.math.BigDecimal.valueOf(v).stripTrailingZeros().toPlainString() else null

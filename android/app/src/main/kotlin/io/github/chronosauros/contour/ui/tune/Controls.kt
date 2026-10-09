@@ -208,16 +208,25 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
 }
 
 /** What HOLD TO SEND shows for [p] now. */
-fun holdLabel(p: Profile, device: DeviceController, sender: Sender): String = when {
-    sender.sendingId == p.id -> "SENDING"
-    sender.pendingFor(p) -> "PENDING - RECONNECT / READ"
-    device.link == Link.NO_DAC -> "NO DAC"
-    device.link == Link.NEEDS_PERMISSION -> "TAP TO CONNECT"
-    device.protocol.writeBlocker != null -> "READ ONLY"
-    device.sendIssues(p).isNotEmpty() -> "INVALID EQ - EDIT BAND"
-    sender.onDacId == p.id && device.destinationActive -> "ON DAC"
-    sender.failedFor(p) -> "FAILED - HOLD TO RETRY"
-    else -> "HOLD TO SEND"
+fun holdLabel(p: Profile, device: DeviceController, sender: Sender): String {
+    if (sender.sendingId == p.id) return "SENDING"
+    if (sender.pendingFor(p)) return "PENDING - RECONNECT / READ"
+    if (device.link == Link.NO_DAC) return "NO DAC"
+    if (device.link == Link.NEEDS_PERMISSION) return "TAP TO CONNECT"
+    if (device.protocol.writeBlocker != null) return "READ ONLY"
+    // INVALID EQ only for a real EQ problem; a missing or failed DAC read says what to do about the read.
+    when (device.sendBlock(p)) {
+        DeviceController.SendBlock.EQ -> return "INVALID EQ - EDIT BAND"
+        DeviceController.SendBlock.READING -> return "READING DAC"
+        DeviceController.SendBlock.NEEDS_READ -> return "TAP TO READ DAC"
+        DeviceController.SendBlock.READ_FAILED -> return "READ FAILED - TAP FOR DETAILS"
+        DeviceController.SendBlock.NONE -> Unit
+    }
+    return when {
+        sender.onDacId == p.id && device.destinationActive -> "ON DAC"
+        sender.failedFor(p) -> "FAILED - HOLD TO RETRY"
+        else -> "HOLD TO SEND"
+    }
 }
 
 private const val HOLD_MS = 700
@@ -229,7 +238,7 @@ private const val HOLD_MS = 700
  * flat grey (no shadow) for NO DAC.
  */
 @Composable
-fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: () -> Unit, modifier: Modifier = Modifier) {
+fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: () -> Unit, onReadDetails: () -> Unit, modifier: Modifier = Modifier) {
     val haptics = LocalHaptics.current
     val c = pal
     val scope = rememberCoroutineScope()
@@ -238,6 +247,7 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
     val labelNow = rememberUpdatedState(label)
     val profile = rememberUpdatedState(p)
     val details = rememberUpdatedState(onDetails)
+    val readDetails = rememberUpdatedState(onReadDetails)
     val orange = label == "HOLD TO SEND" || label == "SENDING"
     val flat = label == "NO DAC"
     val shape = RoundedCornerShape(Radii.L)
@@ -276,6 +286,9 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
                             return@awaitEachGesture
                         }
                         "INVALID EQ - EDIT BAND" -> { haptics.reject(); return@awaitEachGesture }
+                        "READING DAC" -> { waitUp(); return@awaitEachGesture }
+                        "TAP TO READ DAC" -> { if (waitUp()) device.read(); return@awaitEachGesture }
+                        "READ FAILED - TAP FOR DETAILS" -> { if (waitUp()) readDetails.value(); return@awaitEachGesture }
                         "TAP TO CONNECT" -> {
                             val up = waitUp()
                             if (up) device.requestPermission()

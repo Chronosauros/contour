@@ -95,6 +95,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import io.github.chronosauros.contour.BuildConfig
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.model.AppModel
 import io.github.chronosauros.contour.model.Sender
@@ -305,7 +306,7 @@ fun LibraryScreen(
                 }
             }
             item(key = "licences") {
-                // the way to the open-source notices, always visible at the foot of the library
+                // the way to the open-source notices, always visible at the foot of the library, with the version
                 Box(
                     Modifier
                         .fillMaxWidth()
@@ -315,7 +316,7 @@ fun LibraryScreen(
                         .testTag("licences"),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("ABOUT & LICENCES", style = Type.small, color = c.textMute)
+                    Text("ABOUT & LICENCES · ${BuildConfig.VERSION_NAME}", style = Type.small, color = c.textMute)
                 }
             }
         }

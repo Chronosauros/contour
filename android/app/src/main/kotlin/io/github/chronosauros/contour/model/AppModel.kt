@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import io.github.chronosauros.contour.core.Band
 import io.github.chronosauros.contour.core.FilterType
+import io.github.chronosauros.contour.core.Preamp
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.core.DeviceTarget
 import java.util.UUID
@@ -54,6 +55,9 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
 
     /** A page the UI should go to (set by the model or the review hooks, cleared by the pager). */
     var pageRequest by mutableStateOf<Int?>(null)
+
+    /** A one-line message for the snackbar (what an import from a file did); the shell shows it once and clears it. */
+    var notice by mutableStateOf<String?>(null)
 
     val current: Profile? by derivedStateOf { profiles.firstOrNull { it.id == currentId } }
     val active: List<Profile> by derivedStateOf { profiles.filter { !it.archived } }
@@ -454,21 +458,57 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         update { p ->
             if (auto) {
                 if (runCatching { shownPreamp(p.copy(preampDb = null)) }.isSuccess) p.copy(preampDb = null) else p
-            } else runCatching { round1(shownPreamp(p)) }.getOrNull()?.let { p.copy(preampDb = it) } ?: p
+            } else if (protocol.walkplay?.autoRefusal(p.bands) != null) {
+                p // AUTO needs more than the device takes: stay in AUTO (the refusal stays on the screen), never swap in -30
+            } else (protocol.walkplay?.manualForAuto(p.bands) // the lowest 0.1 dB value with AUTO's own register
+                ?: runCatching { Preamp.floorTo(shownPreamp(p)) }.getOrNull())?.let { p.copy(preampDb = it) } ?: p
         }
     }
 
-    /** Manual preamp in the curve domain. Micro/Max clamp so the register stays in the device range (1.3.0);
-     * other targets (advanced builds only) reject out-of-range input, never silently clamp. */
-    fun setPreamp(db: Double) = update {
-        val hs = protocol.shelfOffset(it.bands)
-        if ((protocol.stable || !io.github.chronosauros.contour.BuildConfig.ADVANCED) && protocol.walkplay != null)
-            it.copy(preampDb = round1(db.coerceIn(protocol.preampMin - hs, protocol.preampMax - hs)))
-        else if (!db.isFinite() || db !in (protocol.preampMin - hs)..(protocol.preampMax - hs)) it else {
-            val step = protocol.preampStep
-            it.copy(preampDb = round1(Math.round(db / step) * step))
+    /** Manual preamp in the curve domain. Out-of-range input is rejected on every target, never clamped: a clamp would
+     * turn a preserved (refused) preamp into an accepted one. Micro/Max ask the planner's own rule for the rounded value. */
+    fun setPreamp(db: Double): Boolean {
+        var applied = false
+        update {
+            applied = preampAccepted(it.bands, db)
+            if (!applied) it
+            else it.copy(preampDb = Preamp.floorTo(db, protocol.preampStep)) // rounded down: never louder than typed
         }
+        return applied
     }
+
+    /** Would [setPreamp] take [db] for these [bands]? The numeric editor asks before it closes. */
+    fun preampAccepted(bands: List<io.github.chronosauros.contour.core.Band>, db: Double): Boolean {
+        val hs = protocol.shelfOffset(bands)
+        if (!db.isFinite()) return false
+        // WalkPlay targets: accepted iff the value that will be stored (the typed number rounded DOWN to 0.1 dB) passes the planner rule.
+        return if (protocol.walkplay != null)
+            protocol.preampFits(bands, Preamp.floorTo(db))
+        else db in (protocol.preampMin - hs)..(protocol.preampMax - hs)
+    }
+
+    /** Why [preampAccepted] says no for [db] (the planner's own refusal text where it has one), or null when it takes it. */
+    fun preampRefusal(bands: List<io.github.chronosauros.contour.core.Band>, db: Double): String? {
+        if (preampAccepted(bands, db)) return null
+        if (!db.isFinite()) return "Enter a number"
+        val wp = protocol.walkplay
+        val base = wp?.let { it.preampRefusal(bands, db) ?: it.preampRefusal(bands, Preamp.floorTo(db)) } ?: "Enter a value within the range above"
+        val near = if (wp == null) null else nearestAcceptedPreamp(bands, db)
+        return if (near == null) base else "$base Nearest accepted: ${if (near == Math.rint(near)) near.toLong().toString() else near.toString()}."
+    }
+
+    /** The 0.1 dB step closest to [db] that [preampAccepted] takes, or null within 40 dB. */
+    private fun nearestAcceptedPreamp(bands: List<io.github.chronosauros.contour.core.Band>, db: Double): Double? {
+        if (!db.isFinite()) return null
+        val c = Preamp.floorTo(db)
+        for (k in 0..400) for (s in intArrayOf(1, -1)) Preamp.floorTo(c + s * k / 10.0).let { if (preampAccepted(bands, it)) return it }
+        return null
+    }
+
+    /** Why the device would not take the STORED [db] as it is (the planner's own rule, no rounding of it), or null. */
+    fun storedPreampRefusal(bands: List<io.github.chronosauros.contour.core.Band>, db: Double): String? =
+        protocol.walkplay?.preampRefusal(bands, db)
+            ?: if (protocol.walkplay == null && !(db.isFinite() && db in protocol.preampMin..protocol.preampMax)) "Enter a value within the range above" else null
 
     fun rename(id: String, name: String) = update(id) {
         it.copy(name = name.trim().uppercase().take(NAME_MAX).ifEmpty { it.name })

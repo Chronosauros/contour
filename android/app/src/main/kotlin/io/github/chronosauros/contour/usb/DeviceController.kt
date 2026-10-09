@@ -54,6 +54,12 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         private set
     var volumeError by mutableStateOf<String?>(null)
         private set
+    /** Why the last explicit or automatic read failed (null = it did not, or none ran); cleared by a good read and by a new session. */
+    var readFailure by mutableStateOf<String?>(null)
+        private set
+    /** True only while the descriptor/EQ read runs (not for any other USB operation, which also sets [busy]). */
+    var reading by mutableStateOf(false)
+        private set
     var abBypassed by mutableStateOf(false)
         private set
     /** The USER slot HOLD TO SEND writes on a DAC with a slot picker (KA15); null = the slot playing now. */
@@ -131,7 +137,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         explicitConsentIdentity = null
         explicitReadConsent = false
         busy = false
-        snapshot = null; lastWrite = null; volume = null; volumeError = null
+        snapshot = null; lastWrite = null; volume = null; volumeError = null; readFailure = null; reading = false
         abBypassed = false; abReference = null; volumeTarget = null; selectedSlot = null
         volumeJob?.cancel(); volumeJob = null
     }
@@ -227,23 +233,39 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     private fun read(explicitUserRead: Boolean) {
         if (abBypassed) return
         val generation = connectionEpoch
+        if (!busy) readFailure = null // READING DAC while it runs; a failure sets it again
         launchOp("read") { d, guard ->
-            val s = client.readDevice(d); guard()
-            val receipt = pendingReceipt
-            val check = receipt?.verify(identity(d), s.target, profileForReceipt(receipt.profile.id),
-                s.nativeState, generation, connectionEpoch, explicitUserRead)
-            guard()
-            if (receipt != null && check?.verified == true) {
-                val verified = s.copy(nativeState = check.state)
-                snapshot = verified
-                lastWrite = WriteResult(true, listOf(check.reason), lastWrite?.writeMs ?: 0, s.readMs, verified)
-                pendingReceipt = null; pendingReason = null
-                guard(); onPendingVerified(receipt.profile)
-            } else {
-                snapshot = s
-                if (receipt != null) pendingReason = (check?.reason ?: receipt.pendingReason) + " " + receipt.identityWarning
-            }
+            reading = true
+            try {
+                val s = client.readDevice(d); guard()
+                readFailure = null
+                val receipt = pendingReceipt
+                val check = receipt?.verify(identity(d), s.target, profileForReceipt(receipt.profile.id),
+                    s.nativeState, generation, connectionEpoch, explicitUserRead)
+                guard()
+                if (receipt != null && check?.verified == true) {
+                    val verified = s.copy(nativeState = check.state)
+                    snapshot = verified
+                    lastWrite = WriteResult(true, listOf(check.reason), lastWrite?.writeMs ?: 0, s.readMs, verified)
+                    pendingReceipt = null; pendingReason = null
+                    guard(); onPendingVerified(receipt.profile)
+                } else {
+                    snapshot = s
+                    if (receipt != null) pendingReason = (check?.reason ?: receipt.pendingReason) + " " + receipt.identityWarning
+                }
+            } finally { if (generation == connectionEpoch) reading = false }
         }
+    }
+    /** Why HOLD TO SEND cannot go: the EQ itself, or the DAC read that has to come first (never mislabel a read problem as an EQ one). */
+    enum class SendBlock { NONE, EQ, READING, NEEDS_READ, READ_FAILED }
+    fun sendBlock(profile: Profile): SendBlock {
+        if (protocol.issues(profile).isNotEmpty()) return SendBlock.EQ
+        if (protocol.native && snapshot == null) return when {
+            readFailure != null -> SendBlock.READ_FAILED
+            reading -> SendBlock.READING
+            else -> SendBlock.NEEDS_READ
+        }
+        return if (sendIssues(profile).isNotEmpty()) SendBlock.EQ else SendBlock.NONE
     }
     fun sendIssues(profile: Profile): List<String> {
         val issues = protocol.issues(profile)
@@ -283,6 +305,15 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         val reference = (if (bypass) snapshot else abReference) ?: return forgetAb("DAC STATE UNKNOWN")
         val d = findDac() ?: return SendOutcome(false, "NO DAC / MULTIPLE DACS")
         if (busy) return SendOutcome(false, "DAC BUSY")
+        if (bypass) {
+            // B is entered only when A can be put back: the restoring sequence is encoded (and so checked) first.
+            val restore = reference.bands.map { it.registers }.filter { it.gain256 != 0 }.map { r ->
+                WalkPlay.BandWrite(r.index, r.freq.toDouble(), r.gain256 / 256.0, r.q256 / 256.0, r.typeCode)
+            }
+            if (runCatching { WalkPlay.temporaryBandSequence(restore, reference.slot) }.isFailure) {
+                return SendOutcome(false, "A/B blocked: a band on the DAC does not fit its filter format, so A could not be restored. Nothing was changed.")
+            }
+        }
         val epoch = connectionEpoch; val guard = sessionGuard(d)
         busy = true
         return try {
@@ -377,6 +408,8 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                 if (epoch == connectionEpoch && runCatching { guard() }.isSuccess) {
                     if (!keepSnapshot) snapshot = null
                     error = "$what failed: ${e.message}"
+                    UsbLog.line("$what failed: ${e.message}")
+                    if (what == "read") readFailure = e.message ?: e.javaClass.simpleName
                     if (what == "read" && pendingReceipt != null) pendingReason = "Pending readback failed/incomplete: ${e.message}. ${pendingReceipt?.identityWarning}"
                 }
             } finally { if (epoch == connectionEpoch && runCatching { guard() }.isSuccess) busy = false }

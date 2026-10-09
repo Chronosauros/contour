@@ -46,6 +46,9 @@ data class DeviceTarget private constructor(
             else -> null }
     }
     fun shelfOffset(bands: List<Band>): Double = walkplay?.shelfOffset(bands) ?: 0.0
+    /** Does this stored explicit preamp fit the device with these bands? The planner's own rule (WalkPlay) or the native range. */
+    fun preampFits(bands: List<Band>, preampDb: Double): Boolean =
+        walkplay?.preampFits(bands, preampDb) ?: (preampDb.isFinite() && preampDb in preampMin..preampMax)
     fun shownPreamp(profile: Profile): Double = if (this == OFFLINE || native) profile.effectivePreampDb() else walkplay!!.shownPreamp(profile)
     fun issues(profile: Profile): List<String> {
         if (this == OFFLINE) return emptyList()

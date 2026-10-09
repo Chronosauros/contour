@@ -132,7 +132,7 @@ object KtMicroCodec {
         val bands = List(5) { i ->
             val b = profile.bands.getOrNull(i)
             if (b == null || !b.enabled) RawBand(i, 0, if (model.compensate2X) 50 else 100, 1000, 0)
-            else RawBand(i, quantize(b.gainDb * 10), quantize(b.freqHz / if (model.compensate2X) 2 else 1),
+            else RawBand(i, tenthsDown(b.gainDb), quantize(b.freqHz / if (model.compensate2X) 2 else 1),
                 quantize(b.q * 1000), typeCode(b.type))
         }
         val encoded = bands.flatMap { encodeRawBand(model.registers, it) }
@@ -158,6 +158,11 @@ object KtMicroCodec {
         require(b.freqHz.isFinite() && b.freqHz in 20.0..20000.0)
         require(b.gainDb.isFinite() && b.gainDb in -10.0..10.0)
         require(b.q.isFinite() && b.q in 0.1..5.0)
+    }
+    /** Band gain in tenths of a dB, rounded DOWN (a cut never gets shallower, a boost never grows); on-grid values unchanged. */
+    private fun tenthsDown(gainDb: Double): Int {
+        require(gainDb.isFinite() && gainDb * 10 in -32768.0..65535.0)
+        return floor(gainDb * 10 + 1e-6).toInt()
     }
     private fun quantize(v: Double): Int {
         require(v.isFinite() && v in -32768.0..65535.0)

@@ -12,6 +12,7 @@ import io.github.chronosauros.contour.core.DeviceProtocol
 import io.github.chronosauros.contour.core.WalkPlayCatalog
 import io.github.chronosauros.contour.core.DeviceTarget
 import io.github.chronosauros.contour.core.native.NativeHidReports
+import io.github.chronosauros.contour.core.native.NativeHidSelection
 import io.github.chronosauros.contour.BuildConfig
 import java.io.Closeable
 import java.io.IOException
@@ -31,6 +32,8 @@ class HidTransport private constructor(
         const val REPLY_TIMEOUT_MS = 200
         const val RETRIES = 2
         private const val WRITE_TIMEOUT_MS = 1000
+        /** Raw size of the largest FiiO frame (report ID + 16 B); a descriptor that declares less cannot carry the codec. */
+        private const val FIIO_MIN_REPORT = 17
 
         private fun descriptorLength(raw: ByteArray, intf: UsbInterface): Int {
             var i = 0; var matching = false
@@ -92,54 +95,95 @@ class HidTransport private constructor(
                     if (epIn == null) throw IOException("HID interface ${h.id} has no interrupt IN endpoint")
                     Target(h, epIn, epOut, null)
                 } else {
-                    val targets = hids.filter { it.alternateSetting == 0 }.mapNotNull { h ->
-                        runCatching {
-                            guard()
-                            // usbfs refuses interface-recipient requests while the kernel HID driver owns it.
-                            if (!connection.claimInterface(h, true)) throw IOException("claimInterface failed before descriptor read")
-                            val length = descriptorLength(connection.rawDescriptors, h)
-                            val descriptor = ByteArray(length)
-                            val n = connection.controlTransfer(0x81, 0x06, 0x2200, h.id, descriptor, length, WRITE_TIMEOUT_MS)
-                            guard()
-                            require(n == length) { "Short HID descriptor read ($n of $length)" }
-                            UsbLog.line("HID if ${h.id} report descriptor ${UsbLog.hex(descriptor)}")
-                            val epsNative = (0 until h.endpointCount).map { h.getEndpoint(it) }.filter { it.type == UsbConstants.USB_ENDPOINT_XFER_INT }
-                            if (p.native) {
-                                val shape = NativeHidReports.parse(descriptor)
-                                val id = p.fiio?.reportId ?: if (p.fosi) 1 else 0x4B
-                                val outSize = shape.rawSize(id, NativeHidReports.Kind.OUTPUT)
-                                p.moondrop?.let { shape.qualifyMoondrop(it) }
-                                val minimum = if (p.fiio != null) 17 else if (p.moondrop != null) 7 else 11
-                                require(outSize >= minimum)
-                                val input = if (p.fosi) {
-                                    require(outSize == 64 && shape.rawSize(id, NativeHidReports.Kind.FEATURE) == 64)
-                                    shape.requireSameOwner(id, NativeHidReports.Kind.OUTPUT, NativeHidReports.Kind.FEATURE)
-                                    null
-                                } else {
-                                    val inSize = shape.rawSize(id, NativeHidReports.Kind.INPUT)
-                                    require(inSize >= if (p.moondrop != null) 37 else minimum)
-                                    shape.requireSameOwner(id, NativeHidReports.Kind.INPUT, NativeHidReports.Kind.OUTPUT)
-                                    epsNative.filter { it.direction == UsbConstants.USB_DIR_IN && it.maxPacketSize >= inSize }.singleOrNull()
-                                        ?: error("No matching native interrupt IN")
-                                }
-                                // FiiO: send like the web tool (WebHID writes to the interrupt OUT endpoint when there is one).
-                                // The KA15 silence first blamed on SET_REPORT was the USB audio stream going idle (03.10.2026).
-                                // Native Output SET_REPORT remains distinct from Feature SET_REPORT for the other families.
-                                val out = if (p.fiio != null) epsNative.firstOrNull { it.direction == UsbConstants.USB_DIR_OUT && it.maxPacketSize >= outSize } else null
-                                UsbLog.line("HID if ${h.id} native output via ${if (out != null) "interrupt OUT 0x${Integer.toHexString(out.address)}" else "SET_REPORT control"}")
-                                return@runCatching Target(h, input, out, null, shape)
-                            }
-                            val shape = WalkPlayCatalog.reports(descriptor)
-                            val eps = (0 until h.endpointCount).map { h.getEndpoint(it) }.filter { it.type == UsbConstants.USB_ENDPOINT_XFER_INT }
-                            val input = eps.filter { it.direction == UsbConstants.USB_DIR_IN && it.maxPacketSize >= shape.inputBytes }.singleOrNull()
-                                ?: error("No unambiguous matching interrupt IN")
-                            val outs = eps.filter { it.direction == UsbConstants.USB_DIR_OUT }
-                            val output = if (outs.isEmpty()) null else outs.singleOrNull()?.takeIf { it.maxPacketSize >= shape.outputBytes }
-                                ?: error("Ambiguous/undersized interrupt OUT")
-                            Target(h, input, output, shape)
-                        }.onFailure { connection.releaseInterface(h); UsbLog.line("HID if ${h.id} rejected: ${it.message ?: it.javaClass.simpleName}") }.getOrNull()
+                    // Every HID interface is claimed (usbfs refuses interface-recipient requests otherwise) and its report
+                    // descriptor read; the audio interfaces are never touched. Descriptors and rejection reasons go to the log.
+                    fun endpoints(h: UsbInterface) = (0 until h.endpointCount).map { h.getEndpoint(it) }.filter { it.type == UsbConstants.USB_ENDPOINT_XFER_INT }
+                    fun descriptorOf(h: UsbInterface): ByteArray {
+                        guard()
+                        // usbfs refuses interface-recipient requests while the kernel HID driver owns it.
+                        if (!connection.claimInterface(h, true)) throw IOException("claimInterface failed before descriptor read")
+                        val length = descriptorLength(connection.rawDescriptors, h)
+                        val descriptor = ByteArray(length)
+                        val n = connection.controlTransfer(0x81, 0x06, 0x2200, h.id, descriptor, length, WRITE_TIMEOUT_MS)
+                        guard()
+                        require(n == length) { "Short HID descriptor read ($n of $length)" }
+                        UsbLog.line("HID if ${h.id} report descriptor ${UsbLog.hex(descriptor)}")
+                        UsbLog.line("HID if ${h.id} interrupt endpoints: ${endpoints(h).joinToString { "${if (it.direction == UsbConstants.USB_DIR_IN) "IN" else "OUT"} 0x${Integer.toHexString(it.address)} mps ${it.maxPacketSize}" }.ifEmpty { "none" }}")
+                        return descriptor
                     }
-                    targets.singleOrNull() ?: throw IOException("No unambiguous descriptor-proven family HID interface")
+                    val altZero = hids.filter { it.alternateSetting == 0 }
+                    val fiio = p.fiio
+                    if (fiio != null) {
+                        // FiiO: WebHID-equivalent selection, decided in :core (NativeHidSelection) so it is unit-tested.
+                        val candidates = altZero.map { h ->
+                            val read = runCatching { descriptorOf(h) }
+                            val failure = read.exceptionOrNull()?.let { it.message ?: it.javaClass.simpleName }
+                            if (failure != null) { connection.releaseInterface(h); UsbLog.line("HID if ${h.id} rejected: $failure") }
+                            NativeHidSelection.Candidate(h.id, read.getOrNull(), failure, endpoints(h).map {
+                                NativeHidSelection.Endpoint(it.address, it.direction == UsbConstants.USB_DIR_IN, it.maxPacketSize)
+                            })
+                        }
+                        val picked = NativeHidSelection.selectFiio(fiio.reportId, FIIO_MIN_REPORT, candidates)
+                        picked.verdicts.forEach { UsbLog.line("HID if ${it.interfaceId} ${if (it.accepted) "selected" else "rejected"}: ${it.reason}") }
+                        val choice = picked.choice ?: run {
+                            // The SEND/READ FAILED sheet shows the tail of the log: end with the evidence.
+                            UsbLog.line("USB interfaces: ${(0 until device.interfaceCount).joinToString { device.getInterface(it).let { i -> "${i.id}/${i.alternateSetting} class ${i.interfaceClass}" } }}")
+                            candidates.forEach { c -> c.descriptor?.let { UsbLog.line("HID if ${c.interfaceId} report descriptor ${UsbLog.hex(it)}") } }
+                            throw IOException(picked.failure)
+                        }
+                        UsbLog.line("HID selection for ${fiio.productName}: if ${choice.interfaceId}, ${choice.note}")
+                        val h = altZero.first { it.id == choice.interfaceId }
+                        altZero.filter { it !== h }.forEach { runCatching { connection.releaseInterface(it) } }
+                        val eps = endpoints(h)
+                        val input = eps.first { it.address == choice.input.address }
+                        val out = choice.output?.let { o -> eps.first { it.address == o.address } }
+                        UsbLog.line("HID if ${h.id} native output via ${if (out != null) "interrupt OUT 0x${Integer.toHexString(out.address)}" else "SET_REPORT control"}")
+                        Target(h, input, out, null, choice.shape)
+                    } else {
+                        val reasons = ArrayList<String>()
+                        val targets = altZero.mapNotNull { h ->
+                            runCatching {
+                                val descriptor = descriptorOf(h)
+                                val epsNative = endpoints(h)
+                                if (p.native) {
+                                    val shape = NativeHidReports.parse(descriptor)
+                                    val id = if (p.fosi) 1 else 0x4B
+                                    val outSize = shape.rawSize(id, NativeHidReports.Kind.OUTPUT)
+                                    p.moondrop?.let { shape.qualifyMoondrop(it) }
+                                    val minimum = if (p.moondrop != null) 7 else 11
+                                    require(outSize >= minimum) { "report $id output $outSize B < $minimum" }
+                                    val input = if (p.fosi) {
+                                        require(outSize == 64 && shape.rawSize(id, NativeHidReports.Kind.FEATURE) == 64) { "report $id output/feature not 64 B" }
+                                        shape.requireSameOwner(id, NativeHidReports.Kind.OUTPUT, NativeHidReports.Kind.FEATURE)
+                                        null
+                                    } else {
+                                        val inSize = shape.rawSize(id, NativeHidReports.Kind.INPUT)
+                                        require(inSize >= if (p.moondrop != null) 37 else minimum) { "report $id input $inSize B too small" }
+                                        shape.requireSameOwner(id, NativeHidReports.Kind.INPUT, NativeHidReports.Kind.OUTPUT)
+                                        epsNative.filter { it.direction == UsbConstants.USB_DIR_IN && it.maxPacketSize >= inSize }.singleOrNull()
+                                            ?: error("No matching native interrupt IN")
+                                    }
+                                    // Native Output SET_REPORT remains distinct from Feature SET_REPORT for these families.
+                                    UsbLog.line("HID if ${h.id} native output via SET_REPORT control")
+                                    return@runCatching Target(h, input, null, null, shape)
+                                }
+                                val shape = WalkPlayCatalog.reports(descriptor)
+                                val input = epsNative.filter { it.direction == UsbConstants.USB_DIR_IN && it.maxPacketSize >= shape.inputBytes }.singleOrNull()
+                                    ?: error("No unambiguous matching interrupt IN")
+                                val outs = epsNative.filter { it.direction == UsbConstants.USB_DIR_OUT }
+                                val output = if (outs.isEmpty()) null else outs.singleOrNull()?.takeIf { it.maxPacketSize >= shape.outputBytes }
+                                    ?: error("Ambiguous/undersized interrupt OUT")
+                                Target(h, input, output, shape)
+                            }.onFailure {
+                                connection.releaseInterface(h)
+                                val why = it.message ?: it.javaClass.simpleName
+                                reasons += "if ${h.id}: $why"
+                                UsbLog.line("HID if ${h.id} rejected: $why")
+                            }.getOrNull()
+                        }
+                        targets.singleOrNull() ?: throw IOException("No unambiguous descriptor-proven family HID interface (" +
+                            reasons.joinToString("; ").ifEmpty { if (targets.isEmpty()) "no HID interface" else "${targets.size} interfaces qualified" } + ")")
+                    }
                 }
                 guard()
                 if (!connection.claimInterface(target.intf, true)) throw IOException("claimInterface failed")

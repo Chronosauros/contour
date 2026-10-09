@@ -44,12 +44,30 @@ class WalkPlayQ30SafetyTest {
         assertIs<DevicePlan.Rejected>(target.plan(listOf(shelf(q = Double.NaN)), -10.0))
     }
 
-    @Test fun `legacy Micro and TRN encoder policy is not extended by new target preflight`() {
+    @Test fun `Micro Max and TRN refuse signed Q30 overflow and keep the bytes of bands that fit`() {
         val b = shelf()
+        // Micro sends the emulated low shelf, which fits; Max and TRN send the native high shelf, which does not.
         assertIs<DevicePlan.Ready>(DeviceProtocol.MICRO.plan(listOf(b), -10.0))
-        val trn = assertIs<DevicePlan.Ready>(DeviceProtocol.TRN.plan(listOf(b), -10.0))
+        for (p in listOf(DeviceProtocol.MAX, DeviceProtocol.TRN)) {
+            val rejected = assertIs<DevicePlan.Rejected>(p.plan(listOf(b), -10.0))
+            assertTrue("cannot be represented safely" in rejected.issues.single(), rejected.issues.toString())
+        }
+        // A disabled band that would not fit is never sent, so it does not block the profile.
+        assertIs<DevicePlan.Ready>(DeviceProtocol.TRN.plan(listOf(b.copy(enabled = false), b.copy(freqHz = 8000.0, gainDb = 3.0)), -10.0))
+        // Representable bands keep the bytes of the legacy encoder.
+        val ok = shelf(8000.0, 3.0)
+        val trn = assertIs<DevicePlan.Ready>(DeviceProtocol.TRN.plan(listOf(ok), -10.0))
         val sent = ArrayList<ByteArray>()
         DeviceProtocol.TRN.executeWrite(trn, 7, {}, { sent += it }, {})
-        assertContentEquals(WalkPlay.bandWriteReport(WalkPlay.bandWrite(0, b), 7), sent.first())
+        assertContentEquals(WalkPlay.bandWriteReport(WalkPlay.bandWrite(0, ok), 7), sent.first())
+        // A crafted ready plan that overflows aborts before any callback on every target.
+        for (p in listOf(DeviceProtocol.MICRO, DeviceProtocol.MAX, DeviceProtocol.TRN)) {
+            val flat = p.flatPlan()
+            val bad = flat.copy(bands = flat.bands.dropLast(1) + flat.bands.last().copy(
+                freq = 1000.0, gainDb = 10.0, q = 0.75, typeCode = WalkPlay.TYPE_HSQ))
+            var calls = 0
+            assertFailsWith<IllegalArgumentException> { p.executeWrite(bad, 7, { calls++ }, { calls++ }, { calls++ }) }
+            assertEquals(0, calls)
+        }
     }
 }

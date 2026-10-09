@@ -16,3 +16,5 @@ research/protocol/report-descriptor.txt -text
 research/protocol/step1-read.log -text
 research/protocol/step1.json -text
 research/protocol/timing.log -text
+# squig.link exports are CRLF: test files kept byte-exact.
+android/core/src/test/resources/txt/*.txt -text
