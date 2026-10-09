@@ -21,6 +21,8 @@ if (typeof Element.prototype.animate === "function" && "IntersectionObserver" in
 <link rel="icon" type="image/png" href="images/icon-512.png">
 <link rel="stylesheet" href="shared/tokens.css">
 <link rel="stylesheet" href="shared/contour-tune.css">
+<link rel="stylesheet" href="shared/soundblooms.css">
+<script defer src="shared/soundblooms.js"></script>
 <style>
 /* One thumb: three colours - the app orange, black, and the app's own dark screen (only inside the phone and the live panel). Flat, no gradients. */
 :root{--o:#F07A3A;--k:#000;--ease:cubic-bezier(.16,1,.3,1);--gut:clamp(16px,4.4vw,64px)}
@@ -70,6 +72,11 @@ h2.mega{margin-bottom:.36em}
 .top nav{margin-left:auto;display:flex;gap:clamp(8px,2vw,28px)}
 .top nav a{text-decoration:none;font-size:clamp(17px,1.5vw,22px);font-weight:600;min-height:48px;display:inline-flex;align-items:center;padding:0 4px}
 .top nav a:hover{text-decoration:underline}
+.top .lockup{display:flex;align-items:baseline;gap:clamp(8px,.8vw,12px);white-space:nowrap}
+.top .by{--by-fs:clamp(15px,1.4vw,21px);--by-word:#fff;--by-ink:#fff}
+.top nav{white-space:nowrap}
+@media (max-width:560px){.top .lockup{flex-direction:column;align-items:flex-start;gap:0}.top .brand{line-height:1.15}.top .by{--by-fs:14px}}
+@media (max-width:359px){.top nav a{font-size:15px;padding:0 2px}.top .by{--by-fs:12px}}
 
 /* the phone: a flat bezel around the clip, black on orange and orange on black (the box keeps the old hand-art proportions so the layout stays put) */
 .dev{position:relative;aspect-ratio:2048/2426;width:100%}
@@ -183,7 +190,7 @@ footer a{margin-right:14px}
 <body>
 
 <header class="top">
-  <a class="brand" href="#top" aria-label="Contour, top of the page">Contour</a>
+  <span class="lockup"><a class="brand" href="#top" aria-label="Contour, top of the page">Contour</a><a class="by" href="https://soundblooms.com/" rel="noopener" target="_blank" aria-label="by Soundblooms"><span class="by-word" aria-hidden="true">by</span><span class="sb-mark" aria-hidden="true">sound<span class="sb-face"><i class="sb-band"></i><span class="sb-eyes" data-eyes="calm"><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i></span></span>blooms</span></a></span>
   <nav aria-label="Pages"><a href="guide/">Guide</a><a href="devices/">Devices</a><a href="#install">Install</a></nav>
 </header>
 
@@ -288,6 +295,7 @@ footer a{margin-right:14px}
   <aside class="elsewhere" aria-label="Other projects">
     <p>Curious what else I'm working on?</p>
     <ul>
+      <li><a href="https://soundblooms.com/" rel="noopener" target="_blank">Soundblooms</a> - the home of everything I make.</li>
       <li><a href="https://eqsweep.app" rel="noopener" target="_blank">EQ Sweep</a> - tune your headphones by ear.</li>
       <li><a href="https://github.com/Chronosauros" rel="noopener" target="_blank">Other projects on GitHub</a></li>
     </ul>

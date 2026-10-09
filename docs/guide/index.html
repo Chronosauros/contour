@@ -17,6 +17,8 @@
 <meta name="color-scheme" content="light dark">
 <link rel="icon" type="image/png" href="../images/icon-512.png">
 <link rel="apple-touch-icon" href="../images/icon-512.png">
+<link rel="stylesheet" href="../shared/soundblooms.css">
+<script defer src="../shared/soundblooms.js"></script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -94,6 +96,9 @@ strong{font-weight:600}
 
 /* top line */
 .top{display:flex;gap:20px;padding:20px 6px 0;font-size:15px}
+.top{align-items:baseline}
+.top .lockup{display:flex;align-items:baseline;gap:8px;white-space:nowrap}
+.top .by{--by-fs:15px;--by-word:var(--text-dim);--by-ink:var(--text-dim)}
 
 /* hero */
 .hero{padding:24px 0 8px}
@@ -152,7 +157,7 @@ footer .links{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 14px}
 <body>
 <div class="wrap">
 
-<p class="top"><a href="../">Contour</a> <a href="../install/">Install</a></p>
+<p class="top"><span class="lockup"><a href="../">Contour</a><a class="by" href="https://soundblooms.com/" rel="noopener" target="_blank" aria-label="by Soundblooms"><span class="by-word" aria-hidden="true">by</span><span class="sb-mark" aria-hidden="true">sound<span class="sb-face"><i class="sb-band"></i><span class="sb-eyes" data-eyes="calm"><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i></span></span>blooms</span></a></span> <a href="../install/">Install</a></p>
 
 <header class="hero">
   <img class="icon" src="../images/icon-512.png" width="88" height="88" alt="Contour app icon">
@@ -319,6 +324,7 @@ footer .links{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 14px}
 <footer>
   <p class="links"><a href="../">Home</a> <a href="../install/">Install</a> <a href="https://github.com/Chronosauros/contour">Source code</a></p>
   <ul>
+    <li><a href="https://soundblooms.com/" rel="noopener" target="_blank">Soundblooms</a> - the home of everything I make.</li>
     <li>Source code: <a href="https://github.com/Chronosauros/contour">github.com/Chronosauros/contour</a></li>
     <li>Licence: Apache 2.0</li>
     <li>Privacy: <a href="https://github.com/Chronosauros/contour/blob/main/PRIVACY.md">PRIVACY.md</a> - the app has no internet permission, no analytics, no accounts; this website counts anonymous visits, without cookies</li>

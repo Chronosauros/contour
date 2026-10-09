@@ -1,0 +1,44 @@
+/* "by Soundblooms" lockup, shared by the home page, the guide and the devices page.
+   The wordmark follows soundblooms.com: "sound", a tiny face (band + two eyes) in the seam, "blooms", set in Geom.
+   The face moves like on soundblooms.com: the keyframes, durations and easing below are copied from its Wordmark
+   styles and the loop is in soundblooms.js (same timings). Reduced motion: no loop, the face stays still.
+   Each page sets the size (--by-fs = the wordmark size; "by" is 0.8 of it) and the colours:
+   --by-word = the word "by", --by-ink = the wordmark. Sizes inside the face are in em. */
+@font-face{
+  font-family:"Geom";
+  src:url("fonts/geom-500.woff") format("woff");
+  font-weight:500; font-style:normal; font-display:block;
+}
+.by{position:relative;display:inline-flex;align-items:baseline;gap:.4em;font-size:var(--by-fs,16px);white-space:nowrap;text-decoration:none;color:var(--by-ink,currentColor);flex:none}
+.by::after{content:"";position:absolute;top:50%;left:-6px;right:-6px;height:48px;transform:translateY(-50%)}
+.by-word{font:500 .8em/1 "Geom",sans-serif;color:var(--by-word,currentColor);-webkit-text-stroke:0}
+.sb-mark{font:500 1em/1 "Geom",sans-serif;white-space:nowrap;-webkit-text-stroke:0}
+.sb-face{position:relative;display:inline-block;width:.62em;height:1em;vertical-align:baseline;margin:0 .05em}
+.sb-band{position:absolute;left:50%;bottom:.6em;width:.56em;height:.085em;border-radius:.085em;background:currentColor;transform:translate(-50%,0);will-change:transform}
+.sb-eyes{position:absolute;inset:auto 0 .24em 0;display:flex;justify-content:center;gap:.15em}
+.sb-eyes>i{position:relative;display:block;box-sizing:border-box;width:.14em;height:.14em;border-radius:50%;background:currentColor;transform-origin:center;
+  transition:width .35s ease-in-out,height .35s ease-in-out,border-radius .35s ease-in-out,background-color .28s ease,translate .33s ease-in-out}
+.sb-arc{position:absolute;left:50%;top:50%;width:.245em;height:.189em;translate:-50% -50%;scale:.8;opacity:0;transition:opacity .28s ease-out,scale .34s ease-out;pointer-events:none}
+.sb-eyes[data-eyes="annoyed"]>i,.sb-eyes[data-eyes="fixing"]>i{width:.28em;height:.105em;border-radius:.052em}
+.sb-eyes[data-eyes="fixing"]>i{animation:sb-eye-fix 1s ease-in-out both}
+.sb-eyes[data-eyes="happy"]>i{background:transparent}
+.sb-eyes[data-eyes="happy"] .sb-arc{opacity:1;scale:1}
+.sb-eyes[data-eyes="blink"]>i{animation:sb-eye-blink .55s ease-in-out both}
+.sb-eyes>i:nth-child(2){animation-delay:.07s}
+@keyframes sb-eye-fix{
+  0%{translate:0 0}
+  20%{translate:0 -.12em}
+  38%{translate:0 -.10em}
+  58%{translate:0 -.22em}
+  78%{translate:0 .03em}
+  90%{translate:0 -.045em}
+  100%{translate:0 0}
+}
+@keyframes sb-eye-blink{
+  0%{scale:1 .16}
+  48%{scale:1.05 1}
+  100%{scale:1 1}
+}
+@media (prefers-reduced-motion: reduce){
+  .sb-band,.sb-eyes>i,.sb-arc{transition:none!important;animation:none!important}
+}
