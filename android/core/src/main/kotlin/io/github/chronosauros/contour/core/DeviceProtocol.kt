@@ -6,13 +6,18 @@ package io.github.chronosauros.contour.core
  * - MAX (CrinEar Protocol Max, WalkPlay SchemeNo16, 3302:43CC) is the stable 1.3.0 strict fail-closed path,
  *   byte for byte, in every build. A community member tested it on 02.10.2026: 8 bands, peak and shelf
  *   filters, no crashes.
- * - TRN and catalog targets (advanced builds only) keep the advanced-beta policy.
+ * - MAX_PASS is the same target in advanced builds with LOW PASS / HIGH PASS added; the stable build never resolves it.
+ * - TRN and catalog targets (advanced builds only) keep the advanced-beta policy; TRN also offers LOW PASS / HIGH PASS.
  */
 data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val scheme: Int,
     val upstreamExperimental: Boolean = false) {
+    /** Identity by wire id, not by caps: [MAX_PASS] extends the caps of [MAX] and is still the strict Protocol Max path. */
+    val isMax: Boolean get() = scheme == 16 && caps.vendorId == 0x3302 && caps.productId == 0x43CC
+    val isTrn: Boolean get() = scheme == 16 && caps.vendorId == 0x3302 && caps.productId == 0x43E8
+    private val nativeCodes: Set<Int> get() = caps.types.map { WalkPlay.typeCode(it) }.toSet()
     /** True for protocols on a strict fail-closed path (everything but MICRO); the name is historical. */
     val experimental: Boolean get() = this != MICRO
-    val descriptorRequired: Boolean get() = this != MICRO && this != MAX
+    val descriptorRequired: Boolean get() = this != MICRO && !isMax
     val supportsAb: Boolean get() = this == MICRO
     val preampMin: Int get() = ProtocolMicro.PREAMP_MIN_DB
     val preampMax: Int get() = ProtocolMicro.PREAMP_MAX_DB
@@ -33,9 +38,9 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
      * Micro: register with the high-shelf offset; Max and TRN: `floor(preamp + 1e-6)` in the policy range; catalog targets: the value itself.
      */
     fun preampFits(bands: List<Band>, preampDb: Double): Boolean = preampDb.isFinite() && (
-        when (this) {
-            MICRO -> ProtocolMicro.preampFits(bands, preampDb)
-            MAX, TRN -> kotlin.math.floor(preampDb + 1e-6) in preampMin.toDouble()..preampMax.toDouble()
+        when {
+            this == MICRO -> ProtocolMicro.preampFits(bands, preampDb)
+            isMax || isTrn -> kotlin.math.floor(preampDb + 1e-6) in preampMin.toDouble()..preampMax.toDouble()
             else -> preampDb in preampMin.toDouble()..preampMax.toDouble() // catalog targets: unchanged plain range
         })
 
@@ -117,7 +122,7 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
     fun plan(profile: Profile): DevicePlan = plan(profile.bands, profile.preampDb)
     fun plan(bands: List<Band>, preampDb: Double?): DevicePlan {
         if (this == MICRO) return ProtocolMicro.plan(bands, preampDb)
-        if (this == MAX) return planMax(bands, preampDb)
+        if (isMax) return planMax(bands, preampDb)
         val issues = ArrayList<String>()
         val active = bands.filter { it.enabled }
         if (active.size > caps.bands) issues += "${active.size} enabled bands; ${caps.name} has ${caps.bands}"
@@ -128,11 +133,11 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
                     b.gainDb !in caps.gainMinDb..caps.gainMaxDb || b.q !in caps.qMin..caps.qMax)
                 issues += "Band ${i + 1}: outside ${caps.name} supported types/ranges"
             runCatching {
-                if (this == TRN) WalkPlay.computeIir(b.freqHz, b.gainDb, b.q, WalkPlay.typeCode(b.type))
+                if (isTrn) WalkPlay.computeIir(b.freqHz, b.gainDb, b.q, WalkPlay.typeCode(b.type))
                 else WalkPlayQ30Preflight.requireRepresentable(b.freqHz, b.gainDb, b.q, WalkPlay.typeCode(b.type))
             }.exceptionOrNull()?.let {
                 // TRN writes enabled bands only: a disabled band that does not fit is never sent, so it does not block.
-                if (this != TRN || it !is WalkPlay.Q30Overflow) issues += "Band ${i + 1}: ${it.message}"
+                if (!isTrn || it !is WalkPlay.Q30Overflow) issues += "Band ${i + 1}: ${it.message}"
                 else if (b.enabled) issues += SendBlocked.band(caps.name, i + 1, b.type)
             }
         }
@@ -141,7 +146,7 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
         return runCatching {
             val writes = List(caps.bands) { i -> if (i < active.size) {
                 val b = active[i]
-                if (this == TRN) WalkPlay.bandWrite(i, b) else WalkPlay.BandWrite(i,
+                if (isTrn) WalkPlay.bandWrite(i, b) else WalkPlay.BandWrite(i,
                     kotlin.math.floor(b.freqHz), WalkPlay.jsRound(b.gainDb * 256) / 256,
                     WalkPlay.jsRound(b.q * 256) / 256, WalkPlay.typeCode(b.type))
             } else flatBand(i) }
@@ -150,12 +155,12 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
             val rows = bands.indices.filter { bands[it].enabled }
             val blocked = ArrayList<String>()
             writes.forEachIndexed { i, w ->
-                if (this != TRN) runCatching {
+                if (!isTrn) runCatching {
                     WalkPlayQ30Preflight.requireRepresentable(w.freq, w.gainDb, w.q, w.typeCode)
                 }.getOrElse { throw IllegalArgumentException("Band ${i + 1} (quantized): ${it.message}") }
                 // TRN: bandWriteReport also checks the values its registers would decode to (the writes are unquantized).
                 try { WalkPlay.bandWriteReport(w, 0) } catch (e: WalkPlay.Q30Overflow) {
-                    if (this != TRN) throw e
+                    if (!isTrn) throw e
                     blocked += SendBlocked.band(caps.name, (rows.getOrNull(i) ?: i) + 1, active.getOrNull(i)?.type ?: FilterType.PEAK)
                 }
             }
@@ -210,7 +215,7 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
      * MICRO and MAX send exactly the 1.3.0 sequence (validated by their plans); catalog targets re-validate here. */
     fun executeWrite(plan: DevicePlan.Ready, slot: Int, guard: () -> Unit,
         send: (ByteArray) -> Unit, delay: (Long) -> Unit) {
-        if (this != MICRO && this != MAX) {
+        if (this != MICRO && !isMax) {
             require(slot in 0..255 && plan.preampDb in preampMin..preampMax)
             require(plan.bands.size == caps.bands)
             plan.bands.forEachIndexed { i, w ->
@@ -240,7 +245,7 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
 
     fun matchesReadback(plan: DevicePlan.Ready, state: ReadState, expectedSlot: Int): Boolean {
         if (state.slot != expectedSlot || !matches(plan, state.bands.map { it.registers }, state.preampDb)) return false
-        if (this == MICRO || this == MAX || this == TRN) return true // Preserve established register-only policy.
+        if (this == MICRO || isMax || isTrn) return true // Preserve established register-only policy.
         return plan.bands.indices.all { i ->
             val w = plan.bands[i]
             WalkPlay.computeIir(w.freq, w.gainDb, w.q, w.typeCode).contentEquals(state.bands[i].biquad)
@@ -255,13 +260,13 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
         val last = maxOf(0, bands.indexOfLast { it.registers != flatBand(it.registers.index).registers() })
         val reconstructed = bands.take(last + 1).map { b ->
             val r = b.registers
-            if (!b.enabled || r.typeCode !in setOf(WalkPlay.TYPE_PK, WalkPlay.TYPE_LSQ, WalkPlay.TYPE_HSQ))
+            if (!b.enabled || r.typeCode !in nativeCodes)
                 return DacImport.Rejected(listOf("DAC band ${r.index + 1}: disabled or unsupported type"))
             Band("dac${r.index}", b.type, r.freq.toDouble(), r.gain256 / 256.0, r.q256 / 256.0)
         }
         val eq = ImportedEq(reconstructed, preampDb.toDouble())
         val candidate = plan(eq.bands, eq.preampDb)
-        if ((this == MAX || this == TRN) && candidate is DevicePlan.Rejected && candidate.issues.all { SendBlocked.isBandRefusal(it) }) {
+        if ((isMax || isTrn) && candidate is DevicePlan.Rejected && candidate.issues.all { SendBlocked.isBandRefusal(it) }) {
             // The DAC already holds a band Contour would refuse to send (written by another tool): load what it holds,
             // with the refusal as a warning; the plan stays Rejected, so sending it back stays blocked.
             val writes = List(caps.bands) { i -> if (i < reconstructed.size) WalkPlay.bandWrite(i, reconstructed[i]) else flatBand(i) }
@@ -277,7 +282,7 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
     /** Strict receive validation; never interpret a write echo, short packet or unknown native type.
      * Max/TRN: a full 64-byte input report, read direction. */
     fun isReply(buf: ByteArray, cmd: Int): Boolean = if (this == MICRO) WalkPlay.isReply(buf, cmd)
-        else buf.size >= (if (this == MAX || this == TRN) WalkPlay.REPORT_SIZE else when (cmd) {
+        else buf.size >= (if (isMax || isTrn) WalkPlay.REPORT_SIZE else when (cmd) {
             WalkPlay.CMD_PEQ -> 37
             WalkPlay.CMD_VERSION -> 7
             WalkPlay.CMD_GLOBAL_GAIN -> 6
@@ -295,18 +300,18 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
         if (this == MICRO) return WalkPlay.parseBand(buf)
         require(isBandReply(buf, index)) { "Invalid band $index reply" }
         require(buf[3].toInt() == 0 && buf[4].toInt() == 0) { "Invalid PEQ reply header" }
-        if (this == MAX) {
+        if (isMax) {
             val b = WalkPlay.parseBand(buf)
-            require(b.registers.typeCode in setOf(WalkPlay.TYPE_PK, WalkPlay.TYPE_LSQ, WalkPlay.TYPE_HSQ)) { "Unsupported ${caps.name} native type" }
+            require(b.registers.typeCode in nativeCodes) { "Unsupported ${caps.name} native type" }
             if (b.enabled) require(b.registers.freq.toDouble() in caps.freqMinHz..caps.freqMaxHz &&
                 b.registers.q256 / 256.0 in (caps.qMin - 1.0 / 256)..(caps.qMax + 1.0 / 256) &&
                 b.registers.gain256 / 256.0 in caps.gainMinDb..caps.gainMaxDb) { "Malformed ${caps.name} registers" }
             return b
         }
-        if (this != TRN) require(buf.size >= 38 && buf[6].toInt() == 0 &&
+        if (!isTrn) require(buf.size >= 38 && buf[6].toInt() == 0 &&
             buf[7].toInt() == 0 && buf[35].toInt() == 0 && buf[37].toInt() == 0) { "Malformed PEQ reserved/end fields" }
         val b = WalkPlay.parseBand(buf)
-        require(b.registers.typeCode in caps.types.map { WalkPlay.typeCode(it) }) { "Unsupported native type" }
+        require(b.registers.typeCode in nativeCodes) { "Unsupported native type" }
         require(b.enabled) { "Uninitialized/disabled DAC register slot" }
         require(b.registers.freq.toDouble() in caps.freqMinHz..caps.freqMaxHz &&
             b.registers.q256 / 256.0 in (caps.qMin - 1.0 / 256)..(caps.qMax + 1.0 / 256) &&
@@ -331,14 +336,17 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
         if (this == MICRO) return WalkPlay.parsePreamp(buf)
         require(isReply(buf, WalkPlay.CMD_GLOBAL_GAIN)) { "Invalid preamp reply" }
         require(buf[3].toInt() == 2 && buf[4].toInt() == 0) { "Invalid preamp header" }
-        if (this == MAX) return WalkPlay.parsePreamp(buf)
+        if (isMax) return WalkPlay.parsePreamp(buf)
         return WalkPlay.parsePreamp(buf).also { require(it in preampMin..preampMax) { "Malformed preamp register" } }
     }
 
     companion object {
         val MICRO = DeviceProtocol(ProtocolMicro.CAPABILITIES, 11)
+        private val WITH_PASS = ProtocolMicro.CAPABILITIES.types + FilterType.LOW_PASS + FilterType.HIGH_PASS
         val MAX = DeviceProtocol(ProtocolMicro.CAPABILITIES.copy(name = "CrinEar Protocol Max", productId = 0x43CC, bands = 10), 16)
-        val TRN = DeviceProtocol(ProtocolMicro.CAPABILITIES.copy(name = "TRN Black Pearl", productId = 0x43E8, bands = 10), 16, true)
+        /** [MAX] plus LOW PASS and HIGH PASS (vendor tool codes 4 and 5): advanced builds only, the same strict path ([isMax]). */
+        val MAX_PASS = DeviceProtocol(MAX.caps.copy(types = WITH_PASS), 16)
+        val TRN = DeviceProtocol(ProtocolMicro.CAPABILITIES.copy(name = "TRN Black Pearl", productId = 0x43E8, bands = 10, types = WITH_PASS), 16, true)
         val OFFLINE = DeviceProtocol(ProtocolMicro.CAPABILITIES.copy(name = "Offline editor", vendorId = 0, productId = 0, bands = 31), 0)
         fun walkplay(caps: DeviceCapabilities, scheme: Int, upstreamExperimental: Boolean = false): DeviceProtocol {
             require(scheme in setOf(10, 11, 13, 15, 16, 17, 18, 19, 20, 21))

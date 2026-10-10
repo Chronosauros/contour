@@ -453,8 +453,13 @@ class NativeFiioTest {
         assertTrue(ka.matches(p.expected, drift))
         assertFalse(ka.matches(p.expected, p.expected.copy(bands = p.expected.bands.map { if (it.index == 0) it.copy(qHundredths = it.qHundredths + 40) else it })))
         assertFalse(ka.matches(p.expected, p.expected.copy(bands = p.expected.bands.map { if (it.index == 0) it.copy(gainTenths = -29) else it })))
+        // The K13 R2R keeps ten filters too (hardware 10.10.2026), but reads Q back exactly.
+        val k13 = codec("FIIO K13 R2R")
+        assertEquals(10, k13.padToDeviceCount(three).size)
+        val k = plan(k13, listOf(peak().copy(q = 3.9))).expected
+        assertFalse(k13.matches(k, k.copy(bands = k.bands.map { it.copy(qHundredths = it.qHundredths + 1) })))
         // Every other FiiO config stays exact and unpadded.
-        val c = codec("FIIO K13 R2R")
+        val c = codec("FIIO BR15 R2R")
         assertEquals(three, c.padToDeviceCount(three))
         val q = plan(c, listOf(peak().copy(q = 3.9))).expected
         assertFalse(c.matches(q, q.copy(bands = q.bands.map { it.copy(qHundredths = it.qHundredths + 1) })))
@@ -477,5 +482,27 @@ class NativeFiioTest {
         assertEquals(24.0, -t.preampMin)
         val profile = Profile("p", "p", bands = listOf(Band("hs", FilterType.HIGH_SHELF, 9000.0, 2.0, 8.0)), preampDb = -20.0, createdAt = 0, updatedAt = 0)
         assertEquals(emptyList(), t.issues(profile))
+    }
+
+    /** Reddit 2026-10-04: nine bands plus a tenth of zeros blocked HOLD TO SEND with no reason. The reason is now the first issue. */
+    @Test fun `K13 R2R names the band and value that block a send`() {
+        val t = requireNotNull(DeviceTarget.find(0x2972, 0x0120, true, "FIIO K13 R2R"))
+        val nine = List(9) { peak(it).copy(freqHz = 100.0 * (it + 1), gainDb = 1.0) }
+        fun profile(bands: List<Band>, preamp: Double = 0.0) = Profile("p", "p", bands = bands, preampDb = preamp, createdAt = 0, updatedAt = 0)
+        val zero = Band("b9", FilterType.PEAK, 0.0, 0.0, 0.0)
+        val issues = t.issues(profile(nine + zero))
+        // the empty band is wrong twice (freq 0 and Q 0): both are listed, so fixing the freq does not hide a second block
+        assertEquals("Band 10: freq 0 Hz outside 20-20000 Hz", issues.first())
+        assertEquals(2, issues.size)
+        assertTrue(issues[1].startsWith("Band 10: Q 0.00 outside"), issues[1])
+        assertEquals("BAND 10: FREQ 0 HZ - EDIT BAND", DeviceTarget.blockLabel(issues))
+        assertEquals("BAND 1: GAIN 13 DB - EDIT BAND", DeviceTarget.blockLabel(t.issues(profile(listOf(peak().copy(gainDb = 13.0))))))
+        assertEquals("BAND 1: Q 0.05 - EDIT BAND", DeviceTarget.blockLabel(t.issues(profile(listOf(peak().copy(q = 0.05))))))
+        assertEquals("PREAMP OUT OF RANGE", DeviceTarget.blockLabel(t.issues(profile(nine, 13.0))))
+        assertEquals("BAND 2: FREQ 25000 HZ", DeviceTarget.blockLabel(t.issues(profile(listOf(peak(), peak(1).copy(freqHz = 25000.0))))))
+        assertEquals("INVALID EQ - EDIT BAND", DeviceTarget.blockLabel(listOf("something else")))
+        assertEquals("INVALID EQ - EDIT BAND", DeviceTarget.blockLabel(emptyList()))
+        // every problem is listed, not only the first
+        assertEquals(4, t.issues(profile(listOf(zero, zero.copy(id = "b10")))).size)
     }
 }

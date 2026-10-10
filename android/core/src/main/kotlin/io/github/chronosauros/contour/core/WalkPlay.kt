@@ -165,8 +165,11 @@ object WalkPlay {
     fun factoryFlat(index: Int): BandWrite = BandWrite(index, FACTORY_FREQS[index].toDouble(), 0.0, FACTORY_Q, TYPE_PK)
 
     /** A user band -> its wire values, unchanged (no SchemeNo11 compensation, see the class comment). */
-    fun bandWrite(index: Int, band: Band): BandWrite =
-        BandWrite(index, band.freqHz, band.gainDb, band.q, typeCode(band.type))
+    fun bandWrite(index: Int, band: Band): BandWrite {
+        // A pass filter has no gain: the register is written 0, whatever the band stores.
+        val pass = band.type == FilterType.LOW_PASS || band.type == FilterType.HIGH_PASS
+        return BandWrite(index, band.freqHz, if (pass) 0.0 else band.gainDb, band.q, typeCode(band.type))
+    }
 
     /** A band whose biquad does not fit signed Q30: refused, never wrapped into a different filter. */
     class Q30Overflow(message: String) : IllegalArgumentException(message)
@@ -220,7 +223,13 @@ object WalkPlay {
                 b2 = a * ((a + 1) + (a - 1) * c - k); a0 = (a + 1) - (a - 1) * c + k
                 a1 = 2 * ((a - 1) - (a + 1) * c); a2 = (a + 1) - (a - 1) * c - k
             }
-        } else { // PK; devicePEQ uses the PK formula for LP/HP as well
+        } else if (typeCode == TYPE_LP) { // the vendor tool's plain RBJ low-pass: gain ignored
+            b0 = (1 - c) / 2; b1 = 1 - c; b2 = (1 - c) / 2
+            a0 = 1 + alpha; a1 = -2 * c; a2 = 1 - alpha
+        } else if (typeCode == TYPE_HP) { // the vendor tool's plain RBJ high-pass: gain ignored
+            b0 = (1 + c) / 2; b1 = -(1 + c); b2 = (1 + c) / 2
+            a0 = 1 + alpha; a1 = -2 * c; a2 = 1 - alpha
+        } else { // PK (devicePEQ also runs LP/HP through this branch; the vendor tool, which we follow, has the real ones above)
             b0 = 1 + alpha * a; b1 = -2 * c; b2 = 1 - alpha * a
             a0 = 1 + alpha / a; a1 = -2 * c; a2 = 1 - alpha / a
         }

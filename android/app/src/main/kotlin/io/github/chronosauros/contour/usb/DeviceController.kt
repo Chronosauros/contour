@@ -62,16 +62,19 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         private set
     var abBypassed by mutableStateOf(false)
         private set
-    /** The USER slot HOLD TO SEND writes on a DAC with a slot picker (KA15); null = the slot playing now. */
+    /** The USER slot HOLD TO SEND writes on a DAC with a slot picker (KA15, K13 R2R ...); null = the slot playing now. */
     var selectedSlot by mutableStateOf<Int?>(null)
         private set
-    val slotPicker: Boolean get() = protocol.fiio?.userSlotNames == true
+    /** The DAC stores USER slot names (FiiO command 0x30, KA15 only): the picker shows and renames them. Without it the picker has generic names and sends no name command. */
+    val slotNames: Boolean get() = protocol.fiio?.userSlotNames == true
+    /** Named slots (KA15) or a config that opts in (K13 R2R): the user chooses where HOLD TO SEND writes. */
+    val slotPicker: Boolean get() = protocol.fiio?.let { it.userSlotNames || it.userSlotPicker } == true
     fun destinationSlot(): Int? = if (!slotPicker) protocol.destinationSlot
         else selectedSlot ?: snapshot?.slot?.takeIf { it in protocol.fiio!!.userSlots } ?: protocol.destinationSlot
     fun selectSlot(slot: Int) { if (slotPicker && slot in protocol.fiio!!.userSlots) selectedSlot = slot }
     /** Long press on a slot (KA15): writes only the name, then shows the name the DAC reads back. */
     fun renameSlot(slot: Int, name: String) {
-        if (!slotPicker || slot !in protocol.fiio!!.userSlots) return
+        if (!slotNames || slot !in protocol.fiio!!.userSlots) return
         launchOp("rename", keepSnapshot = true) { d, guard ->
             val read = client.renameSlot(d, slot, name); guard()
             val s = snapshot; val state = s?.nativeState as? NativeState.Fiio
@@ -256,6 +259,14 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             } finally { if (generation == connectionEpoch) reading = false }
         }
     }
+    private var loggedBlock: String? = null
+    /** The full issue list that blocks HOLD TO SEND, once per distinct block, in the USB log (logcat tag [UsbLog.TAG]). An empty list re-arms it. */
+    fun logSendBlock(issues: List<String>) {
+        val text = issues.joinToString(" | ").takeIf { it.isNotEmpty() }
+        if (text == loggedBlock) return
+        loggedBlock = text
+        if (text != null) UsbLog.line("SEND BLOCKED (${issues.size}): $text")
+    }
     /** Why HOLD TO SEND cannot go: the EQ itself, or the DAC read that has to come first (never mislabel a read problem as an EQ one). */
     enum class SendBlock { NONE, EQ, READING, NEEDS_READ, READ_FAILED }
     fun sendBlock(profile: Profile): SendBlock {
@@ -389,7 +400,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     }
     fun serviceRestoreFlat() {
         // Micro and Protocol Max, as in 1.3.0; other targets reset through a flat profile and HOLD TO SEND.
-        if (protocol != DeviceTarget.MICRO && protocol.walkplay != DeviceProtocol.MAX) return
+        if (protocol != DeviceTarget.MICRO && protocol.walkplay?.isMax != true) return
         launchOp("restore flat") { d, guard -> val r = client.restoreFlat(d); guard(); showWrite(r) }
     }
     private fun showWrite(r: WriteResult) {

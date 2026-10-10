@@ -5,6 +5,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -66,7 +67,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
@@ -204,7 +214,8 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
             if (b != null) {
                 TypeRow(model, b.type, bandsEnabled)
                 for (param in listOf(Param.FREQ, Param.GAIN, Param.Q)) {
-                    ParamRow(param, param.of(b), enabled = bandsEnabled, scale = param.scaleFor(model.protocol.caps)!!, onTap = { actions.value(param) }) { v ->
+                    val pass = b.type == FilterType.LOW_PASS || b.type == FilterType.HIGH_PASS
+                    ParamRow(param, param.of(b), enabled = bandsEnabled, scale = param.scaleFor(model.protocol.caps)!!, onTap = { actions.value(param) }, locked = pass && param == Param.GAIN) { v ->
                         if (!sender.bypassed && !sender.abBusy)
                             model.transformBandIfCurrent(p.id, i, b.id) { current -> param.set(current, v) }
                     }
@@ -223,7 +234,7 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
         }
         if (device.link == io.github.chronosauros.contour.usb.Link.CONNECTED) {
             // KA15 (slot picker): read, write and persistence tested on the Pixel 04.10.2026
-            if (device.protocol.native && !device.slotPicker) Text("Native beta recipe: not hardware tested. Readback verifies registers, not audio/persistence.", color = pal.textDim, style = Type.paramLabel)
+            if (device.protocol.native && !device.slotNames) Text("Native beta recipe: not hardware tested. Readback verifies registers, not audio/persistence.", color = pal.textDim, style = Type.paramLabel)
             if (!device.slotPicker) device.protocol.destinationLabel?.let { Text("DESTINATION: $it", color = pal.textDim, style = Type.paramLabel) }
             device.sendIssues(p).firstOrNull()?.let { Text("SEND BLOCKED: $it (saved values unchanged)", color = pal.textDim, style = Type.paramLabel) }
         }
@@ -336,8 +347,9 @@ private fun HistoryButton(icon: androidx.compose.ui.graphics.vector.ImageVector,
     }
 }
 
-/** KA15: USER1-3 with the names read from the DAC. Tap = the slot HOLD TO SEND writes (orange frame);
- * by default the slot playing now, so a plain HOLD never switches presets. Long press = rename the slot. */
+/** USER slots: KA15 shows USER1-3 with the names read from the DAC; a DAC without name commands (K13 R2R: USER1-10)
+ * shows generic names, five to a row. Tap = the slot HOLD TO SEND writes (orange frame); by default the slot playing
+ * now, so a plain HOLD never switches presets. Long press = rename the slot (only where the DAC stores names). */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SlotRow(device: DeviceController, modifier: Modifier = Modifier) {
@@ -349,28 +361,36 @@ private fun SlotRow(device: DeviceController, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(Radii.M)
     var renaming by remember { mutableStateOf<Int?>(null) }
     renaming?.let { slot -> RenameSlotDialog(fiio.slotLabels[slot] ?: "SLOT $slot", names[slot].orEmpty(), { renaming = null }) { device.renameSlot(slot, it) } }
-    Row(modifier.fillMaxWidth().height(COMPACT_H), horizontalArrangement = Arrangement.spacedBy(GAP)) {
-        fiio.userSlots.sorted().forEach { slot ->
-            val sel = slot == target
-            Column(
-                Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .lift(shape, Lift.RAISED)
-                    .clip(shape)
-                    .background(c.surface2)
-                    .then(if (sel) Modifier.border(2.dp, c.accent, shape) else Modifier)
-                    .combinedClickable(
-                        enabled = !device.busy,
-                        onClick = { if (!sel) haptics.tap(); device.selectSlot(slot) },
-                        onLongClick = { haptics.longPress(); renaming = slot },
-                    )
-                    .testTag("slot_$slot"),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(fiio.slotLabels[slot] ?: "SLOT $slot", style = Type.paramLabel, color = if (sel) c.text else c.textDim, maxLines = 1)
-                Text(names[slot] ?: "-", style = Type.label, color = if (sel) c.text else c.textDim, maxLines = 1)
+    val named = device.slotNames
+    val perRow = if (named) Int.MAX_VALUE else 5
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(GAP)) {
+        fiio.userSlots.sorted().chunked(perRow).forEach { rowSlots ->
+            Row(Modifier.fillMaxWidth().height(COMPACT_H), horizontalArrangement = Arrangement.spacedBy(GAP)) {
+                rowSlots.forEach { slot ->
+                    val sel = slot == target
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .lift(shape, Lift.RAISED)
+                            .clip(shape)
+                            .background(c.surface2)
+                            .then(if (sel) Modifier.border(2.dp, c.accent, shape) else Modifier)
+                            .combinedClickable(
+                                enabled = !device.busy,
+                                onClick = { if (!sel) haptics.tap(); device.selectSlot(slot) },
+                                onLongClick = if (named) ({ haptics.longPress(); renaming = slot }) else null,
+                            )
+                            .testTag("slot_$slot"),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(fiio.slotLabels[slot] ?: "SLOT $slot", style = Type.paramLabel, color = if (sel) c.text else c.textDim, maxLines = 1)
+                        if (named) Text(names[slot] ?: "-", style = Type.label, color = if (sel) c.text else c.textDim, maxLines = 1)
+                    }
+                }
+                // a short last row keeps the cells the size of the full rows above it
+                repeat(perRow.coerceAtMost(fiio.userSlots.size) - rowSlots.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
@@ -547,6 +567,11 @@ private fun BandStrip(model: AppModel, p: Profile, actions: TuneActions, enabled
 /** Filter type: a pressed-in well with a raised orange pill that slides to the chosen type. */
 @Composable
 private fun TypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
+    // Devices with LOW PASS / HIGH PASS get the icon bar; every other device keeps this text bar as it is.
+    if (FilterType.LOW_PASS in model.protocol.caps.types || FilterType.HIGH_PASS in model.protocol.caps.types) {
+        PassTypeRow(model, type, enabled)
+        return
+    }
     val c = pal
     val haptics = LocalHaptics.current
     val offered = listOf(FilterType.PEAK to "PEAK", FilterType.LOW_SHELF to "LOW SHELF", FilterType.HIGH_SHELF to "HIGH SHELF")
@@ -593,6 +618,107 @@ private fun TypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
     }
 }
 
+/** Response curve of each filter type in a 30 x 20 box (SVG path syntax). */
+private val TYPE_ICON_PATHS = mapOf(
+    FilterType.PEAK to "M2 14 C9 14 10 4 15 4 C20 4 21 14 28 14",
+    FilterType.LOW_SHELF to "M2 5 L9 5 C14 5 15 14 20 14 L28 14",
+    FilterType.HIGH_SHELF to "M2 14 L10 14 C15 14 16 5 21 5 L28 5",
+    FilterType.HIGH_PASS to "M4 18 C8 9 10 6 16 6 L28 6",
+    FilterType.LOW_PASS to "M2 6 L14 6 C20 6 22 9 26 18",
+)
+
+/** The type bar with LOW PASS / HIGH PASS: icons only, the chosen cell widens to show its name. */
+private val PASS_TYPES = listOf(
+    FilterType.PEAK to "PEAK", FilterType.LOW_SHELF to "LOW SHELF", FilterType.HIGH_SHELF to "HIGH SHELF",
+    FilterType.HIGH_PASS to "HIGH PASS", FilterType.LOW_PASS to "LOW PASS",
+)
+private val TYPE_ICON_W = 30.dp
+private val TYPE_ICON_H = 20.dp
+private val TYPE_ICON_GAP = 6.dp
+private val TYPE_CELL_PAD = 10.dp
+/** Weight of the chosen cell against 1 for the others; raised per name when the name needs more room. */
+private const val TYPE_CHOSEN_WEIGHT = 2.3f
+
+@Composable
+private fun FilterIcon(type: FilterType, name: String, color: Color) {
+    val path = remember(type) { PathParser().parsePathString(TYPE_ICON_PATHS.getValue(type)).toPath() }
+    Canvas(Modifier.size(TYPE_ICON_W, TYPE_ICON_H).semantics { contentDescription = name }) {
+        scale(size.width / 30f, size.width / 30f, pivot = Offset.Zero) {
+            drawPath(path, color, style = Stroke(width = 2.4f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        }
+    }
+}
+
+@Composable
+private fun PassTypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
+    val c = pal
+    val haptics = LocalHaptics.current
+    val density = LocalDensity.current
+    val measurer = rememberTextMeasurer()
+    val cells = PASS_TYPES.filter { it.first in model.protocol.caps.types || it.first == type }
+    val well = RoundedCornerShape(Radii.L)
+    val pill = RoundedCornerShape(Radii.M)
+    val idx = cells.indexOfFirst { it.first == type }.coerceAtLeast(0)
+    val at by animateFloatAsState(idx.toFloat(), label = "type")
+    BoxWithConstraints(
+        Modifier
+            .fillMaxWidth()
+            .height(ROW_H)
+            .clip(well)
+            .background(c.track)
+            .sink(well)
+            .padding(Grid.INSET),
+    ) {
+        val total = maxWidth
+        val name = cells.getOrNull(idx)?.second.orEmpty()
+        // The chosen cell must hold icon, gap, the whole name and its padding: weight so that it does, never an ellipsis.
+        val chosen = remember(name, total, density, cells.size) {
+            val text = with(density) { measurer.measure(name, Type.segment, maxLines = 1, softWrap = false).size.width.toDp() }
+            val need = TYPE_ICON_W + TYPE_ICON_GAP + text + TYPE_CELL_PAD * 2
+            val room = (total - need).coerceAtLeast(1.dp)
+            maxOf(TYPE_CHOSEN_WEIGHT, (cells.size - 1) * need.value / room.value)
+        }
+        val weights = cells.mapIndexed { i, _ -> animateFloatAsState(if (i == idx) chosen else 1f, label = "typeWeight$i").value }
+        val unit = total / weights.sum()
+        fun left(i: Int) = unit * weights.take(i).sum()
+        val lo = at.toInt().coerceIn(0, cells.size - 1)
+        val hi = (lo + 1).coerceAtMost(cells.size - 1)
+        val f = (at - lo).coerceIn(0f, 1f)
+        if (type in model.protocol.caps.types) Box(
+            Modifier
+                .offset(x = left(lo) + (left(hi) - left(lo)) * f)
+                .width(unit * weights[lo] + unit * (weights[hi] - weights[lo]) * f)
+                .fillMaxHeight()
+                .lift(pill, Lift.RAISED)
+                .background(c.accent, pill),
+        )
+        Row(Modifier.fillMaxSize()) {
+            cells.forEachIndexed { i, (t, label) ->
+                val sel = t == type
+                val labelAlpha by animateFloatAsState(if (sel) 1f else 0f, label = "typeLabel$i")
+                val color = if (sel) c.onAccent else c.text
+                Box(
+                    Modifier
+                        .weight(weights[i].coerceAtLeast(0.01f))
+                        .fillMaxHeight()
+                        .clip(pill)
+                        .clickable(enabled = enabled && t in model.protocol.caps.types) { if (!sel) { haptics.segment(); model.setType(t) } }
+                        .testTag("type_${t.name.lowercase()}"),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Row(Modifier.wrapContentWidth(unbounded = true), verticalAlignment = Alignment.CenterVertically) {
+                        FilterIcon(t, label, color)
+                        if (labelAlpha > 0f) {
+                            Spacer(Modifier.width(TYPE_ICON_GAP))
+                            Text(label, style = Type.segment, color = color, maxLines = 1, softWrap = false, modifier = Modifier.alpha(labelAlpha))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /** A small label over the value: the number big, its unit small and dim beside it. [unit] is empty for Q. */
 @Composable
 private fun StackedValue(label: String, number: String, unit: String, numberColor: Color, modifier: Modifier = Modifier) {
@@ -617,11 +743,13 @@ private val VALUE_W = 108.dp
 
 /** One value row: the label over the value (tap = type it), and the slider as tall as the card allows. */
 @Composable
-private fun ParamRow(param: Param, value: Double, enabled: Boolean, scale: io.github.chronosauros.contour.ui.kit.Scale, onTap: () -> Unit, onChange: (Double) -> Unit) {
+private fun ParamRow(param: Param, value: Double, enabled: Boolean, scale: io.github.chronosauros.contour.ui.kit.Scale, onTap: () -> Unit, locked: Boolean = false, onChange: (Double) -> Unit) {
     val c = pal
+    val live = enabled && !locked // a locked row (GAIN of a pass filter) is dimmed, not draggable, not tappable
     Row(
         Modifier
             .fillMaxWidth()
+            .alpha(if (locked) 0.4f else 1f)
             .height(ROW_H)
             .lift(ROW_SHAPE)
             .background(c.surface, ROW_SHAPE)
@@ -633,13 +761,13 @@ private fun ParamRow(param: Param, value: Double, enabled: Boolean, scale: io.gi
                 .width(VALUE_W - Grid.TEXT)
                 .fillMaxHeight()
                 .clip(RoundedCornerShape(Radii.S))
-                .clickable(enabled = enabled, onClick = onTap)
+                .clickable(enabled = live, onClick = onTap)
                 .testTag("value_${param.name.lowercase()}"),
             contentAlignment = Alignment.CenterStart,
         ) {
             StackedValue(param.label, param.number(value), param.unit, c.text)
         }
-        RelSlider(param, value, onChange, Modifier.weight(1f).fillMaxHeight().padding(Grid.INSET), enabled = enabled, scale = scale)
+        RelSlider(param, value, onChange, Modifier.weight(1f).fillMaxHeight().padding(Grid.INSET), enabled = live, scale = scale)
     }
 }
 

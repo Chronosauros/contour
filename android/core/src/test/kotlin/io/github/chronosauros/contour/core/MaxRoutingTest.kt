@@ -10,10 +10,13 @@ class MaxRoutingTest {
     private val names = listOf(null, "", "Protocol Max", "CrinEar Protocol Max", "TBD")
 
     @Test
-    fun `43CC resolves to MAX in release and advanced builds, with or without a USB name`() {
+    fun `43CC resolves to the MAX target in release and advanced builds, with or without a USB name`() {
         for (advanced in listOf(false, true)) for (name in names) {
-            assertEquals(DeviceProtocol.MAX, DeviceProtocol.find(0x3302, 0x43CC, advanced, name), "advanced=$advanced name=$name")
-            assertEquals(DeviceTarget.of(DeviceProtocol.MAX), DeviceTarget.find(0x3302, 0x43CC, advanced, name), "advanced=$advanced name=$name")
+            val expected = if (advanced) DeviceProtocol.MAX_PASS else DeviceProtocol.MAX
+            assertEquals(expected, DeviceProtocol.find(0x3302, 0x43CC, advanced, name), "advanced=$advanced name=$name")
+            assertTrue(DeviceProtocol.find(0x3302, 0x43CC, advanced, name)!!.isMax)
+            assertEquals(DeviceTarget.of(expected), DeviceTarget.find(0x3302, 0x43CC, advanced, name), "advanced=$advanced name=$name")
+            assertTrue(DeviceTarget.find(0x3302, 0x43CC, advanced, name)!!.stable)
             assertTrue(DeviceTarget.candidate(0x3302, 0x43CC, name, advanced))
         }
         val max = DeviceTarget.find(0x3302, 0x43CC, false, null)!!

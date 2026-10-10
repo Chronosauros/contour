@@ -375,6 +375,7 @@
     <usb-device vendor-id="10610" product-id="147" />
     <usb-device vendor-id="10610" product-id="258" />
     <usb-device vendor-id="10610" product-id="260" />
+    <usb-device vendor-id="10610" product-id="288" />
     <usb-device vendor-id="10610" product-id="294" />
     <usb-device vendor-id="10610" product-id="296" />
     <usb-device vendor-id="10610" product-id="16406" />

@@ -178,7 +178,7 @@ class ProtocolParityTest {
         assertFailsWith<IllegalArgumentException> { p.parseBand(good.copyOf().also { it[1] = 1 }, 9) }
         assertFailsWith<IllegalArgumentException> { p.parseBand(good.copyOf().also { it[0] = 0x03 }, 9) }
         assertFailsWith<IllegalArgumentException> { p.parseBand(good, 8) }
-        assertFailsWith<IllegalArgumentException> { p.parseBand(good.copyOf().also { it[34] = 5 }, 9) }
+        assertFailsWith<IllegalArgumentException> { p.parseBand(good.copyOf().also { it[34] = 6 }, 9) }
         assertFailsWith<IllegalArgumentException> { p.parseSlot(good) }
         assertFailsWith<IllegalArgumentException> { p.parseSlot(good.copyOf(10)) }
         assertEquals(101, p.parseSlot(trnReply(p.flatPlan().bands[0], 101)))

@@ -14,7 +14,7 @@ data class DeviceTarget private constructor(
     val supportsAb: Boolean get() = walkplay == DeviceProtocol.MICRO
     val experimental: Boolean get() = !supportsAb
     /** Micro and Protocol Max: the stable 1.3.0 targets, with 1.3.0 editor/import/preamp policy in every build. */
-    val stable: Boolean get() = walkplay == DeviceProtocol.MICRO || walkplay == DeviceProtocol.MAX
+    val stable: Boolean get() = walkplay == DeviceProtocol.MICRO || walkplay?.isMax == true
     val descriptorRequired: Boolean get() = !supportsAb
     val native: Boolean get() = walkplay == null
     val preampMin: Double get() = if (moondrop != null) DeviceProtocol.OFFLINE.preampMin.toDouble() else fiio?.preampMinDb ?: if (native) 0.0 else walkplay!!.preampMin.toDouble()
@@ -56,23 +56,53 @@ data class DeviceTarget private constructor(
         writeBlocker?.let { return listOf(it) }
         return runCatching {
             require(profile.bands.size <= caps.bands) { "${profile.bands.size} bands; ${caps.name} accepts ${caps.bands}; no truncation" }
+            // Every concrete problem is listed (each field of each band, then the preamp): the first one is what HOLD TO SEND shows.
+            val found = mutableListOf<String>()
             profile.bands.forEachIndexed { i, b ->
-                require(b.type in caps.types && b.freqHz.isFinite() && b.gainDb.isFinite() && b.q.isFinite() &&
-                    b.freqHz in caps.freqMinHz..caps.freqMaxHz && b.gainDb in caps.gainMinDb..caps.gainMaxDb) { "Band ${i + 1}: unsupported type/range" }
+                val n = i + 1
                 // Shelves have their own intended Q range when the DAC stores a scaled Q (KA15: up to 7.07).
                 val f = fiio
                 val shelf = f != null && b.type != FilterType.PEAK && f.shelfQScale != 1.0
                 val (qLo, qHi) = if (shelf) f!!.shelfQMin to f.shelfQMax else caps.qMin to caps.qMax
-                require(b.q in qLo..qHi) {
-                    "Band ${i + 1}: ${if (shelf) "shelf " else ""}Q %.2f outside %.2f-%.2f".format(java.util.Locale.ROOT, b.q, qLo, qHi)
-                }
+                if (b.type !in caps.types) found += "Band $n: type unsupported"
+                if (!b.freqHz.isFinite() || b.freqHz !in caps.freqMinHz..caps.freqMaxHz)
+                    found += "Band $n: freq ${num(b.freqHz)} Hz outside ${num(caps.freqMinHz)}-${num(caps.freqMaxHz)} Hz"
+                if (!b.gainDb.isFinite() || b.gainDb !in caps.gainMinDb..caps.gainMaxDb)
+                    found += "Band $n: gain ${num(b.gainDb)} dB outside ${num(caps.gainMinDb)}..${num(caps.gainMaxDb)} dB"
+                if (!b.q.isFinite() || b.q !in qLo..qHi)
+                    found += "Band $n: ${if (shelf) "shelf " else ""}Q %.2f outside %.2f-%.2f".format(java.util.Locale.ROOT, b.q, qLo, qHi)
             }
             val gain = profile.effectivePreampDb()
-            require(gain.isFinite() && gain in preampMin..preampMax) { if (fiio == null) "Manual/AUTO attenuation unsupported; required preamp $gain dB cannot be sent" else "Pregain %.1f outside %.1f..%.1f dB".format(java.util.Locale.ROOT, gain, preampMin, preampMax) }
+            if (!(gain.isFinite() && gain in preampMin..preampMax))
+                found += if (fiio == null) "Manual/AUTO attenuation unsupported; required preamp $gain dB cannot be sent" else "Pregain %.1f outside %.1f..%.1f dB".format(java.util.Locale.ROOT, gain, preampMin, preampMax)
+            if (found.isNotEmpty()) return found
             fiio?.let { FiioCodec(it).planOnExplicitSend(profile.copy(preampDb = gain), destinationSlot!!, true) }
         }.exceptionOrNull()?.let { listOf(it.message ?: "Unrepresentable EQ") }.orEmpty()
     }
     companion object {
+        /** A number in an issue text: whole values without decimals ("0", "25000"), others to one place. */
+        private fun num(x: Double): String =
+            if (x.isFinite() && x == Math.rint(x) && Math.abs(x) < 1e9) x.toLong().toString() else "%.1f".format(java.util.Locale.ROOT, x)
+        private const val BLOCK_LABEL_MAX = 30 // as wide as the longest label HOLD TO SEND already shows
+        private const val BLOCK_LABEL_GENERIC = "INVALID EQ - EDIT BAND"
+        private val bandIssue = Regex("""^Band (\d+): (.*?)(?: outside .*)?$""")
+        private val bandCountIssue = Regex("""^(\d+) bands; .* accepts (\d+);""")
+        /**
+         * The text HOLD TO SEND shows for the first of [issues] (short, uppercase), e.g. "BAND 10: FREQ 0 HZ - EDIT BAND"
+         * or "PREAMP OUT OF RANGE". Anything it does not recognise, or that would not fit, stays the generic label.
+         */
+        fun blockLabel(issues: List<String>): String {
+            val issue = issues.firstOrNull()?.trim() ?: return BLOCK_LABEL_GENERIC
+            if (issue.startsWith("Pregain") || issue.contains("preamp", ignoreCase = true)) return "PREAMP OUT OF RANGE"
+            bandCountIssue.find(issue)?.let { return "${it.groupValues[1]} BANDS - MAX ${it.groupValues[2]}" }
+            val m = bandIssue.find(issue) ?: return BLOCK_LABEL_GENERIC
+            val base = "BAND ${m.groupValues[1]}: ${m.groupValues[2].uppercase(java.util.Locale.ROOT)}"
+            return when {
+                "$base - EDIT BAND".length <= BLOCK_LABEL_MAX -> "$base - EDIT BAND"
+                base.length <= BLOCK_LABEL_MAX -> base
+                else -> BLOCK_LABEL_GENERIC
+            }
+        }
         val MICRO = DeviceTarget(walkplay = DeviceProtocol.MICRO)
         val OFFLINE = DeviceTarget(walkplay = DeviceProtocol.OFFLINE)
         fun of(protocol: DeviceProtocol) = if (protocol == DeviceProtocol.MICRO) MICRO else if (protocol == DeviceProtocol.OFFLINE) OFFLINE else DeviceTarget(walkplay = protocol)

@@ -45,6 +45,8 @@ data class FiioConfig(
     val qReadbackSlack: Boolean = false,
     // KA15 echoes every AA write; reading each echo keeps request and reply in lockstep.
     val consumeWriteEchoes: Boolean = false,
+    // Pause after every AA write, for DACs that do not echo writes (consumeWriteEchoes paces the KA15 instead).
+    val writeGapMs: Int = 0,
     // Official web app (fiiocontrol.fiio.com, captured 03.10.2026): byte 3 = host sequence, byte before EE =
     // CRC-8/MAXIM over header..data. The device also answers zeros, so this is fidelity, not a requirement.
     val checksumFrames: Boolean = false,
@@ -54,6 +56,8 @@ data class FiioConfig(
     // Official web app (KA15 capture, 03.10.2026): command 0x30 reads and writes the USER slot names,
     // index = position in the sorted userSlots (USER1 = 0).
     val userSlotNames: Boolean = false,
+    // Lets the user choose a USER slot without FiiO name commands; enable per device after a hardware test.
+    val userSlotPicker: Boolean = false,
     // Hardware-measured (KA15, 04.10.2026, line-in sweeps against Close EQ): LS/HS shelves play Q = register / sqrt(2)
     // for every type, frequency, gain and Q, so the register holds intended Q * shelfQScale. PK Q is played as stored.
     // Not combinable with shelfAlphaCompensation (the devicePEQ slope law measured wrong on the KA15).
@@ -581,6 +585,13 @@ object FiioCatalog {
             capture = null,
             codecBlockers = listOf(),
             evidenceCaveats = listOf("No known capture PID; exact source name/vendor is informational only, not an automatic route"),
+            userSlotPicker = true,
+            // Hardware 10.10.2026 (Pixel): a COUNT write of 9 read back 10 and band 10 kept its old registers. Without
+            // the neutral pad a shorter profile would leave the slot's previous band 10 active and audible.
+            fixedBandCount = true,
+            // Hardware 10.10.2026: writes 16 ms apart all read back, but after a power cycle only the first one to three
+            // survived (USER10: band 1; USER9: preamp and bands 1-2), the rest reverted. 300 ms per write: all kept.
+            writeGapMs = 300,
         ),
         FiioConfig(
             productName = "FIIO BR15 R2R",

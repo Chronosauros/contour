@@ -44,7 +44,8 @@ object NativeHidSelection {
 
     /**
      * [reportId] is the FiiO report (7), [minimum] the raw report size the codec's largest frame needs (17 B).
-     * Qualification, per HID interface with a readable descriptor: report [reportId] declared on a vendor usage page as
+     * Qualification, per HID interface with a readable descriptor: report [reportId] declared on a vendor usage page (or
+     * in a top-level Generic Desktop collection with Usage Undefined, as on the K13 R2R) as
      * Input and Output of at least [minimum] bytes in the same collection, plus an interrupt IN endpoint. Preference:
      * interfaces where one interrupt IN is large enough for the whole report (the old strict rule) before the ones
      * that only have a smaller or an additional interrupt IN (WebHID-equivalent: the first interrupt IN is read); then an
@@ -75,10 +76,10 @@ object NativeHidSelection {
     private fun assess(id: Int, minimum: Int, c: Candidate): Assessment {
         c.failure?.let { return Assessment.Rejected(it) }
         val descriptor = c.descriptor ?: return Assessment.Rejected("no report descriptor")
-        val shape = try { NativeHidReports.parse(descriptor) } catch (e: Exception) {
+        val shape = try { NativeHidReports.parse(descriptor, undefinedDesktop = true) } catch (e: Exception) {
             return Assessment.Rejected(declares(descriptor, "descriptor: ${e.message ?: e.javaClass.simpleName}"))
         }
-        val declared = NativeHidReports.inventory(descriptor).filter { it.id == id }
+        val declared = NativeHidReports.inventory(descriptor, undefinedDesktop = true).filter { it.id == id }
         if (declared.isEmpty()) return Assessment.Rejected(declares(descriptor, "no report $id"))
         fun absent(kind: NativeHidReports.Kind, label: String): String {
             val d = declared.firstOrNull { it.kind == kind } ?: return "report $id has no $label"
@@ -110,7 +111,7 @@ object NativeHidSelection {
 
     /** The reason plus what the descriptor does declare, so one screenshot tells what the interface is. */
     private fun declares(descriptor: ByteArray, reason: String): String {
-        val list = runCatching { NativeHidReports.inventory(descriptor) }.getOrNull() ?: return reason
+        val list = runCatching { NativeHidReports.inventory(descriptor, undefinedDesktop = true) }.getOrNull() ?: return reason
         if (list.isEmpty()) return "$reason (no numbered reports)"
         val items = list.take(6).joinToString(" ") { "${it.id}:${if (it.kind == NativeHidReports.Kind.INPUT) "in" else if (it.kind == NativeHidReports.Kind.OUTPUT) "out" else "feat"}${if (it.bytes < 0) "?" else it.bytes}${if (it.vendor) "" else "*"}" }
         return "$reason (declares $items${if (list.size > 6) " ..." else ""}; * = not vendor page)"

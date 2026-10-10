@@ -35,14 +35,17 @@ class HidTransport private constructor(
         /** Raw size of the largest FiiO frame (report ID + 16 B); a descriptor that declares less cannot carry the codec. */
         private const val FIIO_MIN_REPORT = 17
 
+        /** First configuration only: usbfs returns every configuration, and the FiiO K13 R2R declares two identical ones. */
         private fun descriptorLength(raw: ByteArray, intf: UsbInterface): Int {
-            var i = 0; var matching = false
+            var i = 0; var matching = false; var configs = 0
             val lengths = ArrayList<Int>()
             while (i < raw.size) {
                 require(i + 2 <= raw.size)
                 val n = raw[i].toInt() and 255
                 require(n >= 2 && i + n <= raw.size) { "Malformed USB descriptors" }
-                when (raw[i + 1].toInt() and 255) {
+                val type = raw[i + 1].toInt() and 255
+                if (type == 2 && ++configs > 1) break
+                when (type) {
                     4 -> { require(n >= 9); matching = (raw[i + 2].toInt() and 255) == intf.id &&
                         (raw[i + 3].toInt() and 255) == intf.alternateSetting }
                     0x21 -> if (matching) {
@@ -62,12 +65,17 @@ class HidTransport private constructor(
                 ?: throw IOException("Missing/ambiguous HID report descriptor length")
         }
 
+        /** UsbDevice.getInterface lists the interfaces of every configuration; on the FiiO K13 R2R (two identical
+         * configurations) HID interface 3 would appear twice. Single-configuration DACs get the same list as before. */
+        private fun firstConfigInterfaces(device: UsbDevice): List<UsbInterface> =
+            device.takeIf { it.configurationCount > 0 }?.getConfiguration(0)?.let { c -> (0 until c.interfaceCount).map { c.getInterface(it) } }
+                ?: (0 until device.interfaceCount).map { device.getInterface(it) }
+
         fun open(manager: UsbManager, device: UsbDevice, guard: () -> Unit = {}): HidTransport {
             guard()
             val p = DeviceTarget.find(device.vendorId, device.productId, BuildConfig.ADVANCED, device.productName)
                 ?: throw IOException("Unsupported DAC or missing exact USB product name")
-            val hids = (0 until device.interfaceCount).map { device.getInterface(it) }
-                .filter { it.interfaceClass == UsbConstants.USB_CLASS_HID }
+            val hids = firstConfigInterfaces(device).filter { it.interfaceClass == UsbConstants.USB_CLASS_HID }
             val connection = manager.openDevice(device) ?: throw IOException("openDevice failed (permission?)")
             try {
                 data class Target(val intf: UsbInterface, val input: UsbEndpoint?, val output: UsbEndpoint?, val reports: WalkPlayCatalog.Reports?, val native: NativeHidReports.Shape? = null)
@@ -77,7 +85,7 @@ class HidTransport private constructor(
                     val eps = (0 until h.endpointCount).map { h.getEndpoint(it) }.filter { it.type == UsbConstants.USB_ENDPOINT_XFER_INT }
                     Target(h, eps.firstOrNull { it.direction == UsbConstants.USB_DIR_IN } ?: error("No interrupt IN"),
                         eps.firstOrNull { it.direction == UsbConstants.USB_DIR_OUT }, null)
-                } else if (p.walkplay == DeviceProtocol.MAX) {
+                } else if (p.walkplay?.isMax == true) {
                     // Protocol Max: exactly the stable 1.3.0 selection (the hardware-tested path), no descriptor read.
                     val h = hids.filter { h -> h.alternateSetting == 0 &&
                         (0 until h.endpointCount).any { i -> h.getEndpoint(i).let { ep ->

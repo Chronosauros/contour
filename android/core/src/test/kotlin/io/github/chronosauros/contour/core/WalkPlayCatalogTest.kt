@@ -31,7 +31,7 @@ class WalkPlayCatalogTest {
     }
 
     @Test fun `exact pairs captured pairs names vendor scope and stable gate`() {
-        assertEquals(DeviceProtocol.MAX, DeviceProtocol.find(0x3302, 0x43CC, true))
+        assertEquals(DeviceProtocol.MAX_PASS, DeviceProtocol.find(0x3302, 0x43CC, true))
         assertTrue(WalkPlayCatalog.resolve(0x3302, 0x43D4, null, true) is WalkPlayCatalog.Resolution.NeedsName)
         assertTrue(WalkPlayCatalog.candidate(0x3302, 0x4367, null, true))
         assertEquals(10, target(pid = 0x4367, name = "TANCHJIM-SPACE PRO").caps.bands)

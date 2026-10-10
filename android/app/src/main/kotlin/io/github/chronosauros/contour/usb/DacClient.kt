@@ -150,7 +150,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
 
     /** Micro: factory flat on all 8 slots, preamp 0. Max: neutral flat PK on all 10 slots, preamp 0 (as in 1.3.0). */
     suspend fun restoreFlat(device: UsbDevice): WriteResult {
-        require(protocol(device) == DeviceProtocol.MICRO || protocol(device) == DeviceProtocol.MAX) {
+        require(protocol(device) == DeviceProtocol.MICRO || protocol(device).isMax) {
             "Service reset is Micro/Max-only; use a flat profile and HOLD TO SEND" }
         return writePlan(device, protocol(device).flatPlan())
     }
@@ -208,7 +208,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
             val have = back.bands[i].registers
             if (want != have) mismatches += "band ${i + 1}: wrote $want, read $have"
             // Coefficient read-back only for catalog targets; Micro, Max (1.3.0) and TRN verify registers.
-            if (p != DeviceProtocol.MICRO && p != DeviceProtocol.MAX && p != DeviceProtocol.TRN &&
+            if (p != DeviceProtocol.MICRO && !p.isMax && !p.isTrn &&
                 !WalkPlay.computeIir(w.freq, w.gainDb, w.q, w.typeCode).contentEquals(back.bands[i].biquad))
                 mismatches += "band ${i + 1}: coefficient read-back mismatch"
 

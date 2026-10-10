@@ -14,8 +14,8 @@ import kotlin.test.assertTrue
  * FiiO HID interface selection (advBeta, K13 R2R "No unambiguous descriptor-proven family HID interface").
  * The descriptors below are SYNTHETIC shapes built from the KA15 codec's needs (report ID 7, 63-byte payload, vendor
  * page) and from what FiiO's web app and devicePEQ say about desktop DACs (several HID interfaces, a consumer-control one
- * next to the vendor one). No real KA15 or K13 R2R descriptor is stored in the repo; the first real ones arrive with the
- * next tester's USB log ("HID if N report descriptor ...").
+ * next to the vendor one). The one real descriptor is the K13 R2R's (k13Real, from the owner's unit on 10.10.2026); more
+ * arrive with testers' USB logs ("HID if N report descriptor ...").
  */
 class NativeHidSelectionTest {
     private fun b(vararg v: Int) = v.map { it.toByte() }.toByteArray()
@@ -54,6 +54,26 @@ class NativeHidSelectionTest {
         val knob = r.verdicts.single { it.interfaceId == 3 }
         assertFalse(knob.accepted)
         assertTrue("no report 7" in knob.reason && "1:in2*" in knob.reason, knob.reason)
+    }
+
+    /** Real FiiO K13 R2R HID interface 3 (owner's unit, 10.10.2026): report 7 (32 B in/out) in a Generic Desktop collection
+     * with Usage Undefined, then a consumer-control report 2. Endpoints IN 0x83 / OUT 0x02, 64 B each. */
+    private val k13Real = b(0x05, 0x01, 0x09, 0x00, 0xa1, 0x01, 0x85, 0x07, 0x15, 0x00, 0x25, 0xff, 0x19, 0x01, 0x29, 0x08,
+        0x95, 0x20, 0x75, 0x08, 0x81, 0x02, 0x19, 0x01, 0x29, 0x08, 0x91, 0x02, 0xc0, 0x05, 0x0c, 0x09, 0x01, 0xa1, 0x01, 0x85,
+        0x02, 0x15, 0x00, 0x25, 0x01, 0x09, 0xcd, 0x09, 0xb5, 0x09, 0xb6, 0x09, 0xe9, 0x09, 0xea, 0x09, 0xe2, 0x75, 0x01, 0x95,
+        0x06, 0x81, 0x02, 0x95, 0x02, 0x81, 0x01, 0xc0)
+
+    @Test fun `real K13 R2R descriptor - report 7 on Generic Desktop Undefined is chosen with its interrupt OUT`() {
+        val r = select(cand(3, k13Real, inEp(0x83, 64), outEp(0x02, 64)))
+        val c = assertNotNull(r.choice, r.reasons)
+        assertEquals(3, c.interfaceId)
+        assertFalse(c.relaxed)
+        assertEquals(0x02, c.output?.address)
+        assertEquals(33, c.shape.rawSize(7, NativeHidReports.Kind.OUTPUT))
+        assertEquals(33, c.shape.rawSize(7, NativeHidReports.Kind.INPUT))
+        // the consumer report 2 stays out of the Shape, and other families keep the strict vendor-page rule
+        assertNull(c.shape.rawSizes[NativeHidReports.Key(2, NativeHidReports.Kind.INPUT)])
+        assertTrue(NativeHidReports.parse(k13Real).rawSizes.isEmpty())
     }
 
     @Test fun `two qualifying interfaces no longer end in ambiguity - report 7 both ways, then interrupt OUT, then lowest number`() {

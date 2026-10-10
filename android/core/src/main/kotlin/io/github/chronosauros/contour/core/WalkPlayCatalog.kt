@@ -451,8 +451,8 @@ object WalkPlayCatalog {
 
     fun resolve(vid: Int, pid: Int, name: String?, advanced: Boolean): Resolution {
         if (vid == 0x3302 && pid == 0xC20F) return Resolution.Ready(DeviceProtocol.MICRO)
-        // CrinEar Protocol Max: the stable 1.3.0 MAX target in every build, before the catalog path (no name needed).
-        if (vid == 0x3302 && pid == 0x43CC) return Resolution.Ready(DeviceProtocol.MAX)
+        // CrinEar Protocol Max: the stable 1.3.0 MAX target in every build (advanced: the same path plus LP/HP), before the catalog path (no name needed).
+        if (vid == 0x3302 && pid == 0x43CC) return Resolution.Ready(if (advanced) DeviceProtocol.MAX_PASS else DeviceProtocol.MAX)
         if (!advanced) return Resolution.Unknown
         if (vid == 0x3302 && pid == 0x43E8) return Resolution.Ready(DeviceProtocol.TRN)
         val row = pairs[vid to pid]

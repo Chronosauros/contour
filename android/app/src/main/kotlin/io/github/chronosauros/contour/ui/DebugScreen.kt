@@ -80,7 +80,7 @@ fun DebugScreen(device: DeviceController, onClose: () -> Unit) {
                     } + (device.error?.let { " - error: $it" } ?: ""),
                 )
                 Text(device.protocol.caps.name)
-                if (device.protocol.walkplay == DeviceProtocol.MAX) Text(
+                if (device.protocol.walkplay?.isMax == true) Text(
                     "10-band PEQ with native shelves. A/B is unavailable on the ${device.protocol.caps.name}.",
                     style = MaterialTheme.typography.bodySmall,
                 )
@@ -98,7 +98,7 @@ fun DebugScreen(device: DeviceController, onClose: () -> Unit) {
                             confirm = (if (device.protocol.experimental) "Write the flat EQ (${device.protocol.caps.bands} x 0 dB, preamp 0) to the DAC and save it to its flash?"
                                 else "Write the factory flat EQ (8 x 0 dB, preamp 0) to the DAC and save it to its flash?") to onRestoreFlat
                         },
-                        enabled = connected && (!device.protocol.experimental || device.protocol.walkplay == DeviceProtocol.MAX),
+                        enabled = connected && (!device.protocol.experimental || device.protocol.walkplay?.isMax == true),
                     ) { Text("Restore flat") }
                     }
                 }

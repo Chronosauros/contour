@@ -399,8 +399,12 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         return snapshots.size
     }
 
+    /** A pass filter has no gain: it stays 0 however the band got here (type switch, node drag, slider). */
+    private fun Band.passGainZero(): Band =
+        if ((type == FilterType.LOW_PASS || type == FilterType.HIGH_PASS) && gainDb != 0.0) copy(gainDb = 0.0) else this
+
     fun setBand(index: Int, band: Band) = update { p ->
-        if (index !in p.bands.indices) p else p.copy(bands = p.bands.toMutableList().also { it[index] = band })
+        if (index !in p.bands.indices) p else p.copy(bands = p.bands.toMutableList().also { it[index] = band.passGainZero() })
     }
 
     /** A drag may finish after a profile switch, band deletion, or another edit. Transform only the live band. */
@@ -408,7 +412,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         if (currentId != profileId) return
         update(profileId) { p ->
             if (currentId != profileId || p.bands.getOrNull(index)?.id != bandId) p
-            else p.copy(bands = p.bands.toMutableList().also { it[index] = transform(it[index]) })
+            else p.copy(bands = p.bands.toMutableList().also { it[index] = transform(it[index]).passGainZero() })
         }
     }
 
@@ -450,7 +454,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     fun setType(type: FilterType) {
         val p = current ?: return
         val b = p.bands.getOrNull(selectedBand) ?: return
-        if (type in protocol.caps.types && b.type != type) setBand(selectedBand, b.copy(type = type))
+        if (type in protocol.caps.types && b.type != type) setBand(selectedBand, b.copy(type = type).passGainZero())
     }
 
     /** AUTO off starts manual at the shown (curve-domain) value, so the device register does not change. */
