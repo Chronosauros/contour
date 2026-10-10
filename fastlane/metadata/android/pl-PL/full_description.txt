@@ -1,5 +1,5 @@
-<p>Menedżer parametrycznego korektora (equalizera, PEQ) dla przetworników USB CrinEar Protocol Micro, Protocol Max i FiiO KA15. Trzymasz profile EQ w telefonie, wpinasz dongle, wybierasz profil i wysyłasz. Wpinasz, wysyłasz, wypinasz - i tyle.</p>
-<p>Protocol Micro, Protocol Max i KA15 mają korektor parametryczny wbudowany w sam dongle. Zapisane w nim EQ działa w każdej aplikacji i na każdym urządzeniu, do którego go podłączysz - bez korektora systemowego i bez aplikacji działającej w tle. Dla dongli Protocol oficjalne narzędzie to strona w przeglądarce na komputer; Contour przenosi je na telefon.</p>
+<p>Menedżer parametrycznego korektora (equalizera, PEQ) dla przetworników USB CrinEar Protocol Micro, Protocol Max, FiiO KA15 i FiiO K13 R2R. Trzymasz profile EQ w telefonie, wpinasz dongle, wybierasz profil i wysyłasz. Wpinasz, wysyłasz, wypinasz - i tyle.</p>
+<p>Protocol Micro, Protocol Max, KA15 i K13 R2R mają korektor parametryczny wbudowany w sam przetwornik. Zapisane w nim EQ działa w każdej aplikacji i na każdym urządzeniu, do którego go podłączysz - bez korektora systemowego i bez aplikacji działającej w tle. Dla dongli Protocol oficjalne narzędzie to strona w przeglądarce na komputer; Contour przenosi je na telefon.</p>
 <ul>
 <li><b>Profile EQ zostają w telefonie</b> - jeden na parę słuchawek (dokanałowych lub nausznych) albo na nastrój.</li>
 <li><b>Wysłanie zajmuje kilka sekund</b> - przytrzymaj HOLD TO SEND; Contour zapisuje profil w przetworniku, odczytuje go z powrotem, sprawdza każdą wartość i zapisuje w pamięci dongla.</li>
@@ -7,5 +7,5 @@
 <li><b>Przykłady na start</b> - NIGHTFALL i DUSK obok płaskiego profilu.</li>
 </ul>
 <p>Contour jest darmowy i open source (Apache-2.0). Nie przetwarza dźwięku, nie potrzebuje internetu, nie ma kont, reklam ani śledzenia. Rozmawia tylko z donglem. Wymaga Androida 9+ i obsługi USB host (OTG).</p>
-<p>Protocol Micro (8 pasm) jest przetestowany na sprzęcie autora. Protocol Max (10 pasm, natywne filtry półkowe) przetestował użytkownik ze społeczności na prawdziwym urządzeniu. FiiO KA15 (10 pasm, trzy sloty USER z nazwami) jest przetestowany na sprzęcie autora.</p>
+<p>Protocol Micro (8 pasm) jest przetestowany na sprzęcie autora. Protocol Max (10 pasm, natywne filtry półkowe) przetestował użytkownik ze społeczności na prawdziwym urządzeniu. FiiO KA15 (10 pasm, trzy sloty USER z nazwami) jest przetestowany na sprzęcie autora. FiiO K13 R2R (10 pasm, dziesięć slotów USER) jest przetestowany na sprzęcie autora.</p>
 <p>Aplikacja nieoficjalna, niezwiązana z CrinEar ani FiiO. Zapisuje do dongla tylko po wyraźnej akcji i tylko udokumentowanymi poleceniami; używasz jej na własne ryzyko.</p>

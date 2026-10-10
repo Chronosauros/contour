@@ -20,10 +20,13 @@ object NativeHidReports {
             return raw.copyOfRange(1, raw.size)
         }
     }
-    fun parse(descriptor: ByteArray): Shape {
+    /** [undefinedDesktop] (FiiO only): a top-level Application collection on Generic Desktop with the one Usage 0x00
+     * (Undefined) counts as a vendor page - the FiiO K13 R2R declares report 7 that way (real descriptor, 10.10.2026). */
+    fun parse(descriptor: ByteArray, undefinedDesktop: Boolean = false): Shape {
         data class Global(val size: Int = 0, val count: Int = 0, val id: Int = 0, val page: Int = 0)
         var g = Global(); val stack = ArrayList<Global>(); val vendorStack = ArrayList<Boolean>()
         val ownerStack = ArrayList<Int>(); var nextOwner = 0
+        var usages = 0; var usage = -1 // local Usage items since the last main item
         val bits = HashMap<Key, Int>(); val owners = HashMap<Key, Int>(); val vendors = HashMap<Key, Boolean>()
         var i = 0
         while (i < descriptor.size) {
@@ -39,7 +42,9 @@ object NativeHidReports {
                 0x84 -> { require(value in 1..255); g = g.copy(id = value) }
                 0xA4 -> stack.add(g)
                 0xB4 -> { require(stack.isNotEmpty()); g = stack.removeAt(stack.lastIndex) }
-                0xA0 -> { ownerStack.add(ownerStack.firstOrNull() ?: ++nextOwner); vendorStack.add(g.page in 0xFF00..0xFFFF || vendorStack.lastOrNull() == true) }
+                0x08 -> { usages++; usage = if (n <= 2) value else -1 }
+                0xA0 -> { ownerStack.add(ownerStack.firstOrNull() ?: ++nextOwner); vendorStack.add(g.page in 0xFF00..0xFFFF || vendorStack.lastOrNull() == true ||
+                    undefinedDesktop && vendorStack.isEmpty() && value == 1 && g.page == 0x01 && usages == 1 && usage == 0) }
                 0xC0 -> { require(ownerStack.isNotEmpty()); ownerStack.removeAt(ownerStack.lastIndex); vendorStack.removeAt(vendorStack.lastIndex) }
                 0x80, 0x90, 0xB0 -> {
                     require(g.size in 1..32 && g.count in 1..8192 && ownerStack.isNotEmpty())
@@ -51,6 +56,7 @@ object NativeHidReports {
                     vendors[key] = (vendors[key] ?: true) && (vendorStack.last() || g.page in 0xFF00..0xFFFF)
                 }
             }
+            if ((p and 0xFC) in setOf(0x80, 0x90, 0xB0, 0xA0, 0xC0)) { usages = 0; usage = -1 } // a main item ends the locals
         }
         require(stack.isEmpty() && ownerStack.isEmpty()) { "Unclosed descriptor state" }
         val sizes = bits.filterKeys { it.id != 0 }.filterKeys { vendors[it] == true }.mapValues { (_, b) ->

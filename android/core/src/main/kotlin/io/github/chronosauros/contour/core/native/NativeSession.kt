@@ -130,6 +130,7 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
                 writes.forEach {
                     if (c.config.consumeWriteEchoes) writeAndConsumeEcho(it) else send(it.reportId, it.payload())
                     if ((it.payload()[4].toInt() and 255) == FiioCodec.COUNT) pause(p.delayAfterCountMs.toLong())
+                    pause(c.config.writeGapMs.toLong())
                 }
                 pause(p.delayBeforeSaveMs.toLong())
                 send(p.save.reportId, p.save.payload())

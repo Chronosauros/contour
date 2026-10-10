@@ -72,9 +72,9 @@ class NativeFiioTest {
             assertEquals(d.getValue("productName").jsonPrimitive.content, c.productName)
         }
     }
-    @Test fun `stable catalog is exactly the KA15 rule not a VID fallback`() {
+    @Test fun `stable catalog is exactly the KA15 and K13 R2R rules not a VID fallback`() {
         val oracle = json("catalog-oracle.json").jsonArray
-        assertEquals(1, FiioCatalog.rules.size)
+        assertEquals(2, FiioCatalog.rules.size)
         assertEquals(oracle.map { it.jsonObject.getValue("productName").jsonPrimitive.content }.toSet(), FiioCatalog.rules.map { it.productName }.toSet())
         for (row in oracle) {
             val r = row.jsonObject
@@ -93,7 +93,7 @@ class NativeFiioTest {
             FiioCodec(c) // Configuration invariants.
         }
         assertEquals(0, FiioCatalog.rules.count { it.codecBlockers.isNotEmpty() })
-        assertEquals(1, FiioCatalog.rules.count { it.capture != null })
+        assertEquals(1, FiioCatalog.rules.count { it.capture != null }) // the K13 R2R has no capture: its identity is the measured product ID
         assertNull(FiioCatalog.capturedRoute(0x0A12, 0x4005, "Qudelix-5K USB DAC 48KHz"))
         assertNull(FiioCatalog.capturedRoute(0x2972, 0xFFFF, "FIIO QX13"))
         assertNull(FiioCatalog.capturedRoute(0x2972, 0x0104, "Unknown"))
@@ -381,5 +381,67 @@ class NativeFiioTest {
         assertEquals(three, c.padToDeviceCount(three))
         val q = plan(c, listOf(peak().copy(q = 3.9))).expected
         assertFalse(c.matches(q, q.copy(bands = q.bands.map { it.copy(qHundredths = it.qHundredths + 1) })))
+    }
+
+    /** The KA15 acoustic correction (shelf Q x sqrt2, preamp +12 dB) was measured on the KA15 only: an unmeasured K13 R2R
+     * gets raw values (register = intended), and its wider -24..+12 dB range and shelf Q up to 10 stay intact. */
+    @Test fun `K13 R2R encodes raw shelf Q and raw preamp without the KA15 correction`() {
+        val c = codec("FIIO K13 R2R")
+        assertEquals(1.0, c.config.shelfQScale)
+        assertEquals(0.0, c.config.preampOffsetDb)
+        assertFalse(c.config.shelfAlphaCompensation)
+        val expected = plan(c, listOf(Band("ls", FilterType.LOW_SHELF, 80.0, 4.0, 0.71), Band("hs", FilterType.HIGH_SHELF, 1000.0, -1.2, 1.40),
+            Band("p", FilterType.PEAK, 3000.0, 3.0, 3.80), Band("hs2", FilterType.HIGH_SHELF, 9000.0, 2.0, 8.0)), -4.0).expected
+        assertEquals(listOf(71, 140, 380, 800), expected.bands.map { it.qHundredths })
+        assertEquals(-40, expected.preampTenths) // KA15 would write 80 here (-4 dB + 12 dB)
+        assertEquals(0, plan(c, listOf(peak()), 0.0).expected.preampTenths) // KA15: 120
+        // Shelf Q 8 and pregain -20 dB are legal on the K13 R2R (KA15: shelf Q <= 7.07, pregain -24..0 after its offset).
+        val t = DeviceTarget.K13
+        assertEquals(24.0, -t.preampMin)
+        val profile = Profile("p", "p", bands = listOf(Band("hs", FilterType.HIGH_SHELF, 9000.0, 2.0, 8.0)), preampDb = -20.0, createdAt = 0, updatedAt = 0)
+        assertEquals(emptyList(), t.issues(profile))
+    }
+
+    /** The K13 R2R carries only the KA15 flag its own hardware test showed (fixed band count, 10.10.2026) and the slot picker. */
+    @Test fun `K13 R2R has the slot picker and of the KA15 hardware flags only the fixed band count, the KA15 keeps its named picker`() {
+        val k = FiioCatalog.K13; val a = FiioCatalog.KA15
+        assertTrue(k.userSlotPicker && !k.userSlotNames)
+        assertTrue(k.fixedBandCount)
+        assertFalse(k.needsAudioStream || k.consumeWriteEchoes || k.qReadbackSlack || k.checksumFrames)
+        assertEquals(setOf(160, 161, 162, 163, 164, 165, 166, 167, 168, 169), k.userSlots)
+        assertEquals(160, DeviceTarget.K13.destinationSlot)
+        assertEquals(240, k.bypassSlot); assertEquals(25, k.saveCommand); assertEquals(7, k.reportId); assertEquals(10, k.maxFilters)
+        assertEquals(listOf(-24.0, 12.0, 0.1, 10.0), listOf(k.minGainDb, k.maxGainDb, k.minQ, k.maxQ))
+        // KA15 as in 1.4.0: named slots, no separate picker flag, USER1-3, USER1 as the default destination
+        assertTrue(a.userSlotNames && !a.userSlotPicker)
+        assertTrue(a.needsAudioStream && a.consumeWriteEchoes && a.fixedBandCount && a.qReadbackSlack && a.checksumFrames)
+        assertEquals(setOf(7, 8, 9), a.userSlots)
+        assertEquals(7, DeviceTarget.KA15.destinationSlot)
+        assertEquals(DeviceTarget.KA15, DeviceTarget.find(0x2972, 0x0104))
+    }
+
+    /** Reddit 2026-10-04: nine bands plus a tenth of zeros blocked HOLD TO SEND with no reason. The reason is now the first issue. */
+    @Test fun `K13 R2R names the band and value that block a send`() {
+        val t = DeviceTarget.K13
+        val nine = List(9) { peak(it).copy(freqHz = 100.0 * (it + 1), gainDb = 1.0) }
+        fun profile(bands: List<Band>, preamp: Double = 0.0) = Profile("p", "p", bands = bands, preampDb = preamp, createdAt = 0, updatedAt = 0)
+        val zero = Band("b9", FilterType.PEAK, 0.0, 0.0, 0.0)
+        val issues = t.issues(profile(nine + zero))
+        // the empty band is wrong twice (freq 0 and Q 0): both are listed, so fixing the freq does not hide a second block
+        assertEquals("Band 10: freq 0 Hz outside 20-20000 Hz", issues.first())
+        assertEquals(2, issues.size)
+        assertTrue(issues[1].startsWith("Band 10: Q 0.00 outside"), issues[1])
+        assertEquals("BAND 10: FREQ 0 HZ - EDIT BAND", DeviceTarget.blockLabel(issues))
+        assertEquals("BAND 1: GAIN 13 DB - EDIT BAND", DeviceTarget.blockLabel(t.issues(profile(listOf(peak().copy(gainDb = 13.0))))))
+        assertEquals("BAND 1: Q 0.05 - EDIT BAND", DeviceTarget.blockLabel(t.issues(profile(listOf(peak().copy(q = 0.05))))))
+        assertEquals("PREAMP OUT OF RANGE", DeviceTarget.blockLabel(t.issues(profile(nine, 13.0))))
+        assertEquals("BAND 2: FREQ 25000 HZ", DeviceTarget.blockLabel(t.issues(profile(listOf(peak(), peak(1).copy(freqHz = 25000.0))))))
+        assertEquals("11 BANDS - MAX 10", DeviceTarget.blockLabel(t.issues(profile(List(11) { peak(it) }))))
+        assertEquals("INVALID EQ - EDIT BAND", DeviceTarget.blockLabel(listOf("something else")))
+        assertEquals("INVALID EQ - EDIT BAND", DeviceTarget.blockLabel(emptyList()))
+        // every problem is listed, not only the first
+        assertEquals(4, t.issues(profile(listOf(zero, zero.copy(id = "b10")))).size)
+        // the KA15 gets the same precise wording; WalkPlay targets keep their own issue lists
+        assertEquals("BAND 1: GAIN 13 DB - EDIT BAND", DeviceTarget.blockLabel(DeviceTarget.KA15.issues(profile(listOf(peak().copy(gainDb = 13.0))))))
     }
 }

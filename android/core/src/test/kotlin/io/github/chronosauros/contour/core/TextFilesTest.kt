@@ -17,6 +17,22 @@ class TextFilesTest {
 
     private fun band(i: Int, type: FilterType, f: Double, g: Double, q: Double, on: Boolean = true) = Band("b$i", type, f, g, q, on)
 
+    @Test fun `a file of only 0 dB filters keeps one and moves it into range, never touching a filter with gain`() {
+        val flat = ApoText.parseImport("Preamp: -3 dB\nFilter 1: ON PK Fc 0 Hz Gain 0 dB Q 0\nFilter 2: ON PK Fc 0 Hz Gain 0 dB Q 0\n")
+        assertEquals(1, flat.bands.size)
+        assertEquals(20.0, flat.bands[0].freqHz)
+        assertEquals(0.1, flat.bands[0].q)
+        assertEquals(0.0, flat.bands[0].gainDb)
+        val single = ApoText.parseImport("Filter 1: ON PK Fc 30000 Hz Gain 0 dB Q 50\n")
+        assertEquals(listOf(20000.0, 10.0), listOf(single.bands[0].freqHz, single.bands[0].q))
+        val fine = ApoText.parseImport("Filter 1: ON PK Fc 1000 Hz Gain 0 dB Q 1.5\n")
+        assertEquals(listOf(1000.0, 1.5), listOf(fine.bands[0].freqHz, fine.bands[0].q))
+        // a filter with gain keeps its values, and the 0 dB zero filter is dropped as before
+        val mixed = ApoText.parseImport("Filter 1: ON PK Fc 100 Hz Gain 2 dB Q 1\nFilter 2: ON PK Fc 0 Hz Gain 0 dB Q 0\n")
+        assertEquals(1, mixed.bands.size)
+        assertEquals(listOf(100.0, 2.0, 1.0), listOf(mixed.bands[0].freqHz, mixed.bands[0].gainDb, mixed.bands[0].q))
+    }
+
     // ---- squig.link two-channel export -----------------------------------------------------------------------
 
     @Test fun `squig two-channel file imports the left block only and says so`() {

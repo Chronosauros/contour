@@ -191,6 +191,26 @@ Sweeps 10 Hz-22 kHz through the KA15 to a line input, each result minus Close EQ
 - Contour writes shelf Q register = Q x sqrt(2) and preamp register = preamp + 12 dB (shown range -24..0 dB, shelf Q up
   to 7.07), so squig.link/AutoEQ profiles play as designed. FiiO's app and web app show the raw registers.
 
+## FiiO K13 R2R (2972:0120, supported in Contour 1.4.1)
+
+Measured on the owner's K13 R2R on a Pixel 9 Pro, 10.10.2026 (firmware 1.15, USB product "FIIO K13 R2R").
+
+- Transport: the KA15 frame format and commands (`0x15` band, `0x16` active preset, `0x17` global gain,
+  `0x18` filter count, `0x19` save), report ID 7 with 33-byte reports in and out, HID interface 3. The K13
+  answers without a USB audio stream and does not echo writes, so Contour sends no keep-alive stream.
+- USB: the device reports two identical configurations; Contour opens the first one only. Report 7 is declared
+  in a top-level Application collection on Generic Desktop with Usage 0x00 (Undefined) instead of a vendor
+  page; Contour accepts that layout on the FiiO paths only.
+- Slots: USER1-USER10 = presets 160-169 (`a0`-`a9`), BYPASS = 240 (`f0`), stock presets 0-6 and 8-10 are never
+  written. Writing a slot makes it the active one. Contour uses no name commands on the K13.
+- Filter count: a count of 9 reads back as 10 and band 10 keeps its old registers, so a shorter profile would
+  leave the slot's old band 10 audible. Contour always writes ten bands and pads with 0 dB peaks, as on the KA15.
+- Persistence: writes 16 ms apart all read back correctly, but after a power cycle only the first one to three
+  survived (USER10: band 1; USER9: preamp and bands 1-2). With 300 ms after every write, preamp and all ten bands
+  survived a power cycle on USER9 and USER10, both on advBeta and on stable 1.4.1.
+- Not measured: the acoustic result (the KA15 plays shelf Q / sqrt(2) and USER presets 12 dB down; the K13 has
+  not been swept). Contour writes the K13 values as shown.
+
 ## FiiO roadmap note (config/handler only; written before the KA15 work above)
 - FiiO is matched by VID 0x2972 (and 0x0A12) + **USB product name string**, not by PID (UC L16, L360-400).
   "FIIO KA15": supported, 10 bands, +-12 dB, 7 types (PK/LS/HS/LP/HP/BP/AP), writable user slots 7-9

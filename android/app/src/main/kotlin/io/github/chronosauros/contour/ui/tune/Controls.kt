@@ -18,6 +18,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -39,6 +40,7 @@ import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.semantics
 import io.github.chronosauros.contour.core.DevicePlan
+import io.github.chronosauros.contour.core.DeviceTarget
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import io.github.chronosauros.contour.core.Profile
@@ -207,15 +209,27 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
     }
 }
 
-/** What HOLD TO SEND shows for [p] now. */
-fun holdLabel(p: Profile, device: DeviceController, sender: Sender): String = when {
-    sender.sendingId == p.id -> "SENDING"
-    device.link == Link.NO_DAC -> "NO DAC"
-    device.link == Link.NEEDS_PERMISSION -> "TAP TO CONNECT"
-    device.sendIssues(p).isNotEmpty() -> "INVALID EQ - EDIT BAND"
-    sender.onDacId == p.id && device.destinationActive -> "ON DAC"
-    sender.failedFor(p) -> "FAILED - HOLD TO RETRY"
-    else -> "HOLD TO SEND"
+/**
+ * What HOLD TO SEND shows for [p] now, and why. [eqBlocked] is the state the touch handler keys on (the EQ cannot be sent),
+ * [issues] the full list behind it; the [label] is only how that is worded and never decides what a touch does.
+ */
+data class HoldView(val label: String, val eqBlocked: Boolean = false, val issues: List<String> = emptyList())
+
+fun holdView(p: Profile, device: DeviceController, sender: Sender): HoldView {
+    if (sender.sendingId == p.id) return HoldView("SENDING")
+    if (device.link == Link.NO_DAC) return HoldView("NO DAC")
+    if (device.link == Link.NEEDS_PERMISSION) return HoldView("TAP TO CONNECT")
+    val issues = device.sendIssues(p)
+    if (issues.isNotEmpty()) {
+        // Native DACs (FiiO) say which band or the preamp is out of range; Micro and Max keep the generic wording.
+        val label = if (device.protocol.native) DeviceTarget.blockLabel(issues) else "INVALID EQ - EDIT BAND"
+        return HoldView(label, eqBlocked = true, issues = issues)
+    }
+    return HoldView(when {
+        sender.onDacId == p.id && device.destinationActive -> "ON DAC"
+        sender.failedFor(p) -> "FAILED - HOLD TO RETRY"
+        else -> "HOLD TO SEND"
+    })
 }
 
 private const val HOLD_MS = 700
@@ -232,8 +246,12 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
     val c = pal
     val scope = rememberCoroutineScope()
     val fill = remember { Animatable(0f) }
-    val label = holdLabel(p, device, sender)
+    val view = holdView(p, device, sender)
+    val label = view.label
     val labelNow = rememberUpdatedState(label)
+    val eqBlockedNow = rememberUpdatedState(view.eqBlocked)
+    // The full issue list goes to the USB log once per block, so a logcat capture shows why a send is blocked.
+    LaunchedEffect(view.issues) { device.logSendBlock(view.issues) }
     val profile = rememberUpdatedState(p)
     val details = rememberUpdatedState(onDetails)
     val orange = label == "HOLD TO SEND" || label == "SENDING"
@@ -259,14 +277,16 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown()
+                    // A slot tapped with another finger during the hold cancels the send instead of redirecting it.
+                    val heldSlot = device.destinationSlot()
                     down.consume()
+                    if (eqBlockedNow.value) { haptics.reject(); return@awaitEachGesture }
                     when (labelNow.value) {
                         "SENDING" -> return@awaitEachGesture
                         "NO DAC" -> {
                             if (waitUp() && !device.connect()) haptics.reject()
                             return@awaitEachGesture
                         }
-                        "INVALID EQ - EDIT BAND" -> { haptics.reject(); return@awaitEachGesture }
                         "TAP TO CONNECT" -> {
                             val up = waitUp()
                             if (up) device.requestPermission()
@@ -304,7 +324,7 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
                         if (done == null) {
                             job.cancel()
                             haptics.click()
-                            sender.send(profile.value)
+                            if (heldSlot == device.destinationSlot()) sender.send(profile.value) else haptics.reject()
                             scope.launch { fill.animateTo(0f, tween(250)) }
                             waitUp()
                         } else {

@@ -92,6 +92,16 @@ class NativeIntegrationTest {
         assertTrue(port.events.indexOf("write:22") < port.events.indexOf("write:25"))
         assertTrue(port.events.indexOf("write:25") < port.events.indexOf("write:48"))
     }
+    @Test fun `K13 R2R writes USER10 without any name command and reads no names`() {
+        val t = DeviceTarget.K13; val port = FiioPort(t)
+        assertEquals(160, port.state.activeSlot)
+        val r = NativeSession(t, port).write(profile().copy(name = "Nightfall"), true, targetSlot = 169)
+        assertTrue(r.verified); assertNull(r.reason)
+        assertEquals(169, port.state.activeSlot)
+        assertTrue((r.readback as NativeState.Fiio).names.isEmpty())
+        assertTrue(port.events.none { it == "write:48" || it == "read:48" }, port.events.toString())
+        assertTrue(port.events.indexOf("write:22") < port.events.indexOf("write:25"))
+    }
     @Test fun `KA15 name reply from the Pixel parses with its 9-byte name field`() {
         val c = FiioCodec(requireNotNull(fiio().fiio))
         val rx = "bb 0b 00 00 30 08 00 54 45 53 54 31 00 00 00 00 ac ee".split(" ").map { it.toInt(16).toByte() }.toByteArray().copyOf(63)
@@ -136,6 +146,22 @@ class NativeIntegrationTest {
         assertEquals(64, w.size); assertEquals(7, w[0].toInt()); assertEquals(0xBB.toByte(), w[1])
         assertFails { s.payload(7, NativeHidReports.Kind.INPUT, w.copyOf(63)) }
         assertFails { s.rawSize(7, NativeHidReports.Kind.FEATURE) }
+    }
+    /** Real FiiO K13 R2R HID interface 3 (owner's unit, 10.10.2026): report 7 in a Generic Desktop collection with Usage Undefined. */
+    @Test fun `K13 R2R real descriptor qualifies only on the FiiO path`() {
+        val bytes = listOf(0x05, 0x01, 0x09, 0x00, 0xa1, 0x01, 0x85, 0x07, 0x15, 0x00, 0x25, 0xff, 0x19, 0x01, 0x29, 0x08,
+            0x95, 0x20, 0x75, 0x08, 0x81, 0x02, 0x19, 0x01, 0x29, 0x08, 0x91, 0x02, 0xc0, 0x05, 0x0c, 0x09, 0x01, 0xa1, 0x01, 0x85,
+            0x02, 0x15, 0x00, 0x25, 0x01, 0x09, 0xcd, 0x09, 0xb5, 0x09, 0xb6, 0x09, 0xe9, 0x09, 0xea, 0x09, 0xe2, 0x75, 0x01, 0x95,
+            0x06, 0x81, 0x02, 0x95, 0x02, 0x81, 0x01, 0xc0).map { it.toByte() }.toByteArray()
+        val s = NativeHidReports.parse(bytes, undefinedDesktop = true)
+        assertEquals(33, s.rawSize(7, NativeHidReports.Kind.INPUT))
+        assertEquals(33, s.rawSize(7, NativeHidReports.Kind.OUTPUT))
+        s.requireSameOwner(7, NativeHidReports.Kind.INPUT, NativeHidReports.Kind.OUTPUT)
+        assertFails { s.rawSize(2, NativeHidReports.Kind.INPUT) } // consumer-control report stays out
+        assertTrue(NativeHidReports.parse(bytes).rawSizes.isEmpty()) // other families keep the vendor-page rule
+        // a Generic Desktop collection with a defined usage (Pointer) is still not a vendor page
+        val pointer = listOf(0x05, 0x01, 0x09, 0x01, 0xA1, 0x01, 0x85, 7, 0x75, 8, 0x95, 63, 0x81, 2, 0x95, 63, 0x91, 2, 0xC0)
+        assertTrue(NativeHidReports.parse(pointer.map { it.toByte() }.toByteArray(), undefinedDesktop = true).rawSizes.isEmpty())
     }
     @Test fun `native reads never mutate`() {
         val f = FiioPort(fiio())

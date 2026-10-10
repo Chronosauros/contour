@@ -145,15 +145,27 @@ object ApoText {
         (b.type == FilterType.PEAK || b.type == FilterType.LOW_SHELF || b.type == FilterType.HIGH_SHELF) && abs(b.gainDb) < 1e-9
 
     /**
+     * The one filter kept from a file of only 0 dB filters (hangout.audio pads unused slots with zeros) must not block
+     * a send for a frequency or Q the device cannot take: it does nothing at 0 dB, so it is moved into range. Only a
+     * filter that does nothing is touched; one with gain is never altered.
+     */
+    private fun neutralInRange(b: Band): Band {
+        if (!doesNothing(b)) return b
+        val freq = if (b.freqHz.isFinite()) b.freqHz.coerceIn(20.0, 20000.0) else 1000.0
+        val q = if (b.q.isFinite()) b.q.coerceIn(0.1, 10.0) else 1.0
+        return if (freq == b.freqHz && q == b.q) b else b.copy(freqHz = freq, q = q)
+    }
+
+    /**
      * [parse] for importing a file into a profile: filters at 0 dB are dropped and counted in the notes so they do
      * not eat device bands (disabled filters that have a gain stay, as disabled bands). A file made only of such
      * filters keeps its first one, so an exported flat profile imports as a flat profile.
      */
     fun parseImport(text: String, newId: (Int) -> String = { "b${it + 1}" }): ImportedEq {
         val eq = parse(text, newId)
-        val kept = eq.bands.filterNot(::doesNothing).ifEmpty { eq.bands.take(1) }
+        val kept = eq.bands.filterNot(::doesNothing).ifEmpty { eq.bands.take(1).map(::neutralInRange) }
         val skipped = eq.bands.size - kept.size
-        if (skipped == 0) return eq
+        if (skipped == 0) return if (kept == eq.bands) eq else ImportedEq(kept, eq.preampDb, eq.notes)
         val note = "$skipped empty filter${if (skipped == 1) "" else "s"} skipped"
         return ImportedEq(kept.mapIndexed { i, b -> b.copy(id = newId(i)) }, eq.preampDb, eq.notes + note)
     }

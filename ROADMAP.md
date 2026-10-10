@@ -8,7 +8,9 @@ Ideas and devices for later. None of these is enabled until it is confirmed on r
 - Open: one save out of ten on 04.10 got no answer until the dongle was replugged; not reproduced since.
 
 ## FiiO K13 R2R
-- devicePEQ: 10 bands, -24..+12 dB, all FiiO types, user slots 160-169, bypass 240. Product-name match unverified.
+- Supported since Contour 1.4.1, tested on the developer's own hardware (Pixel, 10.10.2026): read on connect, USER1-USER10 slot picker above HOLD TO SEND (two rows of five, no names, no rename), writes only to USER slots (160-169), never the stock presets or BYPASS (240). First reported by a community tester in advBeta 1.3.1-advbeta1: recognised, but every send blocked by INVALID EQ.
+- Protocol: the KA15's FiiO HID protocol, report ID 7, 33-byte reports, USB `2972:0120` matched exactly. 10 bands, -24..+12 dB, preamp -24..+12 dB, PEAK, LOW SHELF and HIGH SHELF. Hardware quirks are in `research/protocol/PROTOCOL.md`: two identical USB configurations, report 7 on Generic Desktop / Undefined, a band count below 10 reads back as 10 (Contour pads with flat bands), and writes need 300 ms between them to survive a power cycle.
+- Open: the sound is not measured yet. The KA15 needed shelf-Q and preamp compensation; the K13 may too.
 
 ## CrinEar Protocol Max (WalkPlay SchemeNo16)
 - 10 bands, +-10 dB, low and high shelf, no frequency/Q compensation, pregain via command 0x03.

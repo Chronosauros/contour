@@ -12,4 +12,8 @@
     <usb-device
         vendor-id="10610"
         product-id="260" />
+    <!-- FiiO K13 R2R: USB 0x2972:0x0120, measured on the K13 10.10.2026; same number as FiioCatalog.K13_R2R_PRODUCT_ID. -->
+    <usb-device
+        vendor-id="10610"
+        product-id="288" />
 </resources>

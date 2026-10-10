@@ -323,8 +323,9 @@ private fun HistoryButton(icon: androidx.compose.ui.graphics.vector.ImageVector,
     }
 }
 
-/** KA15: USER1-3 with the names read from the DAC. Tap = the slot HOLD TO SEND writes (orange frame);
- * by default the slot playing now, so a plain HOLD never switches presets. Long press = rename the slot. */
+/** USER slots: KA15 shows USER1-3 with the names read from the DAC; a DAC without name commands (K13 R2R: USER1-10)
+ * shows generic names, five to a row. Tap = the slot HOLD TO SEND writes (orange frame); by default the slot playing
+ * now, so a plain HOLD never switches presets. Long press = rename the slot (only where the DAC stores names). */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SlotRow(device: DeviceController, modifier: Modifier = Modifier) {
@@ -336,28 +337,36 @@ private fun SlotRow(device: DeviceController, modifier: Modifier = Modifier) {
     val shape = RoundedCornerShape(Radii.M)
     var renaming by remember { mutableStateOf<Int?>(null) }
     renaming?.let { slot -> RenameSlotDialog(fiio.slotLabels[slot] ?: "SLOT $slot", names[slot].orEmpty(), { renaming = null }) { device.renameSlot(slot, it) } }
-    Row(modifier.fillMaxWidth().height(COMPACT_H), horizontalArrangement = Arrangement.spacedBy(GAP)) {
-        fiio.userSlots.sorted().forEach { slot ->
-            val sel = slot == target
-            Column(
-                Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .lift(shape, Lift.RAISED)
-                    .clip(shape)
-                    .background(c.surface2)
-                    .then(if (sel) Modifier.border(2.dp, c.accent, shape) else Modifier)
-                    .combinedClickable(
-                        enabled = !device.busy,
-                        onClick = { if (!sel) haptics.tap(); device.selectSlot(slot) },
-                        onLongClick = { haptics.longPress(); renaming = slot },
-                    )
-                    .testTag("slot_$slot"),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(fiio.slotLabels[slot] ?: "SLOT $slot", style = Type.paramLabel, color = if (sel) c.text else c.textDim, maxLines = 1)
-                Text(names[slot] ?: "-", style = Type.label, color = if (sel) c.text else c.textDim, maxLines = 1)
+    val named = device.slotNames
+    val perRow = if (named) Int.MAX_VALUE else 5
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(GAP)) {
+        fiio.userSlots.sorted().chunked(perRow).forEach { rowSlots ->
+            Row(Modifier.fillMaxWidth().height(COMPACT_H), horizontalArrangement = Arrangement.spacedBy(GAP)) {
+                rowSlots.forEach { slot ->
+                    val sel = slot == target
+                    Column(
+                        Modifier
+                            .weight(1f)
+                            .fillMaxHeight()
+                            .lift(shape, Lift.RAISED)
+                            .clip(shape)
+                            .background(c.surface2)
+                            .then(if (sel) Modifier.border(2.dp, c.accent, shape) else Modifier)
+                            .combinedClickable(
+                                enabled = !device.busy,
+                                onClick = { if (!sel) haptics.tap(); device.selectSlot(slot) },
+                                onLongClick = if (named) ({ haptics.longPress(); renaming = slot }) else null,
+                            )
+                            .testTag("slot_$slot"),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        Text(fiio.slotLabels[slot] ?: "SLOT $slot", style = Type.paramLabel, color = if (sel) c.text else c.textDim, maxLines = 1)
+                        if (named) Text(names[slot] ?: "-", style = Type.label, color = if (sel) c.text else c.textDim, maxLines = 1)
+                    }
+                }
+                // a short last row keeps the cells the size of the full rows above it
+                repeat(perRow.coerceAtMost(fiio.userSlots.size) - rowSlots.size) { Spacer(Modifier.weight(1f)) }
             }
         }
     }
