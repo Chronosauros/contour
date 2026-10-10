@@ -39,7 +39,6 @@ import io.github.chronosauros.contour.ui.kit.LiftGuard
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
 import io.github.chronosauros.contour.ui.kit.LocalPagerLock
 import io.github.chronosauros.contour.ui.kit.holdsPager
-import io.github.chronosauros.contour.ui.kit.Scale
 import kotlin.math.exp
 import kotlin.math.hypot
 import kotlin.math.ln
@@ -102,6 +101,10 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                 awaitEachGesture {
                     val map = PlotMap(size.width.toFloat(), size.height.toFloat(), pad)
                     val down = awaitFirstDown(requireUnconsumed = false)
+                    // a node never leaves the connected DAC's range, as on the sliders (offline: 20 Hz - 20 kHz, -10..+10 dB);
+                    // read after the touch lands, so a DAC swapped since the last gesture counts
+                    val freqScale = Param.FREQ.scaleFor(model.protocol.caps)!!
+                    val gainScale = Param.GAIN.scaleFor(model.protocol.caps)!!
                     down.consume()
                     val bands0 = prof.value.bands
                     val hit = bands0.indices.minByOrNull { i ->
@@ -140,7 +143,7 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                             if (p.bands.size >= model.maxBands) haptics.reject()
                             else {
                                 haptics.longPress()
-                                model.addBand(map.f(down.position.x), map.g(down.position.y).coerceIn(-10.0, 10.0))
+                                model.addBand(map.f(down.position.x), map.g(down.position.y)) // the model clamps to the DAC's range
                             }
                             continue
                         }
@@ -220,8 +223,8 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                             1 -> {
                                 val b = prof.value.bands.getOrNull(hit!!) ?: continue
                                 val pos = ch.position + grab
-                                val f = Scale.FREQ.quantize(map.f(pos.x))
-                                val g = Scale.GAIN.quantize(map.g(pos.y).coerceIn(-10.0, 10.0))
+                                val f = freqScale.quantize(map.f(pos.x))
+                                val g = gainScale.quantize(map.g(pos.y))
                                 if (f != b.freqHz || g != b.gainDb) model.setBand(hit, b.copy(freqHz = f, gainDb = g))
                                 nodeGuard.move(ch.uptimeMillis, ch.position, f to g)
                                 if ((f to g) != ticked && !nodeGuard.settling(ch.uptimeMillis)) {

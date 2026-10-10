@@ -67,6 +67,8 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         private set
     /** The DAC stores USER slot names (FiiO command 0x30, KA15 only): the picker shows and renames them. Without it the picker has generic names and sends no name command. */
     val slotNames: Boolean get() = protocol.fiio?.userSlotNames == true
+    /** Read, write and persistence of this DAC were confirmed on real hardware (FiioConfig.hardwareVerified). */
+    val hardwareVerified: Boolean get() = protocol.fiio?.hardwareVerified == true
     /** Named slots (KA15) or a config that opts in (K13 R2R): the user chooses where HOLD TO SEND writes. */
     val slotPicker: Boolean get() = protocol.fiio?.let { it.userSlotNames || it.userSlotPicker } == true
     fun destinationSlot(): Int? = if (!slotPicker) protocol.destinationSlot

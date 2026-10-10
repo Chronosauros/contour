@@ -67,6 +67,10 @@ data class NativeWriteResult(val verified: Boolean, val pending: Boolean, val re
 
 /** No mutation on read, qualification or local preflight. Every callback is guarded both sides. */
 class NativeSession(val target: DeviceTarget, private val port: NativePort) {
+    private companion object {
+        const val DRIFT_REREADS = 2
+        const val DRIFT_GAP_MS = 500L
+    }
     private fun <T> guarded(op: () -> T): T { port.guard(); return op().also { port.guard() } }
     private fun pause(ms: Long) { if (ms > 0) guarded { port.pause(ms) } }
     private fun send(id: Int, bytes: ByteArray, kind: NativeHidReports.Kind = NativeHidReports.Kind.OUTPUT) = guarded { port.send(id, kind, bytes) }
@@ -105,7 +109,23 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
             request(f.reportId, f.payload()) { p -> p.size >= 6 && p[0] == 0xAA.toByte() && p[1] == 0x0A.toByte() && p[4] == cmd }
         } catch (e: java.io.IOException) { if (!isReplyTimeout(e)) throw e }
     }
-    private fun readFiio(c: FiioCodec): NativeState.Fiio {
+    /** One logical FiiO read, [attempts] times at most on a reply timeout. The active bank can differ between the opening and
+     * the closing slot query (SNOWSKY Melody, 10.10.2026: cause not known yet): the read-only query then starts over, twice
+     * at most for the whole logical read (timeout retries included), 500 ms apart; a third drift is reported as it is. */
+    private fun readFiio(c: FiioCodec, attempts: Int = 8): NativeState.Fiio {
+        var drifts = 0
+        return retryTimeouts(attempts) {
+            var state: NativeState.Fiio? = null
+            while (state == null) {
+                try { state = readFiioOnce(c) } catch (e: BankDrift) {
+                    if (drifts++ >= DRIFT_REREADS) throw e
+                    pause(DRIFT_GAP_MS)
+                }
+            }
+            requireNotNull(state)
+        }
+    }
+    private fun readFiioOnce(c: FiioCodec): NativeState.Fiio {
         // Names first, as the official app does on connect.
         val names = if (c.config.userSlotNames) c.config.userSlots.sorted().associateWith { readName(c, it) } else emptyMap()
         val slot = fiioReply(c, c.querySlot()); val count = fiioReply(c, c.queryCount())
@@ -192,7 +212,7 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
         return NativeState.Moondrop(MoondropCodec.snapshot(model, port.deviceKey, replies, inputBytes))
     }
     fun read(): NativeState = guarded {
-        when { target.fiio != null -> FiioCodec(target.fiio).let { c -> retryTimeouts(5) { readFiio(c) } }; target.kt != null -> readKt(); target.fosi -> readFosi(); target.moondrop != null -> readMoondrop(); else -> error("Not a native family") }
+        when { target.fiio != null -> FiioCodec(target.fiio).let { c -> readFiio(c, 5) }; target.kt != null -> readKt(); target.fosi -> readFosi(); target.moondrop != null -> readMoondrop(); else -> error("Not a native family") }
     }
     /** [targetSlot]: the USER slot chosen in the app (KA15 slot picker); null = the target's fixed destination. */
     fun write(profile: Profile, explicitHold: Boolean, targetSlot: Int? = null,
@@ -213,7 +233,7 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
                 }
                 val selected = retryTimeouts { fiioReply(c, p.selectionVerification) }
                 require(c.parseSlot(selected) == p.targetSlot) { "FiiO destination selection failed" }
-                val backup = if (alreadyActive) before else retryTimeouts { readFiio(c) }
+                val backup = if (alreadyActive) before else readFiio(c)
                 val writes = c.writesAfterSelection(p, selected, backup.raw)
                 writes.forEach {
                     if (c.config.consumeWriteEchoes) writeAndConsumeEcho(it) else send(it.reportId, it.payload())
@@ -228,7 +248,7 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
                     NativeWriteResult(false, true, "Save sent; reconnect same DAC and complete read required (not verified)", null)
                 else {
                     pause(p.delayAfterSaveMs.toLong())
-                    val back = retryTimeouts { readFiio(c) }
+                    val back = readFiio(c)
                     val ok = c.matches(p.expected, back.raw)
                     if (!ok) NativeWriteResult(false, false, "FiiO native register mismatch", back)
                     else if (!c.config.userSlotNames) NativeWriteResult(true, false, null, back)

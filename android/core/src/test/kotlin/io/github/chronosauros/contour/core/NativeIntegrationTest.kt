@@ -37,6 +37,9 @@ class NativeIntegrationTest {
     private class FiioPort(val target: DeviceTarget) : FakePort() {
         private val c = FiioCodec(requireNotNull(target.fiio))
         var state = c.planOnExplicitSend(profileStatic(), target.destinationSlot!!, true).expected
+        // a read's closing slot query (the one after its band queries) answers another bank, this many times;
+        // the timeoutAtBandQuery-th band query of the session gets no reply
+        var bankDrifts = 0; var timeoutAtBandQuery = 0; private var bandQueries = 0; private var bandSeen = false
         var selectionWorks = true; var brokenBackup = false; var savedMismatch = false; var selected = false; var saved = false; var detachOnSave = false
         val names = mutableMapOf(0 to "TEST1", 1 to "FF5", 2 to "FH3")
         private fun word(v: Int) = listOf((v ushr 8) and 255, v and 255)
@@ -69,8 +72,12 @@ class NativeIntegrationTest {
             assertEquals(0xBB, payload[0].toInt() and 255)
             val cmd = payload[4].toInt() and 255; events += "read:$cmd"
             if (brokenBackup && selected && cmd == FiioCodec.BAND) error("Incomplete destination backup")
+            if (cmd == FiioCodec.BAND && ++bandQueries == timeoutAtBandQuery) throw java.io.IOException("Native request timed out")
+            val drift = cmd == FiioCodec.SLOT && bandSeen && bankDrifts > 0
+            if (drift) bankDrifts--
+            if (cmd == FiioCodec.SLOT) bandSeen = false else if (cmd == FiioCodec.BAND) bandSeen = true
             val data = when (cmd) {
-                FiioCodec.SLOT -> listOf(state.activeSlot)
+                FiioCodec.SLOT -> listOf(state.activeSlot + if (drift) 1 else 0)
                 FiioCodec.COUNT -> listOf(state.count)
                 FiioCodec.PREAMP -> word(state.preampTenths)
                 FiioCodec.BAND -> state.bands[payload[6].toInt() and 255].let { listOf(it.index) + word(it.gainTenths) + word(it.frequencyHz) + word(it.qHundredths) + it.typeCode }
@@ -226,6 +233,30 @@ class NativeIntegrationTest {
         assertEquals(FosiCodec.Layout.UNKNOWN, diagnostic.raw.layout)
         assertEquals(8, diagnostic.raw.bands.size)
         assertTrue(fosiMutations(d).isEmpty())
+    }
+    @Test fun `a FiiO read whose active bank drifts starts over, twice at most`() {
+        val t = fiio(); val port = FiioPort(t); port.bankDrifts = 2
+        val state = assertIs<NativeState.Fiio>(NativeSession(t, port).read())
+        assertEquals(port.state.activeSlot, state.raw.activeSlot)
+        assertEquals(listOf("pause:500", "pause:500"), port.events.filter { it.startsWith("pause") })
+        assertTrue(port.events.none { it.startsWith("write") })
+        val stuck = FiioPort(t); stuck.bankDrifts = 3
+        val e = assertFailsWith<IllegalArgumentException> { NativeSession(t, stuck).read() }
+        assertEquals("Active bank changed during read (${stuck.state.activeSlot}, then ${stuck.state.activeSlot + 1})", e.message)
+        assertEquals(listOf("pause:500", "pause:500"), stuck.events.filter { it.startsWith("pause") })
+    }
+    @Test fun `bank drifts and reply timeouts of one FiiO read share the two re-reads`() {
+        val t = fiio()
+        // drift, timeout, drift, then a clean read: two drift re-reads in all
+        val ok = FiioPort(t); ok.bankDrifts = 2; ok.timeoutAtBandQuery = 2
+        assertIs<NativeState.Fiio>(NativeSession(t, ok).read())
+        assertEquals(listOf("pause:500", "pause:400", "pause:500"), ok.events.filter { it.startsWith("pause") })
+        assertTrue(ok.events.none { it.startsWith("write") })
+        // drift, timeout, drift, drift: the third drift of the same read is not retried
+        val stuck = FiioPort(t); stuck.bankDrifts = 3; stuck.timeoutAtBandQuery = 2
+        val e = assertFailsWith<IllegalArgumentException> { NativeSession(t, stuck).read() }
+        assertEquals("Active bank changed during read (${stuck.state.activeSlot}, then ${stuck.state.activeSlot + 1})", e.message)
+        assertEquals(listOf("pause:500", "pause:400", "pause:500"), stuck.events.filter { it.startsWith("pause") })
     }
     @Test fun `FiiO selection then full backup precedes parameters and full post save matches`() {
         val t = fiio(); val port = FiioPort(t); port.state = port.state.copy(activeSlot = 0)

@@ -110,6 +110,8 @@ interface TuneActions {
     fun band(index: Int)
     fun sendDetails()
     fun readDetails()
+    /** FIT TO DAC RANGE on [p]: pull the values the connected DAC would refuse into its range (one UNDO step; never sends). */
+    fun fit(p: Profile)
     fun service()
 }
 
@@ -233,8 +235,8 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
             }
         }
         if (device.link == io.github.chronosauros.contour.usb.Link.CONNECTED) {
-            // KA15 (slot picker): read, write and persistence tested on the Pixel 04.10.2026
-            if (device.protocol.native && !device.slotNames) Text("Native beta recipe: not hardware tested. Readback verifies registers, not audio/persistence.", color = pal.textDim, style = Type.paramLabel)
+            // KA15 and K13 R2R: read, write and persistence confirmed on hardware (FiioConfig.hardwareVerified)
+            if (device.protocol.native && !device.hardwareVerified) Text("Native beta recipe: not hardware tested. Readback verifies registers, not audio/persistence.", color = pal.textDim, style = Type.paramLabel)
             if (!device.slotPicker) device.protocol.destinationLabel?.let { Text("DESTINATION: $it", color = pal.textDim, style = Type.paramLabel) }
             device.sendIssues(p).firstOrNull()?.let { Text("SEND BLOCKED: $it (saved values unchanged)", color = pal.textDim, style = Type.paramLabel) }
         }
@@ -253,7 +255,7 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
         if (slots) SlotRow(device, Modifier.padding(top = Grid.GROUP - GAP))
         Row(Modifier.padding(top = if (slots) 0.dp else Grid.GROUP - GAP).fillMaxWidth().height(ROW_H), horizontalArrangement = Arrangement.spacedBy(GAP)) {
             if (model.canRevertToSent(p)) LastSentButton(model, sender)
-            HoldToSend(p, device, sender, actions::sendDetails, actions::readDetails, Modifier.weight(1f).fillMaxHeight())
+            HoldToSend(p, device, sender, actions::sendDetails, actions::readDetails, actions::fit, Modifier.weight(1f).fillMaxHeight())
         }
     }
 }

@@ -50,6 +50,11 @@ data class DeviceTarget private constructor(
     fun preampFits(bands: List<Band>, preampDb: Double): Boolean =
         walkplay?.preampFits(bands, preampDb) ?: (preampDb.isFinite() && preampDb in preampMin..preampMax)
     fun shownPreamp(profile: Profile): Double = if (this == OFFLINE || native) profile.effectivePreampDb() else walkplay!!.shownPreamp(profile)
+    /** The Q this DAC takes for a [type] band: shelves have their own range where the DAC stores a scaled Q (KA15: up to 7.07). */
+    fun qRange(type: FilterType): ClosedFloatingPointRange<Double> {
+        val f = fiio
+        return if (f != null && type != FilterType.PEAK && f.shelfQScale != 1.0) f.shelfQMin..f.shelfQMax else caps.qMin..caps.qMax
+    }
     fun issues(profile: Profile): List<String> {
         if (this == OFFLINE) return emptyList()
         if (walkplay != null) return (walkplay.plan(profile) as? DevicePlan.Rejected)?.issues.orEmpty()
@@ -61,9 +66,8 @@ data class DeviceTarget private constructor(
             profile.bands.forEachIndexed { i, b ->
                 val n = i + 1
                 // Shelves have their own intended Q range when the DAC stores a scaled Q (KA15: up to 7.07).
-                val f = fiio
-                val shelf = f != null && b.type != FilterType.PEAK && f.shelfQScale != 1.0
-                val (qLo, qHi) = if (shelf) f!!.shelfQMin to f.shelfQMax else caps.qMin to caps.qMax
+                val shelf = fiio != null && b.type != FilterType.PEAK && fiio.shelfQScale != 1.0
+                val (qLo, qHi) = qRange(b.type).let { it.start to it.endInclusive }
                 if (b.type !in caps.types) found += "Band $n: type unsupported"
                 if (!b.freqHz.isFinite() || b.freqHz !in caps.freqMinHz..caps.freqMaxHz)
                     found += "Band $n: freq ${num(b.freqHz)} Hz outside ${num(caps.freqMinHz)}-${num(caps.freqMaxHz)} Hz"

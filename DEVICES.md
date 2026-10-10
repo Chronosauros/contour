@@ -1,6 +1,6 @@
 # Contour advanced beta - supported devices
 
-Contour is an Android EQ manager for USB DACs. The advanced beta (`1.4.1-advbeta1`, package suffix `.advbeta`) is a separate, experimental build: it has its own package name and ships as a GitHub pre-release on the `advbeta` branch. It recognises far more devices than the stable app, and most of them have never been seen on real hardware. This file says which devices the beta recognises, at which level, and which it refuses.
+Contour is an Android EQ manager for USB DACs. The advanced beta (`1.4.1-advbeta2`, package suffix `.advbeta`) is a separate, experimental build: it has its own package name and ships as a GitHub pre-release on the `advbeta` branch. It recognises far more devices than the stable app, and most of them have never been seen on real hardware. This file says which devices the beta recognises, at which level, and which it refuses.
 
 The list is generated from the code of the beta (catalog dump of 03.10.2026, with the changes since then written in by hand: the FiiO K13 R2R fix tested on hardware on 10.10.2026 and LOW PASS / HIGH PASS on the Protocol Max and TRN Black Pearl in code commit `8313c71`, plus one correction described under Known limitations). It describes what the code does, not what has been tested.
 

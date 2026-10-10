@@ -65,6 +65,9 @@ data class FiioConfig(
     // Hardware-measured (KA15, 04.10.2026): with any USER preset active, output = input - 12 dB + preamp register,
     // so the register holds intended preamp + preampOffsetDb.
     val preampOffsetDb: Double = 0.0,
+    // Read, write and persistence confirmed on the real DAC (KA15 04.10.2026, K13 R2R 10.10.2026): the Tune page
+    // drops its "not hardware tested" line. [status] stays the catalog's source-evidence label.
+    val hardwareVerified: Boolean = false,
 ) {
     /** Intended (acoustic) preamp range: the register range minus [preampOffsetDb]. */
     val preampMinDb: Double get() = minGainDb - preampOffsetDb
@@ -558,6 +561,7 @@ object FiioCatalog {
             // preamp register = preamp + 12 dB. Intended ranges: shelf Q up to 10 / sqrt(2), preamp -24..0 dB.
             shelfQScale = sqrt(2.0),
             preampOffsetDb = 12.0,
+            hardwareVerified = true,
         ),
         FiioConfig(
             productName = "FIIO K13 R2R",
@@ -592,6 +596,7 @@ object FiioCatalog {
             // Hardware 10.10.2026: writes 16 ms apart all read back, but after a power cycle only the first one to three
             // survived (USER10: band 1; USER9: preamp and bands 1-2), the rest reverted. 300 ms per write: all kept.
             writeGapMs = 300,
+            hardwareVerified = true,
         ),
         FiioConfig(
             productName = "FIIO BR15 R2R",

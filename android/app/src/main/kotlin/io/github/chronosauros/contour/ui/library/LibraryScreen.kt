@@ -47,6 +47,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Archive
 import androidx.compose.material.icons.outlined.Delete
+import androidx.compose.material.icons.outlined.Restore
+import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.Unarchive
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.ExpandLess
@@ -123,6 +125,10 @@ interface LibraryActions {
     fun syncAll()
     fun archive(p: Profile)
     fun restore(p: Profile)
+    /** RESTORE: the profile's EQ back to its LAST SENT, from any row. True when it changed something (UNDO is offered). */
+    fun restoreSent(p: Profile): Boolean
+    /** OVERWRITE: the profile's EQ as it is now becomes its LAST SENT. True when it changed something (UNDO is offered). */
+    fun overwriteSent(p: Profile): Boolean
     fun delete(p: Profile)
     fun service()
     fun licences()
@@ -130,17 +136,20 @@ interface LibraryActions {
 
 private val CARD_HEIGHT = 76.dp
 private val ACTION_WIDTH = 96.dp
-/** At rest the card stops short of the row edge; the strip behind it shows faint action icons (a hint to swipe left). */
+/** At rest the card stops short of the right row edge; the strip behind it shows faint action icons (a hint to swipe left). The left edge has no such gap. */
 private val HINT_GAP = 22.dp
 private const val NEW_SLOT_ID = "library-new-slot"
 private val SIDE = Grid.SIDE
 private val CARD = RoundedCornerShape(Radii.L)
 private val ON_DAC_RAIL = 5.dp
+/** How far past a settled-open strip a drag must go before it fires the strip's first action. */
+private val FULL_MARGIN = 24.dp
 
 /**
  * Library: choosing and managing profiles only - it never sends anything to the DAC.
  * Tap = current + Tune, long-press = edit sheet, swipe left = ARCHIVE / DELETE (RESTORE / DELETE in the archive),
- * the empty slot after the active rows = new profile, then the collapsible archive.
+ * swipe right = RESTORE / OVERWRITE the LAST SENT checkpoint (active rows only), the empty slot after the active rows
+ * = new profile, then the collapsible archive.
  */
 @Composable
 fun LibraryScreen(
@@ -157,6 +166,7 @@ fun LibraryScreen(
     val c = pal
     val listState = rememberLazyListState()
     var openId by remember { mutableStateOf<String?>(null) }
+    var openSide by remember { mutableStateOf(Side.RIGHT) }
     // The shipped DUSK profile hints the swipe until someone swipes a row once - remembered for good
     // (app data survives updates), so the hint never returns, whatever happens to the DUSK profile.
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -226,8 +236,8 @@ fun LibraryScreen(
                     p = p,
                     current = p.id == model.currentId,
                     onDac = p.id == onDac,
-                    open = openId == p.id,
-                    onOpen = { openId = if (it) p.id else if (openId == p.id) null else openId },
+                    open = if (openId == p.id) openSide else Side.NONE,
+                    onOpen = { if (it != Side.NONE) { openId = p.id; openSide = it } else if (openId == p.id) openId = null },
                     onTap = { sender.leaveAb { model.choose(p.id) } },
                     onLongPress = { actions.edit(p.id) },
                     fullAction = { actions.archive(p) },
@@ -235,6 +245,11 @@ fun LibraryScreen(
                         RowAction("ARCHIVE", "archive", Icons.Outlined.Archive) { actions.archive(p) },
                         RowAction("DELETE", "delete", Icons.Outlined.Delete) { actions.delete(p) },
                     ),
+                    leftActions = listOf(
+                        RowAction("RESTORE", "restore_sent", Icons.Outlined.Restore, "Restore profile to LAST SENT") { actions.restoreSent(p) },
+                        RowAction("OVERWRITE", "overwrite_sent", Icons.Outlined.Save, "Save profile as LAST SENT") { actions.overwriteSent(p) },
+                    ),
+                    leftFull = { actions.restoreSent(p) },
                     coords = rowCoords,
                     nudge = if (p.id == hintId) nudge else 0,
                     onSwipe = {
@@ -250,12 +265,12 @@ fun LibraryScreen(
                     p = null,
                     current = false,
                     onDac = false,
-                    open = openId == NEW_SLOT_ID,
-                    onOpen = { openId = if (it) NEW_SLOT_ID else if (openId == NEW_SLOT_ID) null else openId },
+                    open = if (openId == NEW_SLOT_ID) openSide else Side.NONE,
+                    onOpen = { if (it != Side.NONE) { openId = NEW_SLOT_ID; openSide = it } else if (openId == NEW_SLOT_ID) openId = null },
                     onTap = { openId = null; actions.newProfile() },
                     onLongPress = {},
                     fullAction = actions::syncAll,
-                    rowActions = listOf(RowAction("LAST SENT", "sync", Icons.Rounded.Sync, actions::syncAll)),
+                    rowActions = listOf(RowAction("LAST SENT", "sync", Icons.Rounded.Sync, run = actions::syncAll)),
                     coords = rowCoords,
                 )
             }
@@ -284,8 +299,8 @@ fun LibraryScreen(
                             p = p,
                             current = p.id == model.currentId,
                             onDac = p.id == onDac,
-                            open = openId == p.id,
-                            onOpen = { openId = if (it) p.id else if (openId == p.id) null else openId },
+                            open = if (openId == p.id) openSide else Side.NONE,
+                            onOpen = { if (it != Side.NONE) { openId = p.id; openSide = it } else if (openId == p.id) openId = null },
                             onTap = { sender.leaveAb { model.choose(p.id) } },
                             onLongPress = { actions.edit(p.id) },
                             fullAction = { actions.restore(p) },
@@ -323,24 +338,31 @@ fun LibraryScreen(
     }
 }
 
-class RowAction(val label: String, val tag: String, val icon: ImageVector, val run: () -> Unit)
+class RowAction(val label: String, val tag: String, val icon: ImageVector, val description: String? = null, val run: () -> Unit)
+
+/** Which strip of a [SwipeRow] stands open: the left one (RESTORE / OVERWRITE, a rightward drag) or the right one (ARCHIVE / DELETE, a leftward drag). */
+private enum class Side { NONE, LEFT, RIGHT }
 
 /**
- * One library row. Its own gesture is a LEFTWARD swipe (reveal the actions, past 55 % = the full action)
- * and a tap / long-press; a rightward swipe on a closed row is left to the pager (-> Tune).
+ * One library row. Its own gestures are a LEFTWARD swipe (reveal the right strip: [rowActions], past 55 % = [fullAction]),
+ * for an active profile also a RIGHTWARD swipe (the mirror: reveal the left strip [leftActions], past 55 % = [leftFull],
+ * which says whether it did anything), and a tap / long-press. A row without [leftActions] leaves a rightward swipe to
+ * the pager (-> Tune).
  */
 @Composable
 private fun SwipeRow(
     p: Profile?,
     current: Boolean,
     onDac: Boolean,
-    open: Boolean,
-    onOpen: (Boolean) -> Unit,
+    open: Side,
+    onOpen: (Side) -> Unit,
     onTap: () -> Unit,
     onLongPress: () -> Unit,
     fullAction: () -> Unit,
     rowActions: List<RowAction>,
     coords: HashMap<String, Rect>,
+    leftActions: List<RowAction> = emptyList(),
+    leftFull: () -> Boolean = { false },
     dim: Boolean = false,
     nudge: Int = 0,
     onSwipe: () -> Unit = {},
@@ -350,15 +372,24 @@ private fun SwipeRow(
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val gap = with(density) { HINT_GAP.toPx() }
-    // the gap is already open at rest, so the card travels that much less to show the actions
+    // the gap is already open at rest, so the card travels that much less to show the right strip; the left strip has none
     val reveal = with(density) { (ACTION_WIDTH * rowActions.size).toPx() } - gap
+    val revealLeft = with(density) { (ACTION_WIDTH * leftActions.size).toPx() }
     val hop = with(density) { 20.dp.toPx() }
+    val fullMargin = with(density) { FULL_MARGIN.toPx() }
     var width by remember { mutableIntStateOf(1) }
-    var offset by remember { mutableFloatStateOf(0f) }
+    var offset by remember { mutableFloatStateOf(0f) } // negative = the right strip is showing, positive = the left one
     var anim by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
     var nudging by remember { mutableStateOf(false) }
-    // 0..1: past the full-action point the first action takes over the whole revealed width
+    // 0..1: past the full-action point the first action takes over the whole revealed width (one per strip)
     val arm = remember { Animatable(0f) }
+    val armLeft = remember { Animatable(0f) }
+    val revealNow = rememberUpdatedState(reveal)
+    val revealLeftNow = rememberUpdatedState(revealLeft)
+
+    // the full-action point of a strip: 55 % of the row, but always past the settled-open strip by a margin, so on a narrow
+    // phone an open strip is never armed (its first pill would take the whole width) and a small drag cannot fire it
+    fun fullAt(strip: Float) = maxOf(0.55f * width, strip + fullMargin)
 
     fun animateTo(target: Float) {
         anim?.cancel()
@@ -366,20 +397,30 @@ private fun SwipeRow(
     }
 
     LaunchedEffect(open) {
-        if (!open && offset != 0f) animateTo(0f)
-        if (open && offset != -reveal) animateTo(-reveal)
+        val target = when (open) {
+            Side.NONE -> 0f
+            Side.RIGHT -> -reveal
+            Side.LEFT -> revealLeft
+        }
+        if (offset != target) animateTo(target)
     }
 
     LaunchedEffect(Unit) {
-        snapshotFlow { -offset > 0.55f * width }.distinctUntilChanged().collectLatest { armed ->
+        snapshotFlow { -offset > fullAt(revealNow.value) }.distinctUntilChanged().collectLatest { armed ->
             if (armed) haptics.step()
             arm.animateTo(if (armed) 1f else 0f, spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium))
+        }
+    }
+    LaunchedEffect(Unit) {
+        snapshotFlow { offset > fullAt(revealLeftNow.value) }.distinctUntilChanged().collectLatest { armed ->
+            if (armed) haptics.step()
+            armLeft.animateTo(if (armed) 1f else 0f, spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium))
         }
     }
 
     // the swipe hint: the closed card hops left twice, a small bounce, and the icons behind it stir
     LaunchedEffect(nudge) {
-        if (nudge == 0 || open || offset != 0f || anim?.isActive == true) return@LaunchedEffect
+        if (nudge == 0 || open != Side.NONE || offset != 0f || anim?.isActive == true) return@LaunchedEffect
         anim = scope.launch {
             nudging = true
             try {
@@ -400,6 +441,8 @@ private fun SwipeRow(
     val tap = rememberUpdatedState(onTap)
     val longPress = rememberUpdatedState(onLongPress)
     val full = rememberUpdatedState(fullAction)
+    val fullLeft = rememberUpdatedState(leftFull)
+    val hasLeft = rememberUpdatedState(leftActions.isNotEmpty())
     val setOpen = rememberUpdatedState(onOpen)
     val name = p?.name ?: "empty_slot"
     val rowId = p?.id ?: NEW_SLOT_ID
@@ -416,7 +459,15 @@ private fun SwipeRow(
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     val slop = viewConfiguration.touchSlop
-                    val wasOpen = openNow.value || (offset < -1f && !nudging)
+                    // the strip the row stands open on (a card caught mid-slide counts as open)
+                    val side0 = when {
+                        openNow.value != Side.NONE -> openNow.value
+                        offset < -1f && !nudging -> Side.RIGHT
+                        offset > 1f -> Side.LEFT
+                        else -> Side.NONE
+                    }
+                    val wasOpen = side0 != Side.NONE
+                    var dragSide = side0
                     var total = Offset.Zero
                     // 0 = still undecided, 1 = up (tap), 2 = drag (ours), 3 = not ours
                     val phase = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
@@ -428,7 +479,9 @@ private fun SwipeRow(
                             total += ch.positionChange()
                             if (total.getDistance() > slop) {
                                 val horizontal = abs(total.x) > abs(total.y)
-                                return@withTimeoutOrNull if (horizontal && (total.x < 0 || wasOpen)) {
+                                return@withTimeoutOrNull if (horizontal && (wasOpen || total.x < 0 || hasLeft.value)) {
+                                    // an open row keeps its side: a drag the other way only closes it
+                                    if (!wasOpen) dragSide = if (total.x < 0) Side.RIGHT else Side.LEFT
                                     ch.consume()
                                     2
                                 } else {
@@ -448,35 +501,43 @@ private fun SwipeRow(
                                 ev.changes.forEach { it.consume() }
                             } while (ev.changes.any { it.pressed })
                         }
-                        1 -> if (wasOpen) setOpen.value(false) else tap.value()
+                        1 -> if (wasOpen) setOpen.value(Side.NONE) else tap.value()
                         2 -> {
                             anim?.cancel()
                             swipe.value()
+                            val lo = if (dragSide == Side.RIGHT) -width.toFloat() else 0f
+                            val hi = if (dragSide == Side.LEFT) width.toFloat() else 0f
                             var x = offset + total.x
-                            offset = x.coerceIn(-width.toFloat(), 0f)
+                            offset = x.coerceIn(lo, hi)
                             while (true) {
                                 val ev = awaitPointerEvent()
                                 val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
                                 if (!ch.pressed) break
                                 x += ch.positionChange().x
                                 ch.consume()
-                                offset = x.coerceIn(-width.toFloat(), 0f)
+                                offset = x.coerceIn(lo, hi)
                             }
+                            val shown = if (dragSide == Side.RIGHT) -offset else offset
+                            val strip = if (dragSide == Side.RIGHT) revealNow.value else revealLeftNow.value
                             when {
-                                -offset > 0.55f * width -> {
-                                    haptics.confirm()
-                                    setOpen.value(false)
+                                shown > fullAt(strip) -> {
+                                    setOpen.value(Side.NONE)
                                     anim?.cancel()
                                     offset = 0f
-                                    scope.launch { arm.snapTo(0f) }
-                                    full.value()
+                                    scope.launch { arm.snapTo(0f); armLeft.snapTo(0f) }
+                                    if (dragSide == Side.RIGHT) {
+                                        haptics.confirm()
+                                        full.value()
+                                    } else if (fullLeft.value()) {
+                                        haptics.confirm()
+                                    }
                                 }
-                                -offset > reveal / 2 -> {
-                                    setOpen.value(true)
-                                    animateTo(-reveal)
+                                shown > strip / 2 -> {
+                                    setOpen.value(dragSide)
+                                    animateTo(if (dragSide == Side.RIGHT) -strip else strip)
                                 }
                                 else -> {
-                                    setOpen.value(false)
+                                    setOpen.value(Side.NONE)
                                     animateTo(0f)
                                 }
                             }
@@ -484,19 +545,19 @@ private fun SwipeRow(
                         else -> Unit
                     }
                     // a touch that lands mid-hop settles the card instead of leaving it ajar
-                    if (phase != 2 && !openNow.value && offset != 0f && anim?.isActive != true) animateTo(0f)
+                    if (phase != 2 && openNow.value == Side.NONE && offset != 0f && anim?.isActive != true) animateTo(0f)
                 }
             }
             .semantics(mergeDescendants = true) {
                 selected = current
                 contentDescription = if (p == null) "New profile; swipe left to save all profiles as LAST SENT"
-                    else if (dim) "${p.name}, archived" else p.name
+                    else if (dim) "${p.name}, archived" else "${p.name}. Swipe left: archive, delete. Swipe right: restore to last sent, overwrite last sent."
                 onClick(label = if (p == null) "Create profile" else "Select profile") { tap.value(); true }
                 if (p != null) onLongClick(label = "Edit profile") { longPress.value(); true }
-                customActions = rowActions.map { a ->
+                customActions = (rowActions + leftActions).map { a ->
                     CustomAccessibilityAction(if (p == null) "Save all profiles as LAST SENT"
-                        else a.label.lowercase().replaceFirstChar { it.uppercase() } + " profile") {
-                        setOpen.value(false)
+                        else a.description ?: (a.label.lowercase().replaceFirstChar { it.uppercase() } + " profile")) {
+                        setOpen.value(Side.NONE)
                         a.run()
                         true
                     }
@@ -504,14 +565,28 @@ private fun SwipeRow(
             }
             .testTag("row_$name"),
     ) {
+        if (leftActions.isNotEmpty()) ActionsLayer(
+            actions = leftActions,
+            mirrored = true,
+            offset = { -offset },
+            arm = { armLeft.value },
+            enabled = open == Side.LEFT,
+            name = name,
+            onRun = { a ->
+                setOpen.value(Side.NONE)
+                offset = 0f
+                a.run()
+            },
+            modifier = Modifier.matchParentSize(),
+        )
         ActionsLayer(
             actions = rowActions,
             offset = { offset },
             arm = { arm.value },
-            enabled = open,
+            enabled = open == Side.RIGHT,
             name = name,
             onRun = { a ->
-                setOpen.value(false)
+                setOpen.value(Side.NONE)
                 offset = 0f
                 a.run()
             },
@@ -593,6 +668,8 @@ private val ICON = 20.dp
  * the strip; as the card slides, each icon travels from there to the middle of its own share of the revealed
  * width, growing and taking its colour, while the pills and labels settle in under them - everything flies
  * into place, as in Quick Settings. Past the full-action point the first action takes the whole width.
+ * [offset] is how far the card has slid away from this strip (negative = revealed). [mirrored] is the strip on the
+ * left edge: the same layout flipped, with nothing showing at rest (the card has no gap on that side).
  */
 @Composable
 private fun ActionsLayer(
@@ -603,11 +680,12 @@ private fun ActionsLayer(
     name: String,
     onRun: (RowAction) -> Unit,
     modifier: Modifier = Modifier,
+    mirrored: Boolean = false,
 ) {
     val c = pal
     val density = LocalDensity.current
     val n = actions.size
-    val g = remember(density, n) { Geo(density, n) }
+    val g = remember(density, n, mirrored) { Geo(density, n, if (mirrored) 0.dp else HINT_GAP) }
     val hintTint = c.textMute.copy(alpha = 0.75f)
     Layout(
         modifier = modifier,
@@ -631,7 +709,7 @@ private fun ActionsLayer(
                         val s = g.iconSize(i, o)
                         val tint = lerp(hintTint, fg, g.colour(i, o))
                         translate((size.width - s) / 2, (size.height - s) / 2) {
-                            with(painter) { draw(Size(s, s), g.iconAlpha(i, arm()), ColorFilter.tint(tint)) }
+                            with(painter) { draw(Size(s, s), g.iconAlpha(i, o, arm()), ColorFilter.tint(tint)) }
                         }
                     },
                 )
@@ -661,12 +739,14 @@ private fun ActionsLayer(
         val icons = (0 until n).map { measurables[n + it].measure(Constraints()) }
         val labels = (0 until n).map { measurables[2 * n + it].measure(Constraints()) }
         layout(w, h) {
+            // laid out as for the right edge, then flipped for the left one
+            fun x(v: Float) = if (mirrored) w - v else v
             for (i in 0 until n) {
                 val left = g.pillLeft(i, w, o, ar)
-                pills[i].place(left.roundToInt(), 0)
-                val cx = left + pills[i].width / 2f
-                val (ix, iy) = g.iconCentre(i, w, h, o, cx)
-                icons[i].place((ix - icons[i].width / 2f).roundToInt(), (iy - icons[i].height / 2f).roundToInt())
+                pills[i].place((if (mirrored) w - (left + pills[i].width) else left).roundToInt(), 0)
+                val cx = x(left + pills[i].width / 2f)
+                val (ix, iy) = g.iconCentre(i, w, h, o, left + pills[i].width / 2f)
+                icons[i].place((x(ix) - icons[i].width / 2f).roundToInt(), (iy - icons[i].height / 2f).roundToInt())
                 labels[i].place((cx - labels[i].width / 2f).roundToInt(), (h / 2f + g.labelTop).roundToInt())
             }
         }
@@ -674,8 +754,8 @@ private fun ActionsLayer(
 }
 
 /** The geometry of [ActionsLayer]: everything is a function of the card's offset and the full-action arm. */
-private class Geo(d: Density, val n: Int) {
-    private val gap = with(d) { HINT_GAP.toPx() }
+private class Geo(d: Density, val n: Int, gapDp: Dp) {
+    private val gap = with(d) { gapDp.toPx() }
     private val open = with(d) { (ACTION_WIDTH * n).toPx() }
     private val inset = with(d) { 6.dp.toPx() }
     private val hintSize = with(d) { 13.dp.toPx() }
@@ -715,14 +795,15 @@ private class Geo(d: Density, val n: Int) {
     fun pillWidth(i: Int, o: Float, ar: Float) = slotWidth(i, o, ar) - inset
     fun pillAlpha(i: Int, o: Float, ar: Float) = smooth(0.05f, 0.55f, progress(o)) * rest(i, ar)
     fun labelAlpha(i: Int, o: Float, ar: Float) = smooth(0.55f, 0.95f, progress(o)) * rest(i, ar)
-    fun iconAlpha(i: Int, ar: Float) = rest(i, ar)
+    /** With a gap the icons rest faintly in it; without one (the left strip) they only appear as the card slides off. */
+    fun iconAlpha(i: Int, o: Float, ar: Float) = rest(i, ar) * if (gap > 0f) 1f else smooth(0.02f, 0.2f, progress(o))
     fun iconSize(i: Int, o: Float) = hintSize + (iconSize - hintSize) * travel(i, o)
     fun colour(i: Int, o: Float) = smooth(0.1f, 0.65f, travel(i, o))
 
     /** From its place in the strip (stacked, card edge) to the top half of its pill. */
     fun iconCentre(i: Int, w: Int, h: Int, o: Float, pillCentre: Float): Pair<Float, Float> {
         val t = travel(i, o)
-        val hx = w - gap / 2
+        val hx = w - (if (gap > 0f) gap else revealed(o)) / 2 // the middle of the gap, or without one of what is revealed so far
         val hy = h / 2f + (i - (n - 1) / 2f) * hintStep
         val ty = h / 2f - raise
         return (hx + (pillCentre - hx) * t) to (hy + (ty - hy) * t)

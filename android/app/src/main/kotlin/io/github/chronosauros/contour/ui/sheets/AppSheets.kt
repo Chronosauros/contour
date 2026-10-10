@@ -251,7 +251,7 @@ fun NewProfileSheet(model: AppModel, device: DeviceController, onDone: () -> Uni
             "new_paste",
         ) {
             val (eq, _) = c ?: return@Option
-            model.create(eq.bands, eq.preampDb)
+            model.create(eq.bands, eq.preampDb, imported = true)
             onDone()
         }
         Option(
@@ -275,7 +275,7 @@ fun NewProfileSheet(model: AppModel, device: DeviceController, onDone: () -> Uni
             "new_dac",
         ) {
             val eq = (dacImport as? DacImport.Ready)?.eq ?: return@Option
-            model.create(eq.bands, eq.preampDb, sub = "FROM DAC")
+            model.create(eq.bands, eq.preampDb, sub = "FROM DAC", imported = true)
             onDone()
         }
     }

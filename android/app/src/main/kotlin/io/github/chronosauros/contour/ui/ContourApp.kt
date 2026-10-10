@@ -88,6 +88,7 @@ import io.github.chronosauros.contour.ui.sheets.ValueSheet
 import io.github.chronosauros.contour.ui.tune.Param
 import io.github.chronosauros.contour.ui.tune.TuneActions
 import io.github.chronosauros.contour.ui.tune.TuneScreen
+import io.github.chronosauros.contour.ui.tune.rangeFitFor
 import io.github.chronosauros.contour.usb.DeviceController
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
@@ -194,6 +195,18 @@ fun ContourApp(
             }
         }
 
+        fun toast(text: String) {
+            snackbar.currentSnackbarData?.dismiss()
+            scope.launch { snackbar.showSnackbar(text, duration = SnackbarDuration.Short) }
+        }
+
+        // Library RESTORE / OVERWRITE: nothing to do says so; a change can be taken back with UNDO. True when something changed.
+        fun sentChange(r: AppModel.SentChange, done: String): Boolean = when (r) {
+            AppModel.SentChange.NoCheckpoint -> { toast("NO LAST SENT YET"); false }
+            AppModel.SentChange.AlreadyThere -> { toast("ALREADY LAST SENT"); false }
+            is AppModel.SentChange.Changed -> { undoable(done, onUndo = r.undo, onGone = {}); true }
+        }
+
         // What an import from a file did (the one-line report): shown once, in its own coroutine so that clearing the
         // notice does not cancel the snackbar.
         val notice = model.notice
@@ -225,6 +238,8 @@ fun ContourApp(
                     undoable("ARCHIVED ${p.name}", onUndo = { model.setArchived(p.id, false) }, onGone = {})
                 }
                 override fun restore(p: Profile) { model.setArchived(p.id, false) }
+                override fun restoreSent(p: Profile): Boolean = sentChange(model.restoreSent(p.id), "RESTORED TO LAST SENT")
+                override fun overwriteSent(p: Profile): Boolean = sentChange(model.overwriteSent(p.id), "SAVED AS LAST SENT")
                 override fun delete(p: Profile) {
                     model.delete(p.id)
                 }
@@ -239,6 +254,15 @@ fun ContourApp(
                 override fun band(index: Int) { sender.leaveAb { sheet = Sheet.BandActions(index) } }
                 override fun sendDetails() { sheet = Sheet.SendFailure(sender.failure) }
                 override fun readDetails() { sheet = Sheet.ReadFailure(device.readFailure) }
+                override fun fit(p: Profile) {
+                    sender.leaveAb { restored ->
+                        if (!restored) return@leaveAb
+                        val now = model.byId(p.id) ?: return@leaveAb
+                        val fit = rangeFitFor(now, device) ?: return@leaveAb
+                        model.update(now.id) { it.copy(bands = fit.bands, preampDb = fit.preampDb) }
+                        toast("${fit.values} VALUE${if (fit.values == 1) "" else "S"} FITTED TO ${device.protocol.caps.name.uppercase()}")
+                    }
+                }
                 override fun service() { sender.leaveAb { service = true } }
             }
         }

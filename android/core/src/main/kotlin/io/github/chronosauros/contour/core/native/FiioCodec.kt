@@ -20,6 +20,8 @@ data class FiioFrame(val reportId: Int, val bytes: List<Int>, val effect: FiioEf
 }
 data class FiioRegisters(val index: Int, val frequencyHz: Int, val gainTenths: Int, val qHundredths: Int, val typeCode: Int)
 data class FiioSnapshot(val productName: String, val activeSlot: Int, val count: Int, val preampTenths: Int, val bands: List<FiioRegisters>)
+/** The active bank differed between the first and the closing slot query of one read: the read is void, asking again is safe. */
+class BankDrift(val first: Int, val then: Int) : IllegalArgumentException("Active bank changed during read ($first, then $then)")
 data class FiioExactEq(val bands: List<Band>, val preampDb: Double)
 enum class FiioSaveVerification { POST_SAVE_READ_REQUIRED, RECONNECT_AND_READ_REQUIRED }
 /** The selection barrier MUST complete before writes: select -> query slot -> complete backup.
@@ -215,7 +217,7 @@ class FiioCodec(val config: FiioConfig) {
     fun snapshot(slotReply: ByteArray, countReply: ByteArray, preampReply: ByteArray,
                  bandReplies: List<ByteArray>, closingSlotReply: ByteArray): FiioSnapshot {
         val slot = parseSlot(slotReply)
-        require(slot == parseSlot(closingSlotReply)) { "Active bank changed during read" }
+        parseSlot(closingSlotReply).let { if (it != slot) throw BankDrift(slot, it) }
         val count = parseCount(countReply)
         require(bandReplies.size == count) { "Incomplete/extra filters" }
         val indices = bandReplies.map { require(it.size >= 7); u(it[6]) }

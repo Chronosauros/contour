@@ -37,7 +37,8 @@ object Page {
  * (snackbar gone, or the app stops), so UNDO can put the row back.
  *
  * Every change to a profile's EQ (bands, preamp) also records the state before it in that profile's history
- * (history.json): [undo] / [redo] step through it and [revertToSent] brings back the LAST SENT checkpoint.
+ * (history.json): [undo] / [redo] step through it and [revertToSent] brings back the LAST SENT checkpoint (the Library's
+ * [restoreSent] / [overwriteSent] do the same or replace it for any row).
  * A touch on Tune ([beginGesture] .. [endGesture]) is one step however many values the drag went through.
  */
 class AppModel(private val store: ProfileStore, private val scope: CoroutineScope, private val beforeLoad: () -> Unit = {}) {
@@ -379,10 +380,20 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         applyEq(p.id, s)
     }
 
+    /**
+     * Counts every change of any LAST SENT checkpoint (send, save-all, import, OVERWRITE). The snackbar UNDO of a Library
+     * RESTORE / OVERWRITE is good only while the count stands where that action left it: a newer checkpoint is never undone.
+     */
+    private var sentRevision = 0
+
+    private fun setSent(id: String, sent: EqState?) {
+        history[id] = (history[id] ?: ProfileHistory()).copy(sent = sent)
+        sentRevision++
+    }
+
     /** HOLD TO SEND verified [p] on the DAC: it becomes the LAST SENT of its profile. */
     fun markSent(p: Profile) {
-        val h = history[p.id] ?: ProfileHistory()
-        history[p.id] = h.copy(sent = EqState(p))
+        setSent(p.id, EqState(p))
         setLastSent(p.id)
     }
 
@@ -390,13 +401,57 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     fun saveAllAsSent(): Int {
         if (loading || loadError || deleting || profiles.isEmpty()) return 0
         val snapshots = profiles.associate { it.id to EqState(it) }
-        snapshots.forEach { (id, snapshot) ->
-            val h = history[id] ?: ProfileHistory()
-            history[id] = h.copy(sent = snapshot)
-        }
+        snapshots.forEach { (id, snapshot) -> setSent(id, snapshot) }
         // One queued write for the complete batch; lastSentId still identifies the actual last DAC send.
         saveStateNow()
         return snapshots.size
+    }
+
+    /** What a Library RESTORE / OVERWRITE did: nothing to do, or a change that [Changed.undo] takes back. */
+    sealed interface SentChange {
+        data object NoCheckpoint : SentChange
+        data object AlreadyThere : SentChange
+        class Changed(val undo: () -> Unit) : SentChange
+    }
+
+    /** Library RESTORE: the EQ of [id] (any row, not only the current profile) back to its LAST SENT; one UNDO step like [revertToSent]. */
+    fun restoreSent(id: String): SentChange {
+        val p = byId(id) ?: return SentChange.AlreadyThere
+        val sent = history[id]?.sent ?: return SentChange.NoCheckpoint
+        val before = EqState(p)
+        if (sent == before) return SentChange.AlreadyThere
+        record(id, before)
+        applyEq(id, sent)
+        val revision = sentRevision
+        return SentChange.Changed { if (sentRevision == revision) undoRestoreSent(id, before, sent) }
+    }
+
+    /** The snackbar's UNDO of [restoreSent]: while the profile still stands as the restore left it, the restore's own step is taken back. */
+    private fun undoRestoreSent(id: String, before: EqState, restored: EqState) {
+        val p = byId(id) ?: return
+        val h = history[id]
+        if (h != null && h.undo.lastOrNull() == before && EqState(p) == restored) history[id] = h.copy(undo = h.undo.dropLast(1))
+        else record(id, EqState(p))
+        applyEq(id, before)
+    }
+
+    /** Library OVERWRITE: the EQ of [id] as it is now becomes its LAST SENT. Only the checkpoint changes: never the EQ, never [lastSentId]. */
+    fun overwriteSent(id: String): SentChange {
+        val p = byId(id) ?: return SentChange.AlreadyThere
+        val now = EqState(p)
+        val h = history[id] ?: ProfileHistory()
+        if (h.sent == now) return SentChange.AlreadyThere
+        val previous = h.sent
+        setSent(id, now)
+        saveStateNow()
+        val revision = sentRevision
+        return SentChange.Changed {
+            // UNDO puts the old checkpoint back (null if there was none), unless a send, a save-all or an import has changed one since
+            if (sentRevision == revision && byId(id) != null) {
+                setSent(id, previous)
+                saveStateNow()
+            }
+        }
     }
 
     /** A pass filter has no gain: it stays 0 however the band got here (type switch, node drag, slider). */
@@ -421,7 +476,8 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         val p = current ?: return false
         if (p.bands.size >= maxBands) return false
         val f = freq ?: widestGapMiddle(p.bands.map { it.freqHz })
-        val band = Band(bandId(), FilterType.PEAK, Math.round(f.coerceIn(20.0, 20_000.0)).toDouble(), round1(gain.coerceIn(-10.0, 10.0)), 0.71)
+        val caps = protocol.caps // the connected DAC's range; offline it is the editor's 20 Hz - 20 kHz, -10..+10 dB
+        val band = Band(bandId(), FilterType.PEAK, Math.round(f.coerceIn(caps.freqMinHz, caps.freqMaxHz)).toDouble(), round1(gain.coerceIn(caps.gainMinDb, caps.gainMaxDb)), 0.71)
         update { it.copy(bands = it.bands + band) }
         selectBand(p.bands.size)
         return true
@@ -530,11 +586,16 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         return "PROFILE $n"
     }
 
-    /** A new profile after the last one; it becomes current. [open] = slide to Tune. */
-    fun create(bands: List<Band>, preampDb: Double?, name: String? = null, sub: String = "", icon: String = "headphones", open: Boolean = true): Profile {
+    /**
+     * A new profile after the last one; it becomes current. [open] = slide to Tune. [imported]: the EQ came from outside
+     * (PASTE, a file, FROM DAC), so it is also the profile's LAST SENT checkpoint, recoverable from the Library after
+     * CLEAR EQ. That is a local checkpoint only: [lastSentId] (the ON DAC bookkeeping) is set by a verified send alone.
+     */
+    fun create(bands: List<Band>, preampDb: Double?, name: String? = null, sub: String = "", icon: String = "headphones", open: Boolean = true, imported: Boolean = false): Profile {
         val now = System.currentTimeMillis()
         val p = Profile(newId(), name ?: nextDefaultName(), sub, icon, bands.map { it.copy(id = bandId()) }, preampDb, now, now)
         profiles.add(p)
+        if (imported) setSent(p.id, EqState(p))
         scheduleSave(p, p.id)
         currentId = p.id
         selectedBand = 0

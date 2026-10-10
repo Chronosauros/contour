@@ -117,7 +117,7 @@ object ImportFile {
             model.notice = "NOTHING TO IMPORT" + (report?.let { " - $it" } ?: "")
             return false
         }
-        model.create(eq.bands, eq.preampDb, name = incoming.name)
+        model.create(eq.bands, eq.preampDb, name = incoming.name, imported = true)
         val n = eq.bands.size
         model.notice = "IMPORTED $n FILTER${if (n == 1) "" else "S"}" + (report?.let { " - $it" } ?: "")
         return true

@@ -86,8 +86,7 @@ internal fun ratioLerp(a: Float, b: Float, s: Float): Float = a * (b / a).pow(s)
  * adjustable), easing gently into 1.25 at a normal 0.6 dp/ms (-10 to +10 dB in about 160 dp) and 1.5 at a quick
  * 1.2 dp/ms. Replaces 26.09's fill-relative gain (0.1 - 2.2 of the track over 0.25 - 1.8 dp/ms).
  */
-internal class BandDrag(private val param: Param, initial: Double) {
-    private val scale = param.scale!!
+internal class BandDrag(private val param: Param, initial: Double, private val scale: Scale = param.scale!!) {
     private var raw = initial
     private var speed = 0f
 
@@ -159,15 +158,15 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
                 }
             }
             .then(if (enabled) Modifier.holdsPager(pagerLock) else Modifier)
-            .pointerInput(param, enabled, scale.min, scale.max) {
+            .pointerInput(param, enabled, scale.min, scale.max) { // the DAC's scale (a different DAC re-keys it)
                 if (!enabled) return@pointerInput
                 val guard = LiftGuard<Double>(density, param.name)
-                var drag = BandDrag(param, v.value)
+                var drag = BandDrag(param, v.value, scale)
                 var atEnd = false
                 var ticked = 0.0 // the value the haptics last spoke for
                 detectHorizontalDragWithEnds(
                     onStart = { down ->
-                        drag = BandDrag(param, v.value)
+                        drag = BandDrag(param, v.value, scale)
                         atEnd = false
                         ticked = v.value
                         guard.start(down.uptimeMillis, down.position, v.value)
@@ -212,8 +211,9 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
 /**
  * What HOLD TO SEND shows for [p] now, and why. [eqBlocked] is the state the touch handler keys on (the EQ cannot be sent),
  * [issues] the full list behind it; the [label] is only how that is worded and never decides what a touch does.
+ * [fit]: every issue is a value outside the DAC's range that [RangeFit] clears - the button then fits it on a tap and never sends.
  */
-data class HoldView(val label: String, val eqBlocked: Boolean = false, val issues: List<String> = emptyList())
+data class HoldView(val label: String, val eqBlocked: Boolean = false, val issues: List<String> = emptyList(), val fit: RangeFit? = null)
 
 fun holdView(p: Profile, device: DeviceController, sender: Sender): HoldView {
     if (sender.sendingId == p.id) return HoldView("SENDING")
@@ -225,6 +225,7 @@ fun holdView(p: Profile, device: DeviceController, sender: Sender): HoldView {
     when (device.sendBlock(p)) {
         DeviceController.SendBlock.EQ -> {
             val issues = device.sendIssues(p)
+            rangeFitFor(p, device)?.let { return HoldView("FIT TO DAC RANGE", eqBlocked = true, issues = issues, fit = it) }
             // Native DACs (FiiO ...) say which band or the preamp is out of range; the others keep the generic wording.
             val label = if (device.protocol.native) DeviceTarget.blockLabel(issues) else "INVALID EQ - EDIT BAND"
             return HoldView(label, eqBlocked = true, issues = issues)
@@ -253,7 +254,7 @@ private const val HOLD_MS = 700
  * flat grey (no shadow) for NO DAC.
  */
 @Composable
-fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: () -> Unit, onReadDetails: () -> Unit, modifier: Modifier = Modifier) {
+fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: () -> Unit, onReadDetails: () -> Unit, onFit: (Profile) -> Unit, modifier: Modifier = Modifier) {
     val haptics = LocalHaptics.current
     val c = pal
     val scope = rememberCoroutineScope()
@@ -262,6 +263,8 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
     val label = view.label
     val labelNow = rememberUpdatedState(label)
     val eqBlockedNow = rememberUpdatedState(view.eqBlocked)
+    val fitNow = rememberUpdatedState(view.fit)
+    val fit = rememberUpdatedState(onFit)
     // The full issue list goes to the USB log once per block, so a logcat capture shows why a send is blocked.
     LaunchedEffect(view.issues) { device.logSendBlock(view.issues) }
     val profile = rememberUpdatedState(p)
@@ -295,7 +298,12 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
                     // A slot tapped with another finger during the hold cancels the send instead of redirecting it.
                     val heldSlot = device.destinationSlot()
                     down.consume()
-                    if (eqBlockedNow.value) { haptics.reject(); return@awaitEachGesture }
+                    if (eqBlockedNow.value) {
+                        // FIT TO DAC RANGE changes the EQ on a tap and never starts a send, however long it is held.
+                        if (fitNow.value == null) haptics.reject()
+                        else if (waitUp()) { haptics.confirm(); fit.value(heldProfile) }
+                        return@awaitEachGesture
+                    }
                     when (labelNow.value) {
                         "SENDING" -> return@awaitEachGesture
                         "READ ONLY" -> { waitUp(); haptics.reject(); return@awaitEachGesture }
