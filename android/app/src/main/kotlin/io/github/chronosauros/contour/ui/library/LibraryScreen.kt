@@ -372,9 +372,9 @@ private fun SwipeRow(
     val scope = rememberCoroutineScope()
     val density = LocalDensity.current
     val gap = with(density) { HINT_GAP.toPx() }
-    // the gap is already open at rest, so the card travels that much less to show the right strip; the left strip has none
+    // the gaps are already open at rest, so the card travels that much less to show either strip
     val reveal = with(density) { (ACTION_WIDTH * rowActions.size).toPx() } - gap
-    val revealLeft = with(density) { (ACTION_WIDTH * leftActions.size).toPx() }
+    val revealLeft = if (leftActions.isEmpty()) 0f else with(density) { (ACTION_WIDTH * leftActions.size).toPx() } - gap
     val hop = with(density) { 20.dp.toPx() }
     val fullMargin = with(density) { FULL_MARGIN.toPx() }
     var width by remember { mutableIntStateOf(1) }
@@ -597,7 +597,9 @@ private fun SwipeRow(
                 .offset { IntOffset(offset.roundToInt(), 0) }
                 .fillMaxHeight()
                 .fillMaxWidth()
-                .padding(end = HINT_GAP)
+                // a gap on both sides: the faint icons of each strip rest in it, and the left one keeps the card's edge
+                // clear of the system back gesture, which otherwise takes a rightward swipe started near the screen edge
+                .padding(start = HINT_GAP, end = HINT_GAP)
                 // the current profile stands a step higher than the others; archived rows lie flat
                 .let { if (p == null || dim) it else it.lift(CARD, if (current) Lift.RAISED else Lift.CARD) }
                 .background(if (p == null) c.track else c.surface, CARD)
@@ -669,7 +671,7 @@ private val ICON = 20.dp
  * width, growing and taking its colour, while the pills and labels settle in under them - everything flies
  * into place, as in Quick Settings. Past the full-action point the first action takes the whole width.
  * [offset] is how far the card has slid away from this strip (negative = revealed). [mirrored] is the strip on the
- * left edge: the same layout flipped, with nothing showing at rest (the card has no gap on that side).
+ * left edge: the same layout flipped, its icons resting in the card's left gap.
  */
 @Composable
 private fun ActionsLayer(
@@ -685,7 +687,7 @@ private fun ActionsLayer(
     val c = pal
     val density = LocalDensity.current
     val n = actions.size
-    val g = remember(density, n, mirrored) { Geo(density, n, if (mirrored) 0.dp else HINT_GAP) }
+    val g = remember(density, n) { Geo(density, n, HINT_GAP) }
     val hintTint = c.textMute.copy(alpha = 0.75f)
     Layout(
         modifier = modifier,
@@ -795,7 +797,7 @@ private class Geo(d: Density, val n: Int, gapDp: Dp) {
     fun pillWidth(i: Int, o: Float, ar: Float) = slotWidth(i, o, ar) - inset
     fun pillAlpha(i: Int, o: Float, ar: Float) = smooth(0.05f, 0.55f, progress(o)) * rest(i, ar)
     fun labelAlpha(i: Int, o: Float, ar: Float) = smooth(0.55f, 0.95f, progress(o)) * rest(i, ar)
-    /** With a gap the icons rest faintly in it; without one (the left strip) they only appear as the card slides off. */
+    /** With a gap the icons rest faintly in it; without one they only appear as the card slides off. */
     fun iconAlpha(i: Int, o: Float, ar: Float) = rest(i, ar) * if (gap > 0f) 1f else smooth(0.02f, 0.2f, progress(o))
     fun iconSize(i: Int, o: Float) = hintSize + (iconSize - hintSize) * travel(i, o)
     fun colour(i: Int, o: Float) = smooth(0.1f, 0.65f, travel(i, o))
