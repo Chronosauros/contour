@@ -200,10 +200,10 @@ fun ContourApp(
             scope.launch { snackbar.showSnackbar(text, duration = SnackbarDuration.Short) }
         }
 
-        // Library RESTORE / OVERWRITE: nothing to do says so; a change can be taken back with UNDO. True when something changed.
+        // Library REVERT / SAVE: nothing to do says so; a change can be taken back with UNDO. True when something changed.
         fun sentChange(r: AppModel.SentChange, done: String): Boolean = when (r) {
-            AppModel.SentChange.NoCheckpoint -> { toast("NO LAST SENT YET"); false }
-            AppModel.SentChange.AlreadyThere -> { toast("ALREADY LAST SENT"); false }
+            AppModel.SentChange.NoCheckpoint -> { toast("NO SAVED VERSION YET"); false }
+            AppModel.SentChange.AlreadyThere -> { toast("ALREADY SAVED"); false }
             is AppModel.SentChange.Changed -> { undoable(done, onUndo = r.undo, onGone = {}); true }
         }
 
@@ -238,8 +238,8 @@ fun ContourApp(
                     undoable("ARCHIVED ${p.name}", onUndo = { model.setArchived(p.id, false) }, onGone = {})
                 }
                 override fun restore(p: Profile) { model.setArchived(p.id, false) }
-                override fun restoreSent(p: Profile): Boolean = sentChange(model.restoreSent(p.id), "RESTORED TO LAST SENT")
-                override fun overwriteSent(p: Profile): Boolean = sentChange(model.overwriteSent(p.id), "SAVED AS LAST SENT")
+                override fun restoreSent(p: Profile): Boolean = sentChange(model.restoreSent(p.id), "REVERTED TO SAVED")
+                override fun overwriteSent(p: Profile): Boolean = sentChange(model.overwriteSent(p.id), "SAVED")
                 override fun delete(p: Profile) {
                     model.delete(p.id)
                 }
@@ -342,8 +342,8 @@ fun ContourApp(
                 textContentColor = pal.textDim,
                 title = { Text("SAVE ALL PROFILES?", style = Type.rowName) },
                 text = {
-                    Text("You are about to save all current profiles as LAST SENT. " +
-                        "This replaces their previous LAST SENT settings. " +
+                    Text("You are about to save all current profiles as their SAVED versions. " +
+                        "This replaces their previous saved versions. " +
                         "There is no Undo button. Are you sure?")
                 },
                 confirmButton = {
@@ -356,7 +356,7 @@ fun ContourApp(
                             if (count > 0) {
                                 snackbar.currentSnackbarData?.dismiss()
                                 scope.launch {
-                                    snackbar.showSnackbar("$count PROFILES SAVED AS LAST SENT", duration = SnackbarDuration.Short)
+                                    snackbar.showSnackbar("$count PROFILES SAVED", duration = SnackbarDuration.Short)
                                 }
                             }
                         },

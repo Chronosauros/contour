@@ -254,6 +254,7 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
 
     fun importExact(bands: List<WalkPlay.DeviceBand>, preampDb: Int): DacImport {
         if (this == MICRO) return ProtocolMicro.importExact(bands, preampDb)
+        if (isTrn) return importExactTrn(bands, preampDb)
         if (bands.size != caps.bands || bands.indices.any { bands[it].registers.index != it })
             return DacImport.Rejected(listOf("Expected all ${caps.bands} DAC slots in order"))
         if (preampDb !in preampMin..preampMax) return DacImport.Rejected(listOf("DAC preamp outside supported policy"))
@@ -275,6 +276,45 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
         }
         return if (candidate is DevicePlan.Ready && matches(candidate, bands.map { it.registers }, preampDb)) DacImport.Ready(eq)
             else DacImport.Rejected(listOf("DAC state cannot be re-encoded exactly"))
+    }
+
+    /**
+     * FROM DAC on the TRN Black Pearl. It loads what the DAC holds, with the stored values as they are: a band outside the
+     * editor caps (the TRN's own tool stores e.g. -10.4 dB against +-10) comes in with its real value and a warning, and the
+     * plan stays Rejected, so HOLD TO SEND offers FIT TO DAC RANGE as for any other profile outside the DAC's range.
+     * A disabled slot (freq or Q 0, or erased) is an empty spare: it is left out, wherever it stands. Anything else that
+     * the planner refuses, or that cannot be re-encoded to the same registers, is still rejected.
+     */
+    private fun importExactTrn(bands: List<WalkPlay.DeviceBand>, preampDb: Int): DacImport {
+        if (bands.size != caps.bands || bands.indices.any { bands[it].registers.index != it })
+            return DacImport.Rejected(listOf("Expected all ${caps.bands} DAC slots in order"))
+        if (preampDb !in preampMin..preampMax) return DacImport.Rejected(listOf("DAC preamp outside supported policy"))
+        val held = bands.filter { it.enabled }
+        val skipped = bands.size - held.size
+        if (held.isEmpty()) return DacImport.Rejected(listOf("DAC holds no enabled band"))
+        // the registers as a send would leave them: the held bands in order, then neutral spares
+        val flatAt0 = flatBand(0).registers()
+        val last = maxOf(0, held.indexOfLast { it.registers.copy(index = 0) != flatAt0 })
+        val reconstructed = held.take(last + 1).mapIndexed { i, b ->
+            val r = b.registers
+            if (r.typeCode !in nativeCodes) return DacImport.Rejected(listOf("DAC band ${r.index + 1}: unsupported type"))
+            Band("dac$i", b.type, r.freq.toDouble(), r.gain256 / 256.0, r.q256 / 256.0)
+        }
+        val eq = ImportedEq(reconstructed, preampDb.toDouble())
+        val held10 = List(caps.bands) { i -> held.getOrNull(i)?.registers?.copy(index = i) ?: flatBand(i).registers() }
+        val note = if (skipped == 0) "" else " $skipped disabled DAC slot${if (skipped == 1) "" else "s"} left out."
+        val candidate = plan(eq.bands, eq.preampDb)
+        if (candidate is DevicePlan.Ready)
+            return if (matches(candidate, held10, preampDb)) DacImport.Ready(eq, note.trim().ifEmpty { null })
+                else DacImport.Rejected(listOf("DAC state cannot be re-encoded exactly"))
+        val refused = (candidate as DevicePlan.Rejected).issues
+        if (refused.all { SendBlocked.isBandRefusal(it) || it.endsWith(": outside ${caps.name} supported types/ranges") }) {
+            val writes = List(caps.bands) { i -> if (i < reconstructed.size) WalkPlay.bandWrite(i, reconstructed[i]) else flatBand(i) }
+            if (matches(DevicePlan.Ready(writes, preampDb), held10, preampDb))
+                return DacImport.Ready(eq, refused.joinToString(" ") { if (it.endsWith(".")) it else "$it." } +
+                    " Sending it back stays blocked until you change the band or use FIT TO DAC RANGE.$note")
+        }
+        return DacImport.Rejected(listOf("DAC state cannot be re-encoded exactly"))
     }
 
     // ---- receive side. MICRO: exactly the 1.2.2 predicates and parsers. MAX: 1.3.0 strict, fail closed. ------
@@ -311,6 +351,17 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
         if (!isTrn) require(buf.size >= 38 && buf[6].toInt() == 0 &&
             buf[7].toInt() == 0 && buf[35].toInt() == 0 && buf[37].toInt() == 0) { "Malformed PEQ reserved/end fields" }
         val b = WalkPlay.parseBand(buf)
+        if (isTrn) {
+            // A read reports what the DAC holds: the TRN's own tool can store values the editor refuses to send
+            // (Black Pearl, 11.10.2026: 9300 Hz, Q 2.0, -10.4 dB against the +-10 dB caps), so a stored band is
+            // checked against the register format only, never against the caps. Sending keeps the caps ([plan],
+            // [executeWrite]). A disabled spare slot is no read failure either, whatever its type byte (an erased
+            // slot reads 0xFF, a zeroed one 0): a send writes all slots, and FROM DAC leaves disabled slots out.
+            if (b.enabled) require(b.registers.typeCode in nativeCodes) { "Unsupported native type" }
+            if (b.enabled) require(b.registers.freq in 1..TRN_READ_MAX_HZ && b.registers.q256 in 1..0xFFFF &&
+                b.registers.gain256 in -TRN_READ_MAX_GAIN256..TRN_READ_MAX_GAIN256) { "Malformed TRN registers" }
+            return b
+        }
         require(b.registers.typeCode in nativeCodes) { "Unsupported native type" }
         require(b.enabled) { "Uninitialized/disabled DAC register slot" }
         require(b.registers.freq.toDouble() in caps.freqMinHz..caps.freqMaxHz &&
@@ -341,6 +392,9 @@ data class DeviceProtocol private constructor(val caps: DeviceCapabilities, val 
     }
 
     companion object {
+        /** TRN read bounds (the register format, not the editor caps): frequency below the 96 kHz design rate's Nyquist, gain +-60 dB. */
+        private const val TRN_READ_MAX_HZ = 48_000
+        private const val TRN_READ_MAX_GAIN256 = 60 * 256
         val MICRO = DeviceProtocol(ProtocolMicro.CAPABILITIES, 11)
         private val WITH_PASS = ProtocolMicro.CAPABILITIES.types + FilterType.LOW_PASS + FilterType.HIGH_PASS
         val MAX = DeviceProtocol(ProtocolMicro.CAPABILITIES.copy(name = "CrinEar Protocol Max", productId = 0x43CC, bands = 10), 16)

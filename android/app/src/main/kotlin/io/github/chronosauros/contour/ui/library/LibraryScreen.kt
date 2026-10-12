@@ -98,6 +98,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import io.github.chronosauros.contour.BuildConfig
+import io.github.chronosauros.contour.core.Band
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.model.AppModel
 import io.github.chronosauros.contour.model.Sender
@@ -125,9 +126,9 @@ interface LibraryActions {
     fun syncAll()
     fun archive(p: Profile)
     fun restore(p: Profile)
-    /** RESTORE: the profile's EQ back to its LAST SENT, from any row. True when it changed something (UNDO is offered). */
+    /** REVERT: the profile's EQ (the working copy) back to its SAVED version, from any row. True when it changed something (UNDO is offered). */
     fun restoreSent(p: Profile): Boolean
-    /** OVERWRITE: the profile's EQ as it is now becomes its LAST SENT. True when it changed something (UNDO is offered). */
+    /** SAVE: the profile's EQ as it is now becomes its SAVED version. True when it changed something (UNDO is offered). */
     fun overwriteSent(p: Profile): Boolean
     fun delete(p: Profile)
     fun service()
@@ -147,9 +148,9 @@ private val FULL_MARGIN = 24.dp
 
 /**
  * Library: choosing and managing profiles only - it never sends anything to the DAC.
- * Tap = current + Tune, long-press = edit sheet, swipe left = ARCHIVE / DELETE (RESTORE / DELETE in the archive),
- * swipe right = RESTORE / OVERWRITE the LAST SENT checkpoint (active rows only), the empty slot after the active rows
- * = new profile, then the collapsible archive.
+ * Tap = current + Tune, long-press = edit sheet, swipe left = ARCHIVE / DELETE (UNARCHIVE / DELETE in the archive),
+ * swipe right = REVERT / SAVE the SAVED version (active rows only), the empty slot after the active rows
+ * = new profile, then the collapsible archive. A card draws its SAVED version, whatever the EQ screen's working copy holds.
  */
 @Composable
 fun LibraryScreen(
@@ -236,6 +237,8 @@ fun LibraryScreen(
                     p = p,
                     current = p.id == model.currentId,
                     onDac = p.id == onDac,
+                    saved = model.savedBands(p),
+                    edited = model.canRevertToSent(p),
                     open = if (openId == p.id) openSide else Side.NONE,
                     onOpen = { if (it != Side.NONE) { openId = p.id; openSide = it } else if (openId == p.id) openId = null },
                     onTap = { sender.leaveAb { model.choose(p.id) } },
@@ -246,8 +249,8 @@ fun LibraryScreen(
                         RowAction("DELETE", "delete", Icons.Outlined.Delete) { actions.delete(p) },
                     ),
                     leftActions = listOf(
-                        RowAction("RESTORE", "restore_sent", Icons.Outlined.Restore, "Restore profile to LAST SENT") { actions.restoreSent(p) },
-                        RowAction("OVERWRITE", "overwrite_sent", Icons.Outlined.Save, "Save profile as LAST SENT") { actions.overwriteSent(p) },
+                        RowAction("REVERT", "restore_sent", Icons.Outlined.Restore, "Revert profile to its saved version") { actions.restoreSent(p) },
+                        RowAction("SAVE", "overwrite_sent", Icons.Outlined.Save, "Save profile") { actions.overwriteSent(p) },
                     ),
                     leftFull = { actions.restoreSent(p) },
                     coords = rowCoords,
@@ -270,7 +273,7 @@ fun LibraryScreen(
                     onTap = { openId = null; actions.newProfile() },
                     onLongPress = {},
                     fullAction = actions::syncAll,
-                    rowActions = listOf(RowAction("LAST SENT", "sync", Icons.Rounded.Sync, run = actions::syncAll)),
+                    rowActions = listOf(RowAction("SAVE ALL", "sync", Icons.Rounded.Sync, run = actions::syncAll)),
                     coords = rowCoords,
                 )
             }
@@ -299,13 +302,15 @@ fun LibraryScreen(
                             p = p,
                             current = p.id == model.currentId,
                             onDac = p.id == onDac,
+                            saved = model.savedBands(p),
+                            edited = model.canRevertToSent(p),
                             open = if (openId == p.id) openSide else Side.NONE,
                             onOpen = { if (it != Side.NONE) { openId = p.id; openSide = it } else if (openId == p.id) openId = null },
                             onTap = { sender.leaveAb { model.choose(p.id) } },
                             onLongPress = { actions.edit(p.id) },
                             fullAction = { actions.restore(p) },
                             rowActions = listOf(
-                                RowAction("RESTORE", "restore", Icons.Outlined.Unarchive) { actions.restore(p) },
+                                RowAction("UNARCHIVE", "restore", Icons.Outlined.Unarchive) { actions.restore(p) },
                                 RowAction("DELETE", "delete", Icons.Outlined.Delete) { actions.delete(p) },
                             ),
                             coords = rowCoords,
@@ -340,7 +345,7 @@ fun LibraryScreen(
 
 class RowAction(val label: String, val tag: String, val icon: ImageVector, val description: String? = null, val run: () -> Unit)
 
-/** Which strip of a [SwipeRow] stands open: the left one (RESTORE / OVERWRITE, a rightward drag) or the right one (ARCHIVE / DELETE, a leftward drag). */
+/** Which strip of a [SwipeRow] stands open: the left one (REVERT / SAVE, a rightward drag) or the right one (ARCHIVE / DELETE, a leftward drag). */
 private enum class Side { NONE, LEFT, RIGHT }
 
 /**
@@ -366,6 +371,8 @@ private fun SwipeRow(
     dim: Boolean = false,
     nudge: Int = 0,
     onSwipe: () -> Unit = {},
+    saved: List<Band>? = null,
+    edited: Boolean = false,
 ) {
     val c = pal
     val haptics = LocalHaptics.current
@@ -550,12 +557,12 @@ private fun SwipeRow(
             }
             .semantics(mergeDescendants = true) {
                 selected = current
-                contentDescription = if (p == null) "New profile; swipe left to save all profiles as LAST SENT"
-                    else if (dim) "${p.name}, archived" else "${p.name}. Swipe left: archive, delete. Swipe right: restore to last sent, overwrite last sent."
+                contentDescription = if (p == null) "New profile; swipe left to save all profiles"
+                    else if (dim) "${p.name}, archived${if (edited) ", edited" else ""}" else "${p.name}${if (edited) ", edited" else ""}. Swipe left: archive, delete. Swipe right: revert to saved, save."
                 onClick(label = if (p == null) "Create profile" else "Select profile") { tap.value(); true }
                 if (p != null) onLongClick(label = "Edit profile") { longPress.value(); true }
                 customActions = (rowActions + leftActions).map { a ->
-                    CustomAccessibilityAction(if (p == null) "Save all profiles as LAST SENT"
+                    CustomAccessibilityAction(if (p == null) "Save all profiles"
                         else a.description ?: (a.label.lowercase().replaceFirstChar { it.uppercase() } + " profile")) {
                         setOpen.value(Side.NONE)
                         a.run()
@@ -571,6 +578,7 @@ private fun SwipeRow(
             offset = { -offset },
             arm = { armLeft.value },
             enabled = open == Side.LEFT,
+            live = edited,
             name = name,
             onRun = { a ->
                 setOpen.value(Side.NONE)
@@ -645,18 +653,21 @@ private fun SwipeRow(
                     )
                 }
             }
-            // ON DAC sits under the curve, never in the name's row: the name keeps its whole width
-            Column(Modifier.width(74.dp).height(52.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                ResponseThumb(p.bands, if (dim) c.textMute else c.textDim, Modifier.fillMaxWidth().weight(1f))
-                if (onDac) {
-                    Spacer(Modifier.height(3.dp))
-                    Text(
-                        "ON DAC",
-                        style = Type.small,
-                        color = c.accent,
-                        maxLines = 1,
-                        modifier = Modifier.testTag("row_${name}_ondac"),
-                    )
+            // ON DAC sits under the curve, never in the name's row: the name keeps its whole width. The curve is the
+            // SAVED version; REVERT / SAVE live only behind the rightward swipe.
+            Box(Modifier.width(74.dp).fillMaxHeight().padding(vertical = 12.dp)) {
+                Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
+                    ResponseThumb(saved ?: p.bands, if (dim) c.textMute else c.textDim, Modifier.fillMaxWidth().weight(1f))
+                    if (onDac) {
+                        Spacer(Modifier.height(3.dp))
+                        Text(
+                            "ON DAC",
+                            style = Type.small,
+                            color = c.accent,
+                            maxLines = 1,
+                            modifier = Modifier.testTag("row_${name}_ondac"),
+                        )
+                    }
                 }
             }
         }
@@ -671,7 +682,9 @@ private val ICON = 20.dp
  * width, growing and taking its colour, while the pills and labels settle in under them - everything flies
  * into place, as in Quick Settings. Past the full-action point the first action takes the whole width.
  * [offset] is how far the card has slid away from this strip (negative = revealed). [mirrored] is the strip on the
- * left edge: the same layout flipped, its icons resting in the card's left gap.
+ * left edge: the same layout flipped, its icons resting in the card's left gap. [live] says whether the actions would
+ * change anything: null = always (ARCHIVE / DELETE), true = they would (the resting icons take the accent), false =
+ * they would not (the whole strip fades, at rest and revealed).
  */
 @Composable
 private fun ActionsLayer(
@@ -683,12 +696,14 @@ private fun ActionsLayer(
     onRun: (RowAction) -> Unit,
     modifier: Modifier = Modifier,
     mirrored: Boolean = false,
+    live: Boolean? = null,
 ) {
     val c = pal
     val density = LocalDensity.current
     val n = actions.size
     val g = remember(density, n) { Geo(density, n, HINT_GAP) }
-    val hintTint = c.textMute.copy(alpha = 0.75f)
+    val hintTint = if (live == true) c.accent else c.textMute.copy(alpha = 0.75f)
+    val fade = if (live == false) 0.35f else 1f
     Layout(
         modifier = modifier,
         content = {
@@ -697,7 +712,7 @@ private fun ActionsLayer(
                 Box(
                     Modifier
                         .clip(CARD)
-                        .drawBehind { drawRect(bg, alpha = g.pillAlpha(i, offset(), arm())) }
+                        .drawBehind { drawRect(bg, alpha = g.pillAlpha(i, offset(), arm()) * fade) }
                         .clickable(enabled = enabled) { onRun(a) }
                         .testTag("row_${name}_${a.tag}"),
                 )
@@ -711,7 +726,7 @@ private fun ActionsLayer(
                         val s = g.iconSize(i, o)
                         val tint = lerp(hintTint, fg, g.colour(i, o))
                         translate((size.width - s) / 2, (size.height - s) / 2) {
-                            with(painter) { draw(Size(s, s), g.iconAlpha(i, o, arm()), ColorFilter.tint(tint)) }
+                            with(painter) { draw(Size(s, s), g.iconAlpha(i, o, arm()) * fade, ColorFilter.tint(tint)) }
                         }
                     },
                 )
@@ -724,7 +739,7 @@ private fun ActionsLayer(
                     maxLines = 1,
                     modifier = Modifier.graphicsLayer {
                         val v = g.labelAlpha(i, offset(), arm())
-                        alpha = v
+                        alpha = v * fade
                         translationY = (1f - v) * g.settle
                     },
                 )

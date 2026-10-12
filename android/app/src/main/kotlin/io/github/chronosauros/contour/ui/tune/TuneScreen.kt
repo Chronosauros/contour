@@ -435,7 +435,7 @@ private fun RenameSlotDialog(label: String, current: String, onDismiss: () -> Un
     )
 }
 
-/** LAST SENT, beside HOLD TO SEND while the EQ differs from the one last verified on the DAC: tap = back to it. */
+/** REVERT, beside HOLD TO SEND while the working copy differs from the SAVED version: tap = back to it. */
 @Composable
 private fun LastSentButton(model: AppModel, sender: Sender) {
     val c = pal
@@ -454,7 +454,7 @@ private fun LastSentButton(model: AppModel, sender: Sender) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Icon(Icons.Rounded.History, null, tint = c.text, modifier = Modifier.size(22.dp))
-        Text("LAST SENT", style = Type.label, color = c.text, maxLines = 1)
+        Text("REVERT", style = Type.label, color = c.text, maxLines = 1)
     }
 }
 

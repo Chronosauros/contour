@@ -64,7 +64,7 @@ android {
         create("adv") {
             initWith(getByName("release"))
             applicationIdSuffix = ".advbeta"
-            versionNameSuffix = "-advbeta3"
+            versionNameSuffix = "-advbeta4"
             manifestPlaceholders["advLabel"] = "Contour advBeta"
             buildConfigField("boolean", "ADVANCED", "true")
             matchingFallbacks += "release"
@@ -112,7 +112,7 @@ val copyLicences = tasks.register<CopyLicences>("copyLicences") {
 
 androidComponents {
     onVariants { variant ->
-        if (variant.buildType == "adv") variant.outputs.forEach { it.versionCode.set(29) }
+        if (variant.buildType == "adv") variant.outputs.forEach { it.versionCode.set(30) }
         variant.sources.assets?.addGeneratedSourceDirectory(copyLicences, CopyLicences::outputDir)
     }
 }
