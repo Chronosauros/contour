@@ -1,34 +1,33 @@
 package io.github.chronosauros.contour.core
 
 /**
- * How the Tune band strip (chips 1..N, then "+" when a band can still be added, then "-") uses a row of [widthDp].
- * Pure arithmetic in dp so the table can be tested.
+ * How the Tune band row uses a row of [widthDp]: one well (an [INSET] on each side) with the bands 1..N, then "+" when a
+ * band can still be added, then "-" - both [BUTTON] wide cells pinned at the well's right end. Pure arithmetic in dp so
+ * the table can be tested.
  *
- * - Everything fits: chips keep the [TOUCH] size and only the gap tightens (never below [MIN_GAP]); nothing is cut.
- * - Otherwise the numbered chips scroll in an area of [areaDp] and "+" / "-" stay pinned after it. The chip size is
- *   chosen so the last visible chip is cut at about its middle (m whole chips and one half), so the cut reads as
- *   "more to the right"; chips never get smaller than [TOUCH].
+ * The numbers take the rest of the well ([Plan.numbersDp], their own inset included). Band cells touch; when they all
+ * fit they are [CELL] wide and the rest stays empty; otherwise they scroll, sized so the last visible cell is cut at
+ * about its middle (m whole cells and one half), so the cut reads as "more to the right". Cells are never narrower than
+ * [CELL] and never wider than [MAX_CELL].
  */
 object BandStripPlan {
-    const val TOUCH = 48.0
-    const val GAP = 8.0
-    const val MIN_GAP = 4.0
-    /** Upper bound of the chip size in the scrolling layout (very wide screens just show a different cut). */
-    const val MAX_CHIP = 60.0
+    const val BUTTON = 44.0
+    const val INSET = 4.0
+    /** The band cell (owner's pick 14.10: 36 dp well cells with 20 sp numbers; "+" and "-" inside the same well). */
+    const val CELL = 36.0
+    const val MAX_CELL = 42.0
 
-    data class Plan(val scroll: Boolean, val chipDp: Double, val gapDp: Double, val areaDp: Double)
+    data class Plan(val scroll: Boolean, val cellDp: Double, val numbersDp: Double)
 
     fun plan(widthDp: Double, bands: Int, showPlus: Boolean): Plan {
         val pinned = if (showPlus) 2 else 1
-        val k = bands + pinned
-        val gapFit = (widthDp - k * TOUCH) / (k - 1)
-        if (gapFit >= MIN_GAP) return Plan(false, TOUCH, minOf(GAP, gapFit), 0.0)
-        val area = (widthDp - pinned * (TOUCH + GAP)).coerceAtLeast(0.0)
-        var chip = TOUCH
+        val numbers = (widthDp - 2 * INSET - pinned * BUTTON).coerceAtLeast(0.0)
+        val inner = (numbers - 2 * INSET).coerceAtLeast(0.0)
+        if (bands * CELL <= inner) return Plan(false, CELL, numbers)
         for (m in (bands - 1) downTo 1) {
-            val c = (area - GAP * m) / (m + 0.5)
-            if (c >= TOUCH) { chip = c; break }
+            val c = inner / (m + 0.5)
+            if (c >= CELL) return Plan(true, minOf(c, MAX_CELL), numbers)
         }
-        return Plan(true, minOf(chip, MAX_CHIP), GAP, area)
+        return Plan(true, CELL, numbers)
     }
 }

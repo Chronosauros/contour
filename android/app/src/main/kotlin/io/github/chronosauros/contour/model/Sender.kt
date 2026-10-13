@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.usb.DeviceController
+import io.github.chronosauros.contour.usb.DacSnapshot
 import io.github.chronosauros.contour.usb.Link
 import io.github.chronosauros.contour.usb.SendOutcome
 import io.github.chronosauros.contour.usb.UsbLog
@@ -14,6 +15,13 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.launch
+
+/** Library badges follow the saved curve, not Tune's working copy. A read belongs only to the active destination. */
+internal fun savedOnDacIds(model: AppModel, snapshot: DacSnapshot?, connected: Boolean,
+    destinationActive: Boolean, pendingId: String?): Set<String> {
+    if (!connected || !destinationActive || snapshot == null) return emptySet()
+    return model.profiles.filter { it.id != pendingId && snapshot.matches(model.savedProfile(it)) }.map { it.id }.toSet()
+}
 
 /**
  * Sending and matching: which profile the DAC holds (its plan produces exactly the registers read back) and
@@ -47,6 +55,11 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
             val c = cache[p.id]
             if (c != null && c.first === p) c.second else s.matches(p).also { cache[p.id] = p to it }
         }?.id
+    }
+
+    /** Library "ON DAC" badges: the profiles whose SAVED curve the DAC holds (only for the active destination). */
+    val savedOnDacIds: Set<String> by derivedStateOf {
+        savedOnDacIds(model, device.snapshot, device.link == Link.CONNECTED, device.destinationActive, null)
     }
 
     private var abJob by mutableStateOf<Job?>(null)

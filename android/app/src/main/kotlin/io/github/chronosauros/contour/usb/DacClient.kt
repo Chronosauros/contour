@@ -9,6 +9,7 @@ import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.core.DeviceProtocol
 import io.github.chronosauros.contour.core.DeviceTarget
 import io.github.chronosauros.contour.core.WalkPlay
+import io.github.chronosauros.contour.core.native.FiioMelodyExchange
 import io.github.chronosauros.contour.core.native.NativeHidReports
 import io.github.chronosauros.contour.core.native.NativePort
 import io.github.chronosauros.contour.core.native.NativeSession
@@ -80,11 +81,18 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
         target(device).walkplay ?: throw IOException("WalkPlay-only operation unavailable on ${target(device).caps.name}")
 
     private fun nativeSession(device: UsbDevice, t: HidTransport, target: DeviceTarget) = NativeSession(target, object : NativePort {
+        /** SnowSky Melody and Tiny A: their own bounded request boundary with input cleanup (see FiioMelodyExchange). */
+        private val melody = if (FiioMelodyExchange.appliesTo(target.fiio)) FiioMelodyExchange(
+            t.nativePayloadSize(requireNotNull(target.fiio).reportId, NativeHidReports.Kind.INPUT),
+            { t.checkSession() }, { SystemClock.elapsedRealtime() },
+            { id, payload -> t.sendNative(id, NativeHidReports.Kind.OUTPUT, payload) }, { t.receive(it) },
+            FiioMelodyExchange.name(requireNotNull(target.fiio))) else null
         override val deviceKey = "${device.deviceName}:${device.deviceId}:${device.vendorId}:${device.productId}"
         override fun guard() = t.checkSession()
         override fun pause(ms: Long) { t.checkSession(); Thread.sleep(ms); t.checkSession() }
         override fun send(id: Int, kind: NativeHidReports.Kind, payload: ByteArray) = t.sendNative(id, kind, payload)
-        override fun request(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean) = t.requestNative(id, payload, matches)
+        override fun request(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean) =
+            melody?.request(id, payload, matches) ?: t.requestNative(id, payload, matches)
     })
 
     private fun nativeSnapshot(target: DeviceTarget, state: NativeState, ms: Long) =
@@ -99,6 +107,16 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
             UsbLog.line("read: ${target.caps.name}, slot ${state.slot}, preamp ${state.preamp} dB, $ms ms")
             nativeSnapshot(target, state, ms)
         }
+    }
+
+    /** READ on a FiiO slot picker: the DAC switches to USER [slot] (nothing is saved) and that slot is read. */
+    suspend fun readSlot(device: UsbDevice, slot: Int): DacSnapshot = withDevice(device) { t ->
+        val target = target(device)
+        val start = SystemClock.elapsedRealtime()
+        UsbLog.line("native read: switch to slot $slot")
+        val state = nativeSession(device, t, target).readSlot(slot, explicitUserAction = true); t.checkSession()
+        UsbLog.line("read: ${target.caps.name}, slot ${state.slot}, preamp ${state.preamp} dB")
+        nativeSnapshot(target, state, SystemClock.elapsedRealtime() - start)
     }
 
     /** KA15: renames one USER slot and returns the name read back; the EQ on the DAC is untouched. */

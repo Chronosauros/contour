@@ -129,7 +129,7 @@ class FiioCodec(val config: FiioConfig) {
         require(config.codecBlockers.isEmpty()) { config.codecBlockers.joinToString("; ") }
         require(slot in config.userSlots) { "Not a proven writable user slot: $slot" }
     }
-    /** Only use inside explicit Send, NEVER in a slot picker or automatic read. */
+    /** Only on an explicit user action (HOLD TO SEND, READ), NEVER on a slot picker tap or an automatic read. */
     fun selectUserSlot(slot: Int): FiioFrame {
         requireUserSlot(slot)
         return frame(SLOT, listOf(slot), FiioEffect.SELECT_ACTIVE_USER_BANK)
@@ -216,11 +216,32 @@ class FiioCodec(val config: FiioConfig) {
                  bandReplies: List<ByteArray>, closingSlotReply: ByteArray): FiioSnapshot {
         val slot = parseSlot(slotReply)
         require(slot == parseSlot(closingSlotReply)) { "Active bank changed during read" }
+        return snapshotBody(slot, countReply, preampReply, bandReplies)
+    }
+    /** Melody and Tiny A USER reads have no closing slot check: band/preamp traffic makes 0x16 stale.
+     * A write caller must supply the slot queried immediately after SELECT or SAVE.
+     * An ordinary read may instead carry 7..9 (USER bank whose number is unknown). */
+    fun melodyUserSnapshot(slotReply: ByteArray, countReply: ByteArray, preampReply: ByteArray,
+                           bandReplies: List<ByteArray>): FiioSnapshot {
+        require(FiioMelodyExchange.appliesTo(config))
+        val slot = parseSlot(slotReply)
+        require(slot in config.userSlots || slot in 7..9)
+        return snapshotBody(slot, countReply, preampReply, bandReplies)
+    }
+    private fun snapshotBody(slot: Int, countReply: ByteArray, preampReply: ByteArray,
+                             bandReplies: List<ByteArray>): FiioSnapshot {
         val count = parseCount(countReply)
         require(bandReplies.size == count) { "Incomplete/extra filters" }
         val indices = bandReplies.map { require(it.size >= 7); u(it[6]) }
         require(indices.toSet() == (0 until count).toSet() && indices.distinct().size == count) { "Duplicate/missing/out-of-range band indices" }
-        val bands = bandReplies.map { parseBand(it, u(it[6]), count) }.sortedBy { it.index }
+        // Close EQ plays no filters, and its records are not editable filters: the Melody returns ten all-zero records,
+        // the KA15 (Pixel 13.10.2026) ten records with 0 Hz. When they do not parse, bypass keeps inactive zero records
+        // so the DAC still reads as Close EQ; import, writes and verification stay strict.
+        val parsed = runCatching { bandReplies.map { parseBand(it, u(it[6]), count) } }
+        val bands = (if (parsed.isFailure && slot == config.bypassSlot && count == config.maxFilters) bandReplies.map {
+            reply(it, BAND, 8)
+            FiioRegisters(u(it[6]), 0, 0, 0, 0)
+        } else parsed.getOrThrow()).sortedBy { it.index }
         return FiioSnapshot(config.productName, slot, count, parsePreamp(preampReply), bands)
     }
     private fun validateSnapshot(s: FiioSnapshot) {

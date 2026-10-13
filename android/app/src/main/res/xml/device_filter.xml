@@ -16,4 +16,12 @@
     <usb-device
         vendor-id="10610"
         product-id="288" />
+    <!-- SnowSky Melody: USB 0x2972:0x0126, measured on the Melody 11-13.10.2026; same number as FiioCatalog.MELODY_PRODUCT_ID. -->
+    <usb-device
+        vendor-id="10610"
+        product-id="294" />
+    <!-- SnowSky Tiny A: USB 0x2972:0x0147, measured on the Tiny A 13.10.2026; same number as FiioCatalog.TINY_A_PRODUCT_ID. -->
+    <usb-device
+        vendor-id="10610"
+        product-id="327" />
 </resources>

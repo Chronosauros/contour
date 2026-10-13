@@ -156,6 +156,7 @@ class HidTransport private constructor(
     private val inBuf = ByteArray(maxOf(epIn.maxPacketSize, WalkPlay.REPORT_SIZE,
         nativeReports?.let { s -> nativeReportId?.let { id -> s.rawSizes[NativeHidReports.Key(id, NativeHidReports.Kind.INPUT)] } } ?: 0))
 
+    fun nativePayloadSize(id: Int, kind: NativeHidReports.Kind): Int = requireNotNull(nativeReports).payloadSize(id, kind)
     fun checkSession() = sessionGuard()
 
     fun send(report: ByteArray) {

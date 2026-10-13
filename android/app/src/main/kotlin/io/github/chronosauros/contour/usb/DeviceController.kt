@@ -44,6 +44,11 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         private set
     var busy by mutableStateOf(false)
         private set
+    /** A READ from the Tune page is running (its button says READING). */
+    var reading by mutableStateOf(false)
+        private set
+    /** A supported DAC is plugged in and one tap connects it: NO DAC is shown only when nothing connectable is attached (owner, 14.10.2026). */
+    val tapToConnect: Boolean get() = link == Link.NEEDS_PERMISSION
     var snapshot by mutableStateOf<DacSnapshot?>(null)
         private set
     var lastWrite by mutableStateOf<WriteResult?>(null)
@@ -64,6 +69,8 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     val slotNames: Boolean get() = protocol.fiio?.userSlotNames == true
     /** Named slots (KA15) or a config that opts in (K13 R2R): the user chooses where HOLD TO SEND writes. */
     val slotPicker: Boolean get() = protocol.fiio?.let { it.userSlotNames || it.userSlotPicker } == true
+    /** Read, write and persistence of this DAC were confirmed on real hardware (FiioConfig.hardwareVerified). */
+    val hardwareVerified: Boolean get() = protocol.fiio?.hardwareVerified == true
     fun destinationSlot(): Int? = if (!slotPicker) protocol.destinationSlot
         else selectedSlot ?: snapshot?.slot?.takeIf { it in protocol.fiio!!.userSlots } ?: protocol.destinationSlot
     fun selectSlot(slot: Int) { if (slotPicker && slot in protocol.fiio!!.userSlots) selectedSlot = slot }
@@ -219,6 +226,23 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         }
     }
 
+    /** READ (Tune): with a slot picker the chosen USER slot (the DAC switches to it first, as its preset button
+     * would; nothing is saved), otherwise the state playing now. Read fresh, then [onRead] with the slot read. */
+    fun readToImport(onRead: (DacSnapshot, Int?) -> Unit) {
+        if (abBypassed || busy) return
+        val slot = if (slotPicker) destinationSlot() else null
+        val generation = connectionEpoch
+        launchOp("read") { d ->
+            reading = true
+            try {
+                val s = if (slot != null) client.readSlot(d, slot) else client.readDevice(d)
+                if (generation != connectionEpoch) throw IOException("DAC SESSION CHANGED; reconnect and retry")
+                snapshot = s
+                onRead(s, slot)
+            } finally { if (generation == connectionEpoch) reading = false }
+        }
+    }
+
     /** Writes [profile] (plan, commit, read back, compare). The result's read-back becomes the snapshot. */
     suspend fun send(profile: Profile): SendOutcome {
         // A refusal (KA15 limits, Micro/Max Q30 or AUTO) happens here, before anything is written or any state is dropped.
@@ -258,7 +282,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             abBypassed = bypass
             abReference = if (bypass) reference else null
             error = null
-            UsbLog.line("A/B: ${if (bypass) "B — EQ OFF, PREAMP KEPT" else "A restored"}")
+            UsbLog.line("A/B: ${if (bypass) "B - EQ OFF, PREAMP KEPT" else "A restored"}")
             SendOutcome(true, null)
         } catch (e: Exception) {
             UsbLog.line("A/B failed: ${e.message}")

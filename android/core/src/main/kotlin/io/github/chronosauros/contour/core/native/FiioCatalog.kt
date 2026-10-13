@@ -41,7 +41,8 @@ data class FiioConfig(
     // Hardware-observed (KA15, 03.10.2026): the DAC ignores a lower filter count and keeps reading back
     // maxFilters, so the unused tail must be written as neutral filters instead of shortening the count.
     val fixedBandCount: Boolean = false,
-    // Hardware-observed: stored Q reads back 1-2 hundredths higher for Q above ~3.5 (390 -> 391, 605 -> 607).
+    // KA15 and Melody read Q back slightly off: KA15 605 -> 607 and 390 -> 391 on hardware, the Melody 300 -> 301
+    // (PC probe 13.10.2026). Allowed drift is 1 + q/250 hundredths; more, or any other field, is a mismatch.
     val qReadbackSlack: Boolean = false,
     // KA15 echoes every AA write; reading each echo keeps request and reply in lockstep.
     val consumeWriteEchoes: Boolean = false,
@@ -65,6 +66,14 @@ data class FiioConfig(
     // Hardware-measured (KA15, 04.10.2026): with any USER preset active, output = input - 12 dB + preamp register,
     // so the register holds intended preamp + preampOffsetDb.
     val preampOffsetDb: Double = 0.0,
+    // Read, write and persistence confirmed on the real DAC (KA15 04.10.2026, K13 R2R 10.10.2026, Melody 13.10.2026, Tiny A 14.10.2026): the
+    // Tune page drops its "not hardware tested" line. [status] stays the catalog's source-evidence label.
+    val hardwareVerified: Boolean = false,
+    // SnowSky firmware (Melody 1.20, Tiny A 1.10; PC probes 13.10.2026): the slot reply goes stale after band or preamp
+    // traffic on a USER slot and SAVE answers without an AA echo, so these DACs take the [FiioMelodyExchange] path.
+    val snowskyExchange: Boolean = false,
+    // Short device name for messages on the [snowskyExchange] path ("Reconnect Melody").
+    val shortName: String? = null,
 ) {
     /** Intended (acoustic) preamp range: the register range minus [preampOffsetDb]. */
     val preampMinDb: Double get() = minGainDb - preampOffsetDb
@@ -88,7 +97,11 @@ object FiioCatalog {
      */
     const val K13_R2R_PRODUCT_ID = 0x0120
 
-    /** Contour stable: the FiiO KA15 (hardware-tested on a Pixel, 04.10.2026) and the K13 R2R. Exact literal rules from the
+    /** USB product IDs of the SnowSky Melody and Tiny A (vendor 0x2972; decimal 294 and 327 in `res/xml/device_filter.xml`). */
+    const val MELODY_PRODUCT_ID = 0x0126
+    const val TINY_A_PRODUCT_ID = 0x0147
+
+    /** Contour stable: the FiiO KA15 (hardware-tested on a Pixel, 04.10.2026), the K13 R2R, the SnowSky Melody and Tiny A. Exact literal rules from the
      * pinned upstream source; the KA15 is extended with what it showed on hardware (see the flags below), the K13 R2R
      * only with what its own hardware test showed (the fixed band count).
      */
@@ -129,6 +142,7 @@ object FiioCatalog {
             // preamp register = preamp + 12 dB. Intended ranges: shelf Q up to 10 / sqrt(2), preamp -24..0 dB.
             shelfQScale = sqrt(2.0),
             preampOffsetDb = 12.0,
+            hardwareVerified = true,
         ),
         FiioConfig(
             productName = "FIIO K13 R2R",
@@ -164,8 +178,90 @@ object FiioCatalog {
             // survived (USER10: band 1; USER9: preamp and bands 1-2), the rest reverted. With 300 ms per write both
             // slots kept preamp and all ten bands across a power cycle (same day).
             writeGapMs = 300,
+            hardwareVerified = true,
+        ),
+        FiioConfig(
+            productName = "SNOWSKY Melody",
+            vendorIds = setOf(10610, 2578),
+            reportId = 7,
+            maxFilters = 10,
+            minGainDb = -12.0,
+            maxGainDb = 12.0,
+            minQ = 0.1,
+            maxQ = 10.0,
+            saveCommand = 25,
+            userSlots = setOf(160, 161, 162),
+            declaredWritableSlots = setOf(160, 161, 162),
+            stockSlots = setOf(0, 1, 2, 3, 4, 5, 6),
+            slotLabels = mapOf(0 to "Jazz", 1 to "Pop", 2 to "Rock", 3 to "Dance", 4 to "R&B", 5 to "Classic", 6 to "Hip-hop", 160 to "USER1", 161 to "USER2", 162 to "USER3", 240 to "Close EQ"),
+            bypassSlot = 240,
+            disconnectOnSave = false,
+            peakingGainCompensation = false,
+            shelfAlphaCompensation = false,
+            sourceUrl = "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/usbDeviceConfig.js#L102",
+            constraintsUrl = "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/peqConstraintsConfig.json#L1029",
+            constraintsRef = "peq10Band12dBAllFilters7",
+            upstreamExperimental = false,
+            bestGuessProductName = false,
+            capture = null,
+            codecBlockers = listOf(),
+            evidenceCaveats = listOf("No capture file: the USB product ID (2972:0126) was measured on the Melody; fixture comment claims -24/+12, authoritative resolved constraints remain -12/+12"),
+            // Melody 1.20, PC capture 13.10.2026: parameter writes echo; Q 3.00 reads back as 3.01.
+            consumeWriteEchoes = true,
+            qReadbackSlack = true,
+            // Pixel 13.10.2026: a COUNT write of 2 echoed and read back 10, and bands 2-9 kept the slot's previous
+            // registers (as on the K13 R2R). The neutral pad keeps a shorter profile from leaving them active.
+            fixedBandCount = true,
+            // Owner 13.10.2026: pick USER1-3 like the K13 R2R. Writes, SAVE and readback confirmed on his unit (PC + Pixel).
+            userSlotPicker = true,
+            hardwareVerified = true,
+            snowskyExchange = true,
+            shortName = "Melody",
+        ),
+        FiioConfig(
+            productName = "SNOWSKY TINY A",
+            vendorIds = setOf(10610, 2578),
+            reportId = 7,
+            // devicePEQ says 5; the owner's Tiny A (2972:0147, 1.10) reads COUNT 10 on every slot (PC probe 13.10.2026).
+            maxFilters = 10,
+            minGainDb = -12.0,
+            maxGainDb = 12.0,
+            minQ = 0.1,
+            maxQ = 10.0,
+            saveCommand = 25,
+            userSlots = setOf(160, 161, 162),
+            declaredWritableSlots = setOf(160, 161, 162),
+            stockSlots = setOf(0, 1, 2, 3, 4, 5, 6),
+            slotLabels = mapOf(0 to "Jazz", 1 to "Pop", 2 to "Rock", 3 to "Dance", 4 to "R&B", 5 to "Classic", 6 to "Hip-hop", 160 to "USER1", 161 to "USER2", 162 to "USER3", 240 to "Close EQ"),
+            bypassSlot = 240,
+            disconnectOnSave = false,
+            peakingGainCompensation = false,
+            shelfAlphaCompensation = false,
+            sourceUrl = "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/usbDeviceConfig.js#L457",
+            constraintsUrl = "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/peqConstraintsConfig.json#L1167",
+            constraintsRef = "peq5Band12dBAllFilters7",
+            upstreamExperimental = false,
+            bestGuessProductName = false,
+            capture = null,
+            codecBlockers = listOf(),
+            evidenceCaveats = listOf("No capture file: the USB product ID (2972:0147) was measured on the Tiny A; devicePEQ constraints say 5 bands, hardware reads 10"),
+            // PC probe 13.10.2026: the Melody firmware behaviour - writes echo, Q 3.00
+            // reads back 3.01, COUNT 2 and 5 read back 10 with the old bands still active, SAVE has no echo, the slot
+            // reply goes stale on USER slots.
+            consumeWriteEchoes = true,
+            qReadbackSlack = true,
+            fixedBandCount = true,
+            userSlotPicker = true,
+            // Owner 14.10.2026: hardware verified, like the Melody.
+            hardwareVerified = true,
+            snowskyExchange = true,
+            shortName = "Tiny A",
         ),
     )
+
+    /** The SnowSky Melody and Tiny A by their exact USB identities (see DeviceTarget.find). */
+    val MELODY: FiioConfig = rules.single { it.productName == "SNOWSKY Melody" }
+    val TINY_A: FiioConfig = rules.single { it.productName == "SNOWSKY TINY A" }
 
     /** The KA15 by its exact USB identity 2972:0104 (stable builds route by VID:PID, see DeviceTarget.find). */
     val KA15: FiioConfig = rules.single { it.productName == "FIIO KA15" }

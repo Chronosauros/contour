@@ -4,8 +4,8 @@ import io.github.chronosauros.contour.core.native.*
 
 /**
  * The DAC the app talks to: a WalkPlay DAC ([walkplay]: Protocol Micro, Protocol Max - 1.3.x code, unchanged) or a
- * FiiO ([fiio]: native FiiO HID protocol; the KA15 was hardware-tested on a Pixel 04.10.2026, the K13 R2R is routed
- * the same way). Family identity is separate from WalkPlay's wire representation; no native register coercion.
+ * FiiO ([fiio]: native FiiO HID protocol; the KA15 was hardware-tested on a Pixel 04.10.2026, the K13 R2R, the
+ * SnowSky Melody and Tiny A are routed the same way). Family identity is separate from WalkPlay's wire representation; no native register coercion.
  */
 data class DeviceTarget private constructor(
     val walkplay: DeviceProtocol? = null,
@@ -32,6 +32,45 @@ data class DeviceTarget private constructor(
     fun preampFits(bands: List<Band>, preampDb: Double): Boolean =
         walkplay?.preampFits(bands, preampDb) ?: (preampDb.isFinite() && preampDb in preampMin..preampMax)
     fun shownPreamp(profile: Profile): Double = if (native) profile.effectivePreampDb() else walkplay!!.shownPreamp(profile)
+    /** The Q this DAC takes for a [type] band: shelves have their own range where the DAC stores a scaled Q (KA15: up to 7.07). */
+    fun qRange(type: FilterType): ClosedFloatingPointRange<Double> {
+        val f = fiio
+        return if (f != null && type != FilterType.PEAK && f.shelfQScale != 1.0) f.shelfQMin..f.shelfQMax else caps.qMin..caps.qMax
+    }
+
+    /** The graph's short headline for the first refusal; the detailed planner reasons stay untouched. */
+    fun invalidEqHeadline(profile: Profile, reasons: List<String> = issues(profile)): String {
+        // The graph shows this headline when it cannot draw the curve: that failure names its cause before any send blocker.
+        val curveFailure = runCatching { Dsp.responseDb(profile.bands) }.exceptionOrNull()?.message
+        val issue = (curveFailure ?: reasons.firstOrNull()).orEmpty().trim().lowercase(java.util.Locale.ROOT)
+        val band = Regex("""^band (\d+):""").find(issue)?.groupValues?.get(1)?.toIntOrNull()
+            ?.let { profile.bands.getOrNull(it - 1) }
+            ?: if ("no finite response" in issue) profile.bands.firstOrNull {
+                it.enabled && (!it.freqHz.isFinite() || it.freqHz !in caps.freqMinHz..caps.freqMaxHz ||
+                    !it.gainDb.isFinite() || it.gainDb !in caps.gainMinDb..caps.gainMaxDb ||
+                    !it.q.isFinite() || it.q !in qRange(it.type))
+            } else null
+        val cause = when {
+            Regex("""^\d+ (enabled )?bands;""").containsMatchIn(issue) -> "band count"
+            // A shelf without a real response also fails the preamp calculation: name the shelf, not the preamp.
+            band == null && "no finite response" in issue &&
+                profile.bands.any { it.enabled && (it.type == FilterType.LOW_SHELF || it.type == FilterType.HIGH_SHELF) } -> "shelf gain or Q"
+            issue.startsWith("pregain") || issue.startsWith("preamp") || issue.startsWith("auto preamp") ||
+                issue.startsWith("manual/auto attenuation") || issue.startsWith("this eq needs") -> "preamp"
+            // Max/catalog refusals group the fields into one range reason. Resolve that reason from its band.
+            band != null && (!band.freqHz.isFinite() || band.freqHz !in caps.freqMinHz..caps.freqMaxHz) -> "frequency"
+            band != null && (!band.gainDb.isFinite() || band.gainDb !in caps.gainMinDb..caps.gainMaxDb) -> "gain"
+            band != null && (!band.q.isFinite() || band.q !in qRange(band.type)) -> "Q"
+            "shelf" in issue || (band?.type in setOf(FilterType.LOW_SHELF, FilterType.HIGH_SHELF) &&
+                "non-finite biquad" in issue) -> "shelf gain or Q"
+            " hz outside " in issue || issue.startsWith("frequency") -> "frequency"
+            " db outside " in issue -> "gain"
+            Regex("""\bq\b""").containsMatchIn(issue) && "outside" in issue -> "Q"
+            else -> return "INVALID EQ - EDIT BAND"
+        }
+        return "INVALID EQ - adjust $cause"
+    }
+
     fun issues(profile: Profile): List<String> {
         if (walkplay != null) return (walkplay.plan(profile) as? DevicePlan.Rejected)?.issues.orEmpty()
         val f = requireNotNull(fiio)
@@ -89,17 +128,26 @@ data class DeviceTarget private constructor(
         val MAX = DeviceTarget(walkplay = DeviceProtocol.MAX)
         val KA15 = DeviceTarget(fiio = FiioCatalog.KA15)
         val K13 = DeviceTarget(fiio = FiioCatalog.K13)
+        val MELODY = DeviceTarget(fiio = FiioCatalog.MELODY)
+        val TINY_A = DeviceTarget(fiio = FiioCatalog.TINY_A)
         fun of(protocol: DeviceProtocol) = if (protocol == DeviceProtocol.MICRO) MICRO else MAX
 
         /**
          * Strict VID:PID allow-list, the only discovery API: Protocol Micro 3302:C20F, Protocol Max 3302:43CC,
-         * FiiO KA15 2972:0104, FiiO K13 R2R 2972:[FiioCatalog.K13_R2R_PRODUCT_ID]. Every other identity is unrecognised (NO DAC).
+         * FiiO KA15 2972:0104, FiiO K13 R2R 2972:[FiioCatalog.K13_R2R_PRODUCT_ID], SnowSky Melody 2972:[FiioCatalog.MELODY_PRODUCT_ID],
+         * SnowSky Tiny A 2972:[FiioCatalog.TINY_A_PRODUCT_ID]. Every other identity is unrecognised (NO DAC).
          */
         fun find(vendorId: Int, productId: Int): DeviceTarget? {
             DeviceProtocol.find(vendorId, productId)?.let { return of(it) }
             val ka15 = requireNotNull(FiioCatalog.KA15.capture)
             if (vendorId == ka15.vendorId && productId == ka15.productId) return KA15
-            return if (vendorId == FIIO_VENDOR_ID && productId == FiioCatalog.K13_R2R_PRODUCT_ID) K13 else null
+            if (vendorId != FIIO_VENDOR_ID) return null
+            return when (productId) {
+                FiioCatalog.K13_R2R_PRODUCT_ID -> K13
+                FiioCatalog.MELODY_PRODUCT_ID -> MELODY
+                FiioCatalog.TINY_A_PRODUCT_ID -> TINY_A
+                else -> null
+            }
         }
         private const val FIIO_VENDOR_ID = 0x2972
     }

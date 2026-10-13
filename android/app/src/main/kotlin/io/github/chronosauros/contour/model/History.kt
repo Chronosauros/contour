@@ -4,15 +4,16 @@ import io.github.chronosauros.contour.core.Band
 import io.github.chronosauros.contour.core.Profile
 import kotlinx.serialization.Serializable
 
-/** The part of a profile that UNDO / REDO / LAST SENT bring back: the bands and the preamp. */
+/** The part of a profile that UNDO / REDO / RESTORE bring back: the bands and the preamp. */
 @Serializable
 data class EqState(val bands: List<Band>, val preampDb: Double? = null) {
     constructor(p: Profile) : this(p.bands, p.preampDb)
 }
 
 /**
- * One profile's edit history. [undo] ends with the most recent step; [sent] is the EQ as it was last
- * verified on the DAC or saved explicitly through Library's save-all action (null until either happens).
+ * One profile's edit history. [undo] ends with the most recent step; [sent] is the SAVED version (every profile has one): the EQ as it was
+ * last verified on the DAC, imported (PASTE, a file, FROM DAC) or saved explicitly in the Library (SAVE ALL, SAVE) or when the profile was created;
+ * null until one of those happens. (Stored under the name it had before 1.5.0, LAST SENT: existing checkpoints are the SAVED versions.)
  */
 @Serializable
 data class ProfileHistory(

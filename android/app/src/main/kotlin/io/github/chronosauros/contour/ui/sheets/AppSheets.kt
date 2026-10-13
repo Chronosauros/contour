@@ -6,7 +6,6 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -23,17 +22,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import io.github.chronosauros.contour.ui.AppButton
 import io.github.chronosauros.contour.ui.Grid
 import io.github.chronosauros.contour.ui.Radii
+import io.github.chronosauros.contour.ui.Type
+import io.github.chronosauros.contour.ui.pal
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -55,7 +55,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
@@ -76,6 +75,9 @@ import io.github.chronosauros.contour.usb.UsbLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+/** Text fields in sheets and dialogs: the M corner of the app instead of the Material 4 dp. */
+private val FIELD = RoundedCornerShape(Radii.M)
 
 /** The bottom sheets of the app. */
 sealed interface Sheet {
@@ -108,7 +110,7 @@ fun SheetFrame(onDismiss: () -> Unit, content: @Composable () -> Unit) {
 
 @Composable
 private fun SheetTitle(text: String) {
-    Text(text, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    Text(text, style = Type.rowName, color = pal.text)
 }
 
 /** NAME, HEADPHONES, icon grid, SHARE, SAVE .TXT, DUPLICATE, CLEAR EQ. Every change is saved as you type. */
@@ -127,6 +129,7 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit, onSaveTxt: (profi
             label = { Text("NAME") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Next),
+            shape = FIELD,
             modifier = Modifier.fillMaxWidth().testTag("edit_name"),
         )
         OutlinedTextField(
@@ -135,9 +138,10 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit, onSaveTxt: (profi
             label = { Text("HEADPHONES") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Done),
+            shape = FIELD,
             modifier = Modifier.fillMaxWidth().testTag("edit_headphones"),
         )
-        Text("ICON", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("ICON", style = Type.label, color = pal.textDim)
         val icon = model.byId(id)?.icon
         Column(Modifier.testTag("edit_icons"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             ProfileIcons.ALL.chunked(5).forEach { row ->
@@ -150,51 +154,46 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit, onSaveTxt: (profi
                                 .aspectRatio(1.4f)
                                 .heightIn(min = 48.dp)
                                 .clip(RoundedCornerShape(Radii.S))
-                                .background(if (sel) MaterialTheme.colorScheme.surfaceVariant else MaterialTheme.colorScheme.surfaceContainerLow)
-                                .border(if (sel) 2.dp else 0.dp, if (sel) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.surfaceContainerLow, RoundedCornerShape(Radii.S))
+                                // the chosen icon is orange, like every other selection in the app
+                                .background(if (sel) pal.accent else MaterialTheme.colorScheme.surfaceContainerLow)
                                 .clickable { model.setIcon(id, n) }
                                 .testTag("icon_$n"),
                             contentAlignment = androidx.compose.ui.Alignment.Center,
-                        ) { Icon(v, n, Modifier.size(26.dp)) }
+                        ) { Icon(v, n, Modifier.size(26.dp), tint = if (sel) pal.onAccent else pal.text) }
                     }
                 }
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(Grid.GAP)) {
-            OutlinedButton(
+            AppButton(
+                "SHARE",
                 onClick = {
-                    val cur = model.byId(id) ?: return@OutlinedButton
-                    val text = runCatching { ApoText.formatProfile(cur) }.getOrNull() ?: return@OutlinedButton
+                    val cur = model.byId(id) ?: return@AppButton
+                    val text = runCatching { ApoText.formatProfile(cur) }.getOrNull() ?: return@AppButton
                     val send = Intent(Intent.ACTION_SEND).setType("text/plain")
                         .putExtra(Intent.EXTRA_SUBJECT, cur.name)
                         .putExtra(Intent.EXTRA_TEXT, text)
                     context.startActivity(Intent.createChooser(send, cur.name))
                 },
                 enabled = sharePreamp != null,
-                modifier = Modifier.weight(1f).height(Grid.ROW).testTag("edit_share"),
-            ) { Text("SHARE") }
-            OutlinedButton(
+                modifier = Modifier.weight(1f).testTag("edit_share"),
+            )
+            AppButton(
+                "SAVE .TXT",
                 onClick = {
-                    val cur = model.byId(id) ?: return@OutlinedButton
+                    val cur = model.byId(id) ?: return@AppButton
                     // the system file dialog and its answer live in MainActivity, which survives this sheet (and process death)
                     onSaveTxt(id, ApoText.fileNameFor(cur.name))
                 },
                 enabled = sharePreamp != null,
-                modifier = Modifier.weight(1f).height(Grid.ROW).testTag("edit_save_txt"),
-            ) { Text("SAVE .TXT") }
+                modifier = Modifier.weight(1f).testTag("edit_save_txt"),
+            )
         }
         if (sharePreamp == null) Text("Cannot share: AUTO preamp unavailable for invalid EQ")
         val clear = model.byId(id)?.let { model.isClear(it) } ?: true
         Row(horizontalArrangement = Arrangement.spacedBy(Grid.GAP)) {
-            OutlinedButton(
-                onClick = { model.duplicate(id); onDone() },
-                modifier = Modifier.weight(1f).height(Grid.ROW).testTag("edit_duplicate"),
-            ) { Text("DUPLICATE") }
-            OutlinedButton(
-                onClick = { model.clearEq(id); onDone() },
-                enabled = !clear,
-                modifier = Modifier.weight(1f).height(Grid.ROW).testTag("edit_clear"),
-            ) { Text("CLEAR EQ") }
+            AppButton("DUPLICATE", { model.duplicate(id); onDone() }, Modifier.weight(1f).testTag("edit_duplicate"))
+            AppButton("CLEAR EQ", { model.clearEq(id); onDone() }, Modifier.weight(1f).testTag("edit_clear"), enabled = !clear)
         }
         Text(
             "One flat band, preamp AUTO. UNDO on the EQ page brings the curve back.",
@@ -287,13 +286,13 @@ private fun Option(title: String, detail: String, enabled: Boolean, tag: String,
         Modifier
             .fillMaxWidth()
             .heightIn(min = 64.dp)
-            .clip(RoundedCornerShape(Radii.M))
+            .clip(RoundedCornerShape(Radii.L))
             .background(c.surfaceContainerHigh)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .testTag(tag),
     ) {
-        Text(title, style = MaterialTheme.typography.titleMedium, color = if (enabled) c.onSurface else c.onSurface.copy(alpha = 0.38f))
+        Text(title, style = Type.rowName, color = if (enabled) c.onSurface else c.onSurface.copy(alpha = 0.38f))
         Text(detail, style = MaterialTheme.typography.bodySmall, color = if (enabled) c.onSurfaceVariant else c.onSurfaceVariant.copy(alpha = 0.5f))
     }
 }
@@ -311,7 +310,7 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
         SheetFrame(onDone) {
             SheetTitle("PREAMP")
             Text("AUTO preamp unavailable for invalid EQ. Fix the shelf settings first.")
-            Button(onClick = onDone) { Text("CLOSE") }
+            AppButton("CLOSE", onDone, Modifier.fillMaxWidth(), primary = true)
         }
         return
     }
@@ -376,20 +375,22 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
             keyboardActions = KeyboardActions(onDone = { commit() }),
+            shape = FIELD,
             modifier = Modifier.fillMaxWidth().focusRequester(focus).testTag("value_input"),
         )
         Row(horizontalArrangement = Arrangement.spacedBy(Grid.GAP)) {
             if (param == Param.GAIN || param == Param.PREAMP) {
-                OutlinedButton(
+                AppButton(
+                    "+/-",
                     onClick = {
                         val t = text.text
                         val n = if (t.startsWith("-")) t.drop(1) else "-$t"
                         text = TextFieldValue(n, TextRange(n.length))
                     },
-                    modifier = Modifier.weight(1f).height(Grid.ROW).testTag("value_sign"),
-                ) { Text("+/-") }
+                    modifier = Modifier.weight(1f).testTag("value_sign"),
+                )
             }
-            Button(onClick = { commit() }, modifier = Modifier.weight(1f).height(Grid.ROW).testTag("value_done")) { Text("DONE") }
+            AppButton("DONE", { commit() }, Modifier.weight(1f).testTag("value_done"), primary = true)
         }
     }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
@@ -401,14 +402,8 @@ fun BandSheet(model: AppModel, index: Int, onDone: () -> Unit) {
     val b = model.current?.bands?.getOrNull(index) ?: return onDone()
     SheetFrame(onDone) {
         SheetTitle("BAND ${index + 1}")
-        OutlinedButton(
-            onClick = { model.toggleBypass(index); onDone() },
-            modifier = Modifier.fillMaxWidth().height(Grid.ROW).testTag("band_bypass"),
-        ) { Text(if (b.enabled) "BYPASS" else "ENABLE") }
-        OutlinedButton(
-            onClick = { model.deleteBand(index); onDone() },
-            modifier = Modifier.fillMaxWidth().height(Grid.ROW).testTag("band_delete"),
-        ) { Text("DELETE") }
+        AppButton(if (b.enabled) "BYPASS" else "ENABLE", { model.toggleBypass(index); onDone() }, Modifier.fillMaxWidth().testTag("band_bypass"))
+        AppButton("DELETE", { model.deleteBand(index); onDone() }, Modifier.fillMaxWidth().testTag("band_delete"))
     }
 }
 

@@ -72,10 +72,11 @@ class NativeFiioTest {
             assertEquals(d.getValue("productName").jsonPrimitive.content, c.productName)
         }
     }
-    @Test fun `stable catalog is exactly the KA15 and K13 R2R rules not a VID fallback`() {
+    @Test fun `stable catalog is exactly the KA15, K13 R2R, Melody and Tiny A rules not a VID fallback`() {
         val oracle = json("catalog-oracle.json").jsonArray
-        assertEquals(2, FiioCatalog.rules.size)
-        assertEquals(oracle.map { it.jsonObject.getValue("productName").jsonPrimitive.content }.toSet(), FiioCatalog.rules.map { it.productName }.toSet())
+        // The oracle holds the upstream rows of the KA15 and K13 R2R; Melody and Tiny A are measured on hardware (see FiioCatalog).
+        assertEquals(4, FiioCatalog.rules.size)
+        assertEquals(oracle.map { it.jsonObject.getValue("productName").jsonPrimitive.content }.toSet(), FiioCatalog.rules.take(2).map { it.productName }.toSet())
         for (row in oracle) {
             val r = row.jsonObject
             val name = r.getValue("productName").jsonPrimitive.content
@@ -93,7 +94,7 @@ class NativeFiioTest {
             FiioCodec(c) // Configuration invariants.
         }
         assertEquals(0, FiioCatalog.rules.count { it.codecBlockers.isNotEmpty() })
-        assertEquals(1, FiioCatalog.rules.count { it.capture != null }) // the K13 R2R has no capture: its identity is the measured product ID
+        assertEquals(1, FiioCatalog.rules.count { it.capture != null }) // K13 R2R, Melody and Tiny A have no capture: their identity is the measured product ID
         assertNull(FiioCatalog.capturedRoute(0x0A12, 0x4005, "Qudelix-5K USB DAC 48KHz"))
         assertNull(FiioCatalog.capturedRoute(0x2972, 0xFFFF, "FIIO QX13"))
         assertNull(FiioCatalog.capturedRoute(0x2972, 0x0104, "Unknown"))

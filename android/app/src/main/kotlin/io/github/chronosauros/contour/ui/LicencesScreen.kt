@@ -49,8 +49,8 @@ fun LicencesScreen(onClose: () -> Unit) {
             ) {
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("About & licences", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                        TextButton(onClick = onClose) { Text("Close") }
+                        Text("ABOUT & LICENCES", style = Type.rowName, modifier = Modifier.weight(1f))
+                        TextButton(onClick = onClose) { Text("CLOSE", style = Type.segment, color = pal.accent) }
                     }
                 }
                 item {

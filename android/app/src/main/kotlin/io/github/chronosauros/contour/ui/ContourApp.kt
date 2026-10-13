@@ -45,7 +45,6 @@ import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SnackbarVisuals
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.Button
 import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -127,7 +126,7 @@ fun ContourApp(
             androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 if (model.loadError) {
                     Text("LIBRARY COULD NOT BE READ. YOUR FILES WERE NOT CHANGED.", color = pal.text)
-                    Button(onClick = { model.load() }) { Text("RETRY LOADING") }
+                    AppButton("RETRY LOADING", { model.load() })
                 } else Text("LOADING LIBRARY…", color = pal.text)
             }
         }
@@ -193,6 +192,18 @@ fun ContourApp(
             }
         }
 
+        fun toast(text: String) {
+            snackbar.currentSnackbarData?.dismiss()
+            scope.launch { snackbar.showSnackbar(text, duration = SnackbarDuration.Short) }
+        }
+
+        // Library RESTORE / SAVE: nothing to do says so; a change can be taken back with UNDO. True when something changed.
+        fun sentChange(r: AppModel.SentChange, done: String): Boolean = when (r) {
+            AppModel.SentChange.NoCheckpoint -> { toast("NO SAVED VERSION YET"); false }
+            AppModel.SentChange.AlreadyThere -> { toast("ALREADY SAVED"); false }
+            is AppModel.SentChange.Changed -> { undoable(done, onUndo = r.undo, onGone = {}); true }
+        }
+
         // What an import from a file did (the one-line report): shown once, in its own coroutine so that clearing the
         // notice does not cancel the snackbar.
         val notice = model.notice
@@ -224,6 +235,8 @@ fun ContourApp(
                     undoable("ARCHIVED ${p.name}", onUndo = { model.setArchived(p.id, false) }, onGone = {})
                 }
                 override fun restore(p: Profile) { model.setArchived(p.id, false) }
+                override fun restoreSent(p: Profile): Boolean = sentChange(model.restoreSent(p.id), "RESTORED TO SAVED")
+                override fun overwriteSent(p: Profile): Boolean = sentChange(model.overwriteSent(p.id), "SAVED")
                 override fun delete(p: Profile) {
                     model.delete(p.id)
                 }
@@ -288,7 +301,7 @@ fun ContourApp(
                     contentColor = pal.text,
                     action = if (actionLabel == null) null else { {
                         TextButton(onClick = { data.performAction() }, modifier = Modifier.testTag("undo")) {
-                            Text(actionLabel, style = Type.label, color = pal.accent)
+                            Text(actionLabel, style = Type.segment, color = pal.accent)
                         }
                     } },
                 ) { Text(data.visuals.message, style = Type.label, modifier = Modifier.testTag("snackbar_text")) }
@@ -299,8 +312,8 @@ fun ContourApp(
                         .background(pal.surface2, RoundedCornerShape(Radii.L)).padding(start = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(if (model.saveError) "NOT SAVED — CHECK STORAGE" else "SAVING DELETE…", style = Type.label, modifier = Modifier.weight(1f))
-                    if (model.saveError) TextButton(onClick = { model.retrySave() }) { Text("RETRY") }
+                    Text(if (model.saveError) "NOT SAVED - CHECK STORAGE" else "SAVING DELETE…", style = Type.label, modifier = Modifier.weight(1f))
+                    if (model.saveError) TextButton(onClick = { model.retrySave() }) { Text("RETRY", style = Type.segment, color = pal.accent) }
                 }
             }
             if (service) DebugScreen(device) { service = false }
@@ -316,8 +329,8 @@ fun ContourApp(
                 textContentColor = pal.textDim,
                 title = { Text("SAVE ALL PROFILES?", style = Type.rowName) },
                 text = {
-                    Text("You are about to save all current profiles as LAST SENT. " +
-                        "This replaces their previous LAST SENT settings. " +
+                    Text("You are about to save all current profiles as their SAVED versions. " +
+                        "This replaces their previous saved versions. " +
                         "There is no Undo button. Are you sure?")
                 },
                 confirmButton = {
@@ -330,15 +343,15 @@ fun ContourApp(
                             if (count > 0) {
                                 snackbar.currentSnackbarData?.dismiss()
                                 scope.launch {
-                                    snackbar.showSnackbar("$count PROFILES SAVED AS LAST SENT", duration = SnackbarDuration.Short)
+                                    snackbar.showSnackbar("$count PROFILES SAVED", duration = SnackbarDuration.Short)
                                 }
                             }
                         },
-                    ) { Text("SAVE ALL", style = Type.label, color = pal.accent) }
+                    ) { Text("SAVE ALL", style = Type.segment, color = pal.accent) }
                 },
                 dismissButton = {
                     TextButton(onClick = { confirmSync = false }, modifier = Modifier.testTag("sync_all_cancel")) {
-                        Text("CANCEL", style = Type.label, color = pal.textDim)
+                        Text("CANCEL", style = Type.segment, color = pal.textDim)
                     }
                 },
                 modifier = Modifier.testTag("sync_all_dialog"),
@@ -390,12 +403,12 @@ private fun IncomingDialog(model: AppModel, incoming: Incoming, onAnswer: (impor
         },
         confirmButton = {
             TextButton(onClick = { onAnswer(ok) }, modifier = Modifier.testTag("import_confirm")) {
-                Text(if (ok) "IMPORT" else "OK", style = Type.label, color = pal.accent)
+                Text(if (ok) "IMPORT" else "OK", style = Type.segment, color = pal.accent)
             }
         },
         dismissButton = if (ok) { {
             TextButton(onClick = { onAnswer(false) }, modifier = Modifier.testTag("import_cancel")) {
-                Text("CANCEL", style = Type.label, color = pal.textDim)
+                Text("CANCEL", style = Type.segment, color = pal.textDim)
             }
         } } else null,
         modifier = Modifier.testTag("import_dialog"),

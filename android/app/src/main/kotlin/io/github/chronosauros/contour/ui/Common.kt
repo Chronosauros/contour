@@ -3,6 +3,7 @@ package io.github.chronosauros.contour.ui
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,6 +27,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import io.github.chronosauros.contour.core.Band
@@ -48,15 +50,15 @@ fun DeviceStatus(device: DeviceController, onService: () -> Unit, modifier: Modi
     val p = pal
     val label = when {
         device.busy -> "BUSY"
+        device.tapToConnect -> "TAP TO CONNECT"
         device.link == Link.NO_DAC -> "NO DAC"
-        device.link == Link.NEEDS_PERMISSION -> "TAP TO CONNECT"
         else -> "CONNECTED"
     }
     val on = device.link == Link.CONNECTED
     val shape = RoundedCornerShape(Radii.M)
     val textMeasurer = rememberTextMeasurer()
     val compactWidth = with(LocalDensity.current) {
-        textMeasurer.measure("CLEAR EQ", style = Type.label).size.width.toDp()
+        textMeasurer.measure("CLEAR EQ", style = Type.segment).size.width.toDp()
     } + 32.dp
     Box(
         modifier
@@ -79,13 +81,45 @@ fun DeviceStatus(device: DeviceController, onService: () -> Unit, modifier: Modi
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(label, style = Type.label, color = p.textDim, maxLines = 1, softWrap = false)
+            Text(label, style = Type.segment, color = p.textDim, maxLines = 1, softWrap = false)
             Canvas(Modifier.size(8.dp)) {
                 val r = size.minDimension / 2
                 if (on) drawCircle(LED_ON, r)
                 else drawCircle(p.textMute, r - 0.75.dp.toPx(), style = Stroke(1.5.dp.toPx()))
             }
         }
+    }
+}
+
+/**
+ * The app's one standard button (READ, every sheet button): [Grid.ROW] tall, L corners, a raised [Palette.surface2]
+ * block with [Type.segment] text. [primary] = the orange of HOLD TO SEND. Disabled = muted text, same block.
+ */
+@Composable
+fun AppButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, primary: Boolean = false) {
+    val p = pal
+    val haptics = LocalHaptics.current
+    val shape = RoundedCornerShape(Radii.L)
+    Box(
+        modifier
+            .height(Grid.ROW)
+            .lift(shape, Lift.RAISED)
+            .clip(shape)
+            .background(if (primary) p.accent else p.surface2)
+            .clickable(enabled = enabled, role = Role.Button) { haptics.tap(); onClick() }
+            .padding(horizontal = 16.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text,
+            style = Type.segment,
+            color = when {
+                !enabled -> if (primary) p.onAccent.copy(alpha = 0.5f) else p.textMute
+                primary -> p.onAccent
+                else -> p.text
+            },
+            maxLines = 1,
+        )
     }
 }
 

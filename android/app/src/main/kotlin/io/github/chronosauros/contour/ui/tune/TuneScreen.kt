@@ -37,14 +37,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Redo
 import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.Add
-import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -58,7 +56,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.Role
@@ -77,6 +74,7 @@ import io.github.chronosauros.contour.core.FilterType
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.model.AppModel
 import io.github.chronosauros.contour.model.Sender
+import io.github.chronosauros.contour.ui.AppButton
 import io.github.chronosauros.contour.ui.Grid
 import io.github.chronosauros.contour.ui.Lift
 import io.github.chronosauros.contour.ui.Type
@@ -164,6 +162,7 @@ fun TuneScreen(model: AppModel, device: DeviceController, sender: Sender, action
                     Box {
                         ResponseGraph(model, p, Modifier.fillMaxSize(), bypassed = sender.bypassed, enabled = bandsEnabled)
                         if (sender.canAb(p)) AbButton(sender, p, Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 8.dp))
+                        GraphNotice(model, Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp, start = 12.dp, end = 12.dp))
                     }
                 },
                 { TuneControls(model, p, device, sender, actions, bandsEnabled) },
@@ -211,11 +210,11 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
         PreampRow(model, p, sender, actions)
         // AUTO that needs more than the device takes: it stays AUTO (MANUAL does not swap in -30) and says why.
         if (p.preampDb == null) model.protocol.walkplay?.autoRefusal(p.bands)?.let {
-            Text("AUTO PREAMP: $it", color = pal.textDim, style = Type.paramLabel)
+            Text("AUTO PREAMP: $it", color = pal.textDim, style = Type.small)
         }
         p.preampDb?.let { db ->
             if (!model.protocol.preampFits(p.bands, db)) {
-                Text("PREAMP ${Param.PREAMP.number(db)} dB is outside the device range. Tap the number to type a new value, or switch to AUTO.", color = pal.textDim, style = Type.paramLabel)
+                Text("PREAMP ${Param.PREAMP.number(db)} dB is outside the device range. Tap the number to type a new value, or switch to AUTO.", color = pal.textDim, style = Type.small)
             }
         }
         // FiiO KA15 (read, USER1-3 writes, slot names and rename tested on a Pixel 04.10.2026): why a send is blocked,
@@ -223,13 +222,22 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
         val slots = device.slotPicker && device.link == Link.CONNECTED
         // Micro/Max too: a band that does not fit the DAC's filter format, or an AUTO preamp below its floor, says why.
         if (device.link == Link.CONNECTED) {
-            device.sendIssues(p).firstOrNull()?.let { Text("SEND BLOCKED: $it (saved values unchanged)", color = pal.textDim, style = Type.paramLabel) }
-            if (device.protocol.native) device.error?.let { Text(it, color = pal.textDim, style = Type.paramLabel) }
+            // KA15, K13 R2R, Melody and Tiny A: read, write and persistence confirmed on hardware (FiioConfig.hardwareVerified)
+            if (device.protocol.native && !device.hardwareVerified) Text("Native beta recipe: not hardware tested. Readback verifies registers, not audio/persistence.", color = pal.textDim, style = Type.small)
+            (device.snapshot?.nativeState as? io.github.chronosauros.contour.core.native.NativeState.Fiio)?.slotDescription?.let {
+                Text("DAC: $it", color = pal.textDim, style = Type.small)
+            }
+            device.sendIssues(p).firstOrNull()?.let { Text("SEND BLOCKED: $it (saved values unchanged)", color = pal.textDim, style = Type.small) }
+            if (device.protocol.native) device.error?.let { Text(it, color = pal.textDim, style = Type.small) }
         }
         if (slots) SlotRow(device, Modifier.padding(top = Grid.GROUP - GAP))
-        Row(Modifier.padding(top = if (slots) 0.dp else Grid.GROUP - GAP).fillMaxWidth().height(ROW_H), horizontalArrangement = Arrangement.spacedBy(GAP)) {
-            if (model.canRevertToSent(p)) LastSentButton(model, sender)
-            HoldToSend(p, device, sender, actions::sendDetails, Modifier.weight(1f).fillMaxHeight())
+        // One column grid on every DAC: READ is a third (under USER1 of a three-slot well), HOLD TO SEND the other two.
+        BoxWithConstraints(Modifier.padding(top = if (slots) 0.dp else Grid.GROUP - GAP).fillMaxWidth().height(ROW_H)) {
+            val third = (maxWidth - Grid.INSET * 2) / 3
+            Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(GAP)) {
+                if (device.link == Link.CONNECTED) ReadButton(model, device, Modifier.width(third).fillMaxHeight())
+                HoldToSend(p, device, sender, actions::sendDetails, Modifier.weight(1f).fillMaxHeight())
+            }
         }
     }
 }
@@ -299,7 +307,7 @@ private fun ClearEqButton(available: Boolean, enabled: Boolean, onClick: () -> U
     ) {
         Text(
             "CLEAR EQ",
-            style = Type.label,
+            style = Type.segment,
             color = ink,
             maxLines = 1,
         )
@@ -313,7 +321,7 @@ private fun HistoryButton(icon: androidx.compose.ui.graphics.vector.ImageVector,
     val haptics = LocalHaptics.current
     Box(
         Modifier
-            .size(44.dp)
+            .size(48.dp)
             .clip(RoundedCornerShape(Radii.M))
             .clickable { if (enabled) { haptics.tap(); onClick() } else haptics.reject() }
             .testTag("history_$name"),
@@ -323,50 +331,71 @@ private fun HistoryButton(icon: androidx.compose.ui.graphics.vector.ImageVector,
     }
 }
 
-/** USER slots: KA15 shows USER1-3 with the names read from the DAC; a DAC without name commands (K13 R2R: USER1-10)
- * shows generic names, five to a row. Tap = the slot HOLD TO SEND writes (orange frame); by default the slot playing
- * now, so a plain HOLD never switches presets. Long press = rename the slot (only where the DAC stores names). */
+/** USER slots, a well like the filter type row: the slot HOLD TO SEND writes sits on the orange pill; by default the
+ * slot playing now, so a plain HOLD never switches presets. KA15 shows the names read from the DAC (the slot number is
+ * in the rename dialog); more than five unnamed slots (K13 R2R: USER1-10) show numbers in one row, the chosen one with
+ * a small USER under its number. Long press = rename the slot (only where the DAC stores names). */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun SlotRow(device: DeviceController, modifier: Modifier = Modifier) {
     val c = pal
     val haptics = LocalHaptics.current
     val fiio = device.protocol.fiio ?: return
-    val names = (device.snapshot?.nativeState as? NativeState.Fiio)?.names.orEmpty()
+    val names = (device.snapshot?.nativeState as? io.github.chronosauros.contour.core.native.NativeState.Fiio)?.names.orEmpty()
     val target = device.destinationSlot()
-    val shape = RoundedCornerShape(Radii.M)
     var renaming by remember { mutableStateOf<Int?>(null) }
     renaming?.let { slot -> RenameSlotDialog(fiio.slotLabels[slot] ?: "SLOT $slot", names[slot].orEmpty(), { renaming = null }) { device.renameSlot(slot, it) } }
     val named = device.slotNames
-    val perRow = if (named) Int.MAX_VALUE else 5
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(GAP)) {
-        fiio.userSlots.sorted().chunked(perRow).forEach { rowSlots ->
-            Row(Modifier.fillMaxWidth().height(COMPACT_H), horizontalArrangement = Arrangement.spacedBy(GAP)) {
-                rowSlots.forEach { slot ->
-                    val sel = slot == target
-                    Column(
-                        Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .lift(shape, Lift.RAISED)
-                            .clip(shape)
-                            .background(c.surface2)
-                            .then(if (sel) Modifier.border(2.dp, c.accent, shape) else Modifier)
-                            .combinedClickable(
-                                enabled = !device.busy,
-                                onClick = { if (!sel) haptics.tap(); device.selectSlot(slot) },
-                                onLongClick = if (named) ({ haptics.longPress(); renaming = slot }) else null,
-                            )
-                            .testTag("slot_$slot"),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text(fiio.slotLabels[slot] ?: "SLOT $slot", style = Type.paramLabel, color = if (sel) c.text else c.textDim, maxLines = 1)
-                        if (named) Text(names[slot] ?: "-", style = Type.label, color = if (sel) c.text else c.textDim, maxLines = 1)
-                    }
+    val slots = fiio.userSlots.sorted()
+    val numbers = !named && slots.size > 5
+    val well = RoundedCornerShape(Radii.L)
+    val pill = RoundedCornerShape(Radii.M)
+    val idx = slots.indexOf(target)
+    val at by animateFloatAsState(idx.coerceAtLeast(0).toFloat(), label = "slot")
+    BoxWithConstraints(
+        modifier
+            .fillMaxWidth()
+            .height(ROW_H)
+            .clip(well)
+            .background(c.track)
+            .sink(well)
+            .padding(Grid.INSET),
+    ) {
+        val w = maxWidth / slots.size
+        if (idx >= 0) Box(
+            Modifier
+                .offset(x = w * at)
+                .width(w)
+                .fillMaxHeight()
+                .lift(pill, Lift.RAISED)
+                .background(c.accent, pill),
+        )
+        Row(Modifier.fillMaxSize()) {
+            slots.forEach { slot ->
+                val sel = slot == target
+                val label = fiio.slotLabels[slot] ?: "SLOT $slot"
+                val text = when {
+                    named -> names[slot]?.takeIf { it.isNotBlank() } ?: label
+                    numbers -> label.removePrefix("USER")
+                    else -> label
                 }
-                // a short last row keeps the cells the size of the full rows above it
-                repeat(perRow.coerceAtMost(fiio.userSlots.size) - rowSlots.size) { Spacer(Modifier.weight(1f)) }
+                Column(
+                    Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .clip(pill)
+                        .combinedClickable(
+                            enabled = !device.busy,
+                            onClick = { if (!sel) haptics.segment(); device.selectSlot(slot) },
+                            onLongClick = if (named) ({ haptics.longPress(); renaming = slot }) else null,
+                        )
+                        .testTag("slot_$slot"),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(text, style = Type.segment, color = if (sel) c.onAccent else c.text, maxLines = 1)
+                    if (numbers && sel) Text("USER", style = Type.small, color = c.onAccent, maxLines = 1)
+                }
             }
         }
     }
@@ -393,6 +422,7 @@ private fun RenameSlotDialog(label: String, current: String, onDismiss: () -> Un
                     capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Characters,
                     imeAction = androidx.compose.ui.text.input.ImeAction.Done,
                 ),
+                shape = RoundedCornerShape(Radii.M),
                 modifier = Modifier.fillMaxWidth().testTag("slot_name"),
             )
         },
@@ -401,94 +431,140 @@ private fun RenameSlotDialog(label: String, current: String, onDismiss: () -> Un
                 enabled = name.isNotEmpty() && name != current,
                 onClick = { onDismiss(); onRename(name) },
                 modifier = Modifier.testTag("slot_rename_confirm"),
-            ) { Text("RENAME", style = Type.label, color = pal.accent) }
+            ) { Text("RENAME", style = Type.segment, color = if (name.isNotEmpty() && name != current) pal.accent else pal.textMute) }
         },
         dismissButton = {
-            androidx.compose.material3.TextButton(onClick = onDismiss) { Text("CANCEL", style = Type.label, color = pal.textDim) }
+            androidx.compose.material3.TextButton(onClick = onDismiss) { Text("CANCEL", style = Type.segment, color = pal.textDim) }
         },
     )
 }
 
-/** LAST SENT, beside HOLD TO SEND while the EQ differs from the one last verified on the DAC: tap = back to it. */
+/** [AppModel.graphNotice] on the graph: 1.5 s fully visible, then a light fade; touches pass through to the graph. */
 @Composable
-private fun LastSentButton(model: AppModel, sender: Sender) {
-    val c = pal
-    val haptics = LocalHaptics.current
-    val shape = RoundedCornerShape(Radii.L)
-    Row(
-        Modifier
-            .fillMaxHeight()
-            .lift(shape, Lift.RAISED)
-            .clip(shape)
-            .background(c.surface2)
-            .clickable { haptics.tap(); sender.leaveAb { model.revertToSent() } }
-            .padding(horizontal = Grid.TEXT)
-            .testTag("last_sent"),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Icon(Icons.Rounded.History, null, tint = c.text, modifier = Modifier.size(22.dp))
-        Text("LAST SENT", style = Type.label, color = c.text, maxLines = 1)
+private fun GraphNotice(model: AppModel, modifier: Modifier) {
+    val notice = model.graphNotice ?: return
+    val alpha = remember(notice) { androidx.compose.animation.core.Animatable(1f) }
+    LaunchedEffect(notice) {
+        kotlinx.coroutines.delay(1500)
+        alpha.animateTo(0f, tween(450))
+        if (model.graphNotice === notice) model.graphNotice = null
     }
+    Text(
+        notice.first,
+        style = Type.label,
+        color = pal.text,
+        textAlign = TextAlign.Center,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier
+            .alpha(alpha.value)
+            .clip(RoundedCornerShape(Radii.L))
+            .background(pal.surface2.copy(alpha = 0.85f))
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+            .testTag("graph_notice"),
+    )
+}
+
+/** READ, beside HOLD TO SEND whenever a DAC is connected: reads the chosen USER slot (the DAC switches to it) or,
+ * without slots, what plays now, and opens it as a new profile (FROM DAC). Nothing on the DAC is written. */
+@Composable
+private fun ReadButton(model: AppModel, device: DeviceController, modifier: Modifier) {
+    val enabled = !device.busy && !device.abBypassed
+    AppButton(
+        if (device.reading) "READING" else "READ",
+        onClick = {
+            device.readToImport { s, slot ->
+                when (val r = s.importExact()) {
+                    is io.github.chronosauros.contour.core.DacImport.Ready -> {
+                        val fiio = device.protocol.fiio
+                        val names = (s.nativeState as? io.github.chronosauros.contour.core.native.NativeState.Fiio)?.names.orEmpty()
+                        val name = slot?.let { names[it]?.takeIf(String::isNotBlank) ?: fiio?.slotLabels?.get(it) }
+                        model.create(r.eq.bands, r.eq.preampDb, name = name, sub = "FROM DAC")
+                        val n = r.eq.bands.size
+                        model.showOnGraph("READ ${name ?: "DAC"}: $n FILTER${if (n == 1) "" else "S"}" + (r.warning?.let { " - $it" } ?: ""))
+                    }
+                    is io.github.chronosauros.contour.core.DacImport.Rejected -> model.notice = "READ: ${r.issues.joinToString("; ")}"
+                }
+            }
+        },
+        modifier = modifier.testTag("read_dac"),
+        enabled = enabled,
+    )
 }
 
 /**
- * The band chips 1..N (scrolling), then "+" and "-" pinned at the right so they stay in reach whatever the band count.
- * Tap = select; tap on the selected chip, or a long press on any, = BYPASS / ENABLE / DELETE sheet; "-" = delete the
- * selected band (UNDO brings it back). A disabled band is an outlined, empty chip - like its ring on the graph.
+ * The bands 1..N and then "+" and "-" in one well like PEAK / USER: the chosen band on the orange pill, 20 sp numbers,
+ * 36 dp cells that scroll when they do not fit, "+" and "-" pinned at the well's right end so they stay in reach
+ * whatever the band count. Tap = select; tap on the selected band, or a long press on any, = BYPASS / ENABLE / DELETE
+ * sheet; "-" = delete the selected band (UNDO brings it back). A bypassed band is an outline (accent when chosen) -
+ * like its ring on the graph.
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun BandStrip(model: AppModel, p: Profile, actions: TuneActions, enabled: Boolean) {
     val c = pal
     val haptics = LocalHaptics.current
-    val shape = RoundedCornerShape(Radii.M)
-    val scroll = rememberScrollState()
-    var viewport by remember { mutableIntStateOf(0) }
-    val density = LocalDensity.current
-    BoxWithConstraints(Modifier.fillMaxWidth().height(COMPACT_H)) {
-    // Everything fits: 48 dp chips, only the gap tightens a little, nothing is cut. Otherwise the numbers scroll in an
-    // area that ends at the middle of a chip (so the cut reads as "more"), and "+" / "-" stay pinned after it.
+    val well = RoundedCornerShape(Radii.L)
     val showPlus = p.bands.size < model.maxBands
-    val plan = BandStripPlan.plan(maxWidth.value.toDouble(), p.bands.size, showPlus)
-    val chipW = plan.chipDp.dp
-    val gap = plan.gapDp.dp
-    // the selected chip stays in view: a band just added at the end, or one picked on the graph
-    LaunchedEffect(model.selectedBand, p.bands.size, viewport, plan.scroll, plan.chipDp) {
-        if (!plan.scroll) return@LaunchedEffect
-        val step = with(density) { (chipW + gap).toPx() }
-        val start = model.selectedBand * step
-        val end = start + with(density) { chipW.toPx() }
-        if (viewport > 0) {
-            if (start < scroll.value) scroll.animateScrollTo(start.toInt())
-            else if (end > scroll.value + viewport) scroll.animateScrollTo(ceil(end - viewport).toInt())
+    // "-" is muted while it is the only band and while sending or A/B is busy (when "+" is dead too)
+    val canDelete = enabled && p.bands.size > 1
+    BoxWithConstraints(Modifier.fillMaxWidth().height(ROW_H)) {
+        val plan = BandStripPlan.plan(maxWidth.value.toDouble(), p.bands.size, showPlus)
+        val numbers = plan.numbersDp.dp
+        Row(Modifier.fillMaxSize().clip(well).background(c.track).sink(well)) {
+            BandNumbers(model, p, actions, enabled, plan.cellDp.dp, plan.scroll, numbers, Modifier.width(numbers))
+            if (showPlus) PmCell(Icons.Rounded.Add, "add band", enabled, "chip_add") { haptics.tap(); model.addBand() }
+            PmCell(Icons.Rounded.Remove, "delete selected band", canDelete, "chip_remove") { haptics.tap(); model.deleteBand(model.selectedBand) }
         }
     }
-    Row(
-        Modifier.fillMaxSize(),
-        horizontalArrangement = Arrangement.spacedBy(gap),
+}
+
+/**
+ * The scrolling numbers of [BandStrip] inside their well. The well's inset is padding inside the scrolled content, so a
+ * band scrolled into view keeps the inset around it and its pill (with its shadow) never looks cut at the edge.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun BandNumbers(model: AppModel, p: Profile, actions: TuneActions, enabled: Boolean, cellW: Dp, scrolls: Boolean, view: Dp, modifier: Modifier) {
+    val c = pal
+    val haptics = LocalHaptics.current
+    val density = LocalDensity.current
+    val pill = RoundedCornerShape(Radii.M)
+    val scroll = rememberScrollState()
+    // the selected band stays in view with the inset on both sides: a band just added at the end, or one picked on the graph
+    LaunchedEffect(model.selectedBand, p.bands.size, cellW, scrolls, view) {
+        if (!scrolls) return@LaunchedEffect
+        val start = with(density) { (cellW * model.selectedBand).toPx() }
+        val end = with(density) { (Grid.INSET * 2 + cellW * (model.selectedBand + 1)).toPx() }
+        val width = with(density) { view.toPx() }
+        if (start < scroll.value) scroll.animateScrollTo(start.toInt())
+        else if (end > scroll.value + width) scroll.animateScrollTo(ceil(end - width).toInt())
+    }
+    val at by animateFloatAsState(model.selectedBand.toFloat(), label = "band")
+    val selEnabled = p.bands.getOrNull(model.selectedBand)?.enabled == true
+    Box(
+        modifier
+            .fillMaxHeight()
+            .then(if (scrolls) Modifier.horizontalScroll(scroll) else Modifier)
+            .padding(Grid.INSET),
     ) {
-        Row(
-            (if (plan.scroll) Modifier.width(plan.areaDp.dp) else Modifier)
+        // the pill rides in the scrolled content, so it stays under its band
+        if (selEnabled) Box(
+            Modifier
+                .offset(x = cellW * at)
+                .width(cellW)
                 .fillMaxHeight()
-                .onSizeChanged { viewport = it.width }
-                .then(if (plan.scroll) Modifier.horizontalScroll(scroll) else Modifier),
-            horizontalArrangement = Arrangement.spacedBy(gap),
-        ) {
+                .lift(pill, Lift.RAISED)
+                .background(c.accent, pill),
+        )
+        Row(Modifier.fillMaxHeight()) {
             p.bands.forEachIndexed { i, b ->
                 val sel = i == model.selectedBand
-                // an enabled band stands up from the page; a disabled one is an empty outline (accent when selected)
-                val chip = Modifier
-                    .width(chipW)
-                    .fillMaxHeight()
-                    .let { if (b.enabled) it.lift(shape, Lift.RAISED) else it }
-                    .clip(shape)
-                    .let {
-                        if (b.enabled) it.background(if (sel) c.accent else c.surface2)
-                        else it.border(2.dp, if (sel) c.accent else c.textMute, shape)
-                    }
                 Box(
-                    chip
+                    Modifier
+                        .width(cellW)
+                        .fillMaxHeight()
+                        .clip(pill)
+                        .let { if (b.enabled) it else it.border(2.dp, if (sel) c.accent else c.textMute, pill) }
                         .combinedClickable(
                             enabled = enabled,
                             // a first tap selects; a tap on the band that is already selected opens its sheet
@@ -502,41 +578,28 @@ private fun BandStrip(model: AppModel, p: Profile, actions: TuneActions, enabled
                         "${i + 1}",
                         style = Type.chip,
                         color = if (b.enabled) (if (sel) c.onAccent else c.text) else (if (sel) c.accent else c.textMute),
+                        maxLines = 1,
                     )
                 }
             }
         }
-        if (showPlus) {
-            Box(
-                Modifier
-                    .width(BandStripPlan.TOUCH.dp)
-                    .fillMaxHeight()
-                    .lift(shape, Lift.RAISED)
-                    .clip(shape)
-                    .background(c.surface2)
-                    .clickable(enabled = enabled) { haptics.tap(); model.addBand() }
-                    .testTag("chip_add"),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(Icons.Rounded.Add, "add band", tint = c.text, modifier = Modifier.size(26.dp))
-            }
-        }
-        // "-": deletes the selected band; dimmed while it is the only band and while sending or A/B is busy (when "+" is dead too)
-        val canDelete = enabled && p.bands.size > 1
-        Box(
-            Modifier
-                .width(BandStripPlan.TOUCH.dp)
-                .fillMaxHeight()
-                .let { if (canDelete) it.lift(shape, Lift.RAISED) else it }
-                .clip(shape)
-                .background(if (canDelete) c.surface2 else c.surface)
-                .clickable(enabled = canDelete) { haptics.tap(); model.deleteBand(model.selectedBand) }
-                .testTag("chip_remove"),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(Icons.Rounded.Remove, "delete selected band", tint = if (canDelete) c.text else c.textMute, modifier = Modifier.size(26.dp))
-        }
     }
+}
+
+/** "+" or "-": a cell at the right end of the band well; [live] = the action would do something (muted icon when not). */
+@Composable
+private fun PmCell(icon: androidx.compose.ui.graphics.vector.ImageVector, name: String, live: Boolean, tag: String, onClick: () -> Unit) {
+    Box(
+        Modifier
+            .width(BandStripPlan.BUTTON.dp)
+            .fillMaxHeight()
+            .padding(vertical = Grid.INSET)
+            .clip(RoundedCornerShape(Radii.M))
+            .clickable(enabled = live, onClick = onClick)
+            .testTag(tag),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(icon, name, tint = if (live) pal.text else pal.textMute, modifier = Modifier.size(26.dp))
     }
 }
 
@@ -581,7 +644,7 @@ private fun TypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
                         .testTag("type_${t.name.lowercase()}"),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, style = Type.segment, color = if (sel) c.onAccent else c.text, maxLines = 1)
+                    Text(label, style = Type.segment, color = if (sel && t in model.protocol.caps.types) c.onAccent else c.text, maxLines = 1)
                 }
             }
         }
@@ -701,9 +764,10 @@ private fun PreampLabels(manual: Color, auto: Color, onManual: (() -> Unit)?, on
 
 /**
  * A pressed-in bar with a raised orange pill, the look of the PEAK / LOW SHELF row. AUTO: the pill sits under AUTO
- * and a tap on MANUAL switches. MANUAL: the pill stretches from the left edge to the value, like the fill of the
- * sliders above it, and a sideways drag adjusts (0.1 dB steps, a tick at every whole dB, a strong one at 0 dB, a
- * reject tick at the device limits; lifting the finger off a value keeps it, [LiftGuard]); a tap on AUTO switches back.
+ * and a tap on MANUAL switches. MANUAL: the bar becomes a slider like FREQ / GAIN / Q (a light fill from the left edge
+ * to the value, MANUAL bright, AUTO dimmed), and a sideways drag adjusts (0.1 dB steps, a tick at every whole dB, a
+ * strong one at 0 dB, a reject tick at the device limits; lifting the finger off a value keeps it, [LiftGuard]);
+ * a tap on AUTO switches back.
  */
 @Composable
 private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, valid: Boolean, sender: Sender, modifier: Modifier) {
@@ -785,6 +849,28 @@ private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, v
         // the pill fills the bar's full height, as tall as the fill of the FREQ / GAIN / Q sliders above
         val w = maxWidth
         val half = w / 2
+        if (!auto) {
+            // MANUAL is a slider like FREQ / GAIN / Q (light fill from the left edge to the value); MANUAL reads at
+            // full strength, AUTO dimmed - a tap on AUTO switches back
+            val h = maxHeight
+            val fillW = h + (w - h) * pos
+            Box(Modifier.fillMaxSize()) {
+                PreampLabels(c.text, c.textMute, null, { switchTo(true) })
+                Box(
+                    Modifier
+                        .width(fillW)
+                        .fillMaxHeight()
+                        .lift(pill, Lift.RAISED)
+                        .background(c.fill, pill)
+                        .clip(pill),
+                ) {
+                    Box(Modifier.fillMaxHeight().wrapContentWidth(Alignment.Start, unbounded = true).width(w)) {
+                        PreampLabels(c.bg, c.bg.copy(alpha = 0.45f), null, null)
+                    }
+                }
+            }
+            return@BoxWithConstraints
+        }
         val x = half * (1f - manual)
         val pillW = half + half * (pos * manual)
         Box(Modifier.fillMaxSize()) {

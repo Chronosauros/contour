@@ -254,10 +254,10 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
 
         val bands: List<Band> = profile.bands
         val ghostAlpha = if (bypassed) 0.24f else 1f
-        val validCurve = runCatching { Dsp.responseDb(bands, Dsp.DISPLAY_GRID, curve) }.isSuccess
+        val response = runCatching { Dsp.responseDb(bands, Dsp.DISPLAY_GRID, curve) }
         path.reset()
         val freqs = Dsp.DISPLAY_GRID.freqs
-        if (validCurve) {
+        if (response.isSuccess) {
             for (i in curve.indices) {
                 val x = map.x(freqs[i])
                 val y = map.y(curve[i])
@@ -265,7 +265,8 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
             }
             drawPath(path, c.text.copy(alpha = ghostAlpha), style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
         } else {
-            drawText(measurer, "INVALID EQ — adjust shelf gain or Q", Offset(pad, pad), Type.graph.copy(color = c.text))
+            val reasons = model.protocol.issues(profile).ifEmpty { listOfNotNull(response.exceptionOrNull()?.message) }
+            drawText(measurer, model.protocol.invalidEqHeadline(profile, reasons), Offset(pad, pad), Type.graph.copy(color = c.text))
         }
 
         val r = NODE_RADIUS.toPx()

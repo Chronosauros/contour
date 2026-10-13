@@ -217,8 +217,9 @@ data class HoldView(val label: String, val eqBlocked: Boolean = false, val issue
 
 fun holdView(p: Profile, device: DeviceController, sender: Sender): HoldView {
     if (sender.sendingId == p.id) return HoldView("SENDING")
+    // Something to connect -> TAP TO CONNECT; nothing attached -> NO DAC (owner, 14.10.2026).
+    if (device.tapToConnect) return HoldView("TAP TO CONNECT")
     if (device.link == Link.NO_DAC) return HoldView("NO DAC")
-    if (device.link == Link.NEEDS_PERMISSION) return HoldView("TAP TO CONNECT")
     val issues = device.sendIssues(p)
     if (issues.isNotEmpty()) {
         // Native DACs (FiiO) say which band or the preamp is out of range; Micro and Max keep the generic wording.
@@ -288,8 +289,7 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
                             return@awaitEachGesture
                         }
                         "TAP TO CONNECT" -> {
-                            val up = waitUp()
-                            if (up) device.requestPermission()
+                            if (waitUp() && !device.connect()) haptics.reject()
                             return@awaitEachGesture
                         }
                     }
@@ -357,6 +357,7 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
                 flat -> c.textMute
                 else -> c.text
             },
+            maxLines = 1,
             modifier = Modifier.padding(horizontal = 16.dp),
         )
     }

@@ -37,7 +37,8 @@ object Page {
  * (snackbar gone, or the app stops), so UNDO can put the row back.
  *
  * Every change to a profile's EQ (bands, preamp) also records the state before it in that profile's history
- * (history.json): [undo] / [redo] step through it and [revertToSent] brings back the LAST SENT checkpoint.
+ * (history.json): [undo] / [redo] step through it and [revertToSent] brings back the SAVED version (the Library's
+ * [restoreSent] / [overwriteSent] do the same or replace it for any row).
  * A touch on Tune ([beginGesture] .. [endGesture]) is one step however many values the drag went through.
  */
 class AppModel(private val store: ProfileStore, private val scope: CoroutineScope, private val beforeLoad: () -> Unit = {}) {
@@ -57,6 +58,10 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
 
     /** A one-line message for the snackbar (what an import from a file did); the shell shows it once and clears it. */
     var notice by mutableStateOf<String?>(null)
+
+    /** A short line shown on the Tune graph for a moment, then faded (what READ did); a new line restarts it. */
+    var graphNotice by mutableStateOf<Pair<String, Long>?>(null)
+    fun showOnGraph(text: String) { graphNotice = text to System.nanoTime() }
 
     val current: Profile? by derivedStateOf { profiles.firstOrNull { it.id == currentId } }
     val active: List<Profile> by derivedStateOf { profiles.filter { !it.archived } }
@@ -179,6 +184,10 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
             seeded = saved?.seeded ?: true
             history.clear()
             history.putAll(loadedHistory.filterKeys { id -> sorted.any { it.id == id } })
+            // One-time migration: every profile (archived ones too) has a SAVED version. A LAST SENT checkpoint from before
+            // this rule already is the SAVED version; a profile without one starts with its current EQ as SAVED, so it is
+            // recoverable from now on and is not shown as EDITED.
+            sorted.forEach { p -> if (history[p.id]?.sent == null) history[p.id] = (history[p.id] ?: ProfileHistory()).copy(sent = EqState(p)) }
             clampSelection()
             loading = false
             // Normalize only after all referenced files have been verified/read.
@@ -347,11 +356,17 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     fun canUndo(p: Profile?): Boolean = p != null && history[p.id]?.undo?.isNotEmpty() == true
     fun canRedo(p: Profile?): Boolean = p != null && history[p.id]?.redo?.isNotEmpty() == true
 
-    /** LAST SENT has something to bring back: a checkpoint exists and the EQ has changed since. */
+    /** RESTORE has something to bring back: the working copy (the profile's own EQ) differs from its SAVED version (EDITED). */
     fun canRevertToSent(p: Profile?): Boolean {
         val s = p?.let { history[it.id]?.sent } ?: return false
         return s != EqState(p)
     }
+
+    /** The bands of the SAVED version, which is what a Library card draws; the working copy for a profile without one. */
+    fun savedBands(p: Profile): List<Band> = history[p.id]?.sent?.bands ?: p.bands
+
+    /** The complete EQ drawn by a Library card, including its saved preamp for DAC matching. */
+    fun savedProfile(p: Profile): Profile = history[p.id]?.sent?.let { p.copy(bands = it.bands, preampDb = it.preampDb) } ?: p
 
     fun undo() {
         val p = current ?: return
@@ -369,7 +384,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         applyEq(p.id, s)
     }
 
-    /** Back to the LAST SENT checkpoint; one UNDO step like any other edit. */
+    /** Back to the SAVED version; one UNDO step like any other edit. */
     fun revertToSent() {
         val p = current ?: return
         if (!canRevertToSent(p)) return
@@ -378,24 +393,78 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         applyEq(p.id, s)
     }
 
-    /** HOLD TO SEND verified [p] on the DAC: it becomes the LAST SENT of its profile. */
+    /**
+     * Counts the changes of one profile's SAVED version (send, save-all, creation, SAVE). The snackbar UNDO of a Library SAVE
+     * is good only while that profile's count stands where the SAVE left it: a newer save of the same profile is never undone,
+     * a save of another profile does not matter. The UNDO of a RESTORE has no such gate (it restores the EQ, not the saved version).
+     */
+    private val sentRevision = HashMap<String, Int>()
+
+    private fun setSent(id: String, sent: EqState?) {
+        history[id] = (history[id] ?: ProfileHistory()).copy(sent = sent)
+        sentRevision[id] = (sentRevision[id] ?: 0) + 1
+    }
+
+    /** HOLD TO SEND verified [p] on the DAC: it becomes the SAVED version of its profile. */
     fun markSent(p: Profile) {
-        val h = history[p.id] ?: ProfileHistory()
-        history[p.id] = h.copy(sent = EqState(p))
+        setSent(p.id, EqState(p))
         setLastSent(p.id)
     }
 
-    /** Save every live profile, including archived ones, as a local LAST SENT checkpoint, without a DAC send. */
+    /** Save every live profile, including archived ones, as its SAVED version, without a DAC send. */
     fun saveAllAsSent(): Int {
         if (loading || loadError || deleting || profiles.isEmpty()) return 0
         val snapshots = profiles.associate { it.id to EqState(it) }
-        snapshots.forEach { (id, snapshot) ->
-            val h = history[id] ?: ProfileHistory()
-            history[id] = h.copy(sent = snapshot)
-        }
+        snapshots.forEach { (id, snapshot) -> setSent(id, snapshot) }
         // One queued write for the complete batch; lastSentId still identifies the actual last DAC send.
         saveStateNow()
         return snapshots.size
+    }
+
+    /** What a Library RESTORE / SAVE did: nothing to do, or a change that [Changed.undo] takes back. */
+    sealed interface SentChange {
+        data object NoCheckpoint : SentChange
+        data object AlreadyThere : SentChange
+        class Changed(val undo: () -> Unit) : SentChange
+    }
+
+    /** Library RESTORE: the EQ of [id] (any row, not only the current profile) back to its SAVED version; one UNDO step like [revertToSent]. */
+    fun restoreSent(id: String): SentChange {
+        val p = byId(id) ?: return SentChange.AlreadyThere
+        val sent = history[id]?.sent ?: return SentChange.NoCheckpoint
+        val before = EqState(p)
+        if (sent == before) return SentChange.AlreadyThere
+        record(id, before)
+        applyEq(id, sent)
+        return SentChange.Changed { undoRestoreSent(id, before, sent) }
+    }
+
+    /** The snackbar's UNDO of [restoreSent] (not gated by a newer save: it only puts the EQ back): while the profile still stands as the restore left it, the restore's own step is taken back. */
+    private fun undoRestoreSent(id: String, before: EqState, restored: EqState) {
+        val p = byId(id) ?: return
+        val h = history[id]
+        if (h != null && h.undo.lastOrNull() == before && EqState(p) == restored) history[id] = h.copy(undo = h.undo.dropLast(1))
+        else record(id, EqState(p))
+        applyEq(id, before)
+    }
+
+    /** Library SAVE: the EQ of [id] as it is now becomes its SAVED version. Only the saved version changes: never the EQ, never [lastSentId]. */
+    fun overwriteSent(id: String): SentChange {
+        val p = byId(id) ?: return SentChange.AlreadyThere
+        val now = EqState(p)
+        val h = history[id] ?: ProfileHistory()
+        if (h.sent == now) return SentChange.AlreadyThere
+        val previous = h.sent
+        setSent(id, now)
+        saveStateNow()
+        val revision = sentRevision[id]
+        return SentChange.Changed {
+            // UNDO puts the old saved version back, unless a send, a save-all or another SAVE has changed this profile's since
+            if (sentRevision[id] == revision && byId(id) != null) {
+                setSent(id, previous)
+                saveStateNow()
+            }
+        }
     }
 
     fun setBand(index: Int, band: Band) = update { p ->
@@ -525,11 +594,16 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         return "PROFILE $n"
     }
 
-    /** A new profile after the last one; it becomes current. [open] = slide to Tune. */
+    /**
+     * A new profile after the last one; it becomes current. [open] = slide to Tune. Its EQ is also its SAVED version (every
+     * profile has one), so the card shows it and RESTORE brings it back after CLEAR EQ. That is the saved version only:
+     * [lastSentId] (the ON DAC bookkeeping) is set by a verified send alone.
+     */
     fun create(bands: List<Band>, preampDb: Double?, name: String? = null, sub: String = "", icon: String = "headphones", open: Boolean = true): Profile {
         val now = System.currentTimeMillis()
         val p = Profile(newId(), name ?: nextDefaultName(), sub, icon, bands.map { it.copy(id = bandId()) }, preampDb, now, now)
         profiles.add(p)
+        setSent(p.id, EqState(p))
         scheduleSave(p, p.id)
         currentId = p.id
         selectedBand = 0
@@ -541,12 +615,16 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     fun duplicate(id: String) {
         val src = byId(id) ?: return
         val now = System.currentTimeMillis()
-        val copy = src.copy(id = newId(), name = src.name.take(NAME_MAX - 2) + " 2", bands = src.bands.map { it.copy(id = bandId()) }, createdAt = now, updatedAt = now)
+        val ids = src.bands.associate { it.id to bandId() }
+        val copy = src.copy(id = newId(), name = src.name.take(NAME_MAX - 2) + " 2", bands = src.bands.map { it.copy(id = ids.getValue(it.id)) }, createdAt = now, updatedAt = now)
         profiles.add(profiles.indexOfFirst { it.id == id } + 1, copy)
+        // The copy looks like the source: the same SAVED version (band ids carried over, so EDITED matches) and the same working copy.
+        val saved = history[id]?.sent ?: EqState(src)
+        setSent(copy.id, saved.copy(bands = saved.bands.map { it.copy(id = ids[it.id] ?: bandId()) }))
         scheduleSave(copy, copy.id)
     }
 
-    /** ARCHIVE (true) / RESTORE (false). The row keeps its place in the order. */
+    /** ARCHIVE (true) / UNARCHIVE (false). The row keeps its place in the order. */
     fun setArchived(id: String, archived: Boolean) = update(id) { it.copy(archived = archived) }
 
     /** Keep the row visible until the tombstone is written; only then announce deletion/UNDO. */
