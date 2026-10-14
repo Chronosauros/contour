@@ -2,7 +2,7 @@
 
 # Contour
 
-**An on-the-go EQ manager for the CrinEar Protocol Micro, Protocol Max, FiiO KA15 and FiiO K13 R2R.** Keep all your EQ profiles on your phone, plug the
+**An on-the-go EQ manager for the CrinEar Protocol Micro, Protocol Max, FiiO KA15, FiiO K13 R2R, SnowSky Melody and SnowSky Tiny A.** Keep all your EQ profiles on your phone, plug the
 dongle in, pick one and send it. Plug in, send, unplug - that is the whole routine.
 
 **Website: [contoureq.app](https://contoureq.app/)** - a 1.5-minute demo film, the full guide film and the install page.
@@ -15,7 +15,7 @@ dongle in, pick one and send it. Plug in, send, unplug - that is the whole routi
 
 ## Why it exists
 
-The Protocol Micro, Protocol Max, KA15 and K13 R2R have a parametric EQ built into the DAC itself. Whatever EQ a DAC holds works with every
+The Protocol Micro, Protocol Max, KA15, K13 R2R, Melody and Tiny A have a parametric EQ built into the DAC itself. Whatever EQ a DAC holds works with every
 app and every device you plug it into - no system equaliser, no app running in the background. But
 the official way to change it on the Protocol dongles is CrinEar's browser tool at [eq.hangout.audio](https://eq.hangout.audio/),
 which the maker lists for desktop (PC and macOS) browsers. There is no official mobile app, and phone
@@ -64,6 +64,12 @@ Contour does not process audio, does not need the internet and has no accounts. 
   Writes are paced 300 ms apart, so a send takes about five seconds: faster writes read back fine but did not
   survive turning the K13 off. BYPASS and the stock presets are chosen on the K13 itself. Tested on the developer's
   own hardware; the read-back checks the stored values, the sound has not been measured yet.
+- **SnowSky Melody** (USB `2972:0126`, FiiO protocol): 10 bands, PEAK, LOW SHELF and HIGH SHELF, gain -12 to +12 dB,
+  Q 0.1 to 10, 20 Hz to 20 kHz, preamp -12 to +12 dB. Pick USER1, USER2 or USER3 above HOLD TO SEND; Contour writes
+  the profile to that slot, checks it and makes it the active one. The Melody always holds ten bands, so a shorter
+  profile is filled up with flat 0 dB bands. Tested on the developer's own hardware.
+- **SnowSky Tiny A** (USB `2972:0147`, FiiO protocol): the same as the Melody - 10 bands, gain -12 to +12 dB,
+  preamp -12 to +12 dB, USER1, USER2 or USER3. Tested on the developer's own hardware.
 
 Contour is unofficial and not affiliated with CrinEar or FiiO. Other WalkPlay and FiiO dongles are possible later
 (see `ROADMAP.md`); they are not enabled until someone confirms one on real hardware.
@@ -79,18 +85,21 @@ Two pages, switched with the bar at the bottom or by swiping: **EQ** and **LIBRA
   whole range when you drag fast; tap any number to type it; tap the selected band chip again to bypass or
   delete the band, or delete it with the minus chip; PREAMP with a MANUAL / AUTO anti-clipping bar; A/B to hear the curve off and on at the same volume (the preamp stays; Protocol Micro only for now).
 - **HOLD TO SEND** (0.7 s hold) writes the profile to the dongle, reads it back, compares every register and
-  only then saves it to the dongle's memory. The button then shows ON DAC.
+  only then saves it to the dongle's memory. The button then shows ON DAC, and the profile is saved.
+- **READ**, next to HOLD TO SEND, reads the chosen USER slot (or what's on the DAC if it has no slots) into a new
+  profile. Nothing on the DAC changes.
 - **Undo and redo** work like Ctrl+Z: one touch is one step, up to 100 steps per profile, kept after closing
-  the app. **CLEAR EQ** leaves one flat band and is an undo step too. **LAST SENT** appears when the profile
-  differs from what the dongle holds, and goes back to that version.
-- **LIBRARY** keeps your profiles: tap to open, long-press to rename, change the icon, duplicate or share;
-  swipe to archive or delete, with UNDO. New profiles start flat, come from the clipboard or a .txt file
+  the app. **CLEAR EQ** leaves one flat band and is an undo step too.
+- **LIBRARY** keeps your profiles: tap to open, long-press to rename, change the icon, duplicate or share.
+  Every card shows the profile's SAVED version, and the EQ page edits a working copy, so CLEAR EQ never empties
+  the card. Swipe a card right to SAVE or RESTORE the saved version (a full swipe right saves); swipe it left to
+  archive or delete, with UNDO. New profiles start flat, come from the clipboard or a .txt file
   (Equalizer APO, AutoEQ, squig.link or graph.hangout.audio parametric text, or EQ by Ear JSON; Contour also
   shows up in Open with and Share for .txt files) or are read from the dongle. SAVE .TXT saves a profile as a
   file in the squig.link format.
 
 On the Protocol Micro only, HIGH SHELF bands are sent as a mirrored LOW SHELF plus preamp, which gives exactly the
-same curve shape (the Protocol Max, KA15 and K13 R2R have native shelf filters and need no mirroring) (the maths is in `android/core/src/main/kotlin/io/github/chronosauros/contour/core/Device.kt`).
+same curve shape (the Protocol Max, KA15, K13 R2R, Melody and Tiny A have native shelf filters and need no mirroring) (the maths is in `android/core/src/main/kotlin/io/github/chronosauros/contour/core/Device.kt`).
 
 ## Safety
 
@@ -131,7 +140,7 @@ cd android
 `android/app/build.gradle.kts`.
 
 Code layout:
-- `android/core` - pure Kotlin/JVM: profile model, DSP, text codecs, the WalkPlay and FiiO (KA15, K13 R2R) device protocols;
+- `android/core` - pure Kotlin/JVM: profile model, DSP, text codecs, the WalkPlay and FiiO (KA15, K13 R2R, SnowSky Melody and Tiny A) device protocols;
 - `android/app` - the Jetpack Compose app, USB HID transport, storage;
 - `research/protocol` - protocol notes, Python reference tools and the device captures the parity test
   checks against.
@@ -158,5 +167,5 @@ example profile uses the DUSK-Default DSP curve
 all of this is under **ABOUT & LICENCES** at the bottom of the Library.
 
 Contour is an unofficial project, not affiliated with or endorsed by CrinEar, FiiO or any other brand. CrinEar,
-Protocol Micro, Protocol Max, FiiO, KA15, K13, Nightfall, WalkPlay, Moondrop, Crinacle, DUSK and other product names belong to their owners
+Protocol Micro, Protocol Max, FiiO, KA15, K13, SnowSky, Melody, Tiny A, Nightfall, WalkPlay, Moondrop, Crinacle, DUSK and other product names belong to their owners
 and are used only to say what Contour works with.

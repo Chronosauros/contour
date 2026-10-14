@@ -211,6 +211,29 @@ Measured on the owner's K13 R2R on a Pixel 9 Pro, 10.10.2026 (firmware 1.15, USB
 - Not measured: the acoustic result (the KA15 plays shelf Q / sqrt(2) and USER presets 12 dB down; the K13 has
   not been swept). Contour writes the K13 values as shown.
 
+## SnowSky Melody and Tiny A (2972:0126 and 2972:0147, supported in Contour 1.5.0)
+
+Probed on the owner's units on the Windows PC, 13.10.2026 (Melody bcdDevice 1.20, USB product "SNOWSKY Melody";
+Tiny A bcdDevice 1.10, "SNOWSKY TINY A"), then read, written and re-selected from a Pixel. Both run the same
+firmware family and behave the same way.
+
+- Transport: the KA15 frame format and commands, report ID 7, one HID collection (interface 0). Every write except
+  SAVE echoes in about 4-12 ms; SAVE (`0x19`) answers with a short `00 EE` frame instead of an AA echo. Reply
+  frames can carry stale bytes after the `EE` terminator, so parse up to the first `EE` only.
+- Slots: USER1-USER3 = presets 160-162, Close EQ = 240, stock presets 0-6 are never written. Writing a slot makes
+  it the active one.
+- The slot query (`0x16`) is unreliable on a USER slot: after any band or preamp query or write it returns stale
+  data (for example the last band index), and it is right again only straight after a select or a SAVE. Stock
+  presets and Close EQ always answer correctly. Contour therefore always selects the destination slot and checks
+  the slot right after the select and right after SAVE, never at the end of a read.
+- Filter count: every slot holds ten filters (devicePEQ lists the Tiny A with 5). A count of 2 or 5 reads back as
+  10 with the slot's previous bands still active, so Contour always writes ten bands and pads with 0 dB peaks.
+- Read-back: preamp, frequency, gain and type match; Q 3.00 reads back as 3.01, so Q is compared with a small
+  tolerance.
+- Selecting the already active USER slot again did not hang either unit.
+- Not measured: the acoustic result (shelf Q scaling and preamp offset, which the KA15 needed). Contour writes the
+  values as shown.
+
 ## FiiO roadmap note (config/handler only; written before the KA15 work above)
 - FiiO is matched by VID 0x2972 (and 0x0A12) + **USB product name string**, not by PID (UC L16, L360-400).
   "FIIO KA15": supported, 10 bands, +-12 dB, 7 types (PK/LS/HS/LP/HP/BP/AP), writable user slots 7-9

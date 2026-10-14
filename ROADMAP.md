@@ -8,9 +8,14 @@ Ideas and devices for later. None of these is enabled until it is confirmed on r
 - Open: one save out of ten on 04.10 got no answer until the dongle was replugged; not reproduced since.
 
 ## FiiO K13 R2R
-- Supported since Contour 1.4.1, tested on the developer's own hardware (Pixel, 10.10.2026): read on connect, USER1-USER10 slot picker above HOLD TO SEND (two rows of five, no names, no rename), writes only to USER slots (160-169), never the stock presets or BYPASS (240). First reported by a community tester in advBeta 1.3.1-advbeta1: recognised, but every send blocked by INVALID EQ.
+- Supported since Contour 1.4.1, tested on the developer's own hardware (Pixel, 10.10.2026): read on connect, USER1-USER10 slot picker above HOLD TO SEND (one row numbered 1-10 since 1.5.0, no names, no rename), writes only to USER slots (160-169), never the stock presets or BYPASS (240). First reported by a community tester in advBeta 1.3.1-advbeta1: recognised, but every send blocked by INVALID EQ.
 - Protocol: the KA15's FiiO HID protocol, report ID 7, 33-byte reports, USB `2972:0120` matched exactly. 10 bands, -24..+12 dB, preamp -24..+12 dB, PEAK, LOW SHELF and HIGH SHELF. Hardware quirks are in `research/protocol/PROTOCOL.md`: two identical USB configurations, report 7 on Generic Desktop / Undefined, a band count below 10 reads back as 10 (Contour pads with flat bands), and writes need 300 ms between them to survive a power cycle.
 - Open: the sound is not measured yet. The KA15 needed shelf-Q and preamp compensation; the K13 may too.
+
+## SnowSky Melody and Tiny A
+- Supported since Contour 1.5.0, tested on the developer's own hardware (Pixel and PC, 13-14.10.2026): read on connect, USER1-USER3 slot picker above HOLD TO SEND, writes only to USER slots (160-162), never the stock presets or Close EQ (240); the written slot becomes the active one. Both were first reported working by a community tester in advBeta 1.3.1-advbeta1.
+- Protocol: the FiiO HID protocol, report ID 7, USB `2972:0126` (Melody) and `2972:0147` (Tiny A) matched exactly. 10 bands, -12..+12 dB, preamp -12..+12 dB, PEAK, LOW SHELF and HIGH SHELF. devicePEQ lists the Tiny A with 5 bands; the hardware reads 10. Firmware quirks are in `research/protocol/PROTOCOL.md`: the slot reply goes stale after band or preamp traffic on a USER slot, SAVE answers without an echo, and a band count below 10 reads back as 10 (Contour pads with flat bands).
+- Open: the sound is not measured yet.
 
 ## CrinEar Protocol Max (WalkPlay SchemeNo16)
 - 10 bands, +-10 dB, low and high shelf, no frequency/Q compensation, pregain via command 0x03.
@@ -30,7 +35,7 @@ Source: devicePEQ `usbDeviceConfig.js` (26.09.2026). One driver unlocks the whol
 
 - **WalkPlay (the driver Contour already has)** - only IDs and capability profiles to add: Tanchjim (Space Pro, Ola II DSP, Stargate II), NiceHCK Octave, Truthear KeyX, ddHiFi DSP Cable, Moondrop Dawn Pro 2, CrinEar Protocol Max, generic CS43131 / CS43198 / ES9039 dongles. Experimental there: BGVP MX1, Letshuoer DT04, Moondrop MD-QT-042 / HiFi with PD. Band layouts vary per scheme: 5, 6, 8 or 10 bands, +-10 dB, some peaking only.
 - **KT Micro (the driver above)** - besides both Allegros: Kiwi Ears Chorus and other KT_* chips (matched by PID, registers laid out differently per chip), JCally KT02H20, Tanchjim One DSP / Bunny DSP / Fission, Moondrop CDSP and Chu 2 DSP. All 5 bands, +-12 dB, no pregain.
-- **FiiO / JadeAudio** - the largest group, framed HID protocol (`fiioUsbHidHandler.js` is already in our copy): KA15, KA17, K13 R2R, K15, K17, K19, BTR13, BTR17, BT11, QX11, QX13, FX17, Oak Nano, Retro Nano, Air Link, Air Amp, FP3, FG3, BR15 R2R, JadeAudio JA11 / JIEZI, Snowsky Melody / Tiny A / Tiny B. 5 to 31 bands, user slots differ per model (see FiiO KA15, supported since 1.3.2, and K13 R2R above).
+- **FiiO / JadeAudio** - the largest group, framed HID protocol (`fiioUsbHidHandler.js` is already in our copy): KA15, KA17, K13 R2R, K15, K17, K19, BTR13, BTR17, BT11, QX11, QX13, FX17, Oak Nano, Retro Nano, Air Link, Air Amp, FP3, FG3, BR15 R2R, JadeAudio JA11 / JIEZI, Snowsky Tiny B. 5 to 31 bands, user slots differ per model (see FiiO KA15, supported since 1.3.2, K13 R2R, and SnowSky Melody and Tiny A above).
 - **Moondrop (own protocol)** - Rays, AG Rays, Marigold, FreeDSP Mini / Pro, Moonriver 3, Dawn Pro 2, Echo A, DHA15, Deco, ddHiFi DSP IEM. Mostly 8 bands, +-12 dB. Old Fashioned uses an older, separate Moondrop protocol (5 bands, max +3 dB).
 - **Conexant** - Moondrop FreeDSP and Echo-B (9 bands, +-12 dB).
 - **Fosi Audio / Topping** (VID `0x152A`, shared with Topping) - Fosi DS3: 8 bands, +-12 dB, all filter types, no pregain. The driver is experimental in devicePEQ.
