@@ -226,6 +226,8 @@ fun holdView(p: Profile, device: DeviceController, sender: Sender): HoldView {
     // A slot DAC with no slot chosen yet (a SnowSky right after plug-in, a stock preset): a tap on a slot chooses where HOLD TO SEND writes.
     if (device.slotPicker && device.chosenSlot == null) return HoldView("CHOOSE A SLOT", eqBlocked = true)
     val issues = device.sendIssues(p)
+    // A FiiO DAC whose state is not read yet: a tap reads it, not a dead READ THE DAC FIRST (owner, 14.10.2026).
+    if (issues.singleOrNull() == "Read the DAC first") return HoldView(TAP_TO_READ_LABEL)
     if (issues.isNotEmpty()) {
         // Native DACs (FiiO) say which band or the preamp is out of range; Micro and Max keep the generic wording.
         val label = if (device.protocol.native) DeviceTarget.blockLabel(issues) else "INVALID EQ - EDIT BAND"
@@ -240,6 +242,7 @@ fun holdView(p: Profile, device: DeviceController, sender: Sender): HoldView {
 }
 
 const val ON_DAC_LABEL = "ON DAC · SAFE TO UNPLUG"
+const val TAP_TO_READ_LABEL = "TAP TO READ THE DAC"
 /** The label while the DAC is written or read for the user: white, an orange fill grows (a send: the frames written, [Sender.sendProgress]; the rest: a time ramp). */
 const val SAVING_LABEL = "SAVING TO DAC"
 
@@ -324,7 +327,7 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
                             if (waitUp() && !device.connect()) haptics.reject()
                             return@awaitEachGesture
                         }
-                        "TAP TO CONNECT" -> {
+                        "TAP TO CONNECT", TAP_TO_READ_LABEL -> {
                             if (waitUp() && !device.connect()) haptics.reject()
                             return@awaitEachGesture
                         }

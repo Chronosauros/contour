@@ -355,7 +355,9 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                     abBypassed = false
                     abReference = null
                     snapshot = null
-                    refresh(read = false)
+                    // A KA15 can report a detach right after the connect read while it stays plugged in, with no attach after it
+                    // (Pixel, 14.10.2026): read again when the DAC is still there; a real unplug finds none and reads nothing.
+                    refresh(read = true)
                 }
             }
         }
