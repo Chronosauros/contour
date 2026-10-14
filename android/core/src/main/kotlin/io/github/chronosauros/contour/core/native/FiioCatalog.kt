@@ -74,6 +74,12 @@ data class FiioConfig(
     val snowskyExchange: Boolean = false,
     // Short device name for messages on the [snowskyExchange] path ("Reconnect Melody").
     val shortName: String? = null,
+    // SnowSky names (FiiO web app capture on the Tiny A, 14.10.2026): command 0x30 is addressed by the slot id (a0-a2),
+    // not the KA15 position; the reply carries the slot and an 8-byte field; a write sends the name unpadded and the DAC
+    // clears the rest of the field. Names are read after the band reads, so they never sit before a slot query.
+    val nameBySlotId: Boolean = false,
+    // Longest USER name the DAC stores: KA15 7, SnowSky 8 (the FiiO web app allows 8).
+    val nameLength: Int = 7,
 ) {
     /** Intended (acoustic) preamp range: the register range minus [preampOffsetDb]. */
     val preampMinDb: Double get() = minGainDb - preampOffsetDb
@@ -217,6 +223,10 @@ object FiioCatalog {
             hardwareVerified = true,
             snowskyExchange = true,
             shortName = "Melody",
+            // FiiO web app 14.10.2026: names stored in the DAC (Tiny A captured; the owner saw names on the Melody too).
+            userSlotNames = true,
+            nameBySlotId = true,
+            nameLength = 8,
         ),
         FiioConfig(
             productName = "SNOWSKY TINY A",
@@ -256,6 +266,10 @@ object FiioCatalog {
             hardwareVerified = true,
             snowskyExchange = true,
             shortName = "Tiny A",
+            // FiiO web app 14.10.2026: names stored in the DAC (Tiny A captured; the owner saw names on the Melody too).
+            userSlotNames = true,
+            nameBySlotId = true,
+            nameLength = 8,
         ),
     )
 

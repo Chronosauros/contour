@@ -59,7 +59,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     /** A one-line message for the snackbar (what an import from a file did); the shell shows it once and clears it. */
     var notice by mutableStateOf<String?>(null)
 
-    /** A short line shown on the Tune graph for a moment, then faded (what READ did); a new line restarts it. */
+    /** A short line shown on the Tune graph for a moment, then faded (a profile made from the DAC); a new line restarts it. */
     var graphNotice by mutableStateOf<Pair<String, Long>?>(null)
     fun showOnGraph(text: String) { graphNotice = text to System.nanoTime() }
 
@@ -264,14 +264,14 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
 
     // ---- selection ------------------------------------------------------------------------------------
 
-    /** Library tap: [id] becomes current and the app slides to Tune. */
-    fun choose(id: String) {
+    /** Library tap: [id] becomes current and, with [open], the app slides to Tune (a DAC read on plug-in does not move the page). */
+    fun choose(id: String, open: Boolean = true) {
         if (currentId != id) {
             currentId = id
             selectedBand = 0
             clampSelection()
         }
-        pageRequest = Page.TUNE
+        if (open) pageRequest = Page.TUNE
         scheduleState()
     }
 

@@ -60,10 +60,14 @@ class FiioCodec(val config: FiioConfig) {
         const val NAME_LENGTH = 7
         private const val NAME_REPLY_LEN = 8
         private const val NAME_REPLY_DATA = 10
-        /** A USER slot name the DAC is known to take: A-Z and 0-9 only (all the KA15 capture shows), at most 7. */
-        fun slotName(text: String): String =
+        /** A USER slot name the DAC is known to take: A-Z and 0-9 only (all the KA15 capture shows, all the FiiO web app
+         * allows on the SnowSky DACs, which store it upper-case), at most [length] (KA15 7, SnowSky 8). */
+        fun slotName(text: String, length: Int = NAME_LENGTH): String =
             java.text.Normalizer.normalize(text.replace('ł', 'l').replace('Ł', 'L'), java.text.Normalizer.Form.NFD)
-                .uppercase().filter { it in 'A'..'Z' || it in '0'..'9' }.take(NAME_LENGTH)
+                .uppercase().filter { it in 'A'..'Z' || it in '0'..'9' }.take(length)
+        /** SnowSky name reply ([FiioConfig.nameBySlotId]): LEN says 9, the frame carries the slot id plus a 9-byte field
+         * (8 name bytes, then one stale byte), like the KA15's LEN 8 with IDX + 9 bytes. */
+        private const val SLOT_NAME_REPLY_LEN = 9
         private fun u(b: Byte) = b.toInt() and 255
         private fun word(p: ByteArray, offset: Int) = (u(p[offset]) shl 8) or u(p[offset + 1])
         private fun signed(p: ByteArray, offset: Int) = word(p, offset).toShort().toInt()
@@ -129,7 +133,8 @@ class FiioCodec(val config: FiioConfig) {
         require(config.codecBlockers.isEmpty()) { config.codecBlockers.joinToString("; ") }
         require(slot in config.userSlots) { "Not a proven writable user slot: $slot" }
     }
-    /** Only on an explicit user action (HOLD TO SEND, READ), NEVER on a slot picker tap or an automatic read. */
+    /** Only on an explicit user action (HOLD TO SEND, a tap on a USER slot) or the background scan the app starts on connect
+     * (SnowSky Melody, Tiny A, K13 R2R; never the KA15), NEVER on an ordinary read. */
     fun selectUserSlot(slot: Int): FiioFrame {
         requireUserSlot(slot)
         return frame(SLOT, listOf(slot), FiioEffect.SELECT_ACTIVE_USER_BANK)
@@ -137,20 +142,24 @@ class FiioCodec(val config: FiioConfig) {
     private fun nameIndex(slot: Int): Int {
         require(config.userSlotNames) { "${config.productName}: USER names are not proven" }
         requireUserSlot(slot)
-        return config.userSlots.sorted().indexOf(slot)
+        return if (config.nameBySlotId) slot else config.userSlots.sorted().indexOf(slot)
     }
-    fun queryName(slot: Int) = frame(NAME, listOf(nameIndex(slot)), FiioEffect.READ_ONLY)
-    /** Always the full 7-byte field, NUL padded: a shorter write leaves the old name's tail on the DAC. */
+    private val nameReplyLen get() = if (config.nameBySlotId) SLOT_NAME_REPLY_LEN else NAME_REPLY_LEN
+    fun queryName(slot: Int) =frame(NAME, listOf(nameIndex(slot)), FiioEffect.READ_ONLY)
+    /** KA15: always the full 7-byte field, NUL padded (a shorter write leaves the old name's tail on the DAC).
+     * SnowSky: the name unpadded, as the FiiO web app sends it; the DAC clears the rest of its 8-byte field. */
     fun writeName(slot: Int, name: String): FiioFrame {
-        require(name.isNotEmpty() && name == slotName(name)) { "Unsupported USER name: $name" }
-        return frame(NAME, listOf(nameIndex(slot)) + name.map { it.code } + List(NAME_LENGTH - name.length) { 0 }, FiioEffect.RENAME_USER_BANK)
+        require(name.isNotEmpty() && name == slotName(name, config.nameLength)) { "Unsupported USER name: $name" }
+        val pad = if (config.nameBySlotId) emptyList() else List(config.nameLength - name.length) { 0 }
+        return frame(NAME, listOf(nameIndex(slot)) + name.map { it.code } + pad, FiioEffect.RENAME_USER_BANK)
     }
-    /** The name reply says LEN 8 but carries IDX plus a 9-byte field (CRC-checked on the Pixel, 04.10.2026).
-     * Only its first 7 bytes are the name: after a save the last two held stale report bytes (`ab ee`). */
+    /** KA15: the reply says LEN 8 but carries IDX plus a 9-byte field (CRC-checked on the Pixel, 04.10.2026); only its
+     * first 7 bytes are the name - after a save the last two held stale report bytes (`ab ee`).
+     * SnowSky: LEN 9, the slot id and the 8-byte name field. */
     fun parseName(payload: ByteArray, slot: Int): String {
-        reply(payload, NAME, NAME_REPLY_DATA, NAME_REPLY_LEN)
+        reply(payload, NAME, NAME_REPLY_DATA, nameReplyLen)
         require(u(payload[6]) == nameIndex(slot)) { "Uncorrelated USER name index" }
-        return (7 until 7 + NAME_LENGTH).map { u(payload[it]) }.takeWhile { it != 0 }
+        return (7 until 7 + config.nameLength).map { u(payload[it]) }.takeWhile { it != 0 }
             .filter { it in 0x20..0x7E }.map { it.toChar() }.joinToString("")
     }
     private fun validateCount(count: Int) { require(count in 0..config.maxFilters) { "Invalid active count: $count" } }
@@ -177,7 +186,7 @@ class FiioCodec(val config: FiioConfig) {
         val n = when (cmd) { SLOT, COUNT -> 1; PREAMP -> 2; BAND -> 8; NAME -> NAME_REPLY_DATA; config.saveCommand -> 1; else -> throw IllegalArgumentException("Unsupported reply command: $cmd") }
         require(payload.size >= n + 8) { "Short transport payload" }
         val logical = payload.copyOf(n + 8)
-        reply(logical, cmd, n, if (cmd == NAME) NAME_REPLY_LEN else n)
+        reply(logical, cmd, n, if (cmd == NAME) nameReplyLen else n)
         return logical
     }
     fun parseSlot(payload: ByteArray): Int { reply(payload, SLOT, 1); return u(payload[6]) }

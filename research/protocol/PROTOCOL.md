@@ -202,7 +202,9 @@ Measured on the owner's K13 R2R on a Pixel 9 Pro, 10.10.2026 (firmware 1.15, USB
   in a top-level Application collection on Generic Desktop with Usage 0x00 (Undefined) instead of a vendor
   page; Contour accepts that layout on the FiiO paths only.
 - Slots: USER1-USER10 = presets 160-169 (`a0`-`a9`), BYPASS = 240 (`f0`), stock presets 0-6 and 8-10 are never
-  written. Writing a slot makes it the active one. Contour uses no name commands on the K13.
+  written. Writing a slot makes it the active one. The K13 stores no USER names: FiiO's web app shows USER1-USER10
+  without rename and sends no `0x30`, and a KA15-style `30 01 00` query from Contour got no reply and broke the next
+  output report (14.10.2026). Never send name commands to the K13; Contour remembers the names on the phone.
 - Filter count: a count of 9 reads back as 10 and band 10 keeps its old registers, so a shorter profile would
   leave the slot's old band 10 audible. Contour always writes ten bands and pads with 0 dB peaks, as on the KA15.
 - Persistence: writes 16 ms apart all read back correctly, but after a power cycle only the first one to three
@@ -230,6 +232,16 @@ firmware family and behave the same way.
   10 with the slot's previous bands still active, so Contour always writes ten bands and pads with 0 dB peaks.
 - Read-back: preamp, frequency, gain and type match; Q 3.00 reads back as 3.01, so Q is compared with a small
   tolerance.
+- Cold plug (Tiny A on a Pixel, 14.10.2026): with a USER slot playing, the first slot reply is a boot value (`00`) and
+  after the band reads it says `09`. A stock preset answers the same both times, so a reply that changes from 0-6 to
+  7-9 during one read means "a USER slot, number unknown" (Contour 1.5.0 failed that read; fixed in 1.5.1).
+- USER names are stored in the DAC (FiiO web app capture on the Tiny A, 14.10.2026; Melody confirmed from a Pixel):
+  read `bb 0b 00 SEQ 30 01 <slot> CRC ee` with the slot id (`a0`-`a2`), not the KA15 index. Reply LEN 9: slot id, 8 name
+  bytes NUL padded, one stale byte. Write `aa 0a 00 SEQ 30 <1+n> <slot> <name, n <= 8, unpadded> CRC ee`; the echo carries
+  the stored field, upper-case, with the old tail cleared. The FiiO app allows A-Z and 0-9 only. Contour reads the names
+  after the slot and band reads (never between a select and its slot check). Details:
+  `research/snowsky-names-types-2026-10-14/FINDINGS.md`.
+- Filter type byte over USB (Tiny A and K13 R2R, FiiO web app, 14.10.2026): PK 0, LS 1, HS 2, BP 3, LP 4, HP 5, AP 6.
 - Selecting the already active USER slot again did not hang either unit.
 - Not measured: the acoustic result (shelf Q scaling and preamp offset, which the KA15 needed). Contour writes the
   values as shown.

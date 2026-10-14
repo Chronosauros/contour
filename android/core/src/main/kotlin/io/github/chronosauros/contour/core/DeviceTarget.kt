@@ -114,6 +114,7 @@ data class DeviceTarget private constructor(
          */
         fun blockLabel(issues: List<String>): String {
             val issue = issues.firstOrNull()?.trim() ?: return BLOCK_LABEL_GENERIC
+            if (issue == "Read the DAC first") return "READ THE DAC FIRST"
             if (issue.startsWith("Pregain") || issue.contains("preamp", ignoreCase = true)) return "PREAMP OUT OF RANGE"
             bandCountIssue.find(issue)?.let { return "${it.groupValues[1]} BANDS - MAX ${it.groupValues[2]}" }
             val m = bandIssue.find(issue) ?: return BLOCK_LABEL_GENERIC

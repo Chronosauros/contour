@@ -28,6 +28,7 @@ import androidx.lifecycle.Lifecycle
 import io.github.chronosauros.contour.core.ApoText
 import io.github.chronosauros.contour.model.AppModel
 import io.github.chronosauros.contour.model.Backup
+import io.github.chronosauros.contour.model.DacEditor
 import io.github.chronosauros.contour.model.ImportFile
 import io.github.chronosauros.contour.model.Incoming
 import io.github.chronosauros.contour.model.Page
@@ -39,6 +40,7 @@ import io.github.chronosauros.contour.ui.fitDensity
 import io.github.chronosauros.contour.ui.sheets.Sheet
 import io.github.chronosauros.contour.ui.tune.Param
 import io.github.chronosauros.contour.usb.DeviceController
+import io.github.chronosauros.contour.usb.Link
 import io.github.chronosauros.contour.usb.UsbLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -61,6 +63,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var model: AppModel
     private lateinit var device: DeviceController
     private lateinit var sender: Sender
+    private lateinit var editor: DacEditor
 
     /** Theme override from the launch intent (debug and perf builds only): null = follow the system. */
     private var forcedDark by mutableStateOf<Boolean?>(null)
@@ -115,6 +118,7 @@ class MainActivity : ComponentActivity() {
         device = DeviceController(this, lifecycleScope)
         // A/B restoration must survive ON_STOP and Activity destruction long enough to release HID.
         sender = Sender(model, device, lifecycleScope, persistenceScope)
+        editor = DacEditor(model, device, lifecycleScope)
         device.start()
         applyReviewExtras(intent, first = true)
         // Not again when the system recreates the Activity and hands it the launch intent a second time.
@@ -133,7 +137,7 @@ class MainActivity : ComponentActivity() {
             CompositionLocalProvider(LocalDensity provides fitDensity(screen, widthPx)) {
                 ContourTheme(dark) {
                     ContourApp(
-                        model, device, sender, initialPage, sheetRequest, onSheetRequestTaken = { sheetRequest = null },
+                        model, device, sender, editor, initialPage, sheetRequest, onSheetRequestTaken = { sheetRequest = null },
                         incoming = incoming, onIncomingDone = { incoming = null },
                         onSaveTxt = ::startSaveTxt,
                     )
@@ -244,7 +248,9 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             cleanup?.join()
             if (pendingAbCleanup === cleanup) pendingAbCleanup = null
-            if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) device.refresh(read = true)
+            // onResume runs this at once, while the lifecycle still says STARTED (ON_RESUME comes after onResume): with RESUMED here
+            // a cold start with a DAC plugged in stayed on NO DAC until a tap (owner, 14.10.2026). Already connected: no re-read.
+            if (lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) device.refresh(read = device.link != Link.CONNECTED)
         }
     }
 

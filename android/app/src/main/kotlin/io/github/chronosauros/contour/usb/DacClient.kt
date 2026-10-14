@@ -17,6 +17,8 @@ import io.github.chronosauros.contour.core.native.NativeState
 import java.io.IOException
 import java.util.concurrent.Executors
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 
 /** What one lock-step read returned. WalkPlay DACs: [bands] + [preampDb]; the FiiO KA15: [nativeState]. */
@@ -64,14 +66,20 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
 
     fun shutdown() = executor.shutdown()
 
-    private suspend fun <T> withDevice(device: UsbDevice, block: (HidTransport) -> T): T {
-        val fiio = target(device).fiio ?: return withContext(usb) { HidTransport.open(manager, device).use(block) }
+    private suspend fun <T> withDevice(device: UsbDevice, block: (HidTransport) -> T): T = hidLock.withLock {
+        val fiio = target(device).fiio ?: return@withLock withContext(usb) { HidTransport.open(manager, device).use(block) }
         val guard = guardFor(device)
-        return withContext(usb) {
+        withContext(usb) {
             guard()
             val stream = if (fiio.needsAudioStream) audioKeepAlive(device) else null
             try { HidTransport.open(manager, device, guard).use(block).also { guard() } } finally { stream?.close() }
         }
+    }
+
+    private companion object {
+        /** One HID session at a time in the whole app. A recreated Activity (the relaunch after an update, a theme change) has a
+         * second DacClient for a moment, and a second session claiming the interface breaks the first ("Short native output report"). */
+        val hidLock = Mutex()
     }
 
     private fun target(device: UsbDevice): DeviceTarget =
@@ -109,7 +117,15 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
         }
     }
 
-    /** READ on a FiiO slot picker: the DAC switches to USER [slot] (nothing is saved) and that slot is read. */
+    /** A slot Contour already knows: the DAC switches to USER [slot] (nothing is saved) and one query confirms it; returns the slot confirmed. No band is read. */
+    suspend fun selectSlot(device: UsbDevice, slot: Int): Int = withDevice(device) { t ->
+        val start = SystemClock.elapsedRealtime()
+        val confirmed = nativeSession(device, t, target(device)).selectSlot(slot, explicitUserAction = true); t.checkSession()
+        UsbLog.line("switch: slot $slot confirmed $confirmed, ${SystemClock.elapsedRealtime() - start} ms")
+        confirmed
+    }
+
+    /** A FiiO USER slot Contour has not seen, and the background scan: the DAC switches to USER [slot] (nothing is saved) and that slot is read. */
     suspend fun readSlot(device: UsbDevice, slot: Int): DacSnapshot = withDevice(device) { t ->
         val target = target(device)
         val start = SystemClock.elapsedRealtime()
@@ -140,18 +156,20 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
     }
 
     /** Profile -> device plan -> write -> read back and compare. Throws with the issues when it does not fit.
-     * [targetSlot]: KA15 only, the USER slot to write (null = USER1). */
-    suspend fun writeProfile(device: UsbDevice, profile: Profile, targetSlot: Int? = null): WriteResult {
+     * [targetSlot]: KA15 only, the USER slot to write (null = USER1). [onProgress]: 0..1, the frames completed out of those
+     * planned (select, every band, preamp, save, the read-back), called on the USB thread. */
+    suspend fun writeProfile(device: UsbDevice, profile: Profile, targetSlot: Int? = null, onProgress: ((Float) -> Unit)? = null): WriteResult {
         val target = target(device)
         if (!target.native) return when (val plan = requireNotNull(target.walkplay).plan(profile)) {
             is DevicePlan.Rejected -> throw IOException(plan.issues.joinToString("; "))
-            is DevicePlan.Ready -> writePlan(device, plan)
+            is DevicePlan.Ready -> writePlan(device, plan, onProgress)
         }
         target.issues(profile).takeIf { it.isNotEmpty() }?.let { throw IOException(it.joinToString("; ")) }
         return withDevice(device) { t ->
             val start = SystemClock.elapsedRealtime()
             UsbLog.line("native write: target slot ${targetSlot ?: target.destinationSlot}")
-            val r = nativeSession(device, t, target).write(profile, explicitHold = true, targetSlot = targetSlot)
+            val r = nativeSession(device, t, target).write(profile, explicitHold = true, targetSlot = targetSlot,
+                onProgress = onProgress?.let { report -> { done, total -> report(done.toFloat() / total) } })
             t.checkSession()
             r.reason?.let { UsbLog.line("native write: ${if (r.verified) "VERIFIED, note" else "NOT VERIFIED"}: $it") }
             if (r.reason == null) UsbLog.line("native write: VERIFIED")
@@ -179,44 +197,55 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
         write(t, DevicePlan.Ready(writes, requireNotNull(now.preampDb)), now.slot, DeviceProtocol.MICRO)
     }
 
-    private suspend fun writePlan(device: UsbDevice, plan: DevicePlan.Ready): WriteResult = withDevice(device) { t ->
+    private suspend fun writePlan(device: UsbDevice, plan: DevicePlan.Ready, onProgress: ((Float) -> Unit)? = null): WriteResult = withDevice(device) { t ->
         val p = protocol(device)
+        // Steps planned: the read before (Max: the whole state; Micro: version and slot), every report of the write sequence, the read-back.
+        val steps = Steps(
+            (if (p.experimental) p.caps.bands + 3 else 2) + runCatching { WalkPlay.writeSequence(plan.bands, plan.preampDb.toDouble(), 0, commit = true).size }
+                .getOrDefault(plan.bands.size + 8) + p.caps.bands + 3, onProgress)
         val slot = if (p.experimental) {
             // Protocol Max fails closed: every slot in order, and VERSION + bulk slot + every band + preamp
             // must parse before the first mutating report.
             require(plan.bands.size == p.caps.bands && plan.bands.indices.all { plan.bands[it].index == it }) { "Plan does not cover every ${p.caps.name} slot" }
-            read(t, p).slot
+            read(t, p, steps::tick).slot
         } else {
             // getCurrentSlot, as devicePEQ does on connect: the slot byte is echoed in every band write
-            t.request(WalkPlay.versionRequest(), "version") { WalkPlay.isReply(it, WalkPlay.CMD_VERSION) }
-            WalkPlay.parseSlot(t.request(WalkPlay.slotRequest(), "slot") { WalkPlay.isReply(it, WalkPlay.CMD_PEQ) })
+            t.request(WalkPlay.versionRequest(), "version") { WalkPlay.isReply(it, WalkPlay.CMD_VERSION) }.also { steps.tick() }
+            WalkPlay.parseSlot(t.request(WalkPlay.slotRequest(), "slot") { WalkPlay.isReply(it, WalkPlay.CMD_PEQ) }.also { steps.tick() })
         }
-        write(t, plan, slot, p)
+        write(t, plan, slot, p, steps::tick)
+    }
+
+    /** Frames done out of [total] planned, as 0..1 for [report]; the total grows if the plan was underestimated, so it never reaches 1 early. */
+    private class Steps(private val total: Int, private val report: ((Float) -> Unit)?) {
+        private var done = 0
+        fun tick() { done++; report?.invoke(done.toFloat() / maxOf(total, done + 1)) }
     }
 
     /** MICRO: exactly the 1.2.2 predicates and parsers (DeviceProtocol delegates). MAX: strict, all 10 slots. */
-    private fun read(t: HidTransport, p: DeviceProtocol): DacSnapshot {
+    private fun read(t: HidTransport, p: DeviceProtocol, tick: () -> Unit = {}): DacSnapshot {
         val t0 = SystemClock.elapsedRealtime()
-        val version = p.parseVersion(t.request(WalkPlay.versionRequest(), "version") { p.isReply(it, WalkPlay.CMD_VERSION) })
-        val slot = p.parseSlot(t.request(WalkPlay.slotRequest(), "slot") { p.isSlotReply(it) })
+        val version = p.parseVersion(t.request(WalkPlay.versionRequest(), "version") { p.isReply(it, WalkPlay.CMD_VERSION) }.also { tick() })
+        val slot = p.parseSlot(t.request(WalkPlay.slotRequest(), "slot") { p.isSlotReply(it) }.also { tick() })
         val bands = (0 until p.caps.bands).map { i ->
-            p.parseBand(t.request(WalkPlay.bandRequest(i), "band $i") { p.isBandReply(it, i) }, i)
+            p.parseBand(t.request(WalkPlay.bandRequest(i), "band $i") { p.isBandReply(it, i) }.also { tick() }, i)
         }
-        val preamp = p.parsePreamp(t.request(WalkPlay.preampRequest(), "preamp") { p.isReply(it, WalkPlay.CMD_GLOBAL_GAIN) })
+        val preamp = p.parsePreamp(t.request(WalkPlay.preampRequest(), "preamp") { p.isReply(it, WalkPlay.CMD_GLOBAL_GAIN) }.also { tick() })
         val ms = SystemClock.elapsedRealtime() - t0
         UsbLog.line("read: ${if (p.experimental) "${p.caps.name}, " else ""}firmware $version, slot $slot, preamp $preamp dB, $ms ms")
         return DacSnapshot(version, slot, bands, preamp, ms, p)
     }
 
     /** write_state(..., "devicepeq"): every band report (8 Micro, 10 Max), preamp, commit sequence with devicePEQ's delays; then read back. */
-    private fun write(t: HidTransport, plan: DevicePlan.Ready, slot: Int, p: DeviceProtocol): WriteResult {
+    private fun write(t: HidTransport, plan: DevicePlan.Ready, slot: Int, p: DeviceProtocol, tick: () -> Unit = {}): WriteResult {
         val t0 = SystemClock.elapsedRealtime()
         for (step in WalkPlay.writeSequence(plan.bands, plan.preampDb.toDouble(), slot, commit = true)) {
             t.send(step.report)
             if (step.delayAfterMs > 0) Thread.sleep(step.delayAfterMs)
+            tick()
         }
         val writeMs = SystemClock.elapsedRealtime() - t0
-        val back = read(t, p)
+        val back = read(t, p, tick)
         val mismatches = ArrayList<String>()
         plan.bands.forEachIndexed { i, w ->
             val want = w.registers()

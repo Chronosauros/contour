@@ -92,7 +92,7 @@ fun DeviceStatus(device: DeviceController, onService: () -> Unit, modifier: Modi
 }
 
 /**
- * The app's one standard button (READ, every sheet button): [Grid.ROW] tall, L corners, a raised [Palette.surface2]
+ * The app's one standard button (every sheet button): [Grid.ROW] tall, L corners, a raised [Palette.surface2]
  * block with [Type.segment] text. [primary] = the orange of HOLD TO SEND. Disabled = muted text, same block.
  */
 @Composable

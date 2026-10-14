@@ -66,6 +66,7 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.unit.dp
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.model.AppModel
+import io.github.chronosauros.contour.model.DacEditor
 import io.github.chronosauros.contour.model.ImportFile
 import io.github.chronosauros.contour.model.Importer
 import io.github.chronosauros.contour.model.Incoming
@@ -113,6 +114,7 @@ fun ContourApp(
     model: AppModel,
     device: DeviceController,
     sender: Sender,
+    editor: DacEditor,
     initialPage: Int,
     sheetRequest: Sheet?,
     onSheetRequestTaken: () -> Unit,
@@ -269,7 +271,7 @@ fun ContourApp(
             ) { page ->
                 if (page == Page.TUNE) {
                     Box(Modifier.fillMaxSize().testTag("page_tune")) {
-                        TuneScreen(model, device, sender, tuneActions, top, bottom)
+                        TuneScreen(model, device, sender, editor, tuneActions, top, bottom)
                     }
                 } else {
                     Box(Modifier.fillMaxSize().testTag("page_library")) {
@@ -366,7 +368,7 @@ fun ContourApp(
         val close = { sheet = null }
         when (val s = sheet) {
             is Sheet.Edit -> EditSheet(model, s.id, close, onSaveTxt)
-            Sheet.New -> NewProfileSheet(model, device, close)
+            Sheet.New -> NewProfileSheet(model, device, editor, close)
             is Sheet.Value -> ValueSheet(model, s.param, close)
             is Sheet.BandActions -> BandSheet(model, s.index, close)
             is Sheet.SendFailure -> SendFailureSheet(s.reason, close)

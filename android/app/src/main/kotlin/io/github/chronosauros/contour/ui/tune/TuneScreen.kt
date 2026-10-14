@@ -73,8 +73,8 @@ import io.github.chronosauros.contour.core.BandStripPlan
 import io.github.chronosauros.contour.core.FilterType
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.model.AppModel
+import io.github.chronosauros.contour.model.DacEditor
 import io.github.chronosauros.contour.model.Sender
-import io.github.chronosauros.contour.ui.AppButton
 import io.github.chronosauros.contour.ui.Grid
 import io.github.chronosauros.contour.ui.Lift
 import io.github.chronosauros.contour.ui.Type
@@ -111,8 +111,9 @@ private val GRAPH_MIN = 200.dp
 
 /** Tune: the current profile - graph, bands, the selected band's values, preamp, HOLD TO SEND. */
 @Composable
-fun TuneScreen(model: AppModel, device: DeviceController, sender: Sender, actions: TuneActions, top: Dp, bottom: Dp) {
+fun TuneScreen(model: AppModel, device: DeviceController, sender: Sender, editor: DacEditor, actions: TuneActions, top: Dp, bottom: Dp) {
     val p = model.current
+    val onDac = playsOnDac(device, sender, p)
     val bottomPad = bottom + (Grid.GROUP - GAP)
     val gestures = Modifier
         .fillMaxSize()
@@ -139,7 +140,7 @@ fun TuneScreen(model: AppModel, device: DeviceController, sender: Sender, action
             gestures.padding(top = top, bottom = bottomPad).padding(horizontal = SIDE),
             verticalArrangement = Arrangement.spacedBy(GAP),
         ) {
-            Header(model, p, sender, actions)
+            Header(model, p, sender, actions, false)
             Box(Modifier.fillMaxWidth().weight(1f).testTag("tune_empty"), contentAlignment = Alignment.Center) {
                 Text(
                     "NO PROFILE\nSwipe to the Library to choose or create one.",
@@ -157,7 +158,7 @@ fun TuneScreen(model: AppModel, device: DeviceController, sender: Sender, action
         val viewport = constraints.maxHeight
         Layout(
             contents = listOf(
-                { Header(model, p, sender, actions) },
+                { Header(model, p, sender, actions, onDac) },
                 {
                     Box {
                         ResponseGraph(model, p, Modifier.fillMaxSize(), bypassed = sender.bypassed, enabled = bandsEnabled)
@@ -165,7 +166,7 @@ fun TuneScreen(model: AppModel, device: DeviceController, sender: Sender, action
                         GraphNotice(model, Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp, start = 12.dp, end = 12.dp))
                     }
                 },
-                { TuneControls(model, p, device, sender, actions, bandsEnabled) },
+                { TuneControls(model, p, device, sender, editor, actions, bandsEnabled) },
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -189,9 +190,17 @@ fun TuneScreen(model: AppModel, device: DeviceController, sender: Sender, action
     }
 }
 
+/** The profile on screen is what the DAC plays: ON DAC on a DAC without slots, the chosen slot (playing) holding it on one with slots. */
+internal fun playsOnDac(device: DeviceController, sender: Sender, p: Profile?): Boolean {
+    if (p == null || device.link != Link.CONNECTED) return false
+    if (sender.isOnDac(p)) return true
+    val slot = device.chosenSlot ?: return false
+    return (device.destinationActive || device.busy) && device.holds(slot, p)
+}
+
 /** Everything under the graph: bands, the selected band's values, preamp, HOLD TO SEND. */
 @Composable
-private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, sender: Sender, actions: TuneActions, bandsEnabled: Boolean) {
+private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, sender: Sender, editor: DacEditor, actions: TuneActions, bandsEnabled: Boolean) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(GAP)) {
         Column(Modifier.alpha(if (sender.bypassed) 0.4f else 1f), verticalArrangement = Arrangement.spacedBy(GAP)) {
             BandStrip(model, p, actions, bandsEnabled)
@@ -224,26 +233,34 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
         if (device.link == Link.CONNECTED) {
             // KA15, K13 R2R, Melody and Tiny A: read, write and persistence confirmed on hardware (FiioConfig.hardwareVerified)
             if (device.protocol.native && !device.hardwareVerified) Text("Native beta recipe: not hardware tested. Readback verifies registers, not audio/persistence.", color = pal.textDim, style = Type.small)
-            (device.snapshot?.nativeState as? io.github.chronosauros.contour.core.native.NativeState.Fiio)?.slotDescription?.let {
-                Text("DAC: $it", color = pal.textDim, style = Type.small)
-            }
             device.sendIssues(p).firstOrNull()?.let { Text("SEND BLOCKED: $it (saved values unchanged)", color = pal.textDim, style = Type.small) }
             if (device.protocol.native) device.error?.let { Text(it, color = pal.textDim, style = Type.small) }
         }
-        if (slots) SlotRow(device, Modifier.padding(top = Grid.GROUP - GAP))
-        // One column grid on every DAC: READ is a third (under USER1 of a three-slot well), HOLD TO SEND the other two.
-        BoxWithConstraints(Modifier.padding(top = if (slots) 0.dp else Grid.GROUP - GAP).fillMaxWidth().height(ROW_H)) {
-            val third = (maxWidth - Grid.INSET * 2) / 3
-            Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(GAP)) {
-                if (device.link == Link.CONNECTED) ReadButton(model, device, Modifier.width(third).fillMaxHeight())
-                HoldToSend(p, device, sender, actions::sendDetails, Modifier.weight(1f).fillMaxHeight())
-            }
+        // The slot row says which slot is chosen (white) and whether this profile is on it (orange, as ON DAC) - no slot text.
+        // K13 R2R: its ten slots show numbers and the DAC stores no names; the chosen slot's last verified profile is
+        // centred in the gap above the row (owner 14.10.2026).
+        val remembered = if (slots && !device.slotNames) device.chosenSlot?.let { slot -> device.slotName(slot)?.let { slot to it } } else null
+        remembered?.let { (slot, name) ->
+            Text(
+                "${device.protocol.fiio?.slotLabels?.get(slot) ?: "SLOT $slot"}: $name",
+                color = pal.text,
+                style = Type.small.copy(lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
+                    androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center, androidx.compose.ui.text.style.LineHeightStyle.Trim.Both)),
+                textAlign = TextAlign.Center,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.fillMaxWidth().padding(vertical = Grid.GROUP - GAP),
+            )
         }
+        if (slots) SlotRow(device, p, sender, editor, sender.isOnDac(p),
+            modifier = Modifier.padding(top = if (remembered != null) 0.dp else Grid.GROUP - GAP))
+        HoldToSend(p, device, sender, actions::sendDetails,
+            Modifier.padding(top = if (slots) 0.dp else Grid.GROUP - GAP).fillMaxWidth().height(ROW_H))
     }
 }
 
 @Composable
-private fun Header(model: AppModel, p: Profile?, sender: Sender, actions: TuneActions) {
+private fun Header(model: AppModel, p: Profile?, sender: Sender, actions: TuneActions, onDac: Boolean) {
     val c = pal
     Row(Modifier.fillMaxWidth().height(56.dp), verticalAlignment = Alignment.CenterVertically) {
         if (p != null) {
@@ -259,14 +276,19 @@ private fun Header(model: AppModel, p: Profile?, sender: Sender, actions: TuneAc
             ) {
                 Icon(ProfileIcons.of(p.icon), null, tint = c.text, modifier = Modifier.size(26.dp))
                 Spacer(Modifier.width(14.dp))
-                // a long name steps down from the title size before it is cut (the header shares its row with UNDO/REDO)
-                BasicText(
-                    p.name,
-                    style = Type.profileTitle.copy(color = c.text),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    autoSize = TextAutoSize.StepBased(minFontSize = 17.sp, maxFontSize = Type.profileTitle.fontSize, stepSize = 1.sp),
-                )
+                Column {
+                    // a long name steps down from the title size before it is cut (the header shares its row with UNDO/REDO)
+                    BasicText(
+                        p.name,
+                        style = Type.profileTitle.copy(color = c.text),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        autoSize = TextAutoSize.StepBased(minFontSize = 17.sp, maxFontSize = Type.profileTitle.fontSize, stepSize = 1.sp),
+                    )
+                    // The profile on screen is what the DAC plays. The line is always there (invisible when not), so the header keeps its height.
+                    Text("ON DAC", style = Type.small, color = c.accent, maxLines = 1,
+                        modifier = Modifier.alpha(if (onDac) 1f else 0f).testTag("on_dac_marker"))
+                }
             }
         } else {
             Text("TUNE", style = Type.profileTitle, color = c.text, modifier = Modifier.weight(1f).padding(start = 6.dp))
@@ -331,20 +353,28 @@ private fun HistoryButton(icon: androidx.compose.ui.graphics.vector.ImageVector,
     }
 }
 
-/** USER slots, a well like the filter type row: the slot HOLD TO SEND writes sits on the orange pill; by default the
- * slot playing now, so a plain HOLD never switches presets. KA15 shows the names read from the DAC (the slot number is
+/** USER slots, a well like the filter type row: the chosen slot (the one tapped, else the one playing) sits on the pill - orange
+ * when it holds the profile on screen, white when it does not - and HOLD TO SEND writes it. A tap switches the DAC to the slot
+ * and puts what it holds on the graph. KA15 shows the names read from the DAC (the slot number is
  * in the rename dialog); more than five unnamed slots (K13 R2R: USER1-10) show numbers in one row, the chosen one with
  * a small USER under its number. Long press = rename the slot (only where the DAC stores names). */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun SlotRow(device: DeviceController, modifier: Modifier = Modifier) {
+private fun SlotRow(device: DeviceController, p: Profile, sender: Sender, editor: DacEditor, onDac: Boolean, modifier: Modifier = Modifier) {
     val c = pal
     val haptics = LocalHaptics.current
     val fiio = device.protocol.fiio ?: return
     val names = (device.snapshot?.nativeState as? io.github.chronosauros.contour.core.native.NativeState.Fiio)?.names.orEmpty()
-    val target = device.destinationSlot()
+    val target = device.chosenSlot
+    // The chosen slot is a white pill (like MANUAL) when it does not hold the profile on screen (unsent edits, or another library
+    // profile picked), orange when it does (ON DAC, or as last read or sent).
+    val chosenHolds = onDac || (target != null && device.holds(target, p))
+    val fill by animateColorAsState(if (chosenHolds) c.accent else c.fill, tween(220), label = "slot-fill")
+    val ink by animateColorAsState(if (chosenHolds) c.onAccent else c.bg, tween(220), label = "slot-ink")
+    // The slot playing now reads bright, the others dimmed (unknown right after a SnowSky plug-in: all bright).
+    val playing = device.playingSlot
     var renaming by remember { mutableStateOf<Int?>(null) }
-    renaming?.let { slot -> RenameSlotDialog(fiio.slotLabels[slot] ?: "SLOT $slot", names[slot].orEmpty(), { renaming = null }) { device.renameSlot(slot, it) } }
+    renaming?.let { slot -> RenameSlotDialog(fiio.slotLabels[slot] ?: "SLOT $slot", names[slot].orEmpty(), fiio.nameLength, { renaming = null }) { device.renameSlot(slot, it) } }
     val named = device.slotNames
     val slots = fiio.userSlots.sorted()
     val numbers = !named && slots.size > 5
@@ -368,7 +398,7 @@ private fun SlotRow(device: DeviceController, modifier: Modifier = Modifier) {
                 .width(w)
                 .fillMaxHeight()
                 .lift(pill, Lift.RAISED)
-                .background(c.accent, pill),
+                .background(fill, pill),
         )
         Row(Modifier.fillMaxSize()) {
             slots.forEach { slot ->
@@ -385,25 +415,30 @@ private fun SlotRow(device: DeviceController, modifier: Modifier = Modifier) {
                         .fillMaxHeight()
                         .clip(pill)
                         .combinedClickable(
-                            enabled = !device.busy,
-                            onClick = { if (!sel) haptics.segment(); device.selectSlot(slot) },
-                            onLongClick = if (named) ({ haptics.longPress(); renaming = slot }) else null,
+                            // DAC traffic never refuses a tap: the editor shows the slot at once and the DAC follows. Refused only while a send runs,
+                            // during A/B, during the connect read and during a rename.
+                            enabled = sender.sendingId == null && !sender.abBusy && !device.connecting && !device.renaming,
+                            // A tap puts what the slot holds on the graph (also on the chosen slot: back from another profile).
+                            onClick = { haptics.segment(); sender.leaveAb { restored -> if (restored) editor.tapSlot(slot) } },
+                            onLongClick = if (named && !device.busy) ({ haptics.longPress(); renaming = slot }) else null,
                         )
                         .testTag("slot_$slot"),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(text, style = Type.segment, color = if (sel) c.onAccent else c.text, maxLines = 1)
-                    if (numbers && sel) Text("USER", style = Type.small, color = c.onAccent, maxLines = 1)
+                    Text(text, style = Type.segment, color = if (sel) ink else if (playing != null && slot != playing) c.textDim else c.text, maxLines = 1)
+                    if (numbers && sel) Text("USER", style = Type.small, color = ink, maxLines = 1)
+                    // Another slot holds the profile on screen: a short orange line under its name.
+                    if (!sel && device.holds(slot, p)) Box(Modifier.padding(top = 4.dp).width(18.dp).height(3.dp).background(c.accent, RoundedCornerShape(2.dp)))
                 }
             }
         }
     }
 }
 
-/** New USER slot name: A-Z and 0-9, at most 7 (all the KA15 takes). Only the name changes, not the EQ. */
+/** New USER slot name: A-Z and 0-9, at most [length] (KA15 7, SnowSky 8). Only the name changes, not the EQ. */
 @Composable
-private fun RenameSlotDialog(label: String, current: String, onDismiss: () -> Unit, onRename: (String) -> Unit) {
+private fun RenameSlotDialog(label: String, current: String, length: Int, onDismiss: () -> Unit, onRename: (String) -> Unit) {
     var name by remember { mutableStateOf(current) }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = onDismiss,
@@ -415,8 +450,8 @@ private fun RenameSlotDialog(label: String, current: String, onDismiss: () -> Un
         text = {
             androidx.compose.material3.OutlinedTextField(
                 value = name,
-                onValueChange = { name = FiioCodec.slotName(it) },
-                label = { Text("NAME, UP TO 7: A-Z 0-9") },
+                onValueChange = { name = FiioCodec.slotName(it, length) },
+                label = { Text("NAME, UP TO $length: A-Z 0-9") },
                 singleLine = true,
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                     capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Characters,
@@ -462,33 +497,6 @@ private fun GraphNotice(model: AppModel, modifier: Modifier) {
             .background(pal.surface2.copy(alpha = 0.85f))
             .padding(horizontal = 12.dp, vertical = 6.dp)
             .testTag("graph_notice"),
-    )
-}
-
-/** READ, beside HOLD TO SEND whenever a DAC is connected: reads the chosen USER slot (the DAC switches to it) or,
- * without slots, what plays now, and opens it as a new profile (FROM DAC). Nothing on the DAC is written. */
-@Composable
-private fun ReadButton(model: AppModel, device: DeviceController, modifier: Modifier) {
-    val enabled = !device.busy && !device.abBypassed
-    AppButton(
-        if (device.reading) "READING" else "READ",
-        onClick = {
-            device.readToImport { s, slot ->
-                when (val r = s.importExact()) {
-                    is io.github.chronosauros.contour.core.DacImport.Ready -> {
-                        val fiio = device.protocol.fiio
-                        val names = (s.nativeState as? io.github.chronosauros.contour.core.native.NativeState.Fiio)?.names.orEmpty()
-                        val name = slot?.let { names[it]?.takeIf(String::isNotBlank) ?: fiio?.slotLabels?.get(it) }
-                        model.create(r.eq.bands, r.eq.preampDb, name = name, sub = "FROM DAC")
-                        val n = r.eq.bands.size
-                        model.showOnGraph("READ ${name ?: "DAC"}: $n FILTER${if (n == 1) "" else "S"}" + (r.warning?.let { " - $it" } ?: ""))
-                    }
-                    is io.github.chronosauros.contour.core.DacImport.Rejected -> model.notice = "READ: ${r.issues.joinToString("; ")}"
-                }
-            }
-        },
-        modifier = modifier.testTag("read_dac"),
-        enabled = enabled,
     )
 }
 

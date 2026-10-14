@@ -14,6 +14,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** Library badges follow the saved curve, not Tune's working copy. A read belongs only to the active destination. */
@@ -31,6 +32,9 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
     private val abScope: CoroutineScope = scope) {
     /** Profile id being sent by HOLD TO SEND. */
     var sendingId by mutableStateOf<String?>(null)
+        private set
+    /** How far the running send is, 0..1: the HID frames done out of those planned (the fill of SAVING TO DAC). Only grows during one send. */
+    var sendProgress by mutableStateOf(0f)
         private set
     /** Profile id of the last failed send and its reason (FAILED - HOLD TO RETRY; tap = details). */
     var failedId by mutableStateOf<String?>(null)
@@ -55,6 +59,19 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
             val c = cache[p.id]
             if (c != null && c.first === p) c.second else s.matches(p).also { cache[p.id] = p to it }
         }?.id
+    }
+
+    /** The chosen destination holds [p]. Not [onDacId] == p.id: the library can have twins with the same
+     * registers, and the first of them would take ON DAC from the profile on screen. */
+    fun isOnDac(p: Profile): Boolean {
+        val s = device.snapshot ?: return false
+        if (!device.destinationActive) return false
+        if (cacheSnapshot !== s) {
+            cache.clear()
+            cacheSnapshot = s
+        }
+        val c = cache[p.id]
+        return if (c != null && c.first === p) c.second else s.matches(p).also { cache[p.id] = p to it }
     }
 
     /** Library "ON DAC" badges: the profiles whose SAVED curve the DAC holds (only for the active destination). */
@@ -121,12 +138,21 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
     fun send(p: Profile) {
         if (busy) return fail(p.id, "DAC BUSY")
         sendingId = p.id
+        sendProgress = 0f
         failedId = null
         leaveAb { restored ->
             if (!restored) sendingId = null else scope.launch {
-                val r: SendOutcome = device.send(p)
-                sendingId = null
-                if (r.verified) model.markSent(p) else fail(p.id, r.reason ?: "UNKNOWN")
+                // The write reports from the USB thread; the state is only touched on the main one.
+                val r: SendOutcome = device.send(p) { f -> scope.launch { sendProgress = maxOf(sendProgress, f.coerceIn(0f, 1f)) } }
+                if (r.verified) {
+                    sendProgress = 1f
+                    model.markSent(p)
+                    delay(PROGRESS_SETTLE_MS) // the fill reaches the end before the button turns ON DAC
+                    sendingId = null
+                } else {
+                    sendingId = null
+                    fail(p.id, r.reason ?: "UNKNOWN")
+                }
             }
         }
     }
@@ -140,4 +166,8 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
 
     /** FAILED - HOLD TO RETRY applies to [p] until it is edited. */
     fun failedFor(p: Profile): Boolean = failedId == p.id && p.updatedAt <= failedAt
+
+    private companion object {
+        const val PROGRESS_SETTLE_MS = 250L
+    }
 }

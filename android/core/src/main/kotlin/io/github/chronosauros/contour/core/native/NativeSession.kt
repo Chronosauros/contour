@@ -48,10 +48,16 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
     }
     private fun <T> guarded(op: () -> T): T { port.guard(); return op().also { port.guard() } }
     private fun pause(ms: Long) { if (ms > 0) guarded { port.pause(ms) } }
-    private fun send(id: Int, bytes: ByteArray, kind: NativeHidReports.Kind = NativeHidReports.Kind.OUTPUT) = guarded { port.send(id, kind, bytes) }
+    private fun send(id: Int, bytes: ByteArray, kind: NativeHidReports.Kind = NativeHidReports.Kind.OUTPUT) { guarded { port.send(id, kind, bytes) }; frameDone() }
     private fun request(id: Int, bytes: ByteArray, check: (ByteArray) -> Boolean): ByteArray = guarded {
         port.request(id, bytes, check).also { require(check(it)) { "Uncorrelated native reply" } }
-    }
+    }.also { frameDone() }
+    // Progress of a write: every HID frame sent or answered is a step done, out of the steps [write] planned (estimated up front,
+    // narrowed once the first read says whether the slot has to be switched; never fewer than one step ahead of those done).
+    private var progress: ((done: Int, total: Int) -> Unit)? = null
+    private var stepsDone = 0
+    private var stepsTotal = 0
+    private fun frameDone() { progress?.let { stepsDone++; it(stepsDone, maxOf(stepsTotal, stepsDone + 1)) } }
     private fun fiioReply(c: FiioCodec, f: FiioFrame): ByteArray {
         fun logical(p: ByteArray) = c.logicalReply(f.reportId, p, p.size)
         val raw = request(f.reportId, f.payload()) { p -> runCatching {
@@ -89,6 +95,9 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
         } catch (e: java.io.IOException) { if (requireEcho || !isReplyTimeout(e)) throw e }
     }
     private fun melodyEcho(frame: ByteArray, reply: ByteArray): Boolean {
+        // A name write is echoed as the stored field (LEN 9, slot + 9 bytes, upper-case, rest cleared), not byte for byte.
+        if ((frame[4].toInt() and 255) == FiioCodec.NAME) return reply.size >= 18 && (reply[5].toInt() and 255) == 9 &&
+            reply[6] == frame[6] && (7 until frame.size - 2).all { reply[it] == frame[it] } && reply[17] == 0xEE.toByte()
         if (reply.size < frame.size || reply[5] != frame[5] || reply[frame.lastIndex] != 0xEE.toByte()) return false
         val band = (frame[4].toInt() and 255) == FiioCodec.BAND
         if (!(6 until frame.size - 2).all { (band && it in 11..12) || reply[it] == frame[it] }) return false
@@ -108,27 +117,38 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
     private fun melodySlotMismatch(c: FiioCodec, expected: Int, actual: Int) =
         "${FiioMelodyExchange.name(c.config)} requested ${c.config.slotLabels[expected] ?: "USER"} (slot $expected), but DAC reports slot $actual; not verified"
     private fun readFiio(c: FiioCodec): NativeState.Fiio {
-        // Names first, as the official app does on connect.
-        val names = if (c.config.userSlotNames) c.config.userSlots.sorted().associateWith { readName(c, it) } else emptyMap()
-        val slot = fiioReply(c, c.querySlot())
-        return readFiioBody(c, slot, names)
+        // KA15: names first, as the official app does on connect. SnowSky: names last, so no name traffic sits
+        // before the slot query whose reply goes stale ([FiioConfig.nameBySlotId]).
+        val early = c.config.userSlotNames && !c.config.nameBySlotId
+        val slot = (if (early) readNames(c) else emptyMap()).let { names -> readFiioBody(c, fiioReply(c, c.querySlot()), names) }
+        return if (c.config.userSlotNames && !early) withNames(c, slot) else slot
     }
+    private fun readNames(c: FiioCodec) = c.config.userSlots.sorted().associateWith { readName(c, it) }
+    /** SnowSky: the names read after the curve (they never decide the slot). */
+    private fun withNames(c: FiioCodec, state: NativeState.Fiio) = if (c.config.userSlotNames) state.copy(names = readNames(c)) else state
     private fun readFiioBody(c: FiioCodec, slot: ByteArray, names: Map<Int, String> = emptyMap()): NativeState.Fiio {
         val count = fiioReply(c, c.queryCount())
         val preamp = fiioReply(c, c.queryPreamp())
         val bands = c.activeBandQueries(c.parseCount(count)).map { fiioReply(c, it) }
         // USER band/preamp traffic corrupts the SnowSky slot reply. Never query/predict it here.
         // 0..6 may still be a stock preset, and Close EQ is stable: retain their closing guard.
-        val raw = if (melody && (c.parseSlot(slot) in c.config.userSlots || c.parseSlot(slot) in 7..9))
+        val opening = c.parseSlot(slot)
+        val raw = if (melody && (opening in c.config.userSlots || opening in 7..9))
             c.melodyUserSnapshot(slot, count, preamp, bands)
-        else c.snapshot(slot, count, preamp, bands, fiioReply(c, c.querySlot()))
+        else {
+            val closing = fiioReply(c, c.querySlot())
+            // SnowSky cold plug on a USER slot: the first reply is a boot value (0 on the Tiny A, Pixel 14.10.2026) and
+            // after the band reads the same register says the last band index. A stock preset answers the same both times.
+            if (melody && c.parseSlot(closing) != opening && c.parseSlot(closing) in 7..9) c.melodyUserSnapshot(closing, count, preamp, bands)
+            else c.snapshot(slot, count, preamp, bands, closing)
+        }
         return NativeState.Fiio(c, raw, names = names)
     }
     private fun readName(c: FiioCodec, slot: Int) = c.parseName(fiioReply(c, c.queryName(slot)), slot)
     /** After a verified save the USER slot takes the profile's name. A name that does not read back is a note,
      * never a failed save: the EQ is already on the DAC. */
     private fun nameAfterSave(c: FiioCodec, back: NativeState.Fiio, slot: Int, profileName: String): Pair<NativeState.Fiio, String?> {
-        val name = FiioCodec.slotName(profileName)
+        val name = FiioCodec.slotName(profileName, c.config.nameLength)
         if (name.isEmpty() || back.names[slot] == name) return back to null
         return try {
             writeAndConsumeEcho(c.writeName(slot, name))
@@ -150,8 +170,19 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
         retryTimeouts { readName(c, slot) }
     }
     fun read(): NativeState = guarded { codec().let { c -> retryTimeouts(5) { readFiio(c) } } }
-    /** READ on a FiiO slot picker: switches the DAC to USER [slot], as its own preset button would (nothing is
-     * written or saved), and reads that slot. The SnowSky DACs always select, like a send: their USER slot reply may be stale. */
+    /** Switches the DAC to USER [slot], as its own preset button would (nothing is written or saved), and returns the slot one
+     * query confirms; no band is read. A tap on a slot Contour already knows, and the end of the background scan on connect.
+     * Same echo and settle handling as [readSlot]; the SnowSky DACs always select. The caller compares the answer with [slot]. */
+    fun selectSlot(slot: Int, explicitUserAction: Boolean): Int = guarded {
+        require(explicitUserAction) { "Switching slots requires an explicit user action" }
+        val c = codec()
+        val select = c.selectUserSlot(slot)
+        if (c.config.consumeWriteEchoes) writeAndConsumeEcho(select, requireEcho = melody) else send(select.reportId, select.payload())
+        pause(SELECT_SETTLE_MS)
+        c.parseSlot(retryTimeouts { fiioReply(c, c.querySlot()) })
+    }
+    /** A tap on a FiiO USER slot Contour has not seen, and the background scan on connect: switches the DAC to USER [slot], as its own
+     * preset button would (nothing is written or saved), and reads that slot. The SnowSky DACs always select, like a send: their USER slot reply may be stale. */
     fun readSlot(slot: Int, explicitUserAction: Boolean): NativeState.Fiio = guarded {
         require(explicitUserAction) { "Reading another slot requires an explicit user action" }
         val c = codec()
@@ -164,14 +195,23 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
         val selected = retryTimeouts { fiioReply(c, c.querySlot()) }
         val selectedSlot = c.parseSlot(selected)
         require(selectedSlot == slot) { if (melody) melodySlotMismatch(c, slot, selectedSlot) else "FiiO slot switch failed" }
-        if (melody) retryTimeouts { readFiioBody(c, selected) } else retryTimeouts(5) { readFiio(c) }
+        if (melody) withNames(c, retryTimeouts { readFiioBody(c, selected) }) else retryTimeouts(5) { readFiio(c) }
     }
-    /** [targetSlot]: the USER slot chosen in the app (KA15 slot picker); null = the target's fixed destination. */
-    fun write(profile: Profile, explicitHold: Boolean, targetSlot: Int? = null): NativeWriteResult = guarded {
+    /** [targetSlot]: the USER slot chosen in the app (KA15 slot picker); null = the target's fixed destination.
+     * [onProgress] (done, total): the HID frames completed so far out of those planned; called on the calling thread. */
+    fun write(profile: Profile, explicitHold: Boolean, targetSlot: Int? = null, onProgress: ((done: Int, total: Int) -> Unit)? = null): NativeWriteResult = guarded {
         require(explicitHold) { "HOLD TO SEND required" }
         require(target.issues(profile).isEmpty()) { target.issues(profile).joinToString("; ") }
         // Stable builds carry only devices whose save can be read back in the same session (no reconnect proof).
         require(!requireNotNull(target.fiio).disconnectOnSave) { "Save needs a reconnect proof; not supported" }
+        // Frames planned: the read before, select + check + backup read, preamp + count + one per band, save, the read-back, the name.
+        val fiio = requireNotNull(target.fiio)
+        val readFrames = 3 + codec().padToDeviceCount(profile.bands).size + (if (melody) 0 else 1) + (if (fiio.userSlotNames) fiio.userSlots.size else 0)
+        progress = onProgress
+        stepsDone = 0
+        stepsTotal = readFrames + (2 + readFrames) + (2 + codec().padToDeviceCount(profile.bands).size) + 1 + readFrames + (if (fiio.userSlotNames) 2 else 0)
+        onProgress?.invoke(0, stepsTotal)
+        try {
         when (val before = read()) {
             is NativeState.Fiio -> {
                 val c = before.codec
@@ -180,6 +220,7 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
                 // switch silenced every later HID reply (hardware, 03.10.2026), so only switch when needed.
                 // The SnowSky DACs must always select: their initial USER slot reply may already be stale.
                 val alreadyActive = !melody && before.raw.activeSlot == p.targetSlot
+                if (alreadyActive) stepsTotal -= 2 + readFrames // no switch, and the read before is the backup
                 if (!alreadyActive) {
                     // 0x19 saves the active preset whatever its slot byte says, so another USER slot needs the switch.
                     if (c.config.consumeWriteEchoes) writeAndConsumeEcho(p.selection, requireEcho = melody) else send(p.selection.reportId, p.selection.payload())
@@ -206,7 +247,8 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
                     val saved = retryTimeouts { fiioReply(c, c.querySlot()) }
                     val savedSlot = c.parseSlot(saved)
                     require(savedSlot == p.targetSlot) { melodySlotMismatch(c, p.targetSlot, savedSlot) }
-                    retryTimeouts { readFiioBody(c, saved) }
+                    // The names read before the send stand; nameAfterSave updates the slot written.
+                    retryTimeouts { readFiioBody(c, saved) }.copy(names = before.names)
                 } else retryTimeouts { readFiio(c) }
                 val ok = c.matches(p.expected, back.raw)
                 if (!ok) NativeWriteResult(false, "FiiO native register mismatch", back)
@@ -214,5 +256,6 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
                 else nameAfterSave(c, back, p.targetSlot, profile.name).let { (named, note) -> NativeWriteResult(true, note, named) }
             }
         }
+        } finally { progress = null }
     }
 }

@@ -28,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
@@ -43,6 +44,7 @@ import io.github.chronosauros.contour.core.DevicePlan
 import io.github.chronosauros.contour.core.DeviceTarget
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
+import android.os.SystemClock
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.model.Sender
 import io.github.chronosauros.contour.ui.Lift
@@ -216,10 +218,13 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
 data class HoldView(val label: String, val eqBlocked: Boolean = false, val issues: List<String> = emptyList())
 
 fun holdView(p: Profile, device: DeviceController, sender: Sender): HoldView {
-    if (sender.sendingId == p.id) return HoldView("SENDING")
+    // A send, the DAC following a slot tap, the connect read, a rename: every DAC transfer the user can see (not the background scan alone).
+    if (sender.sendingId == p.id || device.transferring) return HoldView(SAVING_LABEL)
     // Something to connect -> TAP TO CONNECT; nothing attached -> NO DAC (owner, 14.10.2026).
     if (device.tapToConnect) return HoldView("TAP TO CONNECT")
     if (device.link == Link.NO_DAC) return HoldView("NO DAC")
+    // A slot DAC with no slot chosen yet (a SnowSky right after plug-in, a stock preset): a tap on a slot chooses where HOLD TO SEND writes.
+    if (device.slotPicker && device.chosenSlot == null) return HoldView("CHOOSE A SLOT", eqBlocked = true)
     val issues = device.sendIssues(p)
     if (issues.isNotEmpty()) {
         // Native DACs (FiiO) say which band or the preamp is out of range; Micro and Max keep the generic wording.
@@ -227,18 +232,27 @@ fun holdView(p: Profile, device: DeviceController, sender: Sender): HoldView {
         return HoldView(label, eqBlocked = true, issues = issues)
     }
     return HoldView(when {
-        sender.onDacId == p.id && device.destinationActive -> "ON DAC"
         sender.failedFor(p) -> "FAILED - HOLD TO RETRY"
+        // Answers "can I unplug now?" (owner, 14.10.2026): only once nothing runs on the DAC. Still holdable to send again.
+        !device.busy && !device.scanning && playsOnDac(device, sender, p) -> ON_DAC_LABEL
         else -> "HOLD TO SEND"
     })
 }
 
+const val ON_DAC_LABEL = "ON DAC · SAFE TO UNPLUG"
+/** The label while the DAC is written or read for the user: white, an orange fill grows (a send: the frames written, [Sender.sendProgress]; the rest: a time ramp). */
+const val SAVING_LABEL = "SAVING TO DAC"
+
 private const val HOLD_MS = 700
+
+/** A transfer that is not a send fills to this mark on its expected time; the rest of the fill comes when it ends. */
+private const val TRANSFER_RAMP_TO = 0.85f
 
 /**
  * HOLD TO SEND: hold 700 ms, a shade fills left to right with a rising haptic texture and the button sinks
  * towards the page, a click at full, then send and verify. The only place in the app (besides the service
- * screen) that writes to the DAC. Orange while it can send; grey for ON DAC / FAILED / TAP TO CONNECT;
+ * screen) that writes to the DAC. White while it can send (orange fills it as it is held) and while it saves (the orange fill
+ * follows the real write progress), orange once the profile is on the DAC; grey for FAILED / TAP TO CONNECT;
  * flat grey (no shadow) for NO DAC.
  */
 @Composable
@@ -255,7 +269,27 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
     LaunchedEffect(view.issues) { device.logSendBlock(view.issues) }
     val profile = rememberUpdatedState(p)
     val details = rememberUpdatedState(onDetails)
-    val orange = label == "HOLD TO SEND" || label == "SENDING"
+    // White while it can send and orange fills it as it is held; orange once the profile is on the DAC (as the slot pill, owner 14.10.2026).
+    val saving = label == SAVING_LABEL
+    val white = label == "HOLD TO SEND" || saving
+    val orange = label == ON_DAC_LABEL
+    // The fill of the saving state, never backwards within one continuous period: a send follows its real frame progress; any other
+    // transfer ramps to 85 % over its expected time (chained transfers extend it), then to 100 % when it ends.
+    val shown = remember { Animatable(0f) }
+    val sending = sender.sendingId == p.id
+    LaunchedEffect(saving) { if (!saving) shown.snapTo(0f) }
+    LaunchedEffect(saving, sending, sender.sendProgress) {
+        if (saving && sending && sender.sendProgress > shown.value) shown.animateTo(sender.sendProgress, tween(150))
+    }
+    LaunchedEffect(saving, sending, device.transferActive, device.transferEndMs) {
+        if (!saving || sending) return@LaunchedEffect
+        if (!device.transferActive) {
+            if (shown.value < 1f) shown.animateTo(1f, tween(150))
+        } else if (shown.value < TRANSFER_RAMP_TO) {
+            val left = (device.transferEndMs - SystemClock.elapsedRealtime()).coerceAtLeast(120L).toInt()
+            shown.animateTo(TRANSFER_RAMP_TO, tween(left, easing = LinearEasing))
+        }
+    }
     val flat = label == "NO DAC"
     val shape = RoundedCornerShape(Radii.L)
     Box(
@@ -273,7 +307,7 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
                 },
             )
             .clip(shape)
-            .background(if (orange) c.accent else c.surface2)
+            .background(if (orange) c.accent else if (white) c.fill else c.surface2)
             .testTag("hold_to_send")
             .pointerInput(Unit) {
                 awaitEachGesture {
@@ -282,8 +316,10 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
                     val heldSlot = device.destinationSlot()
                     down.consume()
                     if (eqBlockedNow.value) { haptics.reject(); return@awaitEachGesture }
+                    // A slot tap is reading the DAC: no send until it is done.
+                    if (device.busy && labelNow.value != SAVING_LABEL) { haptics.reject(); return@awaitEachGesture }
                     when (labelNow.value) {
-                        "SENDING" -> return@awaitEachGesture
+                        SAVING_LABEL -> return@awaitEachGesture
                         "NO DAC" -> {
                             if (waitUp() && !device.connect()) haptics.reject()
                             return@awaitEachGesture
@@ -346,14 +382,16 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
             Modifier
                 .align(Alignment.CenterStart)
                 .fillMaxHeight()
-                .fillMaxWidth(fill.value)
+                // while saving, the hold fill drains into the progress fill instead of dropping to nothing
+                .fillMaxWidth(if (saving) maxOf(fill.value, shown.value) else fill.value)
                 .background(if (orange) c.onAccent.copy(alpha = 0.18f) else c.accent),
         )
         Text(
             label,
             style = Type.button,
             color = when {
-                orange -> c.onAccent
+                orange -> Color.White // white on the orange button in both themes (owner, 14.10.2026)
+                white -> c.bg
                 flat -> c.textMute
                 else -> c.text
             },

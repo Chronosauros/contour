@@ -64,6 +64,7 @@ import io.github.chronosauros.contour.core.ApoText
 import io.github.chronosauros.contour.core.DacImport
 import io.github.chronosauros.contour.core.ImportedEq
 import io.github.chronosauros.contour.model.AppModel
+import io.github.chronosauros.contour.model.DacEditor
 import io.github.chronosauros.contour.model.ImportFile
 import io.github.chronosauros.contour.model.Importer
 import io.github.chronosauros.contour.ui.kit.ProfileIcons
@@ -202,9 +203,9 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit, onSaveTxt: (profi
     }
 }
 
-/** FLAT (one 1 kHz band), PASTE (clipboard APO / AutoEQ / EQ by Ear JSON), OPEN FILE (a .txt), FROM DAC. The new profile opens in Tune. */
+/** FLAT (one 1 kHz band), PASTE (clipboard APO / AutoEQ / EQ by Ear JSON), OPEN FILE (a .txt), FROM DAC (the library profile for what plays, or a new one). The profile opens in Tune. */
 @Composable
-fun NewProfileSheet(model: AppModel, device: DeviceController, onDone: () -> Unit) {
+fun NewProfileSheet(model: AppModel, device: DeviceController, editor: DacEditor, onDone: () -> Unit) {
     val context = LocalContext.current
     var clip by remember { mutableStateOf<Pair<ImportedEq, String?>?>(null) }
     val scope = rememberCoroutineScope()
@@ -271,8 +272,8 @@ fun NewProfileSheet(model: AppModel, device: DeviceController, onDone: () -> Uni
             dacImport is DacImport.Ready,
             "new_dac",
         ) {
-            val eq = (dacImport as? DacImport.Ready)?.eq ?: return@Option
-            model.create(eq.bands, eq.preampDb, sub = "FROM DAC")
+            // The profile the DAC content already has in the library opens; a new one only when there is none.
+            if (dacImport is DacImport.Ready) editor.openFromDac()
             onDone()
         }
     }
