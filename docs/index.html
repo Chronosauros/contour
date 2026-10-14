@@ -136,10 +136,21 @@ h2.mega{margin-bottom:.36em}
 /* hero */
 .hero{--hh:clamp(680px,100svh,1100px);--dw:min(calc((var(--hh) - 88px) * 1.029),62vw,1100px);position:relative;height:var(--hh);overflow:hidden}
 .hero-text{position:relative;z-index:3;height:100%;display:flex;flex-direction:column;justify-content:center;padding:clamp(72px,8vw,96px) var(--gut) 40px;max-width:calc(100vw - var(--dw) * .8)}
-.hero .mega{--mega:min(13.2vw,22.5svh,236px)}
+.hero .mega{--mega:min(12vw,18svh,210px)}
 /* the image bottom is flush with the section bottom: phone and wrist always run off the edge; the phone top lands 88px down */
 .hero .dev-pos{position:absolute;z-index:2;width:var(--dw);right:calc(var(--dw) * -.12);bottom:var(--sink)}
-@media (min-width:821px) and (max-height:800px){.hero .mega{--mega:min(12vw,19.5svh)}.hero .intro{font-size:16px;margin-top:10px}.hero .sub{margin-top:14px}.hero .cta{margin-top:20px}.hero-text{padding-bottom:24px}}
+/* supported devices: makers in columns, models big enough to read at a glance */
+.devs{margin-top:clamp(22px,2.4vw,34px);max-width:40em}
+.devs-h{font-size:15px;font-weight:600;display:flex;gap:14px;align-items:baseline}
+.devs-h a{font-weight:600;text-decoration-thickness:1.5px;text-underline-offset:3px}
+.devs-list{list-style:none;margin:10px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,max-content);border-top:3px solid currentColor}
+.devs-list li{display:flex;flex-direction:column;padding:12px clamp(14px,2vw,32px) 0 0}
+.devs-list li + li{padding-left:clamp(12px,1.2vw,18px);border-left:3px solid currentColor}
+.devs .mk{font-size:15px;font-weight:600;margin-bottom:4px}
+.devs .md{font-size:clamp(20px,1.75vw,27px);font-weight:700;letter-spacing:-.015em;line-height:1.18;white-space:nowrap}
+.devs-soon{font-size:15px;font-weight:600;margin-top:12px}
+@media (min-width:821px) and (max-height:940px){.devs{margin-top:16px}.devs .md{font-size:min(22px,2.9svh)}.devs-list li{padding-top:8px}}
+@media (min-width:821px) and (max-height:940px){.hero .mega{--mega:min(11vw,15svh)}.hero .intro{font-size:16px;margin-top:10px}.hero .sub{margin-top:14px}.hero .cta{margin-top:20px}.hero-text{padding-bottom:24px}}
 
 /* live EQ */
 .drag{padding:clamp(72px,9vw,140px) var(--gut)}
@@ -201,6 +212,12 @@ footer a{margin-right:14px}
   .hero .dev-pos{bottom:var(--sink);right:calc(var(--gut) - var(--dw) * .295)}
   .cta{margin-top:24px}
   .cta .btn{flex:1 1 auto}
+  /* devices: one maker per row, models side by side */
+  .devs-list{grid-template-columns:minmax(0,1fr)}
+  .devs-list li,.devs-list li + li{display:grid;grid-template-columns:84px minmax(0,1fr);align-items:baseline;column-gap:12px;padding:10px 0;border-left:0;border-bottom:3px solid currentColor}
+  .devs .mk{grid-row:span 2;margin:0}
+  .devs .md{grid-column:2}
+  .devs .md{font-size:21px}
   .drag-grid{grid-template-columns:minmax(0,1fr);gap:32px}
   #live .ct{--ct-graph-h:250px}
   .show{--dw:142vw;min-height:0;display:flex;flex-direction:column}
@@ -243,8 +260,17 @@ footer a{margin-right:14px}
 <section class="hero on-o" aria-label="Contour">
   <div class="hero-text">
     <h1 class="mega" data-snap><span class="ln"><span>One</span></span><span class="ln"><span>thumb.</span></span></h1>
-    <p class="sub" data-fade>Your EQ lives in the dongle.</p>
-    <p class="intro" data-fade>Contour sets the parametric EQ of the CrinEar Protocol Micro, Protocol Max, FiiO KA15, FiiO K13 R2R, SnowSky Melody and SnowSky Tiny A from an Android phone. For the Protocol dongles that used to take a computer and a desktop-browser tool, because phone browsers lack the WebHID it needs. The dongle keeps the EQ, so it works with every app and every device you plug it into.</p>
+    <p class="sub" data-fade>Edit, keep and send EQ profiles to your DAC.</p>
+    <p class="intro" data-fade>Shape the parametric EQ on your Android phone, keep a profile for every pair of headphones and send one to the dongle with a single hold. The dongle stores it, so it works with every app and every device you plug it into.</p>
+    <div class="devs" data-fade>
+      <p class="devs-h">Works with <a href="devices/">device details</a></p>
+      <ul class="devs-list">
+        <li><span class="mk">CrinEar</span><span class="md">Protocol Micro</span><span class="md">Protocol Max</span></li>
+        <li><span class="mk">FiiO</span><span class="md">KA15</span><span class="md">K13 R2R</span></li>
+        <li><span class="mk">SnowSky</span><span class="md">Melody</span><span class="md">Tiny A</span></li>
+      </ul>
+      <p class="devs-soon">More devices coming soon.</p>
+    </div>
     <div class="cta" data-fade>
       <a class="btn" href="install/"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Install for Android</a>
       <a class="btn line" href="https://github.com/Chronosauros/contour">GitHub</a>
