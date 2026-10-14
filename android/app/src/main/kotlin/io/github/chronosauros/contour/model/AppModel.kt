@@ -579,10 +579,10 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
             ?: if (protocol.walkplay == null && !(db.isFinite() && db in protocol.preampMin..protocol.preampMax)) "Enter a value within the range above" else null
 
     fun rename(id: String, name: String) = update(id) {
-        it.copy(name = name.trim().uppercase().take(NAME_MAX).ifEmpty { it.name })
+        it.copy(name = name.trim().take(NAME_MAX).ifEmpty { it.name })
     }
 
-    fun setHeadphones(id: String, sub: String) = update(id) { it.copy(subtitle = sub.trim().uppercase().take(40)) }
+    fun setHeadphones(id: String, sub: String) = update(id) { it.copy(subtitle = sub.trim().take(40)) }
 
     fun setIcon(id: String, icon: String) = update(id) { it.copy(icon = icon) }
 

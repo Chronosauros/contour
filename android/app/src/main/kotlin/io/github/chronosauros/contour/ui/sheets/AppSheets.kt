@@ -56,7 +56,6 @@ import androidx.compose.ui.semantics.testTagsAsResourceId
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
@@ -128,7 +127,7 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit, onSaveTxt: (profi
             onValueChange = { name = it.take(AppModel.NAME_MAX); model.rename(id, name) },
             label = { Text("NAME") },
             singleLine = true,
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Next),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
             shape = FIELD,
             modifier = Modifier.fillMaxWidth().testTag("edit_name"),
         )
@@ -137,7 +136,7 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit, onSaveTxt: (profi
             onValueChange = { sub = it.take(40); model.setHeadphones(id, sub) },
             label = { Text("HEADPHONES") },
             singleLine = true,
-            keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Characters, imeAction = ImeAction.Done),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
             shape = FIELD,
             modifier = Modifier.fillMaxWidth().testTag("edit_headphones"),
         )
