@@ -118,6 +118,7 @@ strong{font-weight:600}
 .film{margin:0}
 #guide-video{display:block;width:100%;aspect-ratio:16/9;height:auto;background:var(--sunken);border-radius:var(--r-card);box-shadow:var(--lift-card);scroll-margin-top:16px}
 .film-note{color:var(--text-dim);font-size:15px;margin:14px 6px 0}
+#short-video{display:block;width:min(100%,420px);aspect-ratio:4/5;height:auto;margin:10px 0 0;background:var(--sunken);border-radius:var(--r-card);box-shadow:var(--lift-card)}
 
 /* chapter list: library rows - surface, radius 20, CARD lift; the time is a chip */
 nav.chapters{margin:32px 0 0}
@@ -157,7 +158,7 @@ footer .links{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 14px}
   :root{--bg:#EFECE8;--surface:#FAF8F5;--surface2:#E7E3DE;--text:#1D1B19;--text-dim:#6E6963;--text-mute:#9A948D;--sunken:#E6E2DD;--accent:#F07A3A}
   body{background:var(--surface);color:var(--text)}
   *{box-shadow:none!important}
-  #guide-video,.film-note,nav.chapters{display:none!important}
+  #guide-video,#short-video,.film-note,nav.chapters{display:none!important}
 }
 </style>
 <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
@@ -177,7 +178,8 @@ footer .links{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 14px}
 
 <div class="film">
   <video id="guide-video" controls playsinline preload="metadata" poster="../media/guide-poster.jpg" aria-label="Contour guide film, 6 minutes 21 seconds, with voice-over"><source src="../media/guide.mp4" type="video/mp4"></video>
-  <p class="film-note">Short on time? The 1.5-minute demo film is on the <a href="../#film">home page</a>.</p>
+  <p class="film-note">Short on time? This is the app in a minute and a half.</p>
+  <video id="short-video" controls playsinline preload="none" poster="../media/film-poster.jpg" aria-label="Contour demo film, 1 minute 30 seconds"><source src="../media/film.mp4" type="video/mp4"></video>
 </div>
 
 <nav class="chapters" aria-label="Chapters">
