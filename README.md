@@ -91,8 +91,10 @@ Two pages, switched with the bar at the bottom or by swiping: **EQ** and **LIBRA
   delete the band, or delete it with the minus chip; PREAMP with a MANUAL / AUTO anti-clipping bar; A/B to hear the curve off and on at the same volume (the preamp stays; Protocol Micro only for now).
 - **HOLD TO SEND** (0.7 s hold) writes the profile to the dongle, reads it back, compares every register and
   only then saves it to the dongle's memory. The button then shows ON DAC, and the profile is saved.
-- **READ**, next to HOLD TO SEND, reads the chosen USER slot (or what's on the DAC if it has no slots) into a new
-  profile. Nothing on the DAC changes.
+- **USER slots** (KA15, K13 R2R, Melody, Tiny A): tap a slot to switch the DAC to it and see the EQ it holds. If
+  that EQ is already in the Library, Contour opens that profile; if not, it adds it as a new one. After you plug the
+  DAC in, Contour reads every USER slot and goes back to the one that was playing. **FROM DAC** (the + card in the
+  Library) saves what the DAC holds right now as a new profile.
 - **Undo and redo** work like Ctrl+Z: one touch is one step, up to 100 steps per profile, kept after closing
   the app. **CLEAR EQ** leaves one flat band and is an undo step too.
 - **LIBRARY** keeps your profiles: tap to open, long-press to rename, change the icon, duplicate or share.
