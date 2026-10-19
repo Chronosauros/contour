@@ -17,6 +17,11 @@ Ideas and devices for later. None of these is enabled until it is confirmed on r
 - Protocol: the FiiO HID protocol, report ID 7, USB `2972:0126` (Melody) and `2972:0147` (Tiny A) matched exactly. 10 bands, -12..+12 dB, preamp -12..+12 dB, PEAK, LOW SHELF and HIGH SHELF. devicePEQ lists the Tiny A with 5 bands; the hardware reads 10. Firmware quirks are in `research/protocol/PROTOCOL.md`: the slot reply goes stale after band or preamp traffic on a USER slot, SAVE answers without an echo, and a band count below 10 reads back as 10 (Contour pads with flat bands).
 - Open: the sound is not measured yet.
 
+## TRN Black Pearl (WalkPlay SchemeNo16)
+- Supported since Contour 1.5.2, tested on the developer's own hardware (PC and Pixel, 19.10.2026): read on connect, 10 bands, PEAK, LOW SHELF and HIGH SHELF as native filters, +-10 dB, preamp -30..0 dB; every send is read back and stays after unplugging, preamp included. A/B off.
+- Protocol: WalkPlay HID, report ID `0x4B`, USB `3302:43E8` matched exactly (product string "TE-C"). The write sequence follows FreeDSP-Studio (MIT); details in `research/protocol/PROTOCOL.md`. The Black Pearl enumerates on USB only with headphones plugged into it.
+- Open: LOW PASS and HIGH PASS are stored by the firmware (codes 4 and 5, proven on the registers) but come to stable only with the pass-filter work, after a measurement. The sound is not measured yet.
+
 ## CrinEar Protocol Max (WalkPlay SchemeNo16)
 - 10 bands, +-10 dB, low and high shelf, no frequency/Q compensation, pregain via command 0x03.
 - Supported since Contour 1.3.0: 10-band PEQ with native shelves, host pregain, strict read-back; A/B off. Tested by a community member on 02.10.2026 (8 bands, peak and shelf filters, no crashes; a small pop when sending is normal - the dongle saves to its memory). Pre-releases are tested in the `beta` build type ("Contour Beta").

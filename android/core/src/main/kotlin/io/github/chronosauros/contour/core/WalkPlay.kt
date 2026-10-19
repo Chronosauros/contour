@@ -247,15 +247,21 @@ object WalkPlay {
         return out
     }
 
-    /** Filter write `01 09 18 00 i 00 00` + biquad + freq + q + gain + type + 00 + slot + 00. */
-    fun bandWriteReport(w: BandWrite, slot: Int): ByteArray {
+    /** The length byte of a filter write on Micro and Max (devicePEQ). The TRN Black Pearl takes [TRN_BAND_LEN]. */
+    const val BAND_LEN: Int = 0x18
+    const val TRN_BAND_LEN: Int = 0x21
+
+    /** Filter write `01 09 18 00 i 00 00` + biquad + freq + q + gain + type + 00 + slot + 00 ([lenByte] 0x21 for the TRN). */
+    fun bandWriteReport(w: BandWrite, slot: Int, lenByte: Int = BAND_LEN): ByteArray {
         val biquad = computeIir(w.freq, w.gainDb, w.q, w.typeCode)
         q30ViolationQuantized(w)?.let { throw Q30Overflow(it) }
+        // The frequency register is truncated here; FreeDSP-Studio rounds. For whole Hz (every band the editor
+        // makes) they agree, so Contour's rule stays as it is for every DAC.
         val f = toInt32(w.freq) and 0xFFFF
         val q = toInt32(jsRound(w.q * 256)) and 0xFFFF
         val g = toInt32(jsRound(w.gainDb * 256)) and 0xFFFF
         val payload = IntArray(7 + 20 + 10)
-        intArrayOf(WRITE, CMD_PEQ, 0x18, 0x00, w.index, 0x00, 0x00).copyInto(payload)
+        intArrayOf(WRITE, CMD_PEQ, lenByte, 0x00, w.index, 0x00, 0x00).copyInto(payload)
         biquad.forEachIndexed { i, b -> payload[7 + i] = b.toInt() and 0xFF }
         intArrayOf(f and 0xFF, f shr 8, q and 0xFF, q shr 8, g and 0xFF, g shr 8, w.typeCode, 0x00, slot, END)
             .copyInto(payload, 27)
@@ -299,4 +305,18 @@ object WalkPlay {
         }
         return steps
     }
+
+    /**
+     * The TRN Black Pearl's write: `write_bank` of FreeDSP-Studio (MIT, (c) 2026 EffectiveEquivalent, dsp2.rs, commit 1b42f63),
+     * proven on the owner's unit from the PC on 19.10.2026. Every band with length byte 0x21 and 25 ms after it, the
+     * coefficient commit (50 ms), the preamp (50 ms), `01 01 00` (EQ flash, 200 ms), `01 04 00` (offset and preamp flash, 200 ms).
+     * Not devicePEQ's commit: no `01 05`, `01 17` and no `01 01 01`. Only the TRN gets this sequence.
+     */
+    fun trnWriteSequence(bands: List<BandWrite>, preampDb: Double, slot: Int): List<Step> =
+        bands.map { Step(bandWriteReport(it, slot, TRN_BAND_LEN), 25) } + listOf(
+            Step(report(WRITE, 0x0A, 0x04, 0x00, 0x00, 0xFF, 0xFF), 50),
+            Step(preampWriteReport(preampDb), 50),
+            Step(report(WRITE, 0x01, END), 200),
+            Step(report(WRITE, 0x04, END), 200),
+        )
 }

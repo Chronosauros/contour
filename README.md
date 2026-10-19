@@ -2,7 +2,7 @@
 
 # Contour
 
-**An on-the-go EQ manager for the CrinEar Protocol Micro, Protocol Max, FiiO KA15, FiiO K13 R2R, SnowSky Melody and SnowSky Tiny A.** Keep all your EQ profiles on your phone, plug the
+**An on-the-go EQ manager for the CrinEar Protocol Micro, Protocol Max, FiiO KA15, FiiO K13 R2R, SnowSky Melody, SnowSky Tiny A and TRN Black Pearl.** Keep all your EQ profiles on your phone, plug the
 dongle in, pick one and send it. Plug in, send, unplug - that is the whole routine.
 
 **Website: [contoureq.app](https://contoureq.app/)** - a 1.5-minute demo film, the full guide film and the install page.
@@ -15,7 +15,7 @@ dongle in, pick one and send it. Plug in, send, unplug - that is the whole routi
 
 ## Why it exists
 
-The Protocol Micro, Protocol Max, KA15, K13 R2R, Melody and Tiny A have a parametric EQ built into the DAC itself. Whatever EQ a DAC holds works with every
+The Protocol Micro, Protocol Max, KA15, K13 R2R, Melody, Tiny A and Black Pearl have a parametric EQ built into the DAC itself. Whatever EQ a DAC holds works with every
 app and every device you plug it into - no system equaliser, no app running in the background. But
 the official way to change it on the Protocol dongles is CrinEar's browser tool at [eq.hangout.audio](https://eq.hangout.audio/),
 which the maker lists for desktop (PC and macOS) browsers. There is no official mobile app, and phone
@@ -70,8 +70,13 @@ Contour does not process audio, does not need the internet and has no accounts. 
   profile is filled up with flat 0 dB bands. Tested on the developer's own hardware.
 - **SnowSky Tiny A** (USB `2972:0147`, FiiO protocol): the same as the Melody - 10 bands, gain -12 to +12 dB,
   preamp -12 to +12 dB, USER1, USER2 or USER3. Tested on the developer's own hardware.
+- **TRN Black Pearl** (USB `3302:43E8`, WalkPlay chip): 10 bands, PEAK, LOW SHELF and HIGH SHELF as native filters,
+  gain -10 to +10 dB, Q 0.1 to 10, 20 Hz to 20 kHz, preamp -30 to 0 dB in whole dB. **Plug your headphones into the
+  Black Pearl first:** without headphones it does not show up on USB at all, so Contour shows NO DAC. Every send is
+  read back and stays in the DAC after unplugging, preamp included. Tested on the developer's own hardware; the
+  read-back checks the stored values, the sound has not been measured yet.
 
-Contour is unofficial and not affiliated with CrinEar or FiiO. Other WalkPlay and FiiO dongles are possible later
+Contour is unofficial and not affiliated with CrinEar, FiiO, SnowSky or TRN. Other WalkPlay and FiiO dongles are possible later
 (see `ROADMAP.md`); they are not enabled until someone confirms one on real hardware.
 
 Needs Android 9 or newer and a phone with USB host (USB OTG) support.
@@ -99,7 +104,7 @@ Two pages, switched with the bar at the bottom or by swiping: **EQ** and **LIBRA
   file in the squig.link format.
 
 On the Protocol Micro only, HIGH SHELF bands are sent as a mirrored LOW SHELF plus preamp, which gives exactly the
-same curve shape (the Protocol Max, KA15, K13 R2R, Melody and Tiny A have native shelf filters and need no mirroring) (the maths is in `android/core/src/main/kotlin/io/github/chronosauros/contour/core/Device.kt`).
+same curve shape (the Protocol Max, KA15, K13 R2R, Melody, Tiny A and Black Pearl have native shelf filters and need no mirroring) (the maths is in `android/core/src/main/kotlin/io/github/chronosauros/contour/core/Device.kt`).
 
 ## Safety
 
@@ -140,7 +145,7 @@ cd android
 `android/app/build.gradle.kts`.
 
 Code layout:
-- `android/core` - pure Kotlin/JVM: profile model, DSP, text codecs, the WalkPlay and FiiO (KA15, K13 R2R, SnowSky Melody and Tiny A) device protocols;
+- `android/core` - pure Kotlin/JVM: profile model, DSP, text codecs, the WalkPlay (Protocol Micro, Protocol Max, TRN Black Pearl) and FiiO (KA15, K13 R2R, SnowSky Melody and Tiny A) device protocols;
 - `android/app` - the Jetpack Compose app, USB HID transport, storage;
 - `research/protocol` - protocol notes, Python reference tools and the device captures the parity test
   checks against.
@@ -160,12 +165,13 @@ Issues and pull requests are welcome, especially reports from other WalkPlay-bas
 Contour is licensed under the Apache License, Version 2.0 (`LICENSE`).
 
 The WalkPlay and FiiO protocols and the biquad coefficient maths are ported from
-[devicePEQ](https://github.com/jeromeof/devicePEQ) by Jerome O'Flaherty (0BSD). Every third-party
+[devicePEQ](https://github.com/jeromeof/devicePEQ) by Jerome O'Flaherty (0BSD). The TRN Black Pearl write sequence follows
+[FreeDSP-Studio](https://github.com/EffectiveEquivalent/FreeDSP-Studio) by EffectiveEquivalent (MIT). Every third-party
 component and its licence is listed in `THIRD_PARTY_NOTICES.md`; attributions are in `NOTICE`. The DUSK
 example profile uses the DUSK-Default DSP curve
 [published by Crinacle](https://crinacle.com/2024/04/10/moondrop-x-crinacle-dusk-eq-dsp-values/). In the app,
 all of this is under **ABOUT & LICENCES** at the bottom of the Library.
 
-Contour is an unofficial project, not affiliated with or endorsed by CrinEar, FiiO or any other brand. CrinEar,
-Protocol Micro, Protocol Max, FiiO, KA15, K13, SnowSky, Melody, Tiny A, Nightfall, WalkPlay, Moondrop, Crinacle, DUSK and other product names belong to their owners
+Contour is an unofficial project, not affiliated with or endorsed by CrinEar, FiiO, SnowSky, TRN or any other brand. CrinEar,
+Protocol Micro, Protocol Max, FiiO, KA15, K13, SnowSky, Melody, Tiny A, TRN, Black Pearl, Nightfall, WalkPlay, Moondrop, Crinacle, DUSK and other product names belong to their owners
 and are used only to say what Contour works with.

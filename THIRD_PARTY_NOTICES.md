@@ -7,8 +7,9 @@ foot of the Library, and in the service menu).
 
 Summary:
 - Every library inside the app is licensed under the Apache License 2.0.
-- The only code from another project is a port of the WalkPlay protocol and coefficient maths from
-  devicePEQ, licensed under 0BSD (section 2).
+- The only code from other projects is a port of the WalkPlay protocol and coefficient maths from
+  devicePEQ, licensed under 0BSD, and the TRN Black Pearl write sequence from FreeDSP-Studio, licensed under
+  the MIT License (both in section 2).
 - The app bundles no fonts, images or sounds made by others. The only outside data is the three filter
   settings of the DUSK example profile, credited in section 3.
 
@@ -78,6 +79,38 @@ copies of four devicePEQ files. devicePEQ is licensed under 0BSD:
 
 The protocol was then checked on a real CrinEar Protocol Micro (captures in `research/protocol/`). It was not
 taken from any vendor tool or SDK.
+
+FreeDSP-Studio, https://github.com/EffectiveEquivalent/FreeDSP-Studio, commit 1b42f63. What was taken: the
+write sequence and pacing of the TRN Black Pearl (WalkPlay scheme 16) from `write_bank` and its helpers in
+`tools/app/src/dsp2.rs` - the band frame with length byte 0x21, 25 ms after each band, the coefficient commit,
+the preamp, the two flash commands and their pauses. It is used in
+`android/core/src/main/kotlin/io/github/chronosauros/contour/core/WalkPlay.kt` (`trnWriteSequence`) and was then
+checked on a real TRN Black Pearl (`research/black-pearl-pc-2026-10-19/FINDINGS.md`). FreeDSP-Studio is licensed
+under the MIT License:
+
+    MIT License
+
+    Copyright (c) 2026 EffectiveEquivalent
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+
+Nothing was taken from BlackPearlControl-Android (GPL).
 
 Formulas and formats, no code copied:
 - Audio EQ Cookbook by Robert Bristow-Johnson: the biquad formulas for the response graph.

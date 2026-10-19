@@ -3,7 +3,7 @@ package io.github.chronosauros.contour.core
 import io.github.chronosauros.contour.core.native.*
 
 /**
- * The DAC the app talks to: a WalkPlay DAC ([walkplay]: Protocol Micro, Protocol Max - 1.3.x code, unchanged) or a
+ * The DAC the app talks to: a WalkPlay DAC ([walkplay]: Protocol Micro, Protocol Max, TRN Black Pearl) or a
  * FiiO ([fiio]: native FiiO HID protocol; the KA15 was hardware-tested on a Pixel 04.10.2026, the K13 R2R, the
  * SnowSky Melody and Tiny A are routed the same way). Family identity is separate from WalkPlay's wire representation; no native register coercion.
  */
@@ -13,7 +13,7 @@ data class DeviceTarget private constructor(
 ) {
     val supportsAb: Boolean get() = walkplay == DeviceProtocol.MICRO
     val experimental: Boolean get() = !supportsAb
-    /** Micro and Protocol Max: the 1.3.x targets, with their editor/import/preamp policy. */
+    /** Micro, Protocol Max and TRN Black Pearl: the WalkPlay targets, with their editor/import/preamp policy. */
     val stable: Boolean get() = walkplay != null
     val native: Boolean get() = walkplay == null
     /** KA15: the intended (acoustic) range, register range minus [FiioConfig.preampOffsetDb] (-24..0 dB). */
@@ -127,15 +127,20 @@ data class DeviceTarget private constructor(
         }
         val MICRO = DeviceTarget(walkplay = DeviceProtocol.MICRO)
         val MAX = DeviceTarget(walkplay = DeviceProtocol.MAX)
+        val TRN = DeviceTarget(walkplay = DeviceProtocol.TRN)
         val KA15 = DeviceTarget(fiio = FiioCatalog.KA15)
         val K13 = DeviceTarget(fiio = FiioCatalog.K13)
         val MELODY = DeviceTarget(fiio = FiioCatalog.MELODY)
         val TINY_A = DeviceTarget(fiio = FiioCatalog.TINY_A)
-        fun of(protocol: DeviceProtocol) = if (protocol == DeviceProtocol.MICRO) MICRO else MAX
+        fun of(protocol: DeviceProtocol) = when (protocol) {
+            DeviceProtocol.MICRO -> MICRO
+            DeviceProtocol.MAX -> MAX
+            DeviceProtocol.TRN -> TRN
+        }
 
         /**
          * Strict VID:PID allow-list, the only discovery API: Protocol Micro 3302:C20F, Protocol Max 3302:43CC,
-         * FiiO KA15 2972:0104, FiiO K13 R2R 2972:[FiioCatalog.K13_R2R_PRODUCT_ID], SnowSky Melody 2972:[FiioCatalog.MELODY_PRODUCT_ID],
+         * TRN Black Pearl 3302:43E8, FiiO KA15 2972:0104, FiiO K13 R2R 2972:[FiioCatalog.K13_R2R_PRODUCT_ID], SnowSky Melody 2972:[FiioCatalog.MELODY_PRODUCT_ID],
          * SnowSky Tiny A 2972:[FiioCatalog.TINY_A_PRODUCT_ID]. Every other identity is unrecognised (NO DAC).
          */
         fun find(vendorId: Int, productId: Int): DeviceTarget? {

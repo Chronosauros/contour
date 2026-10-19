@@ -42,7 +42,7 @@ data class DacSnapshot(
 
 /**
  * A write plus its read-back: verified = every register (freq, Q, gain, type x every device slot + preamp) as
- * written; on the Protocol Max the bulk slot byte as well; on the KA15 the complete native USER slot state.
+ * written; on the Protocol Max and the TRN the bulk slot byte as well; on the KA15 the complete native USER slot state.
  * A verified KA15 write can still carry a note in [mismatches] (the slot name did not read back).
  */
 data class WriteResult(
@@ -54,7 +54,7 @@ data class WriteResult(
 )
 
 /**
- * Operations on the supported DACs (Protocol Micro, Protocol Max, FiiO KA15). Each one opens the HID interface, does its reports on the single
+ * Operations on the supported DACs (Protocol Micro, Protocol Max, TRN Black Pearl, FiiO KA15). Each one opens the HID interface, does its reports on the single
  * USB thread and releases the interface again. Writes happen only when the user asks (debug buttons).
  * [guardFor] (KA15) throws once the DAC session the operation started on has ended; [audioKeepAlive] keeps the
  * KA15's USB audio stream running for the whole HID session (it answers HID only while audio streams).
@@ -143,7 +143,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
 
     /** A/B: only the supplied bands + TEMP_WRITE, on the existing USB thread. No read-back wait. */
     suspend fun writeTemporaryBands(device: UsbDevice, bands: List<WalkPlay.BandWrite>, slot: Int) = withDevice(device) { t ->
-        require(protocol(device).supportsAb) { "A/B unavailable on the Protocol Max: RAM-only writes are not verified" }
+        require(protocol(device).supportsAb) { "A/B unavailable on the ${protocol(device).caps.name.removePrefix("CrinEar ")}: RAM-only writes are not verified" }
         // Encode everything before sending: invalid coefficients cannot leave a partial write.
         val steps = WalkPlay.temporaryBandSequence(bands, slot)
         val t0 = SystemClock.elapsedRealtime()
@@ -178,7 +178,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
         }
     }
 
-    /** Micro: factory flat on all 8 slots, preamp 0. Max: neutral flat PK on all 10 slots, preamp 0. */
+    /** Micro: factory flat on all 8 slots, preamp 0. Max: neutral flat PK on all 10 slots, preamp 0. TRN: its factory flat on all 10 slots, preamp 0. */
     suspend fun restoreFlat(device: UsbDevice): WriteResult = writePlan(device, protocol(device).flatPlan())
 
     /**
@@ -201,7 +201,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
         val p = protocol(device)
         // Steps planned: the read before (Max: the whole state; Micro: version and slot), every report of the write sequence, the read-back.
         val steps = Steps(
-            (if (p.experimental) p.caps.bands + 3 else 2) + runCatching { WalkPlay.writeSequence(plan.bands, plan.preampDb.toDouble(), 0, commit = true).size }
+            (if (p.experimental) p.caps.bands + 3 else 2) + runCatching { p.writeSequence(plan, 0).size }
                 .getOrDefault(plan.bands.size + 8) + p.caps.bands + 3, onProgress)
         val slot = if (p.experimental) {
             // Protocol Max fails closed: every slot in order, and VERSION + bulk slot + every band + preamp
@@ -222,13 +222,27 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
         fun tick() { done++; report?.invoke(done.toFloat() / maxOf(total, done + 1)) }
     }
 
-    /** MICRO: exactly the 1.2.2 predicates and parsers (DeviceProtocol delegates). MAX: strict, all 10 slots. */
+    /**
+     * TRN: a band that did not come back is asked for once more, alone, after the input queue is drained (on the PC
+     * on 19.10.2026 a stale reply in the queue made band 1 go missing once). Any other failure is not retried here.
+     */
+    private fun trnBandReply(t: HidTransport, p: DeviceProtocol, i: Int): ByteArray = try {
+        t.request(WalkPlay.bandRequest(i), "band $i") { p.isBandReply(it, i) }
+    } catch (e: IOException) {
+        if (e.message?.startsWith("the DAC did not answer") != true) throw e
+        UsbLog.line("band $i missing: drain and ask once more")
+        t.drain()
+        t.request(WalkPlay.bandRequest(i), "band $i") { p.isBandReply(it, i) }
+    }
+
+    /** MICRO: exactly the 1.2.2 predicates and parsers (DeviceProtocol delegates). MAX, TRN: strict, all 10 slots. */
     private fun read(t: HidTransport, p: DeviceProtocol, tick: () -> Unit = {}): DacSnapshot {
         val t0 = SystemClock.elapsedRealtime()
         val version = p.parseVersion(t.request(WalkPlay.versionRequest(), "version") { p.isReply(it, WalkPlay.CMD_VERSION) }.also { tick() })
         val slot = p.parseSlot(t.request(WalkPlay.slotRequest(), "slot") { p.isSlotReply(it) }.also { tick() })
         val bands = (0 until p.caps.bands).map { i ->
-            p.parseBand(t.request(WalkPlay.bandRequest(i), "band $i") { p.isBandReply(it, i) }.also { tick() }, i)
+            val reply = if (p == DeviceProtocol.TRN) trnBandReply(t, p, i) else t.request(WalkPlay.bandRequest(i), "band $i") { p.isBandReply(it, i) }
+            p.parseBand(reply.also { tick() }, i)
         }
         val preamp = p.parsePreamp(t.request(WalkPlay.preampRequest(), "preamp") { p.isReply(it, WalkPlay.CMD_GLOBAL_GAIN) }.also { tick() })
         val ms = SystemClock.elapsedRealtime() - t0
@@ -236,10 +250,10 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
         return DacSnapshot(version, slot, bands, preamp, ms, p)
     }
 
-    /** write_state(..., "devicepeq"): every band report (8 Micro, 10 Max), preamp, commit sequence with devicePEQ's delays; then read back. */
+    /** write_state(..., "devicepeq"): every band report (8 Micro, 10 Max and TRN), preamp, commit sequence with devicePEQ's delays (the TRN: its own sequence); then read back. */
     private fun write(t: HidTransport, plan: DevicePlan.Ready, slot: Int, p: DeviceProtocol, tick: () -> Unit = {}): WriteResult {
         val t0 = SystemClock.elapsedRealtime()
-        for (step in WalkPlay.writeSequence(plan.bands, plan.preampDb.toDouble(), slot, commit = true)) {
+        for (step in p.writeSequence(plan, slot)) {
             t.send(step.report)
             if (step.delayAfterMs > 0) Thread.sleep(step.delayAfterMs)
             tick()

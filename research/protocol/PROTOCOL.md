@@ -127,6 +127,49 @@ Applied on write AND inverted on read (CO; WH L281-303, L379-398). Order on writ
   shelf filters, no crashes. A small pop when sending is normal - the dongle saves the EQ to its memory.
   Not yet checked: A/B (stays off), long-term persistence details. The Protocol Micro path is unchanged from 1.2.2.
 
+## TRN Black Pearl (3302:43E8)
+
+Hardware facts: `research/black-pearl-pc-2026-10-19/FINDINGS.md` (written and read back from a PC on 19.10.2026).
+
+- Allow-list: **3302:43E8 only**, recognised in every build; the USB attach filter lists it. SchemeNo16 like the Max
+  (devicePEQ `peq10Band10dBFullShelves`): 10 filters, +/-10 dB, Q 0.1..10, PK/LS/HS on native codes 2/1/3, raw
+  frequency and Q (no compensation, no Micro HIGH SHELF emulation). Preamp is whole signed int8 dB (CMD 0x03);
+  Contour keeps its -30..0 dB policy, not a proven limit of the unit.
+- Enumeration: USB product string "TE-C". **The unit does not enumerate at all without headphones plugged in**
+  (nothing on the bus, not even a failed device); with headphones it appears. Interface 0 is HID (one collection,
+  usage page 0x0C usage 0x01, report 0x4B), interface 1 is audio. Without headphones Contour sees nothing and shows NO DAC.
+- Factory state (firmware 0.6): bulk slot byte 0, preamp 0 dB, ten PK bands at 0 dB, register Q 182/256
+  (0.711) on 31 / 62 / 125 / 250 / 500 / 1000 / 2000 / 4000 / 8000 / 16000 Hz. The stored biquads fit RBJ at
+  **96 kHz** (Q 0.75 in that state; 44.1, 48 and 192 kHz do not fit), the design rate Contour uses. The firmware does
+  not recompute coefficients: what is stored is what runs. Contour's spare slots are exactly this factory flat.
+- **Write sequence** = `write_bank` of FreeDSP-Studio (`tools/app/src/dsp2.rs`, MIT, (c) 2026 EffectiveEquivalent, commit
+  1b42f63; see THIRD_PARTY_NOTICES.md), scheme 16:
+  1. every band `4B 01 09 21 00 i 00 00` + biquad (20) + freq u16 + Q*256 u16 + gain*256 s16 + type + `00` + slot,
+     25 ms after each. **The length byte is 0x21**, not devicePEQ's 0x18. Slot byte = the bulk-read slot (0 here).
+     Biquads are Contour's own (96 kHz, Q30); the unit stored those bytes unchanged.
+  2. commit `01 0A 04 00 00 FF FF`, 50 ms
+  3. preamp `01 03 02 00 g`, 50 ms
+  4. `01 01 00` (EQ flash), 200 ms
+  5. `01 04 00` (offset and preamp flash), 200 ms
+  Not devicePEQ's commit (`01 05`, `01 17`, `01 01 01`). All ten bands are written on every send; unused ones are the
+  factory flat above. Read-back compares every register of all ten bands, the preamp and the slot byte.
+- Proven on the unit (registers and every biquad byte identical after the write): LOW SHELF, HIGH SHELF and peaks across the
+  caps, PK 500 Hz **-10.4 dB Q 0.1 stored as sent** (no firmware clamp at +/-10 dB; the TRN's own tool stores -10.4 too),
+  and the **pass filters: LOW PASS 18 kHz is code 4, HIGH PASS 30 Hz code 5, both kept as sent** (not coerced to PK).
+  Pass filters are NOT in the stable build (owner decision 14.10.2026: they come with branch `wip/pass-filters` after the
+  UMC202HD measurement); a read still accepts codes 1 to 5 so a state written by the TRN's tool does not stop a send.
+- Persistence: unplug and replug with the headphones kept in: the whole state came back identical, **the preamp
+  (-12 dB) included**, after `01 04 00`. Not tested: whether the preamp also persists without `01 04 00`.
+- Read: VERSION, bulk slot, ten band requests, preamp, as the Max. A stored band is checked against the register format
+  (frequency 1..48000, gain +/-60 dB), not the +/-10 dB caps; disabled or erased slots (freq or Q 0, type 0 or 0xFF) are
+  no read failure. FROM DAC loads an out-of-cap band with its real value and a warning (sending it back stays blocked).
+  A band that did not come back is asked for once more, alone, after draining the input (on 19.10.2026 a stale reply
+  made band 1 go missing once).
+- Off on the TRN: A/B (TEMP_WRITE is proven RAM-only on the Micro only) and the service screen's band-1 test write.
+- Contour on a phone (Pixel 9 Pro, 19.10.2026): recognised, HID interface 0 with IN 0x86 / OUT 0x05, read in about
+  400 ms; a five-band profile with preamp -6 dB sent VERIFIED, and a PC read afterwards showed the same state.
+- Not yet proven: the audible response (register and biquad identity only; needs the UMC202HD measurement).
+
 ## Other WalkPlay groups (for extensibility)
 Same handler/wire format for SchemeNo10-21 (WH L7). Differences are config only:
 - SchemeNo10 (default): 8 bands, PK only.

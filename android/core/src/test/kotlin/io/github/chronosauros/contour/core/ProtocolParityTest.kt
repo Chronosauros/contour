@@ -29,8 +29,9 @@ class ProtocolParityTest {
         assertNull(DeviceProtocol.find(0x262A, 0x0001))
         assertNull(DeviceProtocol.find(0x3302, 0x43CD))
         assertEquals(DeviceProtocol.MICRO, DeviceProtocol.find(0x3302, 0xC20F))
-        // Other SchemeNo16 products (e.g. TRN Black Pearl 43E8) are not supported.
-        assertNull(DeviceProtocol.find(0x3302, 0x43E8))
+        // The TRN Black Pearl (43E8) is the third entry; other SchemeNo16 products stay unsupported.
+        assertEquals(DeviceProtocol.TRN, DeviceProtocol.find(0x3302, 0x43E8))
+        assertNull(DeviceProtocol.find(0x3302, 0x43E9))
     }
 
     @Test

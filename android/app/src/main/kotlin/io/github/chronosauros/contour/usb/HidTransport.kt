@@ -83,7 +83,7 @@ class HidTransport private constructor(
                         ep.type == UsbConstants.USB_ENDPOINT_XFER_INT && ep.direction == UsbConstants.USB_DIR_IN && ep.maxPacketSize >= WalkPlay.REPORT_SIZE
                     } }
                 }
-                suitable.singleOrNull() ?: throw IOException("Protocol Max requires one unambiguous 64-byte HID interrupt IN interface")
+                suitable.singleOrNull() ?: throw IOException("${p.caps.name.removePrefix("CrinEar ")} requires one unambiguous 64-byte HID interrupt IN interface")
             } else hids.firstOrNull { it.id == 3 } ?: hids.firstOrNull()
                 ?: throw IOException("no HID interface on ${device.deviceName}")
             var epIn: UsbEndpoint? = null
@@ -181,7 +181,7 @@ class HidTransport private constructor(
     }
 
     /** Drops input that queued up before this operation (e.g. volume-key reports 0x03). */
-    private fun drain() {
+    fun drain() {
         var dropped = 0
         while (dropped < 16 && receive(5) != null) dropped++
         if (nativeReports != null && dropped >= 16) throw IOException("Native input queue did not drain; reconnect and read again")
