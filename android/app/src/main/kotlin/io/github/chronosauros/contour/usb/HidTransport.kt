@@ -9,6 +9,7 @@ import android.hardware.usb.UsbManager
 import android.os.SystemClock
 import io.github.chronosauros.contour.core.WalkPlay
 import io.github.chronosauros.contour.core.DeviceTarget
+import io.github.chronosauros.contour.core.native.KtMicroCodec
 import io.github.chronosauros.contour.core.native.NativeHidReports
 import java.io.Closeable
 import java.io.IOException
@@ -17,7 +18,7 @@ import java.io.IOException
  * The DAC's HID interface, claimed for one operation. Only the HID interface (class 3; interface 3 on the
  * Protocol Micro) is ever claimed - the audio interfaces stay with the kernel. Output reports go through the
  * interrupt OUT endpoint when there is one, else HID SET_REPORT; input reports come from the interrupt IN endpoint.
- * The FiiO KA15 (native FiiO protocol) is opened only after its HID report descriptor proves the report sizes.
+ * The FiiO DACs and the JCally JM12 (native protocols) are opened only after their HID report descriptor proves the report sizes.
  * Blocking: call from the single USB thread only.
  */
 class HidTransport private constructor(
@@ -73,9 +74,10 @@ class HidTransport private constructor(
 
         fun open(manager: UsbManager, device: UsbDevice, guard: () -> Unit = {}): HidTransport {
             val hids = firstConfigInterfaces(device).filter { it.interfaceClass == UsbConstants.USB_CLASS_HID }
-            val target = DeviceTarget.find(device.vendorId, device.productId)
+            val target = DeviceTarget.find(device.vendorId, device.productId, device.productName)
                 ?: throw IOException("Unsupported DAC")
             target.fiio?.let { return openNative(manager, device, hids, it.reportId, guard) }
+            if (target.kt) return openNative(manager, device, hids, KtMicroCodec.REPORT_ID, guard, kt = true)
             val p = requireNotNull(target.walkplay)
             val intf = if (p.experimental) {
                 val suitable = hids.filter { h -> h.alternateSetting == 0 &&
@@ -109,10 +111,11 @@ class HidTransport private constructor(
             return HidTransport(connection, intf, epIn, epOut).also { it.drain() }
         }
 
-        /** FiiO KA15: the one HID interface whose report descriptor declares vendor Input and Output reports
-         * [reportId] in the same collection; nothing is written before this read-only proof. */
+        /** FiiO, JM12 ([kt]): the one HID interface whose report descriptor declares vendor Input and Output reports
+         * [reportId] in the same collection (FiiO at least 16 bytes, the JM12's 0x4B 10); nothing is written before this read-only proof. */
         private fun openNative(manager: UsbManager, device: UsbDevice, hids: List<UsbInterface>, reportId: Int,
-                               guard: () -> Unit): HidTransport {
+                               guard: () -> Unit, kt: Boolean = false): HidTransport {
+            val minRawSize = if (kt) KtMicroCodec.PAYLOAD_BYTES + 1 else 17
             guard()
             data class Target(val intf: UsbInterface, val input: UsbEndpoint, val output: UsbEndpoint?, val shape: NativeHidReports.Shape)
             val connection = manager.openDevice(device) ?: throw IOException("openDevice failed (permission?)")
@@ -129,11 +132,11 @@ class HidTransport private constructor(
                         require(n == length) { "Short HID descriptor read ($n of $length)" }
                         UsbLog.line("HID if ${h.id} report descriptor ${UsbLog.hex(descriptor)}")
                         val eps = (0 until h.endpointCount).map { h.getEndpoint(it) }.filter { it.type == UsbConstants.USB_ENDPOINT_XFER_INT }
-                        val shape = NativeHidReports.parse(descriptor, undefinedDesktop = true)
+                        val shape = NativeHidReports.parse(descriptor, undefinedDesktop = !kt)
                         val outSize = shape.rawSize(reportId, NativeHidReports.Kind.OUTPUT)
-                        require(outSize >= 17)
+                        require(outSize >= minRawSize)
                         val inSize = shape.rawSize(reportId, NativeHidReports.Kind.INPUT)
-                        require(inSize >= 17)
+                        require(inSize >= minRawSize)
                         shape.requireSameOwner(reportId, NativeHidReports.Kind.INPUT, NativeHidReports.Kind.OUTPUT)
                         val input = eps.filter { it.direction == UsbConstants.USB_DIR_IN && it.maxPacketSize >= inSize }.singleOrNull()
                             ?: error("No matching native interrupt IN")
@@ -143,7 +146,7 @@ class HidTransport private constructor(
                         Target(h, input, out, shape)
                     }.onFailure { connection.releaseInterface(h); UsbLog.line("HID if ${h.id} rejected: ${it.message ?: it.javaClass.simpleName}") }.getOrNull()
                 }
-                val target = targets.singleOrNull() ?: throw IOException("No unambiguous descriptor-proven FiiO HID interface")
+                val target = targets.singleOrNull() ?: throw IOException("No unambiguous descriptor-proven native HID interface")
                 guard()
                 if (!connection.claimInterface(target.intf, true)) throw IOException("claimInterface failed")
                 return HidTransport(connection, target.intf, target.input, target.output, target.shape, reportId, guard).also { it.drain() }
@@ -203,15 +206,17 @@ class HidTransport private constructor(
         throw IOException("the DAC did not answer $what")
     }
 
-    /** Native (KA15): one logical payload, padded to the descriptor's report size behind the report ID. */
-    fun sendNative(id: Int, kind: NativeHidReports.Kind, payload: ByteArray) {
+    /** Native: one logical payload, padded to the descriptor's report size behind the report ID. Only the report the
+     * transport was opened for (never the JM12's 0x54). [final]: the DAC leaves the bus right after it (JM12 commit),
+     * so the session is checked before only. */
+    fun sendNative(id: Int, kind: NativeHidReports.Kind, payload: ByteArray, final: Boolean = false) {
         checkSession()
         require(kind == NativeHidReports.Kind.OUTPUT && id == nativeReportId)
         val wire = requireNotNull(nativeReports).wire(id, kind, payload)
         UsbLog.tx(wire)
         val n = if (epOut != null) connection.bulkTransfer(epOut, wire, wire.size, WRITE_TIMEOUT_MS)
             else connection.controlTransfer(0x21, 0x09, (kind.controlType shl 8) or id, intf.id, wire, wire.size, WRITE_TIMEOUT_MS)
-        checkSession()
+        if (!final) checkSession()
         require(n == wire.size) { "Short native output report: $n/${wire.size}" }
     }
 

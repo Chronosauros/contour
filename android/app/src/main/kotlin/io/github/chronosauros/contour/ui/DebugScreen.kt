@@ -81,7 +81,7 @@ fun DebugScreen(device: DeviceController, onClose: () -> Unit) {
                 if (device.protocol.experimental) {
                     Text(device.protocol.caps.name)
                     Text(
-                        "${device.protocol.caps.bands}-band PEQ with native shelves. A/B is unavailable on the ${device.protocol.caps.name}.",
+                        "${device.protocol.caps.bands}-band PEQ${if (device.protocol.caps.types.size > 1) " with native shelves" else ""}. A/B is unavailable on the ${device.protocol.caps.name}.",
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }

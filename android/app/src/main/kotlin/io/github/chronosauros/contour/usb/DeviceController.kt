@@ -24,17 +24,19 @@ import io.github.chronosauros.contour.core.native.FiioSnapshot
 import io.github.chronosauros.contour.core.native.NativeState
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 
 enum class Link { NO_DAC, NEEDS_PERMISSION, CONNECTED }
 
-/** Outcome of one send from the app (HOLD TO SEND). */
-data class SendOutcome(val verified: Boolean, val reason: String?)
+/** Outcome of one send from the app (HOLD TO SEND). [pending]: saved, but the DAC has not been read back yet (JM12 restart). */
+data class SendOutcome(val verified: Boolean, val reason: String?, val pending: Boolean = false)
 
 /**
  * The DAC as the UI sees it: link state, the last read (for matching), busy flag. Reads on connect and on
@@ -142,8 +144,8 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     val slotNames: Boolean get() = protocol.fiio?.userSlotNames == true
     /** Named slots (KA15) or a config that opts in (K13 R2R): the user chooses where HOLD TO SEND writes. */
     val slotPicker: Boolean get() = protocol.fiio?.let { it.userSlotNames || it.userSlotPicker } == true
-    /** Read, write and persistence of this DAC were confirmed on real hardware (FiioConfig.hardwareVerified). */
-    val hardwareVerified: Boolean get() = protocol.fiio?.hardwareVerified == true
+    /** Read, write and persistence of this DAC were confirmed on real hardware (FiioConfig.hardwareVerified; the JM12 on an Android 16 phone 21.10.2026). */
+    val hardwareVerified: Boolean get() = protocol.fiio?.hardwareVerified == true || protocol.kt
     /** The USER slot the slot row shows as chosen: the one tapped, else the one playing, else none (a SnowSky right after plug-in, a stock preset). */
     val chosenSlot: Int? get() = if (!slotPicker) null else selectedSlot ?: playingSlot
     fun destinationSlot(): Int? = if (!slotPicker) protocol.destinationSlot else chosenSlot ?: protocol.destinationSlot
@@ -239,7 +241,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         val holds: (Profile) -> Boolean, val sameName: (Profile) -> Boolean, val unknownUser: Boolean = false)
 
     private fun fingerprint(s: DacSnapshot): String = (s.nativeState as? NativeState.Fiio)?.let { encode(it.raw) }
-        ?: (s.bands.joinToString(";") { it.registers.toString() } + "|" + s.preampDb)
+        ?: s.nativeState?.describe() ?: (s.bands.joinToString(";") { it.registers.toString() } + "|" + s.preampDb)
     /** The registers [raw] equal what [profile] compiles to; the slot number is left out (a stock preset or an unknown SnowSky slot has none to compile for). */
     private fun rawHolds(c: FiioCodec, raw: FiioSnapshot, profile: Profile): Boolean = runCatching {
         val ref = c.config.userSlots.min()
@@ -319,6 +321,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     fun sendIssues(profile: Profile): List<String> {
         val issues = protocol.issues(profile)
         if (issues.isNotEmpty() || !protocol.native) return issues
+        if (protocol.kt) return if (snapshot?.nativeState is NativeState.Kt) emptyList() else listOf("Read the DAC first")
         val state = snapshot?.nativeState as? NativeState.Fiio ?: return listOf("Read the DAC first")
         return runCatching {
             state.codec.planOnExplicitSend(profile.copy(bands = state.codec.padToDeviceCount(profile.bands), preampDb = profile.effectivePreampDb()), destinationSlot()!!, true)
@@ -366,7 +369,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     private fun isDac(intent: Intent): Boolean {
         val d = if (Build.VERSION.SDK_INT >= 33) intent.getParcelableExtra(UsbManager.EXTRA_DEVICE, UsbDevice::class.java)
             else @Suppress("DEPRECATION") intent.getParcelableExtra<UsbDevice>(UsbManager.EXTRA_DEVICE)
-        return d != null && DeviceTarget.find(d.vendorId, d.productId) != null
+        return d != null && DeviceTarget.find(d.vendorId, d.productId, d.productName) != null
     }
 
     fun start() {
@@ -384,13 +387,13 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     }
 
     private fun findDac(): UsbDevice? = manager.deviceList.values.firstOrNull {
-        DeviceTarget.find(it.vendorId, it.productId) != null
+        DeviceTarget.find(it.vendorId, it.productId, it.productName) != null
     }
 
     /** Recomputes the link; when connected and [read], reads the DAC (read-only). */
     fun refresh(read: Boolean) {
         val d = findDac()
-        val found = d?.let { DeviceTarget.find(it.vendorId, it.productId) }
+        val found = d?.let { DeviceTarget.find(it.vendorId, it.productId, it.productName) }
         if (found != null && lastProtocol != null && found != lastProtocol) {
             // Another DAC model (Micro <-> Max <-> KA15): nothing read, written or switched on the old one carries over.
             UsbLog.line("DAC changed: ${lastProtocol?.caps?.name} -> ${found.caps.name}")
@@ -402,6 +405,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             abReference = null
             selectedSlot = null
             openPending = true
+            pendingSave = null
             dropDacWork()
         }
         if (found != null) lastProtocol = found
@@ -458,6 +462,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             }
             try {
                 snapshot = client.readDevice(d)
+                snapshot?.let(::resolveSave)
                 recordSlot()
                 if (first) {
                     openPending = false
@@ -691,6 +696,41 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         return Kind.SLOT_READ
     }
 
+    // ---- JM12: the commit restarts the DAC ------------------------------------------------------------------------------
+    // Its RAM was read back before the commit; the saved state is read on the new connection (the ATTACHED read). [send] waits
+    // [SAVE_READ_MS] for that read; when it comes later (a permission dialog), [onSaveConfirmed] marks the profile sent.
+
+    private var pendingSave: Profile? = null
+    private var pendingRead: CompletableDeferred<DacSnapshot>? = null
+    var onSaveConfirmed: ((Profile) -> Unit)? = null
+
+    private suspend fun awaitSave(profile: Profile): SendOutcome {
+        val read = CompletableDeferred<DacSnapshot>()
+        pendingRead = read
+        pendingSave = profile
+        val s = withTimeoutOrNull(SAVE_READ_MS) { read.await() }
+        pendingRead = null
+        if (s == null) {
+            UsbLog.line("save: no read after the restart yet")
+            error = "SAVED, NOT READ BACK YET: reconnect the JM12 if it does not come back"
+            return SendOutcome(false, error, pending = true)
+        }
+        return if (s.matches(profile)) SendOutcome(true, null) else SendOutcome(false, "READ-BACK MISMATCH after the restart")
+    }
+
+    /** The read [s] after a JM12 save: compares it with the profile sent, for [send] while it waits, else on its own. */
+    private fun resolveSave(s: DacSnapshot) {
+        val p = pendingSave ?: return
+        pendingSave = null
+        val ok = s.matches(p)
+        UsbLog.line("save: read after the restart ${if (ok) "matches" else "DIFFERS"}")
+        // The link first: the connect read that follows opens this profile, not a twin with the same curve.
+        if (ok) contentOf(s)?.let { c -> c.slot?.let { setLink(it, p.id, c.fingerprint) } }
+        pendingRead?.let { it.complete(s); return }
+        error = if (ok) null else "READ-BACK MISMATCH after the restart"
+        if (ok) onSaveConfirmed?.invoke(p)
+    }
+
     /** Writes [profile] (plan, commit, read back, compare). The result's read-back becomes the snapshot. [onProgress] (0..1) is called on the USB thread. */
     suspend fun send(profile: Profile, onProgress: ((Float) -> Unit)? = null): SendOutcome {
         // The follower finishes its switch first; the background scan stops after the slot it is reading. The send selects its target itself.
@@ -704,6 +744,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         sendIssues(profile).takeIf { it.isNotEmpty() }?.let { return SendOutcome(false, it.joinToString("; ")) }
         val slot = if (slotPicker) destinationSlot() else null
         return sendWith("send") { d -> client.writeProfile(d, profile, slot, onProgress) }
+            .let { if (it.pending) awaitSave(profile) else it }
             .also {
                 // The send selected its slot: verified = the DAC is on it; otherwise where it stopped is unknown (the next tap switches).
                 if (slot != null) dacSlot = if (it.verified) slot else null
@@ -778,6 +819,13 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         val started = protocol
         return try {
             val r = op(d)
+            // JM12: the detach that follows the commit is expected, not a lost DAC. The read on the new connection decides ([awaitSave]).
+            if (r.restarting) {
+                lastWrite = r
+                snapshot = null
+                error = null
+                return SendOutcome(false, null, pending = true)
+            }
             // Experimental device, or the DAC model changed under the write: never keep a result for the wrong DAC.
             if ((started.experimental || protocol != started) && epoch != connectionEpoch) return SendOutcome(false, "DAC DETACHED")
             lastWrite = r
@@ -838,6 +886,8 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     companion object {
         /** How long SAVING TO DAC stays after a transfer ends, so the fill is seen to reach the end. */
         private const val SETTLE_MS = 250L
+        /** How long a JM12 send waits for the read after its restart (about 1 s on the PC, plus Android's attach and permission). */
+        private const val SAVE_READ_MS = 15_000L
         private const val ACTION_USB_PERMISSION = "io.github.chronosauros.contour.USB_PERMISSION"
     }
 }

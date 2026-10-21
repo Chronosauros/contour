@@ -28,4 +28,10 @@
     <usb-device
         vendor-id="10610"
         product-id="327" />
+    <!-- JCally JM12: USB 0x31B2:0x0111, read on the JM12 20.10.2026. Kiwi Ears, TANCHJIM and Moondrop dongles share the VID:PID,
+         so the product string must match too (KtMicroCodec.PRODUCT_NAME). -->
+    <usb-device
+        vendor-id="12722"
+        product-id="273"
+        product-name="KT02H20 HIFI Audio" />
 </resources>
