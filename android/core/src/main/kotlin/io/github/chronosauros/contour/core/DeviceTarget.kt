@@ -5,22 +5,25 @@ import io.github.chronosauros.contour.core.native.*
 /**
  * The DAC the app talks to: a WalkPlay DAC ([walkplay]: Protocol Micro, Protocol Max, TRN Black Pearl) or a
  * FiiO ([fiio]: native FiiO HID protocol; the KA15 was hardware-tested on a Pixel 04.10.2026, the K13 R2R, the
- * SnowSky Melody and Tiny A are routed the same way). Family identity is separate from WalkPlay's wire representation; no native register coercion.
+ * SnowSky Melody and Tiny A are routed the same way) or the JCally JM12 ([kt]: KT Micro registers, [KtMicroCodec]; PC-tested
+ * 20.10.2026). Family identity is separate from WalkPlay's wire representation; no native register coercion.
  */
 data class DeviceTarget private constructor(
     val walkplay: DeviceProtocol? = null,
     val fiio: FiioConfig? = null,
+    val kt: Boolean = false,
 ) {
     val supportsAb: Boolean get() = walkplay == DeviceProtocol.MICRO
     val experimental: Boolean get() = !supportsAb
     /** Micro, Protocol Max and TRN Black Pearl: the WalkPlay targets, with their editor/import/preamp policy. */
     val stable: Boolean get() = walkplay != null
     val native: Boolean get() = walkplay == null
-    /** KA15: the intended (acoustic) range, register range minus [FiioConfig.preampOffsetDb] (-24..0 dB). */
-    val preampMin: Double get() = fiio?.preampMinDb ?: walkplay!!.preampMin.toDouble()
-    val preampMax: Double get() = fiio?.preampMaxDb ?: walkplay!!.preampMax.toDouble()
+    /** KA15: the intended (acoustic) range, register range minus [FiioConfig.preampOffsetDb] (-24..0 dB).
+     * JM12: only the slider's range; the preamp is never sent (the JM12 has none). */
+    val preampMin: Double get() = if (kt) -30.0 else fiio?.preampMinDb ?: walkplay!!.preampMin.toDouble()
+    val preampMax: Double get() = if (kt) 0.0 else fiio?.preampMaxDb ?: walkplay!!.preampMax.toDouble()
     val preampStep: Double get() = 0.1
-    val caps: DeviceCapabilities get() = walkplay?.caps ?: requireNotNull(fiio).let { f ->
+    val caps: DeviceCapabilities get() = if (kt) KtMicroCodec.CAPS else walkplay?.caps ?: requireNotNull(fiio).let { f ->
         DeviceCapabilities(f.productName, f.capture?.vendorId ?: 0, f.capture?.productId ?: 0, f.maxFilters,
             f.minGainDb, f.maxGainDb, f.minQ, f.maxQ, f.minFrequencyHz.toDouble(), f.maxFrequencyHz.toDouble(),
             f.typeCodes.keys, false)
@@ -28,9 +31,10 @@ data class DeviceTarget private constructor(
     /** The USER slot a send goes to when the app has not chosen one (KA15: USER1). */
     val destinationSlot: Int? get() = fiio?.userSlots?.minOrNull()
     fun shelfOffset(bands: List<Band>): Double = walkplay?.shelfOffset(bands) ?: 0.0
-    /** Does this stored explicit preamp fit the device with these bands? The planner's own rule (WalkPlay) or the KA15 range. */
+    /** Does this stored explicit preamp fit the device with these bands? The planner's own rule (WalkPlay), the KA15 range,
+     * any number on the JM12 (not sent). */
     fun preampFits(bands: List<Band>, preampDb: Double): Boolean =
-        walkplay?.preampFits(bands, preampDb) ?: (preampDb.isFinite() && preampDb in preampMin..preampMax)
+        walkplay?.preampFits(bands, preampDb) ?: (preampDb.isFinite() && (kt || preampDb in preampMin..preampMax))
     fun shownPreamp(profile: Profile): Double = if (native) profile.effectivePreampDb() else walkplay!!.shownPreamp(profile)
     /** The Q this DAC takes for a [type] band: shelves have their own range where the DAC stores a scaled Q (KA15: up to 7.07). */
     fun qRange(type: FilterType): ClosedFloatingPointRange<Double> {
@@ -73,18 +77,21 @@ data class DeviceTarget private constructor(
 
     fun issues(profile: Profile): List<String> {
         if (walkplay != null) return (walkplay.plan(profile) as? DevicePlan.Rejected)?.issues.orEmpty()
-        val f = requireNotNull(fiio)
+        // FiiO and the JM12 share the band checks (and their texts, which blockLabel reads); the preamp is checked for FiiO only.
+        val f = fiio
         return runCatching {
-            require(f.codecBlockers.isEmpty()) { f.codecBlockers.joinToString("; ") }
-            require(f.userSlots.isNotEmpty()) { "No proven writable user slot" }
+            if (f != null) {
+                require(f.codecBlockers.isEmpty()) { f.codecBlockers.joinToString("; ") }
+                require(f.userSlots.isNotEmpty()) { "No proven writable user slot" }
+            }
             require(profile.bands.size <= caps.bands) { "${profile.bands.size} bands; ${caps.name} accepts ${caps.bands}; no truncation" }
             // Every concrete problem is listed (each field of each band, then the preamp): the first one is what HOLD TO SEND shows.
             val found = mutableListOf<String>()
             profile.bands.forEachIndexed { i, b ->
                 val n = i + 1
                 // Shelves have their own intended Q range when the DAC stores a scaled Q (KA15: up to 7.07).
-                val shelf = b.type != FilterType.PEAK && f.shelfQScale != 1.0
-                val (qLo, qHi) = if (shelf) f.shelfQMin to f.shelfQMax else caps.qMin to caps.qMax
+                val shelf = f != null && b.type != FilterType.PEAK && f.shelfQScale != 1.0
+                val (qLo, qHi) = qRange(b.type).let { it.start to it.endInclusive }
                 if (b.type !in caps.types) found += "Band $n: type unsupported"
                 if (!b.freqHz.isFinite() || b.freqHz !in caps.freqMinHz..caps.freqMaxHz)
                     found += "Band $n: freq ${num(b.freqHz)} Hz outside ${num(caps.freqMinHz)}-${num(caps.freqMaxHz)} Hz"
@@ -92,6 +99,11 @@ data class DeviceTarget private constructor(
                     found += "Band $n: gain ${num(b.gainDb)} dB outside ${num(caps.gainMinDb)}..${num(caps.gainMaxDb)} dB"
                 if (!b.q.isFinite() || b.q !in qLo..qHi)
                     found += "Band $n: ${if (shelf) "shelf " else ""}Q %.2f outside %.2f-%.2f".format(java.util.Locale.ROOT, b.q, qLo, qHi)
+            }
+            if (f == null) {
+                if (found.isNotEmpty()) return found
+                KtMicroCodec.compile(profile)
+                return emptyList()
             }
             val gain = profile.effectivePreampDb()
             if (!(gain.isFinite() && gain in preampMin..preampMax))
@@ -132,6 +144,7 @@ data class DeviceTarget private constructor(
         val K13 = DeviceTarget(fiio = FiioCatalog.K13)
         val MELODY = DeviceTarget(fiio = FiioCatalog.MELODY)
         val TINY_A = DeviceTarget(fiio = FiioCatalog.TINY_A)
+        val JM12 = DeviceTarget(kt = true)
         fun of(protocol: DeviceProtocol) = when (protocol) {
             DeviceProtocol.MICRO -> MICRO
             DeviceProtocol.MAX -> MAX
@@ -141,9 +154,12 @@ data class DeviceTarget private constructor(
         /**
          * Strict VID:PID allow-list, the only discovery API: Protocol Micro 3302:C20F, Protocol Max 3302:43CC,
          * TRN Black Pearl 3302:43E8, FiiO KA15 2972:0104, FiiO K13 R2R 2972:[FiioCatalog.K13_R2R_PRODUCT_ID], SnowSky Melody 2972:[FiioCatalog.MELODY_PRODUCT_ID],
-         * SnowSky Tiny A 2972:[FiioCatalog.TINY_A_PRODUCT_ID]. Every other identity is unrecognised (NO DAC).
+         * SnowSky Tiny A 2972:[FiioCatalog.TINY_A_PRODUCT_ID], and the JCally JM12 31B2:0111 with [productName] exactly
+         * [KtMicroCodec.PRODUCT_NAME] (other dongles share its VID:PID). Every other identity is unrecognised (NO DAC).
          */
-        fun find(vendorId: Int, productId: Int): DeviceTarget? {
+        fun find(vendorId: Int, productId: Int, productName: String? = null): DeviceTarget? {
+            if (vendorId == KtMicroCodec.VENDOR_ID && productId == KtMicroCodec.PRODUCT_ID)
+                return if (productName == KtMicroCodec.PRODUCT_NAME) JM12 else null
             DeviceProtocol.find(vendorId, productId)?.let { return of(it) }
             val ka15 = requireNotNull(FiioCatalog.KA15.capture)
             if (vendorId == ka15.vendorId && productId == ka15.productId) return KA15

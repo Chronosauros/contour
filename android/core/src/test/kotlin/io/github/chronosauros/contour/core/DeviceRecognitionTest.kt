@@ -1,11 +1,14 @@
 package io.github.chronosauros.contour.core
 
 import io.github.chronosauros.contour.core.native.FiioCatalog
+import io.github.chronosauros.contour.core.native.KtMicroCodec
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
-/** The stable app recognises exactly seven USB identities; every other one is plain unrecognised (NO DAC). */
+/** The stable app recognises exactly seven USB identities by VID:PID and the JCally JM12 by VID:PID plus its exact product
+ * string; every other one is plain unrecognised (NO DAC). */
 class DeviceRecognitionTest {
     private val k13 = 0x2972 to FiioCatalog.K13_R2R_PRODUCT_ID
     private val melody = 0x2972 to FiioCatalog.MELODY_PRODUCT_ID
@@ -41,11 +44,24 @@ class DeviceRecognitionTest {
         assertNull(FiioCatalog.MELODY.capture); assertNull(FiioCatalog.TINY_A.capture)
     }
 
+    /** 31B2:0111 is shared by Kiwi Ears, TANCHJIM and Moondrop dongles (devicePEQ's usbDeviceConfig.js tells them apart by name). */
+    @Test fun `the JM12 is recognised only with its exact product string`() {
+        assertEquals(DeviceTarget.JM12, DeviceTarget.find(0x31B2, 0x0111, "KT02H20 HIFI Audio"))
+        for (name in listOf(null, "", "KT02H20 HIFI Audio ", "kt02h20 hifi audio", "TANCHJIM-ONE DSP", "Kiwi Ears-Allegro Mini", "MOONDROP JU Jiu"))
+            assertNull(DeviceTarget.find(0x31B2, 0x0111, name), name)
+        for ((vid, pid) in listOf(0x31B2 to 0x0110, 0x31B2 to 0x0112, 0xB231 to 0x1101, 0x3302 to 0x0111))
+            assertNull(DeviceTarget.find(vid, pid, KtMicroCodec.PRODUCT_NAME), "%04X:%04X".format(vid, pid))
+        // The name never turns another DAC into a JM12.
+        expected.forEach { (id, target) -> assertEquals(target, DeviceTarget.find(id.first, id.second, KtMicroCodec.PRODUCT_NAME)) }
+    }
+
     /** The USB attach prompt (res/xml/device_filter.xml) lists exactly the same identities, in decimal. */
     @Test fun `device filter lists exactly the recognised identities`() {
         val xml = java.io.File("../app/src/main/res/xml/device_filter.xml").readText()
         val listed = Regex("""<usb-device\s+vendor-id="(\d+)"\s+product-id="(\d+)"""").findAll(xml)
             .map { it.groupValues[1].toInt() to it.groupValues[2].toInt() }.toSet()
-        assertEquals(expected.keys, listed)
+        assertEquals(expected.keys + (KtMicroCodec.VENDOR_ID to KtMicroCodec.PRODUCT_ID), listed)
+        // The JM12's entry also carries its product string, so the attach prompt skips the other 31B2:0111 dongles.
+        assertTrue(Regex("""<usb-device\s+vendor-id="12722"\s+product-id="273"\s+product-name="${KtMicroCodec.PRODUCT_NAME}"\s*/>""").containsMatchIn(xml))
     }
 }

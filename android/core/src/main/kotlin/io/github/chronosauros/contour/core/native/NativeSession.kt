@@ -9,8 +9,10 @@ interface NativePort {
     fun pause(ms: Long)
     fun send(id: Int, kind: NativeHidReports.Kind, payload: ByteArray)
     fun request(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean): ByteArray
+    /** The last frame of a session, after which the DAC leaves the bus (JM12 commit): guarded before, never after. */
+    fun sendFinal(id: Int, payload: ByteArray) = send(id, NativeHidReports.Kind.OUTPUT, payload)
 }
-/** Contour stable: the native (non-WalkPlay) DACs are FiiO: KA15, K13 R2R, SnowSky Melody and Tiny A. */
+/** Contour stable: the native (non-WalkPlay) DACs are FiiO (KA15, K13 R2R, SnowSky Melody and Tiny A) and the JCally JM12 (KT Micro). */
 sealed interface NativeState {
     val slot: Int
     val preamp: Double?
@@ -18,6 +20,7 @@ sealed interface NativeState {
     fun matches(profile: Profile): Boolean
     fun describe(): String = when (this) {
         is Fiio -> (slotDescription?.let { "$it\n" } ?: "") + "${raw.count} native filters; pregain ${raw.preampTenths}/10 dB\n" + raw.bands.joinToString("\n")
+        is Kt -> raw.describe()
     }
     /** [names]: USER slot -> name read from the DAC (KA15), empty where the device has no names. */
     data class Fiio(val codec: FiioCodec, val raw: FiioSnapshot, val names: Map<Int, String> = emptyMap()) : NativeState {
@@ -36,8 +39,16 @@ sealed interface NativeState {
             codec.matches(codec.planOnExplicitSend(profile.copy(bands = codec.padToDeviceCount(profile.bands), preampDb = profile.effectivePreampDb()), slot, true).expected, raw)
         }.getOrDefault(false)
     }
+    /** JM12: no preamp register, so 0. */
+    data class Kt(val raw: KtSnapshot) : NativeState {
+        override val slot get() = raw.slot
+        override val preamp get() = 0.0
+        override fun importExact(): ImportedEq = KtMicroCodec.importExact(raw)
+        override fun matches(profile: Profile): Boolean = KtMicroCodec.matches(profile, raw)
+    }
 }
-data class NativeWriteResult(val verified: Boolean, val reason: String?, val readback: NativeState?)
+/** [restarting]: the save was committed and the DAC is re-enumerating (JM12); [readback] is its RAM before the commit. */
+data class NativeWriteResult(val verified: Boolean, val reason: String?, val readback: NativeState?, val restarting: Boolean = false)
 
 /** No mutation on read, qualification or local preflight. Every callback is guarded both sides. */
 class NativeSession(val target: DeviceTarget, private val port: NativePort) {
@@ -169,7 +180,42 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
         writeAndConsumeEcho(frame)
         retryTimeouts { readName(c, slot) }
     }
-    fun read(): NativeState = guarded { codec().let { c -> retryTimeouts(5) { readFiio(c) } } }
+    fun read(): NativeState = guarded { if (target.kt) retryTimeouts(5) { readKt() } else codec().let { c -> retryTimeouts(5) { readFiio(c) } } }
+    private fun readKt(): NativeState.Kt = NativeState.Kt(KtMicroCodec.snapshot(KtMicroCodec.REGISTERS.associateWith { reg ->
+        request(KtMicroCodec.REPORT_ID, KtMicroCodec.read(reg)) { KtMicroCodec.isReply(it, reg, KtMicroCodec.READ) }
+    }))
+    /**
+     * JM12: read, enable Custom if the EQ is off, write the ten band registers (each ACK consumed when it comes; a missing one
+     * is not fatal), read RAM back and commit only when it matches; a mismatch is left in RAM, not saved ("unplug to drop it").
+     * The commit is the last frame: the DAC re-enumerates, so the caller reads the saved state back on the new connection.
+     */
+    private fun writeKt(profile: Profile, explicitHold: Boolean, onProgress: ((done: Int, total: Int) -> Unit)?): NativeWriteResult {
+        require(explicitHold) { "HOLD TO SEND required" }
+        require(target.issues(profile).isEmpty()) { target.issues(profile).joinToString("; ") }
+        port.guard()
+        progress = onProgress
+        stepsDone = 0
+        stepsTotal = 3 * KtMicroCodec.REGISTERS.size + 1
+        onProgress?.invoke(0, stepsTotal)
+        try {
+            val before = retryTimeouts(5) { readKt() }.raw
+            val expected = KtMicroCodec.compile(profile)
+            val writes = KtMicroCodec.writes(before, expected)
+            stepsTotal = 2 * KtMicroCodec.REGISTERS.size + writes.size + 1
+            writes.forEach { f ->
+                val reg = f[0].toInt() and 255
+                try { request(KtMicroCodec.REPORT_ID, f) { KtMicroCodec.isReply(it, reg, KtMicroCodec.WRITE) } }
+                catch (e: java.io.IOException) { if (!isReplyTimeout(e)) throw e }
+            }
+            val ram = retryTimeouts(5) { readKt() }
+            if (ram.raw.slot != KtMicroCodec.SLOT_CUSTOM || ram.raw.registers != expected)
+                return NativeWriteResult(false, "JM12 read-back differs; not saved (unplug the JM12 to drop it)", ram)
+            port.guard()
+            port.sendFinal(KtMicroCodec.REPORT_ID, KtMicroCodec.COMMIT_FRAME)
+            frameDone()
+            return NativeWriteResult(true, null, ram, restarting = true)
+        } finally { progress = null }
+    }
     /** Switches the DAC to USER [slot], as its own preset button would (nothing is written or saved), and returns the slot one
      * query confirms; no band is read. A tap on a slot Contour already knows, and the end of the background scan on connect.
      * Same echo and settle handling as [readSlot]; the SnowSky DACs always select. The caller compares the answer with [slot]. */
@@ -199,7 +245,8 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
     }
     /** [targetSlot]: the USER slot chosen in the app (KA15 slot picker); null = the target's fixed destination.
      * [onProgress] (done, total): the HID frames completed so far out of those planned; called on the calling thread. */
-    fun write(profile: Profile, explicitHold: Boolean, targetSlot: Int? = null, onProgress: ((done: Int, total: Int) -> Unit)? = null): NativeWriteResult = guarded {
+    fun write(profile: Profile, explicitHold: Boolean, targetSlot: Int? = null, onProgress: ((done: Int, total: Int) -> Unit)? = null): NativeWriteResult =
+        if (target.kt) writeKt(profile, explicitHold, onProgress) else guarded {
         require(explicitHold) { "HOLD TO SEND required" }
         require(target.issues(profile).isEmpty()) { target.issues(profile).joinToString("; ") }
         // Stable builds carry only devices whose save can be read back in the same session (no reconnect proof).
@@ -255,6 +302,7 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
                 else if (!c.config.userSlotNames) NativeWriteResult(true, null, back)
                 else nameAfterSave(c, back, p.targetSlot, profile.name).let { (named, note) -> NativeWriteResult(true, note, named) }
             }
+            is NativeState.Kt -> error("Not a FiiO DAC")
         }
         } finally { progress = null }
     }
