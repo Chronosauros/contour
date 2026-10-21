@@ -44,6 +44,7 @@ data class DacSnapshot(
  * A write plus its read-back: verified = every register (freq, Q, gain, type x every device slot + preamp) as
  * written; on the Protocol Max and the TRN the bulk slot byte as well; on the KA15 the complete native USER slot state.
  * A verified KA15 write can still carry a note in [mismatches] (the slot name did not read back).
+ * [restarting] (JM12): RAM verified and committed; the DAC re-enumerates, and the read on its new connection decides.
  */
 data class WriteResult(
     val verified: Boolean,
@@ -51,6 +52,7 @@ data class WriteResult(
     val writeMs: Long,
     val readBackMs: Long,
     val readBack: DacSnapshot,
+    val restarting: Boolean = false,
 )
 
 /**
@@ -66,13 +68,15 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
 
     fun shutdown() = executor.shutdown()
 
-    private suspend fun <T> withDevice(device: UsbDevice, block: (HidTransport) -> T): T = hidLock.withLock {
-        val fiio = target(device).fiio ?: return@withLock withContext(usb) { HidTransport.open(manager, device).use(block) }
+    /** [finalGuard] = false: [block] checks the session itself (a JM12 save ends with the DAC leaving the bus). */
+    private suspend fun <T> withDevice(device: UsbDevice, finalGuard: Boolean = true, block: (HidTransport) -> T): T = hidLock.withLock {
+        val target = target(device)
+        if (!target.native) return@withLock withContext(usb) { HidTransport.open(manager, device).use(block) }
         val guard = guardFor(device)
         withContext(usb) {
             guard()
-            val stream = if (fiio.needsAudioStream) audioKeepAlive(device) else null
-            try { HidTransport.open(manager, device, guard).use(block).also { guard() } } finally { stream?.close() }
+            val stream = if (target.fiio?.needsAudioStream == true) audioKeepAlive(device) else null
+            try { HidTransport.open(manager, device, guard).use(block).also { if (finalGuard) guard() } } finally { stream?.close() }
         }
     }
 
@@ -83,7 +87,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
     }
 
     private fun target(device: UsbDevice): DeviceTarget =
-        DeviceTarget.find(device.vendorId, device.productId) ?: throw IOException("Unsupported DAC")
+        DeviceTarget.find(device.vendorId, device.productId, device.productName) ?: throw IOException("Unsupported DAC")
 
     private fun protocol(device: UsbDevice): DeviceProtocol =
         target(device).walkplay ?: throw IOException("WalkPlay-only operation unavailable on ${target(device).caps.name}")
@@ -99,6 +103,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
         override fun guard() = t.checkSession()
         override fun pause(ms: Long) { t.checkSession(); Thread.sleep(ms); t.checkSession() }
         override fun send(id: Int, kind: NativeHidReports.Kind, payload: ByteArray) = t.sendNative(id, kind, payload)
+        override fun sendFinal(id: Int, payload: ByteArray) = t.sendNative(id, NativeHidReports.Kind.OUTPUT, payload, final = true)
         override fun request(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean) =
             melody?.request(id, payload, matches) ?: t.requestNative(id, payload, matches)
     })
@@ -165,16 +170,16 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
             is DevicePlan.Ready -> writePlan(device, plan, onProgress)
         }
         target.issues(profile).takeIf { it.isNotEmpty() }?.let { throw IOException(it.joinToString("; ")) }
-        return withDevice(device) { t ->
+        return withDevice(device, finalGuard = !target.kt) { t ->
             val start = SystemClock.elapsedRealtime()
             UsbLog.line("native write: target slot ${targetSlot ?: target.destinationSlot}")
             val r = nativeSession(device, t, target).write(profile, explicitHold = true, targetSlot = targetSlot,
                 onProgress = onProgress?.let { report -> { done, total -> report(done.toFloat() / total) } })
-            t.checkSession()
+            if (!r.restarting) t.checkSession()
             r.reason?.let { UsbLog.line("native write: ${if (r.verified) "VERIFIED, note" else "NOT VERIFIED"}: $it") }
-            if (r.reason == null) UsbLog.line("native write: VERIFIED")
+            if (r.reason == null) UsbLog.line(if (r.restarting) "native write: RAM VERIFIED, committed; DAC restarting" else "native write: VERIFIED")
             WriteResult(r.verified, listOfNotNull(r.reason), SystemClock.elapsedRealtime() - start, 0,
-                nativeSnapshot(target, requireNotNull(r.readback), 0))
+                nativeSnapshot(target, requireNotNull(r.readback), 0), r.restarting)
         }
     }
 

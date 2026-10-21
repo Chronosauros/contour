@@ -30,6 +30,11 @@ internal fun savedOnDacIds(model: AppModel, snapshot: DacSnapshot?, connected: B
  */
 class Sender(private val model: AppModel, private val device: DeviceController, private val scope: CoroutineScope,
     private val abScope: CoroutineScope = scope) {
+    init {
+        // JM12: a save read back late (after the restart's permission dialog) still marks the profile sent.
+        device.onSaveConfirmed = model::markSent
+    }
+
     /** Profile id being sent by HOLD TO SEND. */
     var sendingId by mutableStateOf<String?>(null)
         private set
@@ -148,6 +153,9 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
                     sendProgress = 1f
                     model.markSent(p)
                     delay(PROGRESS_SETTLE_MS) // the fill reaches the end before the button turns ON DAC
+                    sendingId = null
+                } else if (r.pending) {
+                    // JM12 saved, not read back yet: no FAILED, so a later read can still show ON DAC (device.error says why).
                     sendingId = null
                 } else {
                     sendingId = null

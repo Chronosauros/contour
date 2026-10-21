@@ -289,6 +289,49 @@ firmware family and behave the same way.
 - Not measured: the acoustic result (shelf Q scaling and preamp offset, which the KA15 needed). Contour writes the
   values as shown.
 
+## JCally JM12 (KT Micro KT02H20, 31B2:0111)
+
+Hardware facts: `research/jm12-pc-2026-10-20/FINDINGS.md` (a contributor's unit on stock firmware, written and read
+back from a PC on 20-21.10.2026). Protocol source: devicePEQ `ktmicroUsbHidHandler.js` (copy in `devicepeq-ref/`).
+
+- Allow-list: **31B2:0111 with the USB product string exactly "KT02H20 HIFI Audio"**. Kiwi Ears Allegro Mini/PRO,
+  TANCHJIM-ONE DSP and Moondrop JU Jiu use the same VID:PID; without the exact string Contour shows NO DAC, and the
+  USB attach filter carries the string too.
+- Transport: HID interface 3, one Application collection; vendor page `0xFF01` declares report `0x4B` and report
+  `0x54`, 10 bytes In and Out each (Contour checks this in the descriptor before any I/O). Contour sends **only
+  report 0x4B**; `0x54` is the bootloader unlock used by firmware cross-flash tools and is never sent. Replies are
+  exactly 11 bytes with the ID; the DAC answers with no audio stream, so no keep-alive stream.
+- Frames `reg 00 00 00 cmd 00 d0 d1 d2 d3`, replies echo reg and cmd. Commands: `0x52` read, `0x57` write
+  (ACK `reg 00 00 00 57 00 03 00 00 00`), `0x53` commit with reg `0x00` (reply `... 53 00 03 ...`). Not used:
+  `0x43` (CLEAR in devicePEQ).
+- Registers Contour uses: `0x24` EQ slot (d0: `02` off, the factory state; `03` Custom); band i = 0..4 at
+  `0x26+2i` (gain x10 s16 LE + stored frequency u16 LE) and `0x27+2i` (Q x1000 u16 LE + type in d2, 0 = PK, d3 0).
+  Factory flat: stored 1000/2000/5000/8000/10000, 0 dB, Q 0.707.
+- **The DAC plays twice the stored frequency**: Contour stores `floor(Hz / 2 + 0.5)`. Measured with a notch at stored
+  1000 Hz, which cut the 2 kHz tone at both 48 and 96 kHz streams (plus ear tests at 44.1 and 96 kHz). devicePEQ's
+  `compensate2X: true` agrees.
+- **No preamp**: register `0x66` (devicePEQ's pregain on other KT chips) reads `fa 02` from the factory, takes a write
+  and keeps it, and changes nothing audible. Contour neither reads nor writes it; a profile's preamp is not sent and
+  the Tune page greys out the PREAMP row (the profile keeps its value for other DACs).
+- Encoding: gain in 0.1 dB rounded down, Q x1000 and the halved frequency rounded half up (devicePEQ's Math.round).
+  All five bands are written on every send; a disabled band keeps its shape at 0 dB, bands after the profile's are the
+  factory flat. Caps are devicePEQ's for this model, not measured: 5 bands, +-10 dB, Q 0.1-5, 20-20000 Hz, PEAK only
+  (shelves, types 3 and 4, are off in devicePEQ and untested here).
+- **Send sequence**: read `0x24` and `0x26..0x2F`; if the slot is `02`, write `24 00 00 00 57 00 03 00 00 00`; write the
+  ten band registers in order; read them back from RAM and **commit only when every register matches** (a mismatch
+  stays in RAM, unsaved: unplugging drops it); the commit is the last frame.
+- **The commit restarts the DAC**: about 46 ms after the commit it leaves the bus and enumerates again about a second
+  later, by itself. Android sees a detach and a new device; Contour reads it again on the new connection and only that
+  read makes the profile ON DAC. The saved state survived the restart and a 10 s unplug.
+- Contour on a phone (Android 16, 21.10.2026; `research/jm12-pc-2026-10-20/phone-2026-10-21.log`):
+  the product string arrives with the attach, before any permission; read in about 200 ms; three sends VERIFIED
+  (from EQ on and from the factory EQ off, which wrote `0x24` = `03` first), each followed by the restart and a
+  matching read on the new connection 4-5 s after HOLD TO SEND (the chooser tap included). Android shows the app
+  chooser on every re-enumeration unless Contour is set to Always. The F1-Crin band frames equal the PC's
+  `write-f1-crin.log`.
+- Not proven: shelves, the real gain/Q limits (devicePEQ's capture comment says +-12 dB), other firmware or other
+  dongles on the same VID:PID.
+
 ## FiiO roadmap note (config/handler only; written before the KA15 work above)
 - FiiO is matched by VID 0x2972 (and 0x0A12) + **USB product name string**, not by PID (UC L16, L360-400).
   "FIIO KA15": supported, 10 bands, +-12 dB, 7 types (PK/LS/HS/LP/HP/BP/AP), writable user slots 7-9

@@ -231,7 +231,7 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
         val slots = device.slotPicker && device.link == Link.CONNECTED
         // Micro/Max too: a band that does not fit the DAC's filter format, or an AUTO preamp below its floor, says why.
         if (device.link == Link.CONNECTED) {
-            // KA15, K13 R2R, Melody and Tiny A: read, write and persistence confirmed on hardware (FiioConfig.hardwareVerified)
+            // KA15, K13 R2R, Melody, Tiny A and JM12: read, write and persistence confirmed on hardware (DeviceController.hardwareVerified)
             if (device.protocol.native && !device.hardwareVerified) Text("Native beta recipe: not hardware tested. Readback verifies registers, not audio/persistence.", color = pal.textDim, style = Type.small)
             device.sendIssues(p).firstOrNull()?.let { Text("SEND BLOCKED: $it (saved values unchanged)", color = pal.textDim, style = Type.small) }
             if (device.protocol.native) device.error?.let { Text(it, color = pal.textDim, style = Type.small) }
@@ -717,11 +717,13 @@ private const val PREAMP_SLOW = 0.25f
 
 /**
  * PREAMP: the value, and one bar that is both the MANUAL / AUTO switch and the manual slider ([PreampBar]).
- * A tap on the value types it (manual only).
+ * A tap on the value types it (manual only). Greyed out and inert on the JM12, which has no preamp: the profile keeps its
+ * value for other DACs, nothing of it is sent.
  */
 @Composable
 private fun PreampRow(model: AppModel, p: Profile, sender: Sender, actions: TuneActions) {
     val c = pal
+    val enabled = !model.protocol.kt
     val auto = p.preampDb == null
     val autoDb = runCatching { model.shownPreamp(p.copy(preampDb = null)) }.getOrNull()
     val db = if (auto) autoDb else p.preampDb
@@ -731,6 +733,7 @@ private fun PreampRow(model: AppModel, p: Profile, sender: Sender, actions: Tune
             .height(ROW_H)
             .lift(ROW_SHAPE)
             .background(c.surface, ROW_SHAPE)
+            .alpha(if (enabled) 1f else 0.4f)
             .padding(start = Grid.TEXT),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -739,7 +742,7 @@ private fun PreampRow(model: AppModel, p: Profile, sender: Sender, actions: Tune
                 .width(VALUE_W - Grid.TEXT)
                 .fillMaxHeight()
                 .clip(RoundedCornerShape(Radii.S))
-                .clickable(enabled = !auto && db != null) { actions.value(Param.PREAMP) }
+                .clickable(enabled = enabled && !auto && db != null) { actions.value(Param.PREAMP) }
                 .testTag("value_preamp"),
             contentAlignment = Alignment.CenterStart,
         ) {
@@ -751,7 +754,7 @@ private fun PreampRow(model: AppModel, p: Profile, sender: Sender, actions: Tune
                 if (auto) c.textDim else c.text,
             )
         }
-        PreampBar(model, p, db, auto, autoDb != null, sender, Modifier.weight(1f).fillMaxHeight().padding(Grid.INSET))
+        PreampBar(model, p, db, auto, autoDb != null, sender, enabled, Modifier.weight(1f).fillMaxHeight().padding(Grid.INSET))
     }
 }
 
@@ -778,14 +781,14 @@ private fun PreampLabels(manual: Color, auto: Color, onManual: (() -> Unit)?, on
  * a tap on AUTO switches back.
  */
 @Composable
-private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, valid: Boolean, sender: Sender, modifier: Modifier) {
+private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, valid: Boolean, sender: Sender, enabled: Boolean, modifier: Modifier) {
     val c = pal
     val haptics = LocalHaptics.current
     val pagerLock = LocalPagerLock.current
     val prof = rememberUpdatedState(p)
     val shape = RoundedCornerShape(Radii.M)
     val pill = shape // same corners as the slider fill: the pill is the whole bar height
-    val adjustable = !auto && db != null && !sender.bypassed && !sender.abBusy
+    val adjustable = enabled && !auto && db != null && !sender.bypassed && !sender.abBusy
     val hs = model.protocol.shelfOffset(p.bands)
     val lo = model.protocol.preampMin - hs
     val hi = model.protocol.preampMax - hs
@@ -863,7 +866,7 @@ private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, v
             val h = maxHeight
             val fillW = h + (w - h) * pos
             Box(Modifier.fillMaxSize()) {
-                PreampLabels(c.text, c.textMute, null, { switchTo(true) })
+                PreampLabels(c.text, c.textMute, null, if (enabled) ({ switchTo(true) }) else null)
                 Box(
                     Modifier
                         .width(fillW)
@@ -882,7 +885,7 @@ private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, v
         val x = half * (1f - manual)
         val pillW = half + half * (pos * manual)
         Box(Modifier.fillMaxSize()) {
-            PreampLabels(c.text, c.text, if (auto) ({ switchTo(false) }) else null, if (!auto) ({ switchTo(true) }) else null)
+            PreampLabels(c.text, c.text, if (enabled && auto) ({ switchTo(false) }) else null, if (enabled && !auto) ({ switchTo(true) }) else null)
             Box(
                 Modifier
                     .offset(x = x)
