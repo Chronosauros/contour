@@ -2,7 +2,7 @@
 
 # Contour
 
-**An on-the-go EQ manager for the CrinEar Protocol Micro, Protocol Max, FiiO KA15, FiiO K13 R2R, SnowSky Melody, SnowSky Tiny A and TRN Black Pearl.** Keep all your EQ profiles on your phone, plug the
+**An on-the-go EQ manager for the CrinEar Protocol Micro, Protocol Max, FiiO KA15, FiiO K13 R2R, SnowSky Melody, SnowSky Tiny A, TRN Black Pearl and JCally JM12.** Keep all your EQ profiles on your phone, plug the
 dongle in, pick one and send it. Plug in, send, unplug - that is the whole routine.
 
 **Website: [contoureq.app](https://contoureq.app/)** - a 1.5-minute demo film, the full guide film and the install page.
@@ -75,8 +75,15 @@ Contour does not process audio, does not need the internet and has no accounts. 
   Black Pearl first:** without headphones it does not show up on USB at all, so Contour shows NO DAC. Every send is
   read back and stays in the DAC after unplugging, preamp included. Tested on the developer's own hardware; the
   read-back checks the stored values, the sound has not been measured yet.
+- **JCally JM12** (USB `31B2:0111`, KT Micro KT02H20, stock firmware): 5 bands, PEAK only, gain -10 to +10 dB,
+  Q 0.1 to 5, 20 Hz to 20 kHz. **No preamp:** the JM12 has none, so a profile's preamp is not sent and the PREAMP
+  control is greyed out; lower the volume instead. Each send restarts the dongle by itself (it saves and reconnects in
+  about a second; your music stops for a moment), then Contour reads it again. Other dongles report the same USB ID;
+  Contour recognises the JM12 by its product name "KT02H20 HIFI Audio". Because of that restart, Android asks which
+  app opens the dongle after every send: choose Contour and **Always**. Tested by a contributor on their own JM12, on
+  a PC and with Contour on an Android 16 phone; the read-back checks the stored values.
 
-Contour is unofficial and not affiliated with CrinEar, FiiO, SnowSky or TRN. Other WalkPlay and FiiO dongles are possible later
+Contour is unofficial and not affiliated with CrinEar, FiiO, SnowSky, TRN or JCally. Other WalkPlay and FiiO dongles are possible later
 (see `ROADMAP.md`); they are not enabled until someone confirms one on real hardware.
 
 Needs Android 9 or newer and a phone with USB host (USB OTG) support.
@@ -147,7 +154,7 @@ cd android
 `android/app/build.gradle.kts`.
 
 Code layout:
-- `android/core` - pure Kotlin/JVM: profile model, DSP, text codecs, the WalkPlay (Protocol Micro, Protocol Max, TRN Black Pearl) and FiiO (KA15, K13 R2R, SnowSky Melody and Tiny A) device protocols;
+- `android/core` - pure Kotlin/JVM: profile model, DSP, text codecs, the WalkPlay (Protocol Micro, Protocol Max, TRN Black Pearl), FiiO (KA15, K13 R2R, SnowSky Melody and Tiny A) and KT Micro (JCally JM12) device protocols;
 - `android/app` - the Jetpack Compose app, USB HID transport, storage;
 - `research/protocol` - protocol notes, Python reference tools and the device captures the parity test
   checks against.
@@ -166,7 +173,7 @@ Issues and pull requests are welcome, especially reports from other WalkPlay-bas
 
 Contour is licensed under the Apache License, Version 2.0 (`LICENSE`).
 
-The WalkPlay and FiiO protocols and the biquad coefficient maths are ported from
+The WalkPlay, FiiO and KT Micro protocols and the biquad coefficient maths are ported from
 [devicePEQ](https://github.com/jeromeof/devicePEQ) by Jerome O'Flaherty (0BSD). The TRN Black Pearl write sequence follows
 [FreeDSP-Studio](https://github.com/EffectiveEquivalent/FreeDSP-Studio) by EffectiveEquivalent (MIT). Every third-party
 component and its licence is listed in `THIRD_PARTY_NOTICES.md`; attributions are in `NOTICE`. The DUSK
@@ -174,6 +181,6 @@ example profile uses the DUSK-Default DSP curve
 [published by Crinacle](https://crinacle.com/2024/04/10/moondrop-x-crinacle-dusk-eq-dsp-values/). In the app,
 all of this is under **ABOUT & LICENCES** at the bottom of the Library.
 
-Contour is an unofficial project, not affiliated with or endorsed by CrinEar, FiiO, SnowSky, TRN or any other brand. CrinEar,
-Protocol Micro, Protocol Max, FiiO, KA15, K13, SnowSky, Melody, Tiny A, TRN, Black Pearl, Nightfall, WalkPlay, Moondrop, Crinacle, DUSK and other product names belong to their owners
+Contour is an unofficial project, not affiliated with or endorsed by CrinEar, FiiO, SnowSky, TRN, JCally or any other brand. CrinEar,
+Protocol Micro, Protocol Max, FiiO, KA15, K13, SnowSky, Melody, Tiny A, TRN, Black Pearl, JCally, JM12, KT Micro, Nightfall, WalkPlay, Moondrop, Crinacle, DUSK and other product names belong to their owners
 and are used only to say what Contour works with.

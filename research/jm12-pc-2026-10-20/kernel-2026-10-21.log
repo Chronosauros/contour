@@ -1,0 +1,30 @@
+Oct 21 14:51:37.127545 kernel: usb 3-2: USB disconnect, device number 5
+Oct 21 14:51:37.978572 kernel: usb 3-2: new high-speed USB device number 6 using xhci_hcd
+Oct 21 14:51:38.102567 kernel: usb 3-2: New USB device found, idVendor=31b2, idProduct=0111, bcdDevice= 0.01
+Oct 21 14:51:38.105566 kernel: usb 3-2: New USB device strings: Mfr=1, Product=3, SerialNumber=2
+Oct 21 14:51:38.105815 kernel: usb 3-2: Product: KT02H20 HIFI Audio
+Oct 21 14:51:38.105993 kernel: usb 3-2: Manufacturer: KTMicro
+Oct 21 14:51:38.106151 kernel: usb 3-2: SerialNumber: 2020-02-20-0000-0000-0000
+Oct 21 14:51:38.134575 kernel: usb 3-2: set volume quirk for MOONDROP JU Jiu
+Oct 21 14:51:38.136567 kernel: input: KTMicro KT02H20 HIFI Audio as /devices/pci0000:00/0000:00:08.1/0000:09:00.3/usb3/3-2/3-2:1.3/0003:31B2:0111.0009/input/input30
+Oct 21 14:51:38.187571 kernel: hid-generic 0003:31B2:0111.0009: input,hidraw7: USB HID v1.11 Device [KTMicro KT02H20 HIFI Audio] on usb-0000:09:00.3-2/input3
+Oct 21 14:53:35.696542 kernel: usb 3-2: USB disconnect, device number 6
+Oct 21 14:53:36.545607 kernel: usb 3-2: new high-speed USB device number 7 using xhci_hcd
+Oct 21 14:53:36.669605 kernel: usb 3-2: New USB device found, idVendor=31b2, idProduct=0111, bcdDevice= 0.01
+Oct 21 14:53:36.671587 kernel: usb 3-2: New USB device strings: Mfr=1, Product=3, SerialNumber=2
+Oct 21 14:53:36.671856 kernel: usb 3-2: Product: KT02H20 HIFI Audio
+Oct 21 14:53:36.671989 kernel: usb 3-2: Manufacturer: KTMicro
+Oct 21 14:53:36.672125 kernel: usb 3-2: SerialNumber: 2020-02-20-0000-0000-0000
+Oct 21 14:53:36.701581 kernel: usb 3-2: set volume quirk for MOONDROP JU Jiu
+Oct 21 14:53:36.703585 kernel: input: KTMicro KT02H20 HIFI Audio as /devices/pci0000:00/0000:00:08.1/0000:09:00.3/usb3/3-2/3-2:1.3/0003:31B2:0111.000A/input/input31
+Oct 21 14:53:36.754579 kernel: hid-generic 0003:31B2:0111.000A: input,hidraw7: USB HID v1.11 Device [KTMicro KT02H20 HIFI Audio] on usb-0000:09:00.3-2/input3
+Oct 21 14:55:20.844400 kernel: usb 3-2: USB disconnect, device number 7
+Oct 21 14:55:30.809603 kernel: usb 3-2: new high-speed USB device number 8 using xhci_hcd
+Oct 21 14:55:30.933608 kernel: usb 3-2: New USB device found, idVendor=31b2, idProduct=0111, bcdDevice= 0.01
+Oct 21 14:55:30.935601 kernel: usb 3-2: New USB device strings: Mfr=1, Product=3, SerialNumber=2
+Oct 21 14:55:30.935886 kernel: usb 3-2: Product: KT02H20 HIFI Audio
+Oct 21 14:55:30.936054 kernel: usb 3-2: Manufacturer: KTMicro
+Oct 21 14:55:30.936209 kernel: usb 3-2: SerialNumber: 2020-02-20-0000-0000-0000
+Oct 21 14:55:30.965568 kernel: usb 3-2: set volume quirk for MOONDROP JU Jiu
+Oct 21 14:55:30.968582 kernel: input: KTMicro KT02H20 HIFI Audio as /devices/pci0000:00/0000:00:08.1/0000:09:00.3/usb3/3-2/3-2:1.3/0003:31B2:0111.000B/input/input32
+Oct 21 14:55:31.019601 kernel: hid-generic 0003:31B2:0111.000B: input,hidraw7: USB HID v1.11 Device [KTMicro KT02H20 HIFI Audio] on usb-0000:09:00.3-2/input3

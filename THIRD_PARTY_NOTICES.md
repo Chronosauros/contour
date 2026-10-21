@@ -61,8 +61,9 @@ Other:
 devicePEQ, https://github.com/jeromeof/devicePEQ, commit 0617f382e76629792a5933e6933e4b396a756a93.
 The WalkPlay HID PEQ protocol and the biquad coefficient maths in
 `android/core/src/main/kotlin/io/github/chronosauros/contour/core/WalkPlay.kt` and `research/protocol/walkplay.py`
-are ports of devicePEQ's `walkplayHidHandler.js`. `research/protocol/devicepeq-ref/` keeps verbatim reference
-copies of four devicePEQ files. devicePEQ is licensed under 0BSD:
+are ports of devicePEQ's `walkplayHidHandler.js`. The KT Micro register protocol of the JCally JM12 in
+`android/core/src/main/kotlin/io/github/chronosauros/contour/core/native/KtMicroCodec.kt` follows devicePEQ's
+`ktmicroUsbHidHandler.js`. `research/protocol/devicepeq-ref/` keeps verbatim reference copies of five devicePEQ files. devicePEQ is licensed under 0BSD:
 
     Copyright 2024 Jerome O'Flaherty (jerome.oflaherty@icloud.com)
 
