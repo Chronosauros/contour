@@ -1,0 +1,126 @@
+{
+  "id": "moondrop-echo-a",
+  "name": "Moondrop Echo-A",
+  "shortName": "Echo-A",
+  "productName": "ECHO-A",
+  "vendor": "Moondrop",
+  "status": "records-only",
+  "usb": {
+    "vid": "0x3302",
+    "pid": "0x12C5",
+    "productName": "ECHO-A",
+    "hidInterface": 3,
+    "matchByName": false,
+    "recognisedBy": "findDevice",
+    "listOrder": 10,
+    "notes": [
+      "USB maker string TTGK Technology, product string ECHO-A; HID interface 3 with reports 0x4B and 0x54, 64 B with report id; descriptor only, nothing sent (run:2026-10-21-moondrop-echo-a-01; scope-moondrop.md:134,160)",
+      "vid 0x3302 is the WalkPlay vendor id used by the WalkPlay driver code (core/WalkPlay.kt:22); that the PEQ protocol is WalkPlay SchemeNo11 was a hypothesis from the vendor id, the report ids and the WalkPlay cloud catalog row (Id 105, ECHO-A, brand MOONDROP, 8 channels); the 21.10.2026 PC read (run:2026-10-21-moondrop-echo-a-02, 11 read frames, nothing written) proves that the unit answers the Protocol Micro's read frames: firmware 0.1, 8 bands, the preamp, the slot byte. Write, flash commit and reset are still unproven on this unit",
+      "no vendor software shows the Echo-A: MOONDROP Hub has 0 hits for ECHO-A, the MOONDROP Link supported-products list has no ECHO-A, the product page declares no PEQ or app control, the QR-card app in the box is not identified (scope-moondrop.md:138-146); owner question 1 (scope-moondrop.md:198-199)",
+      "the advBeta Moondrop name rule 'Echo A' never matches the USB name ECHO-A (advbeta-reddit-astra@39c16e3:android/core/src/main/kotlin/io/github/chronosauros/contour/core/native/MoondropCatalog.kt:57)"
+    ]
+  },
+  "family": "walkplay",
+  "driver": {
+    "reportId": 75,
+    "schemeNo": 11,
+    "bandLen": "unknown",
+    "writeSequence": "unknown",
+    "strictParse": "unknown",
+    "importMode": "unknown",
+    "ab": "unknown",
+    "designRateHz": "unknown"
+  },
+  "peq": {
+    "bands": 8,
+    "fixedBandCount": "unknown",
+    "freqHz": "unknown",
+    "gainDb": [-10, 10],
+    "q": [0.1, 10],
+    "types": { "PEAK": 2, "LOW_SHELF": 1, "HIGH_SHELF": 1, "LOW_PASS": 4, "HIGH_PASS": 5 },
+    "heldTypes": "unknown",
+    "shelfQScale": "unknown",
+    "coefficientRateHz": 93750,
+    "emulation": "micro-hs-as-ls"
+  },
+  "preamp": { "present": "unknown", "db": "unknown", "step": "unknown", "wholeDb": "unknown", "registerOffsetDb": "unknown" },
+  "slots": {
+    "user": "unknown",
+    "declaredWritable": "unknown",
+    "stock": "unknown",
+    "bypass": "unknown",
+    "labels": "unknown",
+    "picker": false,
+    "names": "unknown"
+  },
+  "pacing": {
+    "writeGapMs": "unknown",
+    "consumeEchoes": "unknown",
+    "checksum": "unknown",
+    "needsAudioStream": "unknown",
+    "probeGapMs": "unknown",
+    "afterSaveMs": "unknown"
+  },
+  "readback": { "qSlack": "unknown" },
+  "settings": [],
+  "info": [],
+  "preview": {},
+  "reset": { "offered": "unknown", "src": "no vendor software for the Echo-A (scope-moondrop.md:168-170). The Protocol Micro code that drives it has the WalkPlay web tool's reset (decoded, walkplay-plan.md item 4): 01 03 02 00 00; eight flat PURE band frames (50/200/500/1000/2500/5000/10000/15000 Hz, Q 0.75, 0 dB, PK, length byte 0x18); 01 0A 04 00 00 FF FF; 01 01 00; 01 05 01..04; 01 17 00. Bench only (reset-plan echo-a --owner-consent, after a full backup); not in the app and not run on this unit; what it erases beyond the EQ is unknown" },
+  "hwVolume": { "inScope": false, "src": "no vendor software controls it; the Windows UAC endpoint is hardware (-60..0 dB) but not vendor-driven, out of scope under the rule (scope-moondrop.md:172-174)" },
+  "conflicts": [
+    {"field": "settings.mic", "values": ["the Micro's code drives the Echo-A and its page offers a mic gain row", "the Echo-A takes the write for some values only: PC FAIL (run:2026-10-22-moondrop-echo-a-01, RUN-EA4), phone 0 and +1 accepted, -1 ignored (run:2026-10-22-moondrop-echo-a-01-phone, run.md L96-106)"], "src": ["core/native/WalkPlaySettings.kt (readOnlyMic)"], "resolution": "read only in every build, review builds included: a write that the DAC takes only for some values is not offered (owner rule, 1.6 brief: mic Echo-A read only, as on the TRN)"},
+    { "field": "family", "values": ["walkplay (vendor id 0x3302, report ids 0x4B and 0x54, WalkPlay cloud catalog row Id 105, SchemeNo 11)", "no vendor software lists the Echo-A at all", "the unit answers the Protocol Micro's WalkPlay read frames (run:2026-10-21-moondrop-echo-a-02)"], "src": ["scope-moondrop.md:134,143,150-152", "run:2026-10-21-moondrop-echo-a-01", "run:2026-10-21-moondrop-echo-a-02"], "resolution": "walkplay, read path proven on the unit on 21.10.2026 (11 read frames: firmware 0.1, 8 bands, preamp, slot byte; the factory state is the Micro's flat PK 31..4000 Hz Q 0.75); write, commit and reset are not proven: nothing was written to the unit" },
+    { "field": "peq.bands", "values": ["8 (WalkPlay catalog, devicePEQ, FreeDSP)", "8 read from the unit (run:2026-10-21-moondrop-echo-a-02)"], "src": ["scope-moondrop.md:155,162-165", "run:2026-10-21-moondrop-echo-a-02"], "resolution": "8: the catalog row (scope-moondrop.md:162-165) and the PC read of 21.10.2026 agree - all eight bands answered" },
+    { "field": "peq.gainDb", "values": ["+-10 (SchemeNo11 profile walkplayPeq8Band10dBLsLowpass)", "no value from vendor software"], "src": ["scope-moondrop.md:155,163-165"], "resolution": "+-10 (the SchemeNo11 profile, scope-moondrop.md:155,163-165; Q 0.1-10 from the same profile, peq.q); no value from vendor software, none measured" },
+    { "field": "peq.types", "values": ["PK + LS + LP + HP (profile walkplayPeq8Band10dBLsLowpass)", "PK, LS (WalkPlay SchemeNo11 row used by the Micro)", "no shelves (devicePEQ Moondrop-name rule Echo A, which does not match the USB name)"], "src": ["scope-moondrop.md:155,163-166", "advbeta-reddit-astra@39c16e3:android/core/src/main/kotlin/io/github/chronosauros/contour/core/native/MoondropCatalog.kt:57"], "resolution": "PK + LS + LP + HP as the SchemeNo11 profile lists them (scope-moondrop.md:155), plus HS emulated as the Micro does it (a LOW SHELF with the negated gain, the HS gain in the preamp); the sources disagree and none is vendor software, so the write is behind a verification flag (WalkPlayProfiles.ECHO_A_HARDWARE_VERIFIED, off) until the PC bench writes the unit; the 21.10.2026 PEQ read (run:2026-10-21-moondrop-echo-a-02) proved the read path only" },
+    { "field": "peq.freqHz", "values": ["20-20000 Hz (the code applies the Protocol Micro's range to the Echo-A)", "no source names a frequency range for the Echo-A"], "src": ["scope-moondrop.md:162-166"], "resolution": "open: stays \"unknown\" here; the code value is held in core/devices/PendingRecords.kt (ECHO_A_FREQ_HZ) until a read or capture gives one" },
+    { "field": "driver.vendorSoftware", "values": ["none identified: Hub and Link do not list the Echo-A; the QR-card app is unknown"], "src": ["scope-moondrop.md:138-146,198-199"], "resolution": "open: owner question 1 (scan the QR card, or treat the WalkPlay catalog row as vendor software)" }
+  ],
+  "evidence": {
+    "usb": {
+      "firmware": "0.1",
+      "source": null,
+      "vendorApp": null,
+      "pcBench": "run:2026-10-21-moondrop-echo-a-01 and -02 HID descriptor: 3302:12C5, product ECHO-A, maker TTGK Technology, interface 3, 92 B descriptor, reports 0x4B and 0x54 (64 B with id); the descriptor itself sends nothing",
+      "persistence": null,
+      "phone": null,
+      "acoustic": null
+    },
+    "bands": {
+      "firmware": "0.1",
+      "source": "WalkPlay cloud catalog via the devicePEQ copy (entry Id 105 ECHO-A, 8 channels, SchemeNo 11, created 2024-11-29, updated 2024-12-18); a catalog row, not an app UI (scope-moondrop.md:143)",
+      "vendorApp": null,
+      "pcBench": "run:2026-10-21-moondrop-echo-a-02, read only (11 WalkPlay read frames, firmware command 0x0C = 0.1): 8 bands, all PK, 31/62/125/250/500/1000/2000/4000 Hz, Q 0.75 (192/256), gain 0, preamp 0 dB, slot byte 0 - the Protocol Micro's factory flat; no write, select, save, clear or reset frame was sent",
+      "persistence": null,
+      "phone": "run:2026-10-25-moondrop-echo-a-phone-nothing: PK, LS, LP, HP, HS and preamp VERIFIED, coefficients at 93 750 Hz, state after = start; the emulated HS ends 0.5 dB low when its gain is not a whole dB (the editor keeps it on a whole dB since round 6)",
+      "acoustic": "run:2026-10-25-moondrop-echo-a-05-mac-eqtest-48k (stream 48 kHz, firmware 0.1): PK mix, shelf mix with the emulated HS (level -5.997 / -6.000), preamp -6, LP 8000 Hz and HP all PASS; the DSP is fixed and does not follow the stream. WalkPlayProfiles.ECHO_A_HARDWARE_VERIFIED is true; the positive preamp, the reset and the mic row stay as they were"
+    },
+    "output.impedance": {
+      "firmware": "unknown",
+      "source": null,
+      "vendorApp": null,
+      "pcBench": "run:2026-10-20-moondrop-echo-a-03 3.5 mm: 2.448 Ohm",
+      "persistence": null,
+      "phone": null,
+      "acoustic": null
+    },
+    "peq.coefficientRateHz": {
+      "firmware": "0.1",
+      "source": "devicePEQ computeIIRFilter(..., a = 96e3) designs the coefficients for 96 kHz (the Protocol Micro code that drives the Echo-A does the same)",
+      "vendorApp": null,
+      "pcBench": "the coefficient bytes Contour sent are in the HID logs of the runs (hid/NN-plan-slotactive.log), decoded and replayed at 96 000 and 93 750 Hz (dac-lab:contour-1.6/research/2026-10-24-dsp-model-walkplay.md)",
+      "persistence": null,
+      "phone": null,
+      "acoustic": "run:2026-10-24-moondrop-echo-a-03-mac-eqtest and run:2026-10-24-moondrop-echo-a-04-mac-eqtest (stream 44.1 kHz): the DSP plays the coefficient bytes at 93 750 Hz; with coefficients designed for 93 750 Hz every valid case fits within 0.057 dB, designed for 96 000 Hz PK Q5 and LP 8000 fail (0.73-0.88 and 0.56 dB). Shelves play the slope form Contour already uses (LS 3000 -5 Q 0.71 decides: slope 0.020 dB, register / sqrt2 0.339 dB), so the register Q of its shelves is not rescaled. Not checked at a 48 kHz stream"
+    }
+  },
+  "src": {
+    "peq.coefficientRateHz": ["run:2026-10-24-moondrop-echo-a-03-mac-eqtest", "run:2026-10-24-moondrop-echo-a-04-mac-eqtest", "dac-lab:contour-1.6/research/2026-10-24-dsp-model-walkplay.md", "dac-lab:contour-1.6/research/2026-10-25-shelf-law.md"],
+    "driver.schemeNo": ["scope-moondrop.md:143,150-152"],
+    "usb": ["scope-moondrop.md:134,160", "run:2026-10-21-moondrop-echo-a-01", "dac-lab:devices/moondrop-echo-a.md"],
+    "family": ["scope-moondrop.md:143,150-152", "core/WalkPlay.kt:22"],
+    "peq": ["scope-moondrop.md:162-166"],
+    "reset": ["scope-moondrop.md:168-170"],
+    "hwVolume": ["scope-moondrop.md:172-174"]
+  }
+}

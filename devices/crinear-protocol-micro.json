@@ -1,0 +1,213 @@
+{
+  "id": "crinear-protocol-micro",
+  "name": "CrinEar Protocol Micro",
+  "shortName": "Micro",
+  "productName": "CrinEar Protocol Micro",
+  "vendor": "CrinEar",
+  "status": "stable",
+  "usb": {
+    "vid": "0x3302",
+    "pid": "0xC20F",
+    "productName": "unknown",
+    "hidInterface": 3,
+    "matchByName": false,
+    "recognisedBy": "find",
+    "listOrder": 1,
+    "notes": [
+      "WalkPlay SchemeNo11; the Android USB attach filter is generated from this record at build time",
+      "unofficial support; not affiliated with CrinEar (core/Device.kt:68)",
+      "report 0x4B, 64 bytes on the wire (report id plus 63 payload bytes); report 0x54 exists and is not used (core/WalkPlay.kt:24-25; research/protocol/PROTOCOL.md:17-19)",
+      "one top-level Consumer Control collection (usage page 0x0C, usage 0x01); the Android transport takes HID interface 3 first, else the first HID interface (android/app/src/main/kotlin/io/github/chronosauros/contour/usb/HidTransport.kt:86-87; research/protocol/PROTOCOL.md:13,182-183)",
+      "the HID interface number differs between enumerations on the PC: MI_02 once, MI_03 another time; the match is on usage 0x0C (dac-lab:devices/crinear-protocol-micro.md)",
+      "USB product string and bcdDevice not recorded in the sources read (dac-lab:devices/crinear-protocol-micro.md)",
+      "Contour uses raw frequency and Q on the wire; devicePEQ's SchemeNo11 compensation (ratio 0.9775, cos-Nyquist Q) is deliberately left out (research/protocol/PROTOCOL.md:73-93; core/WalkPlay.kt:10-17)",
+      "reads are the 1.2.2 predicates and parsers, permissive (core/DeviceProtocol.kt:225-262); A/B uses TEMP_WRITE, proven RAM-only on the Micro (core/DeviceProtocol.kt:24, core/WalkPlay.kt:289-292)"
+    ]
+  },
+  "family": "walkplay",
+  "driver": {
+    "reportId": 75,
+    "schemeNo": 11,
+    "bandLen": 24,
+    "writeSequence": "devicepeq",
+    "strictParse": false,
+    "importMode": "micro",
+    "ab": true,
+    "designRateHz": 96000
+  },
+  "peq": {
+    "bands": 8,
+    "fixedBandCount": true,
+    "freqHz": [20, 20000],
+    "gainDb": [-10, 10],
+    "q": [0.1, 10],
+    "types": { "PEAK": 2, "LOW_SHELF": 1, "HIGH_SHELF": 1 },
+    "heldTypes": { "LOW_PASS": 4, "HIGH_PASS": 5 },
+    "shelfQScale": 1.0,
+    "coefficientRateHz": 93750,
+    "emulation": "micro-hs-as-ls"
+  },
+  "preamp": { "present": true, "db": [-30, 0], "step": 0.1, "wholeDb": true, "registerOffsetDb": 0 },
+  "slots": {
+    "user": [0],
+    "declaredWritable": [0],
+    "stock": [],
+    "bypass": null,
+    "labels": { "0": "Custom" },
+    "picker": false,
+    "names": "none",
+    "slotByte": "echo-read-value",
+    "factoryFlat": [[31, 0.75, "PEAK"], [62, 0.75, "PEAK"], [125, 0.75, "PEAK"], [250, 0.75, "PEAK"], [500, 0.75, "PEAK"], [1000, 0.75, "PEAK"], [2000, 0.75, "PEAK"], [4000, 0.75, "PEAK"]]
+  },
+  "pacing": {
+    "writeGapMs": 20,
+    "consumeEchoes": false,
+    "checksum": false,
+    "needsAudioStream": false,
+    "probeGapMs": null,
+    "afterSaveMs": 200,
+    "sequence": [
+      "every band write, 20 ms after it (120 ms after the last band)",
+      "preamp write 01 03 02 00 g, 50 ms",
+      "commit 01 05, 20 ms; 01 17, 20 ms; TEMP_WRITE 01 0A 04 00 00 FF FF, 50 ms; FLASH_EQ 01 01 01, 0 ms, then 200 ms"
+    ]
+  },
+  "readback": { "qSlack": "none" },
+  "settings": [],
+  "info": [],
+  "preview": {},
+  "reset": { "offered": false, "src": "the official tool (EQ.Hangout.Audio / devicePEQ) has no reset (scope-kt-walkplay.md:182,190-192). The WalkPlay web tool's resetDevice (class s2, which SchemeNo11 resolves to) is decoded (walkplay-plan.md item 4, rank KOD): 01 03 02 00 00; eight flat PURE band frames (50/200/500/1000/2500/5000/10000/15000 Hz, Q 0.75, 0 dB, PK, length byte 0x18); 01 0A 04 00 00 FF FF; 01 01 00; 01 05 01..04; 01 17 00. Contour has it in the bench only (reset-plan micro --owner-consent, after a full backup, restored afterwards); not in the app, not run on a unit; what it erases beyond the EQ is unknown" },
+  "hwVolume": { "inScope": false, "src": "UAC Feature Unit 0x10 exists on the Micro, but neither official tool drives it (scope-kt-walkplay.md:181,194-196); the Micro answered none of the WalkPlay extra commands 0x11/0x16/0x19/0x1B/0x1D (scope-kt-walkplay.md:170,180)" },
+  "upstream": {
+    "sourceUrl": "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/walkplayHidHandler.js",
+    "constraintsUrl": "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/peqConstraintsConfig.json#L262",
+    "constraintsRef": "walkplayPeq8Band10dBLsLowpass",
+    "vendorIds": [13058],
+    "oracle": false
+  },
+  "conflicts": [
+    {"field": "settings.mic", "values": ["the WalkPlay web tool shows a MIC tab for SchemeNo11 and the page offers a mic gain row", "the Micro takes the write for some values only: PC -1 ignored (run:2026-10-22-crinear-protocol-micro-02, RUN-MIC2 L24), phone -3 accepted, -1 ignored (run:2026-10-22-crinear-protocol-micro-01-phone, run.md L17)"], "src": ["core/native/WalkPlaySettings.kt (readOnlyMic)"], "resolution": "read only in every build, review builds included: a write that the DAC takes only for some values is not offered (owner rule, 1.6 brief)"},
+    { "field": "peq.types.HIGH_SHELF", "values": ["offered by Contour, sent as an inverted LOW SHELF (code 1) with the HS gain sum in the preamp", "neither vendor tool offers HS on SchemeNo11 (WalkPlay web tool disables it for scheme 11; devicePEQ: no high-shelf)"], "src": ["core/Device.kt:81-84,99-105", "research/protocol/PROTOCOL.md:68-70", "scope-kt-walkplay.md:34-40,185-187"], "resolution": "open: owner question 2 (keep the emulated HS, which is beyond vendor scope, or drop it)" },
+    { "field": "peq.heldTypes", "values": ["LP/HP not offered ('LP/HP unverified', code)", "devicePEQ and the WalkPlay web tool both offer LP 4 and HP 5 for SchemeNo11"], "src": ["core/Device.kt:81-83", "scope-kt-walkplay.md:36-37,185-186"], "resolution": "offered since 25.10.2026: LP 8000 Hz and HP 100 Hz PASS at a 48 kHz stream (run:2026-10-25-crinear-protocol-micro-07-mac-eqtest-48k); ProtocolMicro.PASS_FILTERS_VERIFIED is true (plain RBJ coefficients)" },
+    { "field": "driver.official-tool", "values": ["only CrinEar's EQ.Hangout.Audio (devicePEQ): 8 bands, no reset, no volume", "also the chip vendor's WalkPlay web tool (adds a reset and possibly other rows, if it lists the Micro)"], "src": ["scope-kt-walkplay.md:165-169,191,211-213"], "resolution": "open: owner question 1" },
+    { "field": "hwVolume", "values": ["not in scope: no official tool drives UAC volume", "docs table row for the Micro lists 'hardware volume' as verified"], "src": ["scope-kt-walkplay.md:194-196", "docs/devices/index.html:227"], "resolution": "closed: the docs claim was a code path of advBeta (UacVolume.kt), not of this build; it was removed from the docs table in 1.6.0" },
+    { "field": "usb.hidInterface", "values": ["3 (research/protocol/PROTOCOL.md, Android transport prefers 3)", "MI_02 on one Windows enumeration"], "src": ["research/protocol/PROTOCOL.md:13,182-183", "android/app/src/main/kotlin/io/github/chronosauros/contour/usb/HidTransport.kt:86-87", "dac-lab:devices/crinear-protocol-micro.md"], "resolution": "3 for Android; the PC number is not stable" },
+    { "field": "preamp.db", "values": ["-30..0 dB (Contour policy, whole dB register)", "int8 register, practical range <= 0 (devicePEQ)"], "src": ["core/Device.kt:87-89", "research/protocol/PROTOCOL.md:69-71"], "resolution": "-30..0 (code). The WalkPlay web tool's Volume slider is the same preamp (frame 01 03 02 00 g) with -16..+6 dB in 1 dB steps (walkplay-plan.md); the code keeps +6 behind a flag that is off (ProtocolMicro.MICRO_POSITIVE_PREAMP_VERIFIED; the Echo-A has ECHO_A_POSITIVE_PREAMP_VERIFIED), the PC bench switches it on with --positive-preamp" },
+    { "field": "persistence", "values": ["committed write persists to flash (devicePEQ comment, commit sequence)", "persistence after a power cycle of a full-commit write is not checked"], "src": ["research/protocol/PROTOCOL.md:103-106", "dac-lab:devices/crinear-protocol-micro.md"], "resolution": "open: T09, P07" }
+  ],
+  "evidence": {
+    "bands": {
+      "firmware": "0.2 (VERSION command)",
+      "source": "https://hangout.audio/products/crinear-protocol-micro states 'built-in 8-band Parametric EQ'; devicePEQ walkplayPeq8Band10dBLsLowpass",
+      "vendorApp": null,
+      "pcBench": "run of 2026-09-25: version, slot, 8 bands and preamp read byte for byte; the stored biquads reproduced bit-exact (research/protocol/PROTOCOL.md:58-60,100)",
+      "persistence": null,
+      "phone": "Pixel 2026-10-04 and 2026-10-10: send VERIFIED, slots byte for byte (dac-lab:devices/crinear-protocol-micro.md)",
+      "acoustic": null
+    },
+    "types.PEAK": {
+      "firmware": "0.2 (VERSION command)",
+      "source": "devicePEQ SchemeNo11 (research/protocol/PROTOCOL.md:67-71)",
+      "vendorApp": null,
+      "pcBench": "2026-09-29: band 1 switched, PK 2000 Hz Q 0.7 -10 dB via TEMP_WRITE, restore confirmed by read; by ear only, TEMP_WRITE plays live (dac-lab:devices/crinear-protocol-micro.md)",
+      "persistence": null,
+      "phone": "Pixel 2026-10-04, 2026-10-10, 2026-10-13: sends ON DAC (dac-lab:devices/crinear-protocol-micro.md)",
+      "acoustic": null
+    },
+    "types.LOW_SHELF": {
+      "firmware": "0.2 (VERSION command)",
+      "source": "devicePEQ SchemeNo11: low-shelf (research/protocol/PROTOCOL.md:67-69)",
+      "vendorApp": null,
+      "pcBench": null,
+      "persistence": null,
+      "phone": null,
+      "acoustic": null
+    },
+    "types.HIGH_SHELF": {
+      "firmware": null,
+      "source": "RBJ identity H_HS(A) = A^2 * H_LS(1/A) only (core/Device.kt:93-97); emulation is beyond vendor scope",
+      "vendorApp": null,
+      "pcBench": null,
+      "persistence": null,
+      "phone": null,
+      "acoustic": null
+    },
+    "types.pass": {
+      "firmware": null,
+      "source": "devicePEQ lists LP 4 and HP 5 for SchemeNo11; the WalkPlay web tool offers them on every scheme (scope-kt-walkplay.md:34-37)",
+      "vendorApp": null,
+      "pcBench": null,
+      "persistence": null,
+      "phone": null,
+      "acoustic": "run:2026-10-25-crinear-protocol-micro-07-mac-eqtest-48k (stream 48 kHz, firmware 0.2, bench with --pass-filters): LP 8000 Hz and HP 100 Hz PASS, together with PK mix, shelf mix and preamp -6; the DSP is fixed and does not follow the stream. ProtocolMicro.PASS_FILTERS_VERIFIED is true"
+    },
+    "preamp": {
+      "firmware": "0.2 (VERSION command)",
+      "source": "devicePEQ deviceHandlesPregain false, CMD 0x03 int8 dB (research/protocol/PROTOCOL.md:33,69-71)",
+      "vendorApp": null,
+      "pcBench": "run of 2026-09-25: preamp read; 2026-09-29: copy with preamp -3 dB (dac-lab:devices/crinear-protocol-micro.md)",
+      "persistence": null,
+      "phone": "Pixel: sends with preamp VERIFIED; 2026-10-17 read 'preamp -5 dB' (dac-lab:devices/crinear-protocol-micro.md)",
+      "acoustic": "run:2026-10-25-crinear-protocol-micro-07-mac-eqtest-48k (stream 48 kHz): preamp -6 PASS (level -6.00 dB measured, -6.00 dB the register difference; the shelf mix with the emulated HS -5.999 / -6.000); preamp +3 is accepted by the register and read back, but the measured level moved +0.00 dB, so MICRO_POSITIVE_PREAMP_VERIFIED stays false"
+    },
+    "slots.write": {
+      "firmware": "0.2 (VERSION command)",
+      "source": "devicePEQ: one writable slot 'Custom' id 101 (research/protocol/PROTOCOL.md:107-108)",
+      "vendorApp": null,
+      "pcBench": "run of 2026-09-25: slot byte 0 in every reply (research/protocol/PROTOCOL.md:107-108)",
+      "persistence": null,
+      "phone": "Pixel 2026-10-17: slot 0 read (dac-lab:devices/crinear-protocol-micro.md)",
+      "acoustic": null
+    },
+    "ab": {
+      "firmware": "0.2 (VERSION command)",
+      "source": null,
+      "vendorApp": null,
+      "pcBench": "2026-09-29: TEMP_WRITE plays immediately and lives in RAM only; after unplugging the state before the test came back (dac-lab:devices/crinear-protocol-micro.md)",
+      "persistence": null,
+      "phone": null,
+      "acoustic": null
+    },
+    "peq.coefficientRateHz": {
+      "firmware": "see bands",
+      "source": "devicePEQ computeIIRFilter(..., a = 96e3) designs the coefficients for 96 kHz; driver.designRateHz keeps that value (what the vendor tool writes)",
+      "vendorApp": null,
+      "pcBench": "the coefficient bytes Contour sent are in the HID logs of the runs (hid/NN-plan-slotactive.log), decoded and replayed at 96 000 and 93 750 Hz (dac-lab:contour-1.6/research/2026-10-24-dsp-model-walkplay.md)",
+      "persistence": null,
+      "phone": null,
+      "acoustic": "run:2026-10-24-crinear-protocol-micro-04-mac-eqtest and run:2026-10-24-crinear-protocol-micro-05-mac-eqtest (stream 44.1 kHz): the DSP plays the coefficient bytes at 93 750 Hz = 96 000 x 125/128; with coefficients designed for 93 750 Hz every valid case fits within 0.057 dB (PK mix, shelf mix, LP 8000, HP 100), designed for 96 000 Hz PK mix and LP 8000 fail (0.78 and 0.555 dB); every filter plays 2.34 % low. Shelves play the slope form Contour already uses (not rescaled). Not checked at a 48 kHz stream"
+    }
+  },
+  "src": {
+    "peq.coefficientRateHz": ["run:2026-10-24-crinear-protocol-micro-04-mac-eqtest", "run:2026-10-24-crinear-protocol-micro-05-mac-eqtest", "dac-lab:contour-1.6/research/2026-10-24-dsp-model-walkplay.md", "core/WalkPlay.kt (computeIir rateHz), core/devices/CatalogTypes.kt (WalkPlayData.coefficientRateHz)"],
+    "driver.schemeNo": ["core/WalkPlay.kt:10"],
+    "usb.vid": ["core/WalkPlay.kt:22", "core/DeviceProtocol.kt:294-295"],
+    "usb.pid": ["core/WalkPlay.kt:23"],
+    "usb.productName": ["core/Device.kt:71 (display name only; no USB product string recorded)"],
+    "usb.hidInterface": ["android/app/src/main/kotlin/io/github/chronosauros/contour/usb/HidTransport.kt:86-87", "research/protocol/PROTOCOL.md:13,182-183"],
+    "driver.reportId": ["core/WalkPlay.kt:24"],
+    "driver.bandLen": ["core/WalkPlay.kt:254"],
+    "driver.writeSequence": ["core/DeviceProtocol.kt:105-107"],
+    "driver.strictParse": ["core/DeviceProtocol.kt:22-23,228-236 (Micro delegates to the 1.2.2 predicates)"],
+    "driver.importMode": ["core/DeviceProtocol.kt:158-159", "core/Device.kt:214-251"],
+    "driver.ab": ["core/DeviceProtocol.kt:24"],
+    "driver.designRateHz": ["core/WalkPlay.kt:33"],
+    "peq.bands": ["core/WalkPlay.kt:32", "core/Device.kt:74"],
+    "peq.fixedBandCount": ["core/Device.kt:170-172 (every send writes all 8 slots; unused ones are the factory flat)"],
+    "peq.gainDb": ["core/Device.kt:75-76"],
+    "peq.q": ["core/Device.kt:77-78"],
+    "peq.freqHz": ["core/Device.kt:79-80"],
+    "peq.types": ["core/WalkPlay.kt:35-39,53-62", "core/Device.kt:81-83,99-101"],
+    "peq.heldTypes": ["core/WalkPlay.kt:38-39", "core/Device.kt:81-83"],
+    "peq.emulation": ["core/Device.kt:81-83,93-101"],
+    "preamp": ["core/Device.kt:84,87-89", "core/DeviceTarget.kt:25-27"],
+    "slots": ["core/DeviceProtocol.kt:264-269 (slot byte echoed unchanged)", "research/protocol/PROTOCOL.md:107-108"],
+    "slots.factoryFlat": ["core/WalkPlay.kt:41-43", "core/DeviceProtocol.kt:98-99"],
+    "pacing": ["core/WalkPlay.kt:278-310"],
+    "readback.qSlack": ["core/Device.kt:203-205 (registers compared exactly)"],
+    "settings": ["core/DeviceProtocol.kt:13 (empty list by default)"],
+    "reset": ["scope-kt-walkplay.md:182,190-192"],
+    "hwVolume": ["scope-kt-walkplay.md:181,194-196"],
+    "upstream": ["research/protocol/PROTOCOL.md:1-8,67-71", "scope-kt-walkplay.md:168"]
+  }
+}

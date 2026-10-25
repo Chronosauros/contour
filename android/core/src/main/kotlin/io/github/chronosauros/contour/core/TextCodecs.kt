@@ -19,7 +19,7 @@ data class ImportedEq(val bands: List<Band>, val preampDb: Double?, val notes: L
  * Preamp: -6.1 dB
  * Filter 1: ON PK Fc 105 Hz Gain -2.5 dB Q 0.70
  * ```
- * Types PK/PEQ, LS/LSC/LSQ, HS/HSC/HSQ, LP/LPQ, HP/HPQ; OFF = disabled. Tolerant to case, spacing,
+ * Types PK/PEQ, LS/LSC/LSQ, HS/HSC/HSQ, LP/LPQ, HP/HPQ, BP, AP (Equalizer APO's tokens; the pass filters take no Gain); OFF = disabled. Tolerant to case, spacing,
  * missing filter numbers and a decimal comma. Lines it does not understand are skipped.
  */
 object ApoText {
@@ -43,6 +43,8 @@ object ApoText {
         "HS", "HSC", "HSQ" -> FilterType.HIGH_SHELF
         "LP", "LPQ" -> FilterType.LOW_PASS
         "HP", "HPQ" -> FilterType.HIGH_PASS
+        "BP" -> FilterType.BAND_PASS
+        "AP" -> FilterType.ALL_PASS
         else -> null
     }
 
@@ -52,6 +54,8 @@ object ApoText {
         FilterType.HIGH_SHELF -> "HSC"
         FilterType.LOW_PASS -> "LPQ"
         FilterType.HIGH_PASS -> "HPQ"
+        FilterType.BAND_PASS -> "BP"
+        FilterType.ALL_PASS -> "AP"
     }
 
     private fun num(s: String): Double = s.replace(',', '.').toDouble()
@@ -103,7 +107,8 @@ object ApoText {
             val type = typeOf(m.groupValues[2]) ?: continue
             val rest = m.groupValues[3]
             val fc = FC.find(rest)?.groupValues?.get(1)?.let(::num) ?: continue
-            val gain = GAIN.find(rest)?.groupValues?.get(1)?.let(::num) ?: 0.0
+            // A pass filter has no gain: a stray "Gain" on its line is ignored, so it never reaches a band.
+            val gain = if (type.isPass) 0.0 else GAIN.find(rest)?.groupValues?.get(1)?.let(::num) ?: 0.0
             val q = Q.find(rest)?.groupValues?.get(1)?.let(::num) ?: DEFAULT_Q
             block.filters += Raw(type, fc, gain, q, m.groupValues[1].equals("on", ignoreCase = true))
         }
@@ -141,8 +146,12 @@ object ApoText {
         a.flatMap { it.filters } == b.flatMap { it.filters } && preampOf(a, globalPreamp) == preampOf(b, globalPreamp)
 
     /** A filter that does nothing: a peak or shelf at 0 dB (squig.link and hangout files often carry all 10 slots). */
-    private fun doesNothing(b: Band) =
-        (b.type == FilterType.PEAK || b.type == FilterType.LOW_SHELF || b.type == FilterType.HIGH_SHELF) && abs(b.gainDb) < 1e-9
+    fun doesNothing(b: Band) =
+        !b.type.isPass && abs(b.gainDb) < 1e-9
+
+    /** A filter that does nothing and has no frequency or Q to speak of (Fc 0, Q 0: the padding of a file that fills unused slots with zeros), as opposed to a 0 dB filter someone placed. */
+    private fun isPadding(b: Band) =
+        doesNothing(b) && !(b.freqHz.isFinite() && b.freqHz > 0.0 && b.q.isFinite() && b.q > 0.0)
 
     /**
      * The one filter kept from a file of only 0 dB filters (hangout.audio pads unused slots with zeros) must not block
@@ -157,17 +166,34 @@ object ApoText {
     }
 
     /**
-     * [parse] for importing a file into a profile: filters at 0 dB are dropped and counted in the notes so they do
-     * not eat device bands (disabled filters that have a gain stay, as disabled bands). A file made only of such
-     * filters keeps its first one, so an exported flat profile imports as a flat profile.
+     * [parse] for importing a file into a profile: every filter stays, the ones at 0 dB included (each has its own frequency and Q, and a file written from a DAC read has them on
+     * purpose); a 0 dB filter that cannot be sent as it stands is moved into range ([neutralInRange]). Only the padding of a file that fills its unused slots with zeros (Fc 0, Q 0) is
+     * dropped and counted in the notes; a file made only of padding keeps its first filter, so an exported flat profile imports as a flat profile. A caller that has fewer bands than
+     * the file has filters leaves out 0 dB ones itself, only as many as it takes (the app's Importer).
      */
     fun parseImport(text: String, newId: (Int) -> String = { "b${it + 1}" }): ImportedEq {
         val eq = parse(text, newId)
-        val kept = eq.bands.filterNot(::doesNothing).ifEmpty { eq.bands.take(1).map(::neutralInRange) }
+        val kept = eq.bands.filterNot(::isPadding).ifEmpty { eq.bands.take(1) }.map(::neutralInRange)
         val skipped = eq.bands.size - kept.size
         if (skipped == 0) return if (kept == eq.bands) eq else ImportedEq(kept, eq.preampDb, eq.notes)
         val note = "$skipped empty filter${if (skipped == 1) "" else "s"} skipped"
         return ImportedEq(kept.mapIndexed { i, b -> b.copy(id = newId(i)) }, eq.preampDb, eq.notes + note)
+    }
+
+    /**
+     * At most [capacity] bands for a DAC that has fewer bands than the file has filters: while there are more, a filter that does nothing ([doesNothing]) is left out, the last one first, and
+     * only as many as it takes. Filters with gain and pass filters are never left out. Returns the bands (in their order) and how many were left out; the count can leave the list over [capacity]
+     * when there are not enough empty filters, which the caller reports as it does for any other overflow.
+     */
+    fun dropEmptyToFit(bands: List<Band>, capacity: Int): Pair<List<Band>, Int> {
+        var extra = bands.size - capacity
+        if (extra <= 0) return bands to 0
+        val out = HashSet<Int>()
+        for (i in bands.indices.reversed()) {
+            if (extra == 0) break
+            if (doesNothing(bands[i])) { out += i; extra-- }
+        }
+        return bands.filterIndexed { i, _ -> i !in out } to out.size
     }
 
     /** Shortest exact decimal with at least [minDecimals] and at most [maxDecimals] places. */
@@ -191,15 +217,15 @@ object ApoText {
      * APO text. Lossless for values with up to 2 decimals (Fc, gain) and 3 (Q); gains and preamp are exact for any value.
      * The shape is squig.link's export:
      * its import regex `Filter\s*\d+:\s*(\S+)\s*(\S+)\s*Fc\s*(\S+)\s*Hz\s*Gain\s*(\S+)\s*dB(\s*Q\s*(\S+))?`
-     * matches every PK / LSC / HSC line. Low- and high-pass lines have no Gain: Equalizer APO reads them,
-     * squig.link skips them.
+     * matches every PK / LSC / HSC line. Low-, high-, band- and all-pass lines (LPQ / HPQ / BP / AP) have no Gain:
+     * Equalizer APO reads them, squig.link skips them.
      */
     fun format(bands: List<Band>, preampDb: Double): String = buildString {
         append("Preamp: ").append(fmtGain(preampDb)).append(" dB\n")
         bands.forEachIndexed { i, b ->
             append("Filter ").append(i + 1).append(": ").append(if (b.enabled) "ON" else "OFF")
             append(' ').append(codeOf(b.type)).append(" Fc ").append(fmt(b.freqHz, 0, 2)).append(" Hz")
-            if (b.type != FilterType.LOW_PASS && b.type != FilterType.HIGH_PASS) {
+            if (!b.type.isPass) {
                 append(" Gain ").append(fmtGain(b.gainDb)).append(" dB")
             }
             append(" Q ").append(fmt(b.q, 2, 3)).append('\n')
@@ -261,7 +287,7 @@ object EqByEarJson {
         val bands = ArrayList<Band>()
         for (b in s.bands) {
             val type = ApoText.typeOf(b.type) ?: continue
-            bands += Band(newId(bands.size), type, b.fc, b.gain, b.q, b.enabled)
+            bands += Band(newId(bands.size), type, b.fc, if (type.isPass) 0.0 else b.gain, b.q, b.enabled)
         }
         return ImportedEq(bands, if (s.preampAuto) null else s.preampDb)
     }

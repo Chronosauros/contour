@@ -87,6 +87,40 @@ class TrnWriteTest {
         assertEquals(listOf(50L, 50L, 200L, 200L), tail.map { it.delayAfterMs })
     }
 
+    /** TRN shelves: register Q = intended Q x sqrt2, the coefficients, the Q30 check and the editor's Q range stay in the intended domain, a read-back divides by the scale. */
+    @Test
+    fun `a TRN shelf stores Q times sqrt2 in the register, designs its bytes for the intended Q and reads back as the intended Q`() {
+        val q = 0.71
+        for (type in listOf(FilterType.LOW_SHELF, FilterType.HIGH_SHELF)) {
+            // a high shelf boost is refused on the TRN (no exact emulation, see below), so the high shelf is a cut
+            val band = Band("s", type, if (type == FilterType.LOW_SHELF) 100.0 else 3000.0, if (type == FilterType.LOW_SHELF) 2.0 else -2.0, q)
+            val plan = trn.plan(listOf(band), -3.0) as DevicePlan.Ready
+            val w = plan.bands.first()
+            assertEquals(Math.round(q * Math.sqrt(2.0) * 256).toInt(), w.registers().q256, "register Q of ${type.name}")
+            assertEquals(257, w.registers().q256)
+            val code = if (type == FilterType.LOW_SHELF) WalkPlay.TYPE_LSQ else WalkPlay.TYPE_HSQ
+            assertEquals(hex(WalkPlay.computeIir(band.freqHz, band.gainDb, q, code)), hex(WalkPlay.bandWriteReport(w, 0, WalkPlay.TRN_BAND_LEN).copyOfRange(8, 28)), "coefficients of Q 0.71")
+            // read back: the registers as a frame holds them, divided by the scale; the plan re-encodes to the same registers
+            val back = WalkPlay.parseBand(WalkPlay.bandWriteReport(w, 0, WalkPlay.TRN_BAND_LEN))
+            assertEquals(257, back.registers.q256)
+            val bands = List(10) { i -> if (i == 0) back else WalkPlay.parseBand(WalkPlay.bandWriteReport(trn.flatPlan().bands[i], 0, WalkPlay.TRN_BAND_LEN)) }
+            val imported = trn.importExact(bands, -3) as DacImport.Ready
+            assertEquals(q, imported.eq.bands.single().q, 0.003)
+            assertEquals(type, imported.eq.bands.single().type)
+        }
+        // a peak is not scaled
+        val pk = trn.plan(listOf(Band("p", FilterType.PEAK, 1000.0, 2.0, 2.0)), -3.0) as DevicePlan.Ready
+        assertEquals(512, pk.bands.first().registers().q256)
+        assertEquals(1.0, trn.caps.peakQScale)
+        // the editor's intended shelf Q range is the register range / sqrt2; a peak keeps 0.1..10
+        assertEquals(Math.sqrt(2.0), trn.caps.shelfQScale)
+        assertEquals(0.1 / Math.sqrt(2.0)..10.0 / Math.sqrt(2.0), DeviceTarget.TRN.qRange(FilterType.HIGH_SHELF))
+        assertEquals(0.1..10.0, DeviceTarget.TRN.qRange(FilterType.PEAK))
+        assertTrue(trn.plan(listOf(Band("s", FilterType.LOW_SHELF, 100.0, 1.0, 7.07)), -3.0) is DevicePlan.Ready)
+        assertTrue(trn.plan(listOf(Band("s", FilterType.LOW_SHELF, 100.0, 1.0, 7.1)), -3.0) is DevicePlan.Rejected)
+        assertTrue(trn.plan(listOf(Band("p", FilterType.PEAK, 1000.0, 1.0, 9.0)), -3.0) is DevicePlan.Ready)
+    }
+
     @Test
     fun `the slot byte is the one that was read, nothing else in the frame changes`() {
         val c = matrix[3]
@@ -127,9 +161,10 @@ class TrnWriteTest {
         val plan = trn.plan(profile, -12.0) as DevicePlan.Ready
         assertEquals(listOf(WalkPlay.TYPE_LSQ, WalkPlay.TYPE_PK, WalkPlay.TYPE_HSQ), plan.bands.take(3).map { it.typeCode })
         assertEquals(-12, plan.preampDb)
-        // bands 1 and 2 are the matrix's LSQ and PK +10 bands at the same indices: the planner's frames are the ones the unit took
+        // bands 1 and 2 are the matrix's LSQ and PK +10 bands at the same indices: the planner's frames are the ones the unit took, except the shelf's Q register: the TRN plays a shelf at
+        // Q = register / sqrt2 (acoustic run 25.10.2026), so the register carries intended Q x sqrt2 (0.707 x sqrt2 x 256 = 256) while the coefficient bytes stay those of Q 0.707
         val steps = trn.writeSequence(plan, 0)
-        assertEquals(hex(report(matrix[0].tx)), hex(steps[0].report))
+        assertEquals(hex(report(matrix[0].tx).also { it[30] = 0x00; it[31] = 0x01 }), hex(steps[0].report))
         assertEquals(hex(report(matrix[1].tx)), hex(steps[1].report))
         assertEquals(10, trn.caps.bands)
         assertEquals(0x43E8, trn.caps.productId)
@@ -141,6 +176,21 @@ class TrnWriteTest {
         assertTrue(trn.plan(profile, 1.0) is DevicePlan.Rejected)
         assertTrue(trn.plan(profile + List(8) { Band("n$it", FilterType.PEAK, 1000.0, 1.0, 1.0) }, -4.0) is DevicePlan.Rejected) // 11 bands
         assertTrue(trn.supportsAb.not() && trn.experimental)
+    }
+
+    @Test
+    fun `a TRN high shelf boost at a low corner is refused before anything is sent - there is no exact emulation, the preamp stops at 0 dB - and a higher corner or a cut is sent`() {
+        val trn = DeviceProtocol.TRN
+        assertEquals(0, trn.preampMax)                                       // a boost cannot be moved into a positive overall gain, as the Micro's emulation does
+        fun hs(freq: Double, gain: Double, q: Double = 0.707) = trn.plan(listOf(Band("hs", FilterType.HIGH_SHELF, freq, gain, q)), -4.0)
+        val refused = hs(1000.0, 3.0) as DevicePlan.Rejected
+        assertEquals(listOf(SendBlocked.band(trn.caps.name, 1, FilterType.HIGH_SHELF)), refused.issues)
+        assertTrue(refused.issues.all { SendBlocked.isBandRefusal(it) })
+        // the number is the editor's row: a disabled band before it counts
+        val second = trn.plan(listOf(Band("off", FilterType.PEAK, 500.0, 1.0, 1.0, enabled = false), Band("hs", FilterType.HIGH_SHELF, 1000.0, 3.0, 0.707)), -4.0) as DevicePlan.Rejected
+        assertTrue(second.issues.single().contains("band 2 "), second.issues.toString())
+        assertTrue(hs(10000.0, 3.0) is DevicePlan.Ready)                     // the same shelf at a high corner is native
+        assertTrue(hs(1000.0, -3.0) is DevicePlan.Ready)                     // a cut at the low corner is native too
     }
 
     @Test

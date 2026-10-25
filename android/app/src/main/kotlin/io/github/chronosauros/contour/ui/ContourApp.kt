@@ -8,6 +8,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
@@ -18,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.GraphicEq
 import androidx.compose.material.icons.outlined.LibraryMusic
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
@@ -53,6 +55,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -76,10 +79,12 @@ import io.github.chronosauros.contour.ui.kit.LocalHaptics
 import io.github.chronosauros.contour.ui.kit.LocalPagerLock
 import io.github.chronosauros.contour.ui.kit.PagerLock
 import io.github.chronosauros.contour.ui.kit.rememberHaptics
+import io.github.chronosauros.contour.ui.dac.DacScreen
 import io.github.chronosauros.contour.ui.library.LibraryActions
 import io.github.chronosauros.contour.ui.library.LibraryScreen
 import io.github.chronosauros.contour.ui.sheets.BandSheet
 import io.github.chronosauros.contour.ui.sheets.EditSheet
+import io.github.chronosauros.contour.ui.sheets.FactoryResetSheet
 import io.github.chronosauros.contour.ui.sheets.NewProfileSheet
 import io.github.chronosauros.contour.ui.sheets.SendFailureSheet
 import io.github.chronosauros.contour.ui.sheets.Sheet
@@ -88,6 +93,8 @@ import io.github.chronosauros.contour.ui.tune.Param
 import io.github.chronosauros.contour.ui.tune.TuneActions
 import io.github.chronosauros.contour.ui.tune.TuneScreen
 import io.github.chronosauros.contour.usb.DeviceController
+import io.github.chronosauros.contour.usb.Link
+import io.github.chronosauros.contour.usb.ResetUi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
@@ -104,7 +111,7 @@ private class UndoVisuals(override val message: String) : SnackbarVisuals {
 }
 
 /**
- * The shell: Tune (left) and Library (right) side by side in a pager, the page bar at the bottom, sheets,
+ * The shell: DAC Settings (only while the connected DAC has settings), Tune and Library side by side in a pager, the page bar at the bottom, sheets,
  * the undo snackbar and the service screen. [sheetRequest] comes from the review hooks; [incoming] is a text file opened
  * with or shared to Contour, imported only after the user confirms.
  */
@@ -140,7 +147,13 @@ fun ContourApp(
     CompositionLocalProvider(LocalHaptics provides haptics, LocalPagerLock provides pagerLock, LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
         val context = LocalContext.current
         val prefs = remember { context.getSharedPreferences("ui", Context.MODE_PRIVATE) }
-        val pager = rememberPagerState(initialPage = initialPage) { 2 }
+        // DAC | EQ | LIBRARY while the DAC has a settings list, EQ | LIBRARY otherwise. Pages are logical ids ([Page]); the pager keys its
+        // pages by id, so a DAC page appearing or going away moves no one: EQ stays EQ.
+        val hasDac = device.dacTarget != null
+        val pages = remember(hasDac) { if (hasDac) listOf(Page.DAC, Page.TUNE, Page.LIBRARY) else listOf(Page.TUNE, Page.LIBRARY) }
+        val pagesNow = rememberUpdatedState(pages)
+        val pager = rememberPagerState(initialPage = pages.indexOf(initialPage).coerceAtLeast(0)) { pagesNow.value.size }
+        val logicalPage = { index: Int -> pagesNow.value.getOrNull(index) }
         val scope = rememberCoroutineScope()
         var sheet by remember { mutableStateOf<Sheet?>(null) }
         var service by remember { mutableStateOf(false) }
@@ -163,15 +176,21 @@ fun ContourApp(
         LaunchedEffect(pager) {
             snapshotFlow { model.pageRequest }.filterNotNull().collect { p ->
                 model.pageRequest = null
-                sender.leaveAb { scope.launch { pager.animateScrollToPage(p) } }
+                sender.leaveAb { scope.launch { pagesNow.value.indexOf(p).takeIf { it >= 0 }?.let { pager.animateScrollToPage(it) } } }
             }
         }
         LaunchedEffect(pager) {
-            snapshotFlow { pager.settledPage }.drop(1).collect { haptics.step() }
+            // by logical page: a DAC page appearing shifts the positions, not the page
+            snapshotFlow { logicalPage(pager.settledPage) }.drop(1).collect { haptics.step() }
+        }
+        // The DAC Settings page reads the DAC when it settles with a DAC connected, and again after a (re)connect while it is open.
+        val onDacPage = logicalPage(pager.settledPage) == Page.DAC
+        LaunchedEffect(onDacPage, device.link, device.connectReads, hasDac) {
+            if (onDacPage && !device.dacIsPreview && device.link == Link.CONNECTED) device.readSettings()
         }
         // Swipes have no page-button callback: restore as soon as the pager targets Library.
         LaunchedEffect(pager) {
-            snapshotFlow { pager.targetPage }.collect { if (it == Page.LIBRARY) sender.leaveAb() }
+            snapshotFlow { logicalPage(pager.targetPage) }.collect { if (it == Page.LIBRARY) sender.leaveAb() }
         }
         // Also covers model/review-hook changes that did not originate in a Tune control.
         LaunchedEffect(model.current) {
@@ -213,7 +232,8 @@ fun ContourApp(
             if (notice != null) {
                 model.notice = null
                 snackbar.currentSnackbarData?.dismiss()
-                scope.launch { snackbar.showSnackbar(notice, duration = SnackbarDuration.Long) }
+                // A bare "IMPORTED n FILTERS" stays 4 s instead of 10; a line with an import report (" - ...") has to be readable, so it keeps the long time.
+                scope.launch { snackbar.showSnackbar(notice, duration = if (" - " in notice) SnackbarDuration.Long else SnackbarDuration.Short) }
             }
         }
 
@@ -268,8 +288,14 @@ fun ContourApp(
                 // a finger on a slider, PREAMP or the graph never turns the page
                 userScrollEnabled = !pagerLock.locked,
                 modifier = Modifier.fillMaxSize(),
+                key = { pagesNow.value.getOrNull(it) ?: (-1 - it) },
             ) { page ->
-                if (page == Page.TUNE) {
+                val logical = pagesNow.value.getOrNull(page)
+                if (logical == Page.DAC) {
+                    Box(Modifier.fillMaxSize().testTag("page_dac")) {
+                        DacScreen(device, top, bottom, onNotSent = ::toast)
+                    }
+                } else if (logical == Page.TUNE) {
                     Box(Modifier.fillMaxSize().testTag("page_tune")) {
                         TuneScreen(model, device, sender, editor, tuneActions, top, bottom)
                     }
@@ -286,13 +312,15 @@ fun ContourApp(
                 }
             }
             PageBar(
-                pager,
-                onPage = { page -> sender.leaveAb { scope.launch { pager.animateScrollToPage(page) } } },
+                pager, pages,
+                onPage = { page -> sender.leaveAb { scope.launch { pagesNow.value.indexOf(page).takeIf { it >= 0 }?.let { pager.animateScrollToPage(it) } } } },
                 modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = nav + BAR_EDGE),
             )
+            // Every snackbar sits at the top, right under the header row of the page (all three headers are Grid.ROW tall, from the status bar down), over the top edge of the
+            // content and never over the header controls (owner 25.10.2026: at the bottom it covered HOLD TO SEND).
             SnackbarHost(
                 snackbar,
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottom),
+                modifier = Modifier.align(Alignment.TopCenter).padding(top = top + Grid.ROW),
             ) { data ->
                 val shape = RoundedCornerShape(Radii.L)
                 val actionLabel = data.visuals.actionLabel
@@ -374,9 +402,14 @@ fun ContourApp(
             is Sheet.SendFailure -> SendFailureSheet(s.reason, close)
             null -> Unit
         }
+        // The factory reset sheet is outside the DAC SETTINGS page: the DAC leaves the bus after the reset and the page goes with it.
+        if (device.resetUi != ResetUi.Idle) FactoryResetSheet(device)
 
-        BackHandler(enabled = sheet == null && !service && !licences && pager.currentPage == Page.TUNE) {
-            sender.leaveAb { scope.launch { pager.animateScrollToPage(Page.LIBRARY) } }
+        // Back from EQ goes to the Library (as before); back from DAC Settings goes to EQ.
+        val backFrom = logicalPage(pager.currentPage)
+        BackHandler(enabled = sheet == null && !service && !licences && (backFrom == Page.TUNE || backFrom == Page.DAC)) {
+            val to = if (backFrom == Page.DAC) Page.TUNE else Page.LIBRARY
+            sender.leaveAb { scope.launch { pagesNow.value.indexOf(to).takeIf { it >= 0 }?.let { pager.animateScrollToPage(it) } } }
         }
     }
 }
@@ -418,16 +451,18 @@ private fun IncomingDialog(model: AppModel, incoming: Incoming, onAnswer: (impor
 }
 
 /**
- * The page switch: a pressed-in block (full width, [BAR_H] tall) with a raised orange half that follows the
- * pager position continuously, under two labelled halves - EQ (Tune) and LIBRARY. Tapping a half goes there.
+ * The page switch: a pressed-in block (full width, [BAR_H] tall) with a raised orange part that follows the pager position
+ * continuously, under equal labelled parts - EQ (Tune) and LIBRARY, and DAC (settings) left of them while the DAC has settings.
+ * Tapping a part goes there. [pages] are the logical ids ([Page]) in pager order.
  */
 @Composable
-private fun PageBar(pager: PagerState, onPage: (Int) -> Unit, modifier: Modifier = Modifier) {
+private fun PageBar(pager: PagerState, pages: List<Int>, onPage: (Int) -> Unit, modifier: Modifier = Modifier) {
     val c = pal
-    val name = if (pager.settledPage == Page.TUNE) "page tune" else "page library"
+    val n = pages.size
+    val name = when (pages.getOrNull(pager.settledPage)) { Page.DAC -> "page dac"; Page.TUNE -> "page tune"; else -> "page library" }
     val track = RoundedCornerShape(Radii.L)
     val knob = RoundedCornerShape(Radii.M)
-    val pos = (pager.currentPage + pager.currentPageOffsetFraction).coerceIn(0f, 1f)
+    val pos = (pager.currentPage + pager.currentPageOffsetFraction).coerceIn(0f, (n - 1).toFloat())
     Box(
         modifier
             .fillMaxWidth()
@@ -444,11 +479,11 @@ private fun PageBar(pager: PagerState, onPage: (Int) -> Unit, modifier: Modifier
             Modifier
                 .fillMaxSize()
                 .layout { m, cs ->
-                    val half = cs.maxWidth / 2
-                    val pl = m.measure(Constraints.fixed(half, cs.maxHeight))
+                    val part = cs.maxWidth / n
+                    val pl = m.measure(Constraints.fixed(part, cs.maxHeight))
                     layout(cs.maxWidth, cs.maxHeight) {
-                        val p = (pager.currentPage + pager.currentPageOffsetFraction).coerceIn(0f, 1f)
-                        pl.place((p * half).roundToInt(), 0)
+                        val p = (pager.currentPage + pager.currentPageOffsetFraction).coerceIn(0f, (n - 1).toFloat())
+                        pl.place((p * part).roundToInt(), 0)
                     }
                 }
                 .lift(knob, Lift.RAISED)
@@ -456,14 +491,18 @@ private fun PageBar(pager: PagerState, onPage: (Int) -> Unit, modifier: Modifier
         )
         Row(Modifier.fillMaxSize()) {
             val none = remember { MutableInteractionSource() }
-            PageHalf(
-                "EQ", Icons.Outlined.GraphicEq, lerp(c.onAccent, c.textDim, pos),
-                Modifier.weight(1f).clickable(none, null) { onPage(Page.TUNE) }.testTag("page_bar_tune"),
-            )
-            PageHalf(
-                "LIBRARY", Icons.Outlined.LibraryMusic, lerp(c.textDim, c.onAccent, pos),
-                Modifier.weight(1f).clickable(none, null) { onPage(Page.LIBRARY) }.testTag("page_bar_library"),
-            )
+            pages.forEachIndexed { i, page ->
+                val (label, icon, tag) = when (page) {
+                    Page.DAC -> Triple("DAC", Icons.Outlined.Tune, "page_bar_dac")
+                    Page.TUNE -> Triple("EQ", Icons.Outlined.GraphicEq, "page_bar_tune")
+                    else -> Triple("LIBRARY", Icons.Outlined.LibraryMusic, "page_bar_library")
+                }
+                // on the knob (onAccent) when the pager is on its page, dim (textDim) a whole page away
+                PageHalf(
+                    label, icon, lerp(c.onAccent, c.textDim, abs(pos - i).coerceIn(0f, 1f)),
+                    Modifier.weight(1f).clickable(none, null) { onPage(page) }.testTag(tag),
+                )
+            }
         }
     }
 }

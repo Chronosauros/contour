@@ -24,11 +24,23 @@ class Scale(
     val reset: Double?,
     val fineMax: Double? = null,
 ) {
-    /** The same scale over [lo]..[hi] (a DAC's own range, e.g. the KA15's -12..+12 dB gain); this one when equal. */
-    fun bounded(lo: Double, hi: Double): Scale = if (lo == min && hi == max) this else Scale(lo, hi, log, quantum,
+    /** The same scale over [lo]..[hi] (a DAC's own range, e.g. the KA15's -12..+12 dB gain); this one when equal. A linear scale that is widened (the K13 R2R's -24..+12 dB) gets its own marks. */
+    fun bounded(lo: Double, hi: Double): Scale = if (lo == min && hi == max) this else if (!log && (lo < min || hi > max)) widened(lo, hi) else Scale(lo, hi, log, quantum,
         labels.filter { it.first in lo..hi }, ticks.filter { it in lo..hi },
         stepMarks.filter { it in lo..hi }.toDoubleArray(), strongMarks.filter { it in lo..hi }.toDoubleArray(),
         reset?.takeIf { it in lo..hi }, fineMax)
+
+    /** A linear scale over a range wider than its own: a tick at each whole step, a label and a strong mark at each 5 (10 when the range is long), a light mark at each half step. */
+    private fun widened(lo: Double, hi: Double): Scale {
+        val labelStep = if (hi - lo > 30.0) 10 else 5
+        val first = Math.ceil(lo).toInt()
+        val last = Math.floor(hi).toInt()
+        val whole = (first..last).map { it.toDouble() }
+        val strong = whole.filter { it.toInt() % labelStep == 0 } + listOfNotNull(lo.takeIf { it !in whole && lo % labelStep == 0.0 })
+        fun label(v: Double) = if (v > 0) "+${v.toInt()}" else v.toInt().toString()
+        val halves = generateSequence(lo) { it + 0.5 }.takeWhile { it <= hi + 1e-9 }.toList().toDoubleArray()
+        return Scale(lo, hi, log, quantum, strong.map { it to label(it) }, whole, halves, strong.toDoubleArray(), reset?.takeIf { it in lo..hi }, fineMax)
+    }
 
     /** How much the value moves per 1 of position at [v] (the scale's slope). */
     fun perPos(v: Double): Double = if (log) v.coerceIn(min, max) * ln(max / min) else max - min

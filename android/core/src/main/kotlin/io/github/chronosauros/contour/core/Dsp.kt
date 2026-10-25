@@ -9,7 +9,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * Display DSP: RBJ Audio EQ Cookbook biquads (Q for peaks/pass filters, shelf slope S = band Q)
+ * Display DSP: RBJ Audio EQ Cookbook biquads (Q for peaks and the four pass filters, shelf slope S = band Q)
  * evaluated at [FS] with the user's own values, i.e. the intended curve.
  *
  * Cheap enough for every drag frame: a [FreqGrid] precomputes cos(w) and cos(2w) once, so one band
@@ -46,7 +46,7 @@ object Dsp {
         val s = sin(w0)
         val alpha = s / (2.0 * band.q) // peak and pass filters only; shelves use slope S = Q
         val a = 10.0.pow(band.gainDb / 40.0)
-        val shelfAlpha = if (band.type == FilterType.LOW_SHELF || band.type == FilterType.HIGH_SHELF) {
+        val shelfAlpha = if (band.type.isShelf) {
             val radicand = (a + 1.0 / a) * (1.0 / band.q - 1.0) + 2.0
             require(radicand.isFinite() && radicand >= 0.0) { "Shelf gain/Q has no real response" }
             (s / 2.0) * sqrt(radicand)
@@ -81,6 +81,16 @@ object Dsp {
             }
             FilterType.HIGH_PASS -> {
                 b0 = (1 + c) / 2; b1 = -(1 + c); b2 = (1 + c) / 2
+                a0 = 1 + alpha; a1 = -2 * c; a2 = 1 - alpha
+            }
+            // RBJ BPF, constant 0 dB peak gain: the response is exactly 0 dB at f0, whatever Q.
+            FilterType.BAND_PASS -> {
+                b0 = alpha; b1 = 0.0; b2 = -alpha
+                a0 = 1 + alpha; a1 = -2 * c; a2 = 1 - alpha
+            }
+            // RBJ APF: magnitude 1 at every frequency, only the phase turns (around f0, sharper with Q).
+            FilterType.ALL_PASS -> {
+                b0 = 1 - alpha; b1 = -2 * c; b2 = 1 + alpha
                 a0 = 1 + alpha; a1 = -2 * c; a2 = 1 - alpha
             }
         }

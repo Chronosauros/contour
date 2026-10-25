@@ -54,6 +54,8 @@ class NativeIntegrationTest {
             if ((payload[0].toInt() and 255) == 0xAA) {
                 // write with its AA echo (devices that must have every echo consumed)
                 send(id, NativeHidReports.Kind.OUTPUT, payload)
+                // the SAVE is reported by the DAC as 00 EE 00 <counter> 00 when the flash write is done; every other write is echoed
+                if ((payload[4].toInt() and 255) == c.config.saveCommand) { events += "ack:${c.config.saveCommand}"; return finishedRequest(byteArrayOf(0, 0xEE.toByte(), 0, 1, 0).copyOf(63), matches) }
                 return finishedRequest(payload.copyOf(63), matches)
             }
             assertEquals(0xBB, payload[0].toInt() and 255)
@@ -92,6 +94,15 @@ class NativeIntegrationTest {
         assertTrue(port.events.indexOf("write:22") < port.events.indexOf("write:25"))
         assertTrue(port.events.indexOf("write:25") < port.events.indexOf("write:48"))
     }
+    @Test fun `KA15 reads the report of its flash save, then waits 2 s before the first read, and a silent DAC does not fail the write`() {
+        val t = fiio(); val port = FiioPort(t)
+        val r = NativeSession(t, port).write(profile(), true)
+        assertTrue(r.verified, r.reason)
+        val save = port.events.indexOf("write:25")
+        assertEquals(listOf("write:25", "ack:25", "pause:2000"), port.events.subList(save, save + 3), port.events.toString())
+        assertTrue(port.events.subList(save + 3, port.events.size).first().startsWith("read:"), "the first poll comes after the 2 s wait")
+        assertEquals(1, port.events.count { it == "pause:2000" })
+    }
     @Test fun `K13 R2R writes USER10 without any name command and reads no names`() {
         val t = DeviceTarget.K13; val port = FiioPort(t)
         assertEquals(160, port.state.activeSlot)
@@ -101,6 +112,34 @@ class NativeIntegrationTest {
         assertTrue((r.readback as NativeState.Fiio).names.isEmpty())
         assertTrue(port.events.none { it == "write:48" || it == "read:48" }, port.events.toString())
         assertTrue(port.events.indexOf("write:22") < port.events.indexOf("write:25"))
+    }
+    @Test fun `K13 R2R sends and verifies a HIGH PASS and a BAND PASS band, written at 0 dB`() {
+        val t = DeviceTarget.K13; val port = FiioPort(t)
+        val bands = listOf(Band("hp", FilterType.HIGH_PASS, 100.0, 4.0, 1.0), Band("bp", FilterType.BAND_PASS, 2000.0, -3.0, 2.0))
+        val p = profile().copy(bands = bands)
+        val r = NativeSession(t, port).write(p, true, targetSlot = 169)
+        assertTrue(r.verified, r.reason)
+        val back = (r.readback as NativeState.Fiio).raw.bands
+        assertEquals(listOf(5, 3), back.take(2).map { it.typeCode }) // HP 5, BP 3
+        assertEquals(listOf(0, 0), back.take(2).map { it.gainTenths })
+        assertEquals(listOf(FilterType.HIGH_PASS, FilterType.BAND_PASS), r.readback!!.importExact().bands.take(2).map { it.type })
+    }
+    /** The K13 R2R keeps its hardware-proven 300 ms (writeGapMs) AFTER every write; a bench log's pauseBeforeMs of the next report carries it. */
+    @Test fun `K13 R2R pauses 300 ms after every preamp, count and band write and the KA15 does not`() {
+        fun gaps(t: DeviceTarget): List<Boolean> {
+            val port = FiioPort(t); val f = requireNotNull(t.fiio)
+            NativeSession(t, port).write(profile(count = 3), true, targetSlot = t.destinationSlot)
+            val ev = port.events
+            val idx = ev.indices.filter { i -> ev[i].startsWith("write:") && ev[i].removePrefix("write:").toInt().let { it == FiioCodec.PREAMP || it == FiioCodec.COUNT || it == FiioCodec.BAND } }
+            assertTrue(idx.size >= 5, ev.toString()) // preamp, count, 3 bands (10 with the padding on the K13)
+            return idx.map { i ->
+                val next = (i + 1 until ev.size).first { !ev[it].startsWith("pause:") }
+                ev.subList(i + 1, next).contains("pause:${f.writeGapMs}")
+            }
+        }
+        assertEquals(300, requireNotNull(DeviceTarget.K13.fiio).writeGapMs)
+        assertTrue(gaps(DeviceTarget.K13).all { it })
+        assertEquals(0, requireNotNull(fiio().fiio).writeGapMs)
     }
     @Test fun `KA15 name reply from the Pixel parses with its 9-byte name field`() {
         val c = FiioCodec(requireNotNull(fiio().fiio))
@@ -171,7 +210,6 @@ class NativeIntegrationTest {
         val t = fiio(); val port = FiioPort(t)
         assertFails { NativeSession(t, port).write(profile(), false) }
         assertFails { NativeSession(t, port).write(profile(count = 11), true) }
-        assertFails { NativeSession(t, port).write(profile().copy(bands = profile().bands + Band("bad", FilterType.LOW_PASS, 1000.0, 0.0, 1.0)), true) }
         assertFails { NativeSession(t, port).write(profile(preamp = -24.1), true) }
         assertFails { NativeSession(t, port).write(profile(preamp = 0.1), true) }
         assertTrue(port.events.none { it.startsWith("write") })

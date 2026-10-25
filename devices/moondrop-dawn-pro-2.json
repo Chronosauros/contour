@@ -1,0 +1,207 @@
+{
+  "id": "moondrop-dawn-pro-2",
+  "name": "Moondrop Dawn Pro 2",
+  "shortName": "Dawn Pro 2",
+  "productName": "DAWN PRO2",
+  "vendor": "Moondrop",
+  "status": "stable",
+  "usb": {
+    "vid": "0x35D8",
+    "pid": "0x011D",
+    "productName": "DAWN PRO2",
+    "hidInterface": 0,
+    "matchByName": true,
+    "recognisedBy": "findDevice",
+    "listOrder": 8,
+    "notes": [
+      "USB manufacturer MOONDROP, product string DAWN PRO2 without a space; read from PnP and hid.enumerate() on a PC without opening the device (dac-lab:devices/moondrop-dawn-pro-2.md)",
+      "bcdDevice 0x0001 (run:2026-10-21-moondrop-dawn-pro-2-01)",
+      "advBeta's WalkPlay row 'DAWN PRO 2' (with a space, SchemeNo15) is a different route; the USB name DAWN PRO2 selects the Moondrop route (advbeta-reddit-astra@39c16e3:android/core/src/main/kotlin/io/github/chronosauros/contour/core/native/MoondropCatalog.kt:56,81)",
+      "the vendor tool MOONDROP Hub (WebHID) matches by pid: default vendorId 13784 = 0x35D8, productId 285 = 0x011D (scope-moondrop.md:50)",
+      "audio interface MI_01; HID interface 0, usage page 0x0C usage 0x01 (Consumer Control); one 92-byte descriptor collection; reports 0x03 Input 2 B, 0x4B Input and Output 64 B with id (vendor page 0xFF01), 0x54 Input and Output 64 B; read-only, nothing sent (run:2026-10-21-moondrop-dawn-pro-2-01)",
+      "the vendor tuning config is switched on and off by holding both volume buttons for 2 s (LED orange on, red off) and is off by default after every replug (product page); whether register 0x0F carries that state is not known (scope-moondrop.md:53-55,67)",
+      "frame after report id 0x4B: OP CMD LEN payload; OP read 0x80, write 0x01; values Q8.8 int16 little-endian; band biquads computed at 96 kHz (scope-moondrop.md:34-40)",
+      "never send 01 05 01 04 (flash clear) or 01 FF (firmware upgrade) (scope-moondrop.md:130)"
+    ]
+  },
+  "family": "moondrop",
+  "driver": {
+    "reportId": 75,
+    "reportBytes": 64,
+    "peqBank": 7,
+    "enableAfterWrite": true,
+    "preampRegister": "unknown",
+    "globalGainRegister": "0x03",
+    "preGainRegister": "0x23",
+    "writeLenByte": 33,
+    "eqIndexRegister": "0x0F",
+    "saveEqCommand": "0x01",
+    "saveOffsetsCommand": "0x04",
+    "forbiddenCommands": ["01 05 01 04 (flash clear)", "01 FF 00 (firmware upgrade)"],
+    "designRateHz": 96000
+  },
+  "peq": {
+    "bands": 8,
+    "fixedBandCount": "unknown",
+    "freqHz": [20, 20000],
+    "gainDb": [-18, 12],
+    "q": [0.1, 10],
+    "types": { "PEAK": 2 },
+    "heldTypes": { "LOW_SHELF": 1, "HIGH_SHELF": 3, "LOW_PASS": 4, "HIGH_PASS": 5 },
+    "shelfQScale": "sqrt2",
+    "emulation": null
+  },
+  "preamp": {
+    "present": true,
+    "db": [-128, 0],
+    "step": 0.1,
+    "wholeDb": false,
+    "registerOffsetDb": "unknown",
+    "globalGain": { "register": "0x03", "rangeDb": [-18, 0], "stepDb": 0.1 }
+  },
+  "slots": {
+    "user": [7, 9],
+    "declaredWritable": [7, 9],
+    "writableIndexes": [7, 9],
+    "stock": "unknown",
+    "bypass": null,
+    "labels": { "7": "PEQ", "9": "PEQ (the owner's unit)" },
+    "picker": false,
+    "names": "none",
+    "activeBankObserved": 9
+  },
+  "pacing": {
+    "writeGapMs": 25,
+    "consumeEchoes": "unknown",
+    "checksum": false,
+    "needsAudioStream": "unknown",
+    "probeGapMs": null,
+    "afterSelectMs": 150,
+    "afterSaveMs": 200,
+    "opGapMs": 50
+  },
+  "readback": { "qSlack": "q256" },
+  "settings": [],
+  "info": ["fw"],
+  "preview": {},
+  "reset": { "offered": false, "src": "MDHUB clearFlash (01 05 01 04) has no caller in the main bundle or the page chunk and the English locale has no reset string; not on the product page (scope-moondrop.md:68,91-95)" },
+  "hwVolume": { "inScope": false, "src": "buttons only: the vendor tool has no deviceVolume feature for this model, 100 hardware steps on the product page; Windows UAC volume works but no vendor software uses it; owner question 2 (scope-moondrop.md:66,97-102,200-201)" },
+  "conflicts": [
+    {"field": "preamp.globalGain", "values": ["the vendor tool (MOONDROP Hub) writes the Global Gain register 01 03 02 lo hi", "the unit ignores it: PC T14 (run:2026-10-21-moondrop-dawn-pro-2-02, RUN-DP3); the phone only read it (RUN-DPP1)"], "src": ["core/native/FamilySettings.kt (the GLOBAL GAIN row has no writeCommand)"], "resolution": "the DAC Settings row is read only in every build; the EQ write still sends 01 03 02 with the value read just before, as the Hub does, which changes nothing on the unit"},
+    { "field": "peq.gainDb", "values": ["-18..12 MDHUB class defaults (not overridden for DAWN PRO2)", "+-12 devicePEQ", "+-10 advBeta"], "src": ["scope-moondrop.md:80-81", "advbeta-reddit-astra@39c16e3:DEVICES.md:74,524"], "resolution": "vendor value; edges need capture D7" },
+    { "field": "preamp", "values": ["pre-gain 0x23: -128..0 dB step 0.1", "global gain 0x03: -18..0 dB step 0.1", "advBeta reads 0x03 and calls it preamp"], "src": ["scope-moondrop.md:63-64,82,111,204-205"], "resolution": "preamp.db is the pre-gain 0x23 (what Contour writes as PRE GAIN), preamp.globalGain the global gain 0x03 (read only, as shown on the DAC Settings page); open: owner question 4 (expose both registers or one preamp control)" },
+    { "field": "slots.user", "values": ["7 (MDHUB peqIndex, every band frame carries 0x07 in its last byte)", "the unit's active bank reads 9 (register 0x0F)"], "src": ["scope-moondrop.md:62,83,202-203", "run:2026-10-21-moondrop-dawn-pro-2-01"], "resolution": "open: owner question 3 (what bank 9 is; writes go to bank 7 like MDHUB, which switches the active EQ away from 9)" },
+    { "field": "peq.heldTypes", "values": ["only PEAK (code 2) offered by Contour; LS 1, HS 3, LP 4, HP 5 held (shelves and pass filters wait for a measurement on the unit and the acoustic gate, owner 14.10.2026)", "MDHUB band editor offers PK, LP, HP, LS, HS (read from code, not seen in the UI)"], "src": ["scope-moondrop.md:75-79", "dac-lab:devices/moondrop-dawn-pro-2.md", "core/DeviceTarget.kt (MOONDROP_TYPES)"], "resolution": "PEAK offered, the rest held (code); measured 25.10.2026 (run:2026-10-25-moondrop-dawn-pro-2-08-mac-eqtest-48k): shelves (law reg: the register plays Q / sqrt2, applied by peq.shelfQScale = sqrt2), LP and HP PASS at a 48 kHz DSP; offered since 1.6 (MoondropCatalog.SHELVES_VERIFIED and PASS_FILTERS_VERIFIED, both true); the types sit in this record as held, the app adds them behind the flags" },
+    { "field": "driver.readFrame", "values": ["80 09 18 00 n 00 (Contour, proven on hardware by the read run)", "80 09 02 00 n (MDHUB)"], "src": ["scope-moondrop.md:61", "run:2026-10-21-moondrop-dawn-pro-2-01"], "resolution": "open: both answer; the vendor form is not what Contour sent" },
+    { "field": "hwVolume", "values": ["100 hardware steps (product page)", "MDHUB generic deviceVolumeMax 0-60, not shown for this model"], "src": ["scope-moondrop.md:50,66,99-102"], "resolution": "open: owner question 2; out of scope by default" },
+    { "field": "slots.bypass", "values": ["tuning config on/off by buttons, off after every replug (product page)", "EQ index 7 versus other indices may be the same state (unknown)"], "src": ["scope-moondrop.md:67"], "resolution": "open: capture D9, D10" },
+    { "field": "driver.family", "values": ["Moondrop route by the USB name DAWN PRO2", "advBeta WalkPlay row 'DAWN PRO 2' (SchemeNo15), a different device"], "src": ["advbeta-reddit-astra@39c16e3:android/core/src/main/kotlin/io/github/chronosauros/contour/core/native/MoondropCatalog.kt:56,81", "scope-moondrop.md:107-111"], "resolution": "Moondrop (USB name); the WalkPlay row is wrong for this unit" }
+  ],
+  "evidence": {
+    "bands": {
+      "firmware": "bcdDevice 0x0001",
+      "source": "https://moondroplab.com/en/products/dawn-pro-2: 8 sliders in the app and web screenshots",
+      "vendorApp": "MDHUB index-CIZ2xpvU.js class config peqCount:8 (read from code, not seen in the UI)",
+      "pcBench": "run:2026-10-21-moondrop-dawn-pro-2-01 read only: 8 bands read, two reads of the same state; fixed band count not tested",
+      "persistence": null,
+      "phone": null,
+      "acoustic": null
+    },
+    "types.PEAK": {
+      "firmware": "bcdDevice 0x0001",
+      "source": "devicePEQ walkplay/moondrop rules (+-12 / +-10)",
+      "vendorApp": "MDHUB filter code table PEAKING 2; class defaults gain -18..+12 step 0.1, Q 0.1-10 step 0.01 (code, not the UI)",
+      "pcBench": "run:2026-10-21-moondrop-dawn-pro-2-01 read: 8 PK bands (code 2), 20-20000 Hz, gain 0 / -3 / -5 dB, Q 0.707-2.0, inside the MDHUB limits; edges not tested",
+      "persistence": null,
+      "phone": null,
+      "acoustic": "run:2026-10-25-moondrop-dawn-pro-2-08-mac-eqtest-48k (DacLab eqtest, jar 0a99e04, stream and DSP 48 kHz): PK 100 Hz Q0.7 +5, PK 1000 Hz Q2 -6, PK 6000 Hz Q5 +5 PASS, max 0.082 dB, RMS 0.016 dB; read back, then replayed as a proven log (core test resources bench/proven/dawn-pro-2/eq-pk.log)"
+    },
+    "types.LOW_SHELF": {
+      "firmware": "bcdDevice 0x0001",
+      "source": "devicePEQ full shelves",
+      "vendorApp": "MDHUB LOW_SHELF_2 code 1, supportFilter true, nothing disabled (code); product page shows 'Filter Type' on Android only",
+      "pcBench": "run:2026-10-21-moondrop-dawn-pro-2-01 read: all 8 bands were code 2, shelves not seen",
+      "persistence": null,
+      "phone": null,
+      "acoustic": "run:2026-10-25-moondrop-dawn-pro-2-08-mac-eqtest-48k: LS 100 Hz Q0.71 +5 with HS 8000 Hz Q1 -6 PASS, max 0.044 dB, RMS 0.013 dB; shelf law reg (the register plays Q / sqrt2; the q law fails one shelf case by 1.13 dB, the slope law s also fits within the tolerance), found from the registers read back; peq.shelfQScale = sqrt2 applies it (the shelf register is the intended Q times sqrt2); offered since 1.6 behind MoondropCatalog.SHELVES_VERIFIED"
+    },
+    "types.HIGH_SHELF": {
+      "firmware": "bcdDevice 0x0001",
+      "source": "devicePEQ full shelves",
+      "vendorApp": "MDHUB HIGH_SHELF_2 code 3 (code)",
+      "pcBench": "run:2026-10-21-moondrop-dawn-pro-2-01 read: all 8 bands were code 2, shelves not seen",
+      "persistence": null,
+      "phone": null,
+      "acoustic": "run:2026-10-25-moondrop-dawn-pro-2-08-mac-eqtest-48k: HS 8000 Hz Q1 -6 PASS together with LS 100 Hz Q0.71 +5 (max 0.044 dB, RMS 0.013 dB), shelf law reg (see LOW_SHELF); offered since 1.6 behind MoondropCatalog.SHELVES_VERIFIED"
+    },
+    "types.pass": {
+      "firmware": null,
+      "source": null,
+      "vendorApp": "MDHUB code knows LOW_PASS_2 4 and HIGH_PASS_2 5 and flags them as pass filters in the editor; BP, AP, notch have no code mapping (code)",
+      "pcBench": null,
+      "persistence": null,
+      "phone": null,
+      "acoustic": "run:2026-10-25-moondrop-dawn-pro-2-08-mac-eqtest-48k: LP 8000 Hz Q0.71 PASS (max 0.128 dB, RMS 0.025 dB) and HP 100 Hz Q0.71 PASS (max 0.081 dB, RMS 0.018 dB), DSP rate 48 kHz (a 96 kHz DSP fails the LP by 10.8 dB); offered since 1.6 behind MoondropCatalog.PASS_FILTERS_VERIFIED; BP and AP have no code"
+    },
+    "preamp": {
+      "firmware": "bcdDevice 0x0001",
+      "source": "devicePEQ: no device preamp, manual global gain",
+      "vendorApp": "MDHUB supportPreGain (PRE_GAIN 0x23, -128..0, step 0.1) and supportGlobalGain (DAC_OFFSET 0x03, -18..0, step 0.1) (code)",
+      "pcBench": "run:2026-10-21-moondrop-dawn-pro-2-01 read: register 0x03 = 0.0 dB (raw Q8 0); tool status UNKNOWN_EFFECTIVE, not proof of an effective preamp",
+      "persistence": null,
+      "phone": null,
+      "acoustic": null
+    },
+    "write": {
+      "firmware": null,
+      "source": null,
+      "vendorApp": "MDHUB writeSinglePEQ, enableAllPEQ, setPreGain, setGlobalGain, saveToFlash = 01 01 00 only (code; the vendor sequence is scope-moondrop.md:86-88). Captured 2026-10-24 (MOONDROP Hub Beta 1.6.5, Write Cfg with a flat EQ, run:2026-10-24-moondrop-dawn-pro-2-04-mac mdhub-capture-2-write-cfg-flat.json): 01 0F 01 07, eight band frames tagged 07, 01 0A 04 00 00 FF FF, 01 23 02 00 00, 01 03 02 00 00, 01 01 00, frames 30-65 ms apart; the Hub does not check the EQ index",
+      "pcBench": "run:2026-10-24-moondrop-dawn-pro-2-05-mac and -06-mac: after the Hub's Write Cfg the unit was still on index 9 (01 0F 01 07 ignored) and the bands of bank 9 held the written flat bands, also after replugging. Contour 1.6 writes this sequence and verifies by reading the eight bands back, whatever index the unit reports (core/native/MoondropSession.kt write)",
+      "persistence": "run:2026-10-24-moondrop-dawn-pro-2-06-mac: the written bands of bank 9 survived a replug (the Hub's write)",
+      "phone": null,
+      "acoustic": null
+    },
+    "output.impedance": {
+      "firmware": "bcdDevice 0x0001",
+      "source": null,
+      "vendorApp": null,
+      "pcBench": "run:2026-10-20-moondrop-dawn-pro-2-04 3.5 mm: 0.219 Ohm +/- 0.02 at 1 kHz -3 dBFS; cross-check run:2026-10-20-moondrop-dawn-pro-2-08 0.224 Ohm",
+      "persistence": null,
+      "phone": null,
+      "acoustic": null
+    },
+    "slots.writableIndexes.7": {
+      "firmware": "1.5 (VERSION command)",
+      "source": "MOONDROP Hub: the PEQ index of the vendor catalog; the first frame of its Write Cfg is 01 0F 01 07 (capture 2026-10-24, run:2026-10-24-moondrop-dawn-pro-2-04-mac mdhub-capture-2-write-cfg-flat.json); FreeDSP-Studio dsp2.rs write_bank switches to slot 7",
+      "vendorApp": null,
+      "pcBench": null,
+      "persistence": null,
+      "phone": null,
+      "acoustic": null
+    },
+    "slots.writableIndexes.9": {
+      "firmware": "1.5 (VERSION command)",
+      "source": "The owner's unit (firmware 1.5, USB 35D8:011D) ignores 01 0F 01 07 and stays on index 9",
+      "vendorApp": null,
+      "pcBench": "run:2026-10-24-moondrop-dawn-pro-2-05-mac and -06-mac: the Hub's Write Cfg on the unit on index 9 landed in the active bank 9 (still index 9, the bands of bank 9 equal the written flat bands) and survived a replug; the sequence tagged its bands 07, the unit read them back as bank 9",
+      "persistence": null,
+      "phone": null,
+      "acoustic": null
+    }
+  },
+  "src": {
+    "usb": ["scope-moondrop.md:44-55", "dac-lab:devices/moondrop-dawn-pro-2.md", "run:2026-10-21-moondrop-dawn-pro-2-01"],
+    "driver.reportBytes": ["run:2026-10-21-moondrop-dawn-pro-2-01"],
+    "driver": ["scope-moondrop.md:32-40,61-64,86-88,130"],
+    "peq.bands": ["scope-moondrop.md:74"],
+    "peq.gainDb": ["scope-moondrop.md:80-81"],
+    "peq.types": ["scope-moondrop.md:39,75-79"],
+    "peq.shelfQScale": ["run:2026-10-25-moondrop-dawn-pro-2-08-mac-eqtest-48k", "core/native/MoondropCodec.kt (bandWrite: the shelf register Q is the intended Q times this)"],
+    "preamp": ["scope-moondrop.md:63-64,82"],
+    "slots": ["scope-moondrop.md:83-89"],
+    "slots.writableIndexes": ["run:2026-10-24-moondrop-dawn-pro-2-04-mac", "run:2026-10-24-moondrop-dawn-pro-2-05-mac", "run:2026-10-24-moondrop-dawn-pro-2-06-mac", "core/native/MoondropSession.kt (write gate)"],
+    "pacing": ["scope-moondrop.md:38,86-88"],
+    "reset": ["scope-moondrop.md:68,91-95"],
+    "hwVolume": ["scope-moondrop.md:66,97-102"]
+  }
+}

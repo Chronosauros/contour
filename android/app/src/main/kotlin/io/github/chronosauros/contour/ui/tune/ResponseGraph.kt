@@ -28,6 +28,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.chronosauros.contour.core.Band
+import io.github.chronosauros.contour.core.DeviceCapabilities
 import io.github.chronosauros.contour.core.Dsp
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.model.AppModel
@@ -45,15 +46,21 @@ import kotlin.math.hypot
 import kotlin.math.ln
 
 /**
- * Plot mapping: log frequency 20 Hz - 20 kHz across, -12..+12 dB down, inside [PAD] on every side
- * (so the nodes at the edges stay whole). tools/ scripts use the same numbers to find nodes.
+ * Plot mapping: log frequency 20 Hz - 20 kHz across, [gainLo]..[gainHi] dB down (-12..+12 unless the DAC's own gain range is wider: the K13 R2R takes -24..+12), inside [PAD] on every side
+ * (so the nodes at the edges stay whole). tools/ scripts use the same numbers to find nodes (-12..+12 DACs).
  */
-class PlotMap(private val w: Float, private val h: Float, private val pad: Float) {
+class PlotMap(private val w: Float, private val h: Float, private val pad: Float, private val gainLo: Double = -12.0, private val gainHi: Double = 12.0) {
     private val span = ln(1000.0)
+    private val gainSpan = gainHi - gainLo
     fun x(f: Double): Float = (pad + (w - 2 * pad) * ln(f / 20.0) / span).toFloat()
-    fun y(g: Double): Float = (pad + (h - 2 * pad) * (12.0 - g.coerceIn(-12.0, 12.0)) / 24.0).toFloat()
+    fun y(g: Double): Float = (pad + (h - 2 * pad) * (gainHi - g.coerceIn(gainLo, gainHi)) / gainSpan).toFloat()
     fun f(x: Float): Double = 20.0 * exp(((x - pad) / (w - 2 * pad)).coerceIn(0f, 1f) * span)
-    fun g(y: Float): Double = 12.0 - 24.0 * ((y - pad) / (h - 2 * pad)).coerceIn(0f, 1f)
+    fun g(y: Float): Double = gainHi - gainSpan * ((y - pad) / (h - 2 * pad)).coerceIn(0f, 1f)
+
+    companion object {
+        /** The plot's gain range for a DAC: its own bounds, never narrower than the old -12..+12. */
+        fun range(caps: DeviceCapabilities): Pair<Double, Double> = minOf(-12.0, caps.gainMinDb) to maxOf(12.0, caps.gainMaxDb)
+    }
 }
 
 private val PAD = 18.dp
@@ -61,7 +68,8 @@ private val NODE_RADIUS = 12.dp
 private val GRAPH_SHAPE = RoundedCornerShape(Radii.L)
 private val GRID_F = doubleArrayOf(20.0, 50.0, 100.0, 200.0, 500.0, 1000.0, 2000.0, 5000.0, 10_000.0, 20_000.0)
 private val LABEL_F = listOf(100.0 to "100", 1000.0 to "1K", 10_000.0 to "10K")
-private val GRID_DB = doubleArrayOf(-12.0, -6.0, 0.0, 6.0, 12.0)
+/** The horizontal grid: every 6 dB inside the plot's range. */
+private fun gridDb(lo: Double, hi: Double): List<Double> = generateSequence(Math.ceil(lo / 6.0) * 6.0) { it + 6.0 }.takeWhile { it <= hi + 1e-9 }.toList()
 
 /**
  * The response graph of the current profile. Every gesture that starts inside it belongs to it (the pager
@@ -79,6 +87,10 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
     val curve = remember { DoubleArray(Dsp.DISPLAY_POINTS) }
     val path = remember { Path() }
     val prof = rememberUpdatedState(profile)
+    // the DAC's own gain bounds (device record) for the plot, the nodes and a new band
+    val caps = model.protocol.caps
+    val capsNow = rememberUpdatedState(caps)
+    val (gainLo, gainHi) = PlotMap.range(caps)
     val selected = model.selectedBand
     val labelStyle = Type.graph.copy(color = c.textMute)
     val numberStyle = Type.node
@@ -100,7 +112,8 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                 val nodeGuard = LiftGuard<Pair<Double, Double>>(density, "NODE")
                 val pinchGuard = LiftGuard<Double>(density, "PINCH")
                 awaitEachGesture {
-                    val map = PlotMap(size.width.toFloat(), size.height.toFloat(), pad)
+                    val (lo, hi) = PlotMap.range(capsNow.value)
+                    val map = PlotMap(size.width.toFloat(), size.height.toFloat(), pad, lo, hi)
                     val down = awaitFirstDown(requireUnconsumed = false)
                     down.consume()
                     val bands0 = prof.value.bands
@@ -140,7 +153,7 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                             if (p.bands.size >= model.maxBands) haptics.reject()
                             else {
                                 haptics.longPress()
-                                model.addBand(map.f(down.position.x), map.g(down.position.y).coerceIn(-10.0, 10.0))
+                                model.addBand(map.f(down.position.x), map.g(down.position.y).coerceIn(capsNow.value.gainMinDb, capsNow.value.gainMaxDb))
                             }
                             continue
                         }
@@ -221,7 +234,7 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                                 val b = prof.value.bands.getOrNull(hit!!) ?: continue
                                 val pos = ch.position + grab
                                 val f = Scale.FREQ.quantize(map.f(pos.x))
-                                val g = Scale.GAIN.quantize(map.g(pos.y).coerceIn(-10.0, 10.0))
+                                val g = Param.GAIN.scaleFor(capsNow.value)!!.quantize(map.g(pos.y))
                                 if (f != b.freqHz || g != b.gainDb) model.setBand(hit, b.copy(freqHz = f, gainDb = g))
                                 nodeGuard.move(ch.uptimeMillis, ch.position, f to g)
                                 if ((f to g) != ticked && !nodeGuard.settling(ch.uptimeMillis)) {
@@ -236,20 +249,20 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
             },
     ) {
         val pad = PAD.toPx()
-        val map = PlotMap(size.width, size.height, pad)
+        val map = PlotMap(size.width, size.height, pad, gainLo, gainHi)
         for (f in GRID_F) {
             val x = map.x(f)
             drawLine(c.grid, Offset(x, 0f), Offset(x, size.height), 1.dp.toPx())
         }
-        for (g in GRID_DB) {
+        for (g in gridDb(gainLo, gainHi)) {
             val y = map.y(g)
             drawLine(if (g == 0.0) c.track else c.grid, Offset(0f, y), Offset(size.width, y), if (g == 0.0) 1.5.dp.toPx() else 1.dp.toPx())
         }
         for ((f, s) in LABEL_F) {
             drawText(measurer, s, Offset(map.x(f) + 4.dp.toPx(), size.height - pad - 12.dp.toPx()), labelStyle)
         }
-        for (g in doubleArrayOf(6.0, -6.0)) {
-            drawText(measurer, if (g > 0) "+6" else "-6", Offset(pad - 6.dp.toPx(), map.y(g) - 17.dp.toPx()), labelStyle)
+        for (g in gridDb(gainLo, gainHi).filter { it != 0.0 }) {
+            drawText(measurer, if (g > 0) "+${g.toInt()}" else "${g.toInt()}", Offset(pad - 6.dp.toPx(), map.y(g) - 17.dp.toPx()), labelStyle)
         }
 
         val bands: List<Band> = profile.bands

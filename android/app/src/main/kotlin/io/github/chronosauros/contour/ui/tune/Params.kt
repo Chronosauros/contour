@@ -58,14 +58,17 @@ enum class Param(val label: String, val unit: String, val scale: Scale?, val hom
         PREAMP -> null
     }
 
-    /** Typed text -> the stored value (clamped and quantized to the device range), null if not a number. */
+    /**
+     * Typed text -> the stored value, null if not a number. FREQ and GAIN are clamped and quantized to the device range; a typed Q is only clamped:
+     * it keeps the precision the user typed (0.707 stays 0.707) until the family codec builds the register value.
+     */
     fun parse(text: String, caps: DeviceCapabilities? = null): Double? {
         val v = text.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() } ?: return null
         return when (this) {
             PREAMP -> io.github.chronosauros.contour.core.Preamp.floorTo(v) // range-checked by AppModel.setPreamp (device range minus HS gains), never clamped
             else -> {
                 val s = if (caps == null) scale!! else scaleFor(caps)!!
-                s.quantize(v.coerceIn(s.min, s.max))
+                if (this == Q) v.coerceIn(s.min, s.max) else s.quantize(v.coerceIn(s.min, s.max))
             }
         }
     }

@@ -9,6 +9,11 @@ interface NativePort {
     fun pause(ms: Long)
     fun send(id: Int, kind: NativeHidReports.Kind, payload: ByteArray)
     fun request(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean): ByteArray
+    /** Payload bytes (after the report ID) of the descriptor's [kind] report [id]. Only the families that check exact
+     * input lengths ask (native Moondrop); the app's own port keeps this default, the bench tool answers it. */
+    fun payloadSize(id: Int, kind: NativeHidReports.Kind): Int = error("This port does not know the HID report descriptor")
+    /** A note from a session for the operator (the bench tool prints it); the app ignores it. */
+    fun log(message: String) {}
 }
 /** Contour stable: the native (non-WalkPlay) DACs are FiiO: KA15, K13 R2R, SnowSky Melody and Tiny A. */
 sealed interface NativeState {
@@ -37,14 +42,35 @@ sealed interface NativeState {
         }.getOrDefault(false)
     }
 }
+/** One DAC setting read: [value] as [DacSetting.decode] gives it, null = NO REPLY ([note] says whether the DAC was silent or the bytes made no sense). */
+data class SettingReading(val id: String, val value: Int?, val note: String?)
+/** A settings write and its read-back: [Verified] = the DAC says the value it was given, [Mismatch] = it says [read], [NoReply] = no usable reply in two reads. */
+sealed interface SettingWriteOutcome {
+    data object Verified : SettingWriteOutcome
+    data class Mismatch(val read: Int) : SettingWriteOutcome
+    data object NoReply : SettingWriteOutcome
+}
+/** The write self-test of one setting: [result] is OK, MISMATCH, NO_REPLY or RESTORE_FAILED; a value is null where the DAC did not answer. */
+data class WriteTestResult(val id: String, val from: Int?, val to: Int?, val back: Int?, val restored: Int?, val result: String, val extra: String? = null) {
+    fun line() = "WRITETEST $id from=${from ?: "none"} to=${to ?: "none"} back=${back ?: "none"} restored=${restored ?: "none"} result=$result"
+}
 data class NativeWriteResult(val verified: Boolean, val reason: String?, val readback: NativeState?)
 
 /** No mutation on read, qualification or local preflight. Every callback is guarded both sides. */
 class NativeSession(val target: DeviceTarget, private val port: NativePort) {
     private val melody = FiioMelodyExchange.appliesTo(target.fiio)
-    private companion object {
+    internal companion object {
         /** After a READ slot switch, as FiioWritePlan.delayAfterSelectMs before a send. */
         const val SELECT_SETTLE_MS = 300L
+        /**
+         * A settings read-back that is silent or still shows the old value is asked again after this long, up to [LATE_READBACKS] times, before a write is called
+         * unanswered or mismatched: the KA15 answers a filter change late (hardware 21.10.2026, runs/2026-10-21-fiio-ka15-02-phone: the restore wrote the filter, got no
+         * read-back, and a read ten seconds later showed it written). The same 2.5 s the WalkPlay engine waits before it asks again; a read only, the write is never repeated.
+         */
+        const val LATE_READBACK_MS = 2500L
+        /** The KA15 FILTER write is read back no sooner than this (DacSettings.kt: it stopped answering after a FILTER write on 17.10.2026). */
+        const val FILTER_SETTLE_MS = 1000L
+        const val LATE_READBACKS = 2
     }
     private fun <T> guarded(op: () -> T): T { port.guard(); return op().also { port.guard() } }
     private fun pause(ms: Long) { if (ms > 0) guarded { port.pause(ms) } }
@@ -114,6 +140,16 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
             }
         } catch (e: java.io.IOException) { if (!isReplyTimeout(e)) throw e }
     }
+    /**
+     * The KA15 SAVE (0x19): the DAC reports `00 ee` when the flash write is done, about 820-830 ms after the frame (hardware, hang analysis 22.10.2026). The report is read here
+     * so it never sits unread in front of the polls that follow (the first poll after a save used to go out ~845 ms later, met that report, and the KA15 never answered again).
+     * Silence is accepted: the read after [FiioWritePlan.delayAfterSaveMs] decides the save, not this report.
+     */
+    private fun saveKa15(f: FiioFrame) {
+        try {
+            request(f.reportId, f.payload()) { p -> p.size >= 2 && p[0] == 0.toByte() && p[1] == 0xEE.toByte() }
+        } catch (e: java.io.IOException) { if (!isReplyTimeout(e)) throw e }
+    }
     private fun melodySlotMismatch(c: FiioCodec, expected: Int, actual: Int) =
         "${FiioMelodyExchange.name(c.config)} requested ${c.config.slotLabels[expected] ?: "USER"} (slot $expected), but DAC reports slot $actual; not verified"
     private fun readFiio(c: FiioCodec): NativeState.Fiio {
@@ -169,6 +205,193 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
         writeAndConsumeEcho(frame)
         retryTimeouts { readName(c, slot) }
     }
+    /**
+     * Reads every readable setting of the device's list ([DeviceTarget.settings]), one `get` after another through the same request
+     * path as a normal read; nothing is written. [log] gets every TX and RX as hex with the setting id.
+     *
+     * Slot register: on the SnowSky DACs a USER slot's 0x16 reply goes stale after any other query and is right only straight after a
+     * select or SAVE (PROTOCOL.md, commit 1a6f96b). Nothing here reads, assumes or changes the slot, and the app keeps the slot it
+     * knows. The next normal read tolerates whatever the register holds (it already treats an opening reply that differs from the
+     * closing one as "USER slot, number unknown"), except a value that looks like a USER slot id (160..162): so the toggles and the
+     * choices, whose replies are small numbers (0..6), are read last and the levels first.
+     */
+    fun readSettings(log: (String) -> Unit = {}): List<SettingReading> = guarded {
+        val c = codec()
+        val readable = target.settings.filter { it.read is SettingRead.FiioGet }
+        fun readRank(s: DacSetting) = if (s.kind == SettingKind.TOGGLE || s.kind == SettingKind.CHOICE) 1 else 0
+        // The header info (sample rate, firmware) goes last. FiiO's own pause between commands for the model.
+        val gap = (ProbePlan.fiioGapMs(c.config) ?: 0).toLong()
+        val jobs: List<() -> SettingReading> =
+            readable.sortedBy(::readRank).map { s -> val r = s.read as SettingRead.FiioGet; { readOne(c, s.id, r.command, r.replyData, r.decode, false, log) } } +
+                target.info.map { i -> { readOne(c, i.id, i.command, i.replyData, i.decode, true, log) } }
+        jobs.mapIndexed { n, job -> if (n > 0) pause(gap); job() }
+    }
+    private fun hex(b: ByteArray) = b.joinToString(" ") { "%02x".format(it.toInt() and 255) }
+    private fun readOne(c: FiioCodec, id: String, cmd: Int, replyData: Int, decode: (ByteArray) -> Int?, crcOptional: Boolean, log: (String) -> Unit): SettingReading {
+        val f = c.querySetting(cmd)
+        val tx = f.payload()
+        log("settings $id TX ${hex(tx)}")
+        try {
+            val rx = request(f.reportId, tx) { p -> p.size >= 7 && (p[0].toInt() and 255) == 0xBB && (p[1].toInt() and 255) == 0x0B && (p[4].toInt() and 255) == cmd }
+            val logical = runCatching { c.settingReply(rx, cmd, replyData, crcOptional) }
+            log("settings $id RX ${hex(logical.getOrDefault(rx))}")
+            val value = logical.getOrNull()?.let { runCatching { decode(it) }.getOrNull() }
+            log("settings $id = ${value ?: "NO REPLY (unparsable)"}")
+            return SettingReading(id, value, if (value == null) "unparsable reply" else null)
+        } catch (e: java.io.IOException) {
+            if (!isReplyTimeout(e)) throw e
+            log("settings $id NO REPLY")
+            return SettingReading(id, null, "no reply")
+        }
+    }
+    /** One settings read with up to two tries (a silent DAC is asked once more; an unparsable reply too). Reads only. */
+    private fun readValue(c: FiioCodec, s: DacSetting, log: (String) -> Unit): Int? {
+        val r = s.read as? SettingRead.FiioGet ?: return null
+        val gap = (ProbePlan.fiioGapMs(c.config) ?: 0).toLong()
+        repeat(2) { n ->
+            if (n > 0) pause(gap)
+            readOne(c, s.id, r.command, r.replyData, r.decode, false, log).value?.let { return it }
+        }
+        return null
+    }
+    /**
+     * One settings write: the SET, its echo (every write consumes its echo; the KA15 stops answering when writes pile up unread), the model's gap, then
+     * the read-back: a GET of the same command, at most two tries. [request] takes only a reply whose command byte is the setting's, so a stale
+     * report of another command is dropped, never taken for the value. A missing echo is logged and does not decide: the read-back does.
+     */
+    private fun writeOne(c: FiioCodec, s: DacSetting, value: Int, log: (String) -> Unit): SettingWriteOutcome {
+        val frame = c.setSetting(s, value)
+        val gap = (ProbePlan.fiioGapMs(c.config) ?: 0).toLong()
+        val tx = frame.payload()
+        val cmd = tx[4]
+        pause(gap)
+        log("settings ${s.id} SET TX ${hex(tx)}")
+        try {
+            val echo = request(frame.reportId, tx) { p -> p.size >= 6 && p[0] == 0xAA.toByte() && p[1] == 0x0A.toByte() && p[4] == cmd }
+            log("settings ${s.id} SET RX ${hex(echo)}")
+        } catch (e: java.io.IOException) {
+            if (!isReplyTimeout(e)) throw e
+            log("settings ${s.id} SET no echo")
+        }
+        pause(gap)
+        // The KA15 stopped answering after a FILTER write read back at once (17.10.2026): it settles first, the late re-reads below stay as the second chance.
+        if (settleBeforeReadMs(c, s) > 0) pause(settleBeforeReadMs(c, s))
+        var got = readValue(c, s, log)
+        var late = 0
+        while (got != value && late < LATE_READBACKS) {
+            late++
+            log("settings ${s.id} read-back ${got ?: "NO REPLY"} (wrote $value), asking again in $LATE_READBACK_MS ms ($late of $LATE_READBACKS)")
+            pause(LATE_READBACK_MS)
+            got = readValue(c, s, log)
+        }
+        log("settings ${s.id} read-back ${got ?: "NO REPLY"} (wrote $value)")
+        return when {
+            got == null -> SettingWriteOutcome.NoReply
+            got == value -> SettingWriteOutcome.Verified
+            else -> SettingWriteOutcome.Mismatch(got)
+        }
+    }
+    /** How long a settings write waits before its first read-back: the KA15 FILTER needs [FILTER_SETTLE_MS], every other row only the model's gap. */
+    private fun settleBeforeReadMs(c: FiioCodec, s: DacSetting): Long =
+        if (s.id == "filter" && !melody && c.config.consumeWriteEchoes) FILTER_SETTLE_MS else 0L
+    /** One setting as the DAC reads now (up to two tries), or null when it does not answer. Reads only: the bench's `setting-plan` takes the value to restore from it. */
+    fun readSetting(id: String, log: (String) -> Unit = {}): Int? = guarded {
+        val c = codec()
+        val s = target.settings.firstOrNull { it.id == id } ?: throw IllegalArgumentException("$id is not in the ${target.caps.name} list")
+        readValue(c, s, log)
+    }
+    /** What the read-back said: the value when it answered, else null. */
+    private fun back(o: SettingWriteOutcome, wrote: Int): Int? = when (o) {
+        SettingWriteOutcome.Verified -> wrote
+        is SettingWriteOutcome.Mismatch -> o.read
+        SettingWriteOutcome.NoReply -> null
+    }
+    /**
+     * Sets one setting of the connected model and reads it back ([writeOne]). Refuses (IllegalArgumentException) what [DacWrite] refuses: a setting
+     * that is not in this model's list, USB AUDIO, the never-send commands, a value out of range. The app calls it only for a setting whose
+     * [DacSetting.writeEnabled] is true (proven, or a review build; the controller checks), and the perf-only write self-test uses [writeTest].
+     */
+    fun writeSetting(id: String, value: Int, log: (String) -> Unit = {}): SettingWriteOutcome = guarded {
+        val c = codec()
+        val s = target.settings.firstOrNull { it.id == id } ?: throw IllegalArgumentException("$id is not in the ${target.caps.name} list")
+        writeOne(c, s, value, log)
+    }
+    /**
+     * The write self-test (perf and debug builds, `--es writetest <id> [--ei to <v>]`): read the original, write [to] (default: the next option,
+     * original -1 / +1 for a level, one step towards L when the balance is centred, else one step back to the centre), echo and read back, write the
+     * original, echo and read back. VOLUME STEPS also logs the VOLUME before, after the write and after the restore (120 may rescale it). When the
+     * restore does not read back the original the result is RESTORE_FAILED and nothing more is sent. Refuses a setting that is not in the model's
+     * list and 0x20 before any frame goes out.
+     */
+    fun writeTest(id: String, to: Int?, log: (String) -> Unit = {}): WriteTestResult = guarded {
+        val c = codec()
+        val s = target.settings.firstOrNull { it.id == id } ?: throw IllegalArgumentException("$id is not in the ${target.caps.name} list")
+        DacWrite.checkSetting(c.config, s)
+        require(s.read is SettingRead.FiioGet) { "${s.label} has no read-back" }
+        fun finish(r: WriteTestResult): WriteTestResult { log(r.line()); r.extra?.let(log); return r }
+        val original = readValue(c, s, log) ?: return@guarded finish(WriteTestResult(id, null, to, null, null, "NO_REPLY"))
+        // the top of a level that follows another setting (the volume follows VOLUME STEPS)
+        val top = s.maxRule?.let { rule ->
+            val src = target.settings.firstOrNull { it.id == rule.settingId }?.let { readValue(c, it, log) }
+            s.maxFor { if (it == rule.settingId) src else null }
+        } ?: s.max
+        val volume = if (id == "volume-steps") target.settings.firstOrNull { it.id == "volume" } else null
+        val volumeBefore = volume?.let { readValue(c, it, log) }
+        val goal = to ?: when (s.kind) {
+            SettingKind.TOGGLE, SettingKind.CHOICE -> (original + 1) % s.options.size
+            SettingKind.LEVEL -> if (original > s.min) original - 1 else original + 1
+            SettingKind.BALANCE -> if (original == 0) -1 else original - Integer.signum(original)
+        }
+        DacWrite.checkValue(s, goal)
+        if (s.kind == SettingKind.LEVEL) require(goal <= top) { "${s.label}: $goal is above the current top $top" }
+        val first = writeOne(c, s, goal, log)
+        val volumeAfterWrite = volume?.let { readValue(c, it, log) }
+        val second = writeOne(c, s, original, log)
+        val volumeAfterRestore = volume?.let { readValue(c, it, log) }
+        val extra = volume?.let { "WRITETEST $id volume before=${volumeBefore ?: "none"} afterWrite=${volumeAfterWrite ?: "none"} afterRestore=${volumeAfterRestore ?: "none"}" }
+        val backValue = back(first, goal)
+        val restored = back(second, original)
+        if (second != SettingWriteOutcome.Verified) {
+            log("WRITETEST $id RESTORE_FAILED: wrote $original back, the DAC reads ${restored ?: "nothing"}. NOTHING MORE IS SENT - check the DAC by hand")
+            return@guarded finish(WriteTestResult(id, original, goal, backValue, restored, "RESTORE_FAILED", extra))
+        }
+        val result = when (first) {
+            SettingWriteOutcome.Verified -> "OK"
+            is SettingWriteOutcome.Mismatch -> "MISMATCH"
+            SettingWriteOutcome.NoReply -> "NO_REPLY"
+        }
+        finish(WriteTestResult(id, original, goal, backValue, restored, result, extra))
+    }
+    /**
+     * The DAC probe's FiiO frame layer (review builds): the active slot (0x16), every GET of [ProbePlan.FIIO_COMMANDS], the slot again, each with
+     * its TX and RX (or no reply) in [report]. [gapMs] is FiiO's own pause between commands for the model. Reads only: a frame that is not on the
+     * allow-list cannot be built. Never retries (a silent command is a result), never selects, switches or asks for a slot's content.
+     */
+    fun probeFiio(report: ProbeReport, gapMs: Int) {
+        val c = codec()
+        val layer = "fiio"
+        var slotBefore: Int? = null
+        ProbePlan.FIIO_SEQUENCE.forEachIndexed { i, cmd ->
+            if (i > 0) pause(gapMs.toLong())
+            val f = ProbePlan.fiioFrame(c, cmd)
+            val tx = f.payload()
+            val name = "0x%02x".format(cmd)
+            report.tx(layer, name, hex(tx))
+            try {
+                val rx = request(f.reportId, tx) { p -> p.size >= 7 && (p[0].toInt() and 255) == 0xBB && (p[1].toInt() and 255) == 0x0B && (p[4].toInt() and 255) == cmd }
+                val logical = runCatching { c.settingReply(rx, cmd, 0) }.getOrNull()
+                report.rx(layer, name, logical?.let(::hex) ?: "raw ${hex(rx)}")
+                if (cmd == ProbePlan.FIIO_SLOT && logical != null && logical.size >= 7 && (logical[5].toInt() and 255) >= 1) {
+                    val slot = logical[6].toInt() and 255
+                    if (i == 0) { slotBefore = slot; report.note(layer, "slot before $slot") }
+                    else report.note(layer, "slot after $slot" + if (slot == slotBefore) " (same)" else " (differs from before $slotBefore; SnowSky slot registers go stale after queries)")
+                }
+            } catch (e: java.io.IOException) {
+                if (!isReplyTimeout(e)) throw e
+                report.noReply(layer, name)
+            }
+        }
+    }
     fun read(): NativeState = guarded { codec().let { c -> retryTimeouts(5) { readFiio(c) } } }
     /** Switches the DAC to USER [slot], as its own preset button would (nothing is written or saved), and returns the slot one
      * query confirms; no band is read. A tap on a slot Contour already knows, and the end of the background scan on connect.
@@ -176,10 +399,18 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
     fun selectSlot(slot: Int, explicitUserAction: Boolean): Int = guarded {
         require(explicitUserAction) { "Switching slots requires an explicit user action" }
         val c = codec()
-        val select = c.selectUserSlot(slot)
+        selectAndConfirm(c, c.selectUserSlot(slot))
+    }
+    /** [selectSlot] for the model's bypass / Close EQ ([FiioCodec.selectBypassSlot]): only to put the DAC back on the slot it was found on (the bench's `select`). The app never calls it. */
+    fun selectBypassSlot(explicitUserAction: Boolean): Int = guarded {
+        require(explicitUserAction) { "Switching slots requires an explicit user action" }
+        val c = codec()
+        selectAndConfirm(c, c.selectBypassSlot())
+    }
+    private fun selectAndConfirm(c: FiioCodec, select: FiioFrame): Int {
         if (c.config.consumeWriteEchoes) writeAndConsumeEcho(select, requireEcho = melody) else send(select.reportId, select.payload())
         pause(SELECT_SETTLE_MS)
-        c.parseSlot(retryTimeouts { fiioReply(c, c.querySlot()) })
+        return c.parseSlot(retryTimeouts { fiioReply(c, c.querySlot()) })
     }
     /** A tap on a FiiO USER slot Contour has not seen, and the background scan on connect: switches the DAC to USER [slot], as its own
      * preset button would (nothing is written or saved), and reads that slot. The SnowSky DACs always select, like a send: their USER slot reply may be stale. */
@@ -240,7 +471,7 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
                     pause(c.config.writeGapMs.toLong())
                 }
                 pause(p.delayBeforeSaveMs.toLong())
-                if (melody) saveMelody(p.save) else send(p.save.reportId, p.save.payload())
+                if (melody) saveMelody(p.save) else if (c.config.consumeWriteEchoes) saveKa15(p.save) else send(p.save.reportId, p.save.payload())
                 pause(p.delayAfterSaveMs.toLong())
                 val back = if (melody) {
                     // SAVE restores the slot register. Anchor the snapshot before any band/preamp traffic.
@@ -257,5 +488,127 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
             }
         }
         } finally { progress = null }
+    }
+
+    // ---- factory reset (SnowSky Melody, Tiny A, FiiO KA15): backup, the reset frame, the read after it, the restore ---------------------------------------------------
+    // The frame itself exists only through FiioResetFlow's ticket ([FiioCodec.resetFrame]); these three calls are the session's half of that flow.
+
+    /**
+     * What the DAC holds right now, as a [FiioResetBackup]: every USER slot (the SnowSky DACs always switch to it: [readSlot]) with its name and native
+     * registers, then every readable setting ([readSettings]; a silent one is listed in [FiioResetBackup.unreadSettings]), then the DAC goes back to the
+     * USER slot it was on (a stock preset cannot be selected back from here). Used before the reset (the backup) and after it (what the reset left).
+     * Nothing is written or saved; switching the slot is what a tap on a slot does.
+     */
+    fun captureForReset(explicitUserAction: Boolean, takenAtMs: Long, log: (String) -> Unit = {}): FiioResetBackup = guarded {
+        require(explicitUserAction) { "A backup before a reset requires an explicit user action" }
+        val c = codec()
+        require(FiioReset.offered(c.config)) { "${c.config.productName} has no factory reset in Contour" }
+        val first = retryTimeouts(5) { readFiio(c) }
+        val slots = c.config.userSlots.sorted().map { slot ->
+            log("reset backup: reading slot $slot")
+            val state = readSlot(slot, explicitUserAction = true)
+            FiioSlotBackup(slot, state.names[slot], state.raw.copy(activeSlot = slot))
+        }
+        val known = target.settings.map { it.id }.toSet()
+        val readings = readSettings(log).filter { it.id in known }
+        val settings = readings.mapNotNull { r -> r.value?.let { r.id to it } }.toMap()
+        val back = first.slot.takeIf { it in c.config.userSlots }
+        if (back != null) try { selectSlot(back, explicitUserAction = true) } catch (e: java.io.IOException) {
+            if (!isReplyTimeout(e)) throw e
+            log("reset backup: the DAC did not confirm the return to slot $back")
+        }
+        FiioResetBackup(c.config.productName, takenAtMs, first.slot, slots, settings, readings.filter { it.value == null }.map { it.id })
+    }
+
+    /**
+     * Sends the factory reset: `aa 0a 00 SEQ 21 01 00 CRC ee`, built by [FiioCodec.resetFrame] from [ticket] only. No answer, a late answer or the
+     * session ending after the frame went out are all normal (the DAC may restart): they come back in [FiioResetSent], never as an exception, and
+     * nothing counts as reset until a read after it says so. The session is not guarded after the send (the DAC may already be gone).
+     * The DAC answers the frame at once, but not with the echo `aa 0a ... 21` of the other commands: it sends a bare `00 ee` and its reply counter (Melody, Tiny A and KA15 phone
+     * runs, 21-25.10.2026). That answer is not an echo, so [FiioResetSent.echoed] stays false, but the note and the log name it instead of saying "no answer".
+     */
+    fun factoryReset(ticket: FiioResetTicket, log: (String) -> Unit = {}): FiioResetSent {
+        port.guard()
+        val c = codec()
+        val frame = c.resetFrame(ticket) // refuses another model and a ticket that was spent
+        val tx = frame.payload()
+        log("reset TX ${hex(tx)}")
+        var other: ByteArray? = null
+        return try {
+            val echo = port.request(frame.reportId, tx) { p ->
+                (p.size >= 6 && p[0] == 0xAA.toByte() && p[1] == 0x0A.toByte() && p[4] == tx[4]).also { if (!it && other == null) other = p.copyOf(minOf(p.size, 4)) }
+            }
+            log("reset RX ${hex(echo)}")
+            FiioResetSent(true, null)
+        } catch (e: java.io.IOException) {
+            val answer = other
+            if (answer != null && isReplyTimeout(e)) log("reset RX (not an echo) ${hex(answer)}")
+            val note = if (!isReplyTimeout(e)) "the session ended after the reset frame: ${e.message}"
+                else if (answer != null) "the DAC answered the reset frame, but not with an echo of it (it may be restarting)"
+                else "no answer to the reset frame (the DAC may be restarting)"
+            log("reset: $note")
+            FiioResetSent(false, note)
+        }
+    }
+
+    /**
+     * Writes [backup] back after a reset: each USER slot (the exact registers, through [write]: switch, backup read, writes, SAVE, read-back, then the
+     * name), then every saved setting that differs from what the DAC reads now and may be written ([DacWrite]; VOLUME STEPS first, the volume last), then
+     * the USER slot the DAC was on. A slot or setting that fails is a line, never a silent skip; a lost session stops the restore. [FiioRestoreResult.ok]
+     * is true only when everything that had to be written read back as saved.
+     */
+    fun restoreAfterReset(backup: FiioResetBackup, log: (String) -> Unit = {}): FiioRestoreResult = guarded {
+        val c = codec()
+        require(FiioReset.offered(c.config)) { "${c.config.productName} has no factory reset in Contour" }
+        backup.problems(c.config).let { require(it.isEmpty()) { "Backup incomplete: " + it.joinToString("; ") } }
+        val lines = ArrayList<String>()
+        var ok = true
+        var lost = false
+        for (sb in backup.slots.sortedBy { it.slot }) {
+            val label = c.config.slotLabels[sb.slot] ?: "slot ${sb.slot}"
+            if (lost) { lines += "$label: not restored (the DAC session ended)"; ok = false; continue }
+            try {
+                val eq = c.importExact(sb.snapshot)
+                val profile = Profile("restore-${sb.slot}", sb.name.orEmpty(), bands = eq.bands, preampDb = eq.preampDb, createdAt = 0, updatedAt = 0)
+                val r = write(profile, explicitHold = true, targetSlot = sb.slot)
+                log("reset restore: $label ${if (r.verified) "VERIFIED" else "NOT VERIFIED"}${r.reason?.let { ": $it" }.orEmpty()}")
+                lines += if (r.verified) "$label: restored" + (r.reason?.let { " ($it)" } ?: "") else "$label: NOT restored: ${r.reason}"
+                if (!r.verified) ok = false
+            } catch (e: java.io.IOException) {
+                lines += "$label: NOT restored: ${e.message}"; ok = false; lost = true
+            } catch (e: IllegalArgumentException) {
+                lines += "$label: NOT restored: ${e.message}"; ok = false
+            }
+        }
+        val byId = target.settings.associateBy { it.id }
+        for ((id, value) in backup.settings.entries.sortedBy { FiioReset.restoreRank(it.key) }) {
+            val s = byId[id] ?: continue
+            val label = s.label
+            if (lost) { lines += "$label: not restored (the DAC session ended)"; ok = false; continue }
+            if (!s.writeEnabled) continue // read-only on this DAC: nothing to write back
+            try {
+                val now = readValue(c, s, log)
+                if (now == value) { lines += "$label: unchanged"; continue }
+                when (val o = writeOne(c, s, value, log)) {
+                    SettingWriteOutcome.Verified -> lines += "$label: restored"
+                    is SettingWriteOutcome.Mismatch -> { lines += "$label: NOT restored: the DAC reads ${o.read}, saved $value"; ok = false }
+                    SettingWriteOutcome.NoReply -> { lines += "$label: NOT restored: no reply"; ok = false }
+                }
+            } catch (e: java.io.IOException) {
+                lines += "$label: NOT restored: ${e.message}"; ok = false; lost = true
+            } catch (e: IllegalArgumentException) {
+                lines += "$label: NOT restored: ${e.message}"; ok = false
+            }
+        }
+        val slot = backup.activeSlot
+        if (!lost && slot != null && slot in c.config.userSlots) {
+            try {
+                val now = selectSlot(slot, explicitUserAction = true)
+                lines += if (now == slot) "The DAC is back on ${c.config.slotLabels[slot] ?: "slot $slot"}" else "The DAC reports slot $now, not ${c.config.slotLabels[slot] ?: "slot $slot"}"
+            } catch (e: java.io.IOException) {
+                lines += "The DAC did not confirm the return to slot $slot: ${e.message}"
+            }
+        } else if (slot != null && slot !in c.config.userSlots) lines += "The DAC was on a stock preset or Close EQ before the reset: choose it on the DAC"
+        FiioRestoreResult(lines, ok)
     }
 }

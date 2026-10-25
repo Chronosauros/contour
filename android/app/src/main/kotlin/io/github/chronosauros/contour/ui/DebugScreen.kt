@@ -78,7 +78,10 @@ fun DebugScreen(device: DeviceController, onClose: () -> Unit) {
                         else -> "DAC: connected" + (snapshot?.firmware?.let { ", firmware $it" } ?: "")
                     } + (device.error?.let { " - error: $it" } ?: ""),
                 )
-                if (device.protocol.experimental) {
+                if (device.protocol.isFamily) {
+                    val verified = device.protocol.run { moondrop?.hardwareVerified == true || ktMicro?.hardwareVerified == true || echo?.hardwareVerified == true } // Dawn Pro 2 and Allegro Mini since 25.10.2026
+                    Text(device.protocol.caps.name + if (device.protocol.readOnly) " - READ ONLY, not verified on hardware" else if (verified) "" else " - not verified on hardware")
+                } else if (device.protocol.experimental) {
                     Text(device.protocol.caps.name)
                     Text(
                         "${device.protocol.caps.bands}-band PEQ with native shelves. A/B is unavailable on the ${device.protocol.caps.name}.",
@@ -102,7 +105,7 @@ fun DebugScreen(device: DeviceController, onClose: () -> Unit) {
                 }
                 snapshot?.let { s ->
                     Text(
-                        "slot ${s.slot}, preamp ${s.preampDb ?: s.shownPreamp} dB, read ${s.readMs} ms\n" + (s.nativeState?.describe() ?: s.bands.joinToString("\n") { b ->
+                        "slot ${s.slot}, preamp ${s.preampDb ?: s.shownPreamp} dB, read ${s.readMs} ms\n" + (s.familyState?.describe() ?: s.nativeState?.describe() ?: s.bands.joinToString("\n") { b ->
                             val r = b.registers
                             "%d  %s %7.1f Hz %6.2f dB Q %.3f   raw f=%d q=%d g=%d t=%d".format(
                                 r.index + 1, b.type.name.take(2), b.freqHz, b.gainDb, b.q, r.freq, r.q256, r.gain256, r.typeCode,
@@ -114,7 +117,7 @@ fun DebugScreen(device: DeviceController, onClose: () -> Unit) {
                 }
                 lastWrite?.let { w ->
                     Text(
-                        "last write: verified ${if (w.verified) "YES" else "NO"}, write ${w.writeMs} ms, read-back ${w.readBackMs} ms" +
+                        "last write: verified ${if (w.verified) "YES" else if (w.pending != null) "PENDING" else "NO"}, write ${w.writeMs} ms, read-back ${w.readBackMs} ms" +
                             w.mismatches.joinToString("") { "\n  $it" },
                         fontFamily = FontFamily.Monospace,
                         fontSize = 11.sp,

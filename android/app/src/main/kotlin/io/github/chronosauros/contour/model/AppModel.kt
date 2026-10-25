@@ -10,6 +10,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import io.github.chronosauros.contour.core.Band
 import io.github.chronosauros.contour.core.FilterType
+import io.github.chronosauros.contour.core.isPass
 import io.github.chronosauros.contour.core.Preamp
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.core.DeviceTarget
@@ -24,10 +25,14 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.channels.Channel
 
-/** The two pages of the pager, in their order. */
+/**
+ * The pages of the pager, as logical ids (not positions): Tune | Library, and DAC Settings left of Tune while the connected DAC has
+ * settings. The shell maps an id to its place in the pager.
+ */
 object Page {
     const val TUNE = 0
     const val LIBRARY = 1
+    const val DAC = 2
 }
 
 /**
@@ -467,8 +472,17 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         }
     }
 
+    /** A pass filter (low, high, band, all) has no gain: it stays 0 however the band got here (type switch, node drag, slider). */
+    private fun Band.passGainZero(): Band = if (type.isPass && gainDb != 0.0) copy(gainDb = 0.0) else this
+
+    /** The gain of an emulated HIGH SHELF stays on the grid of the DAC's preamp ([DeviceTarget.highShelfStepDb]), however the band got here (type switch, node drag, slider, typed value). */
+    private fun Band.onShelfGrid(): Band {
+        val step = protocol.highShelfStepDb ?: return this
+        return if (type == FilterType.HIGH_SHELF && gainDb.isFinite()) copy(gainDb = Math.round(gainDb / step) * step) else this
+    }
+
     fun setBand(index: Int, band: Band) = update { p ->
-        if (index !in p.bands.indices) p else p.copy(bands = p.bands.toMutableList().also { it[index] = band })
+        if (index !in p.bands.indices) p else p.copy(bands = p.bands.toMutableList().also { it[index] = band.passGainZero().onShelfGrid() })
     }
 
     /** A drag may finish after a profile switch, band deletion, or another edit. Transform only the live band. */
@@ -476,7 +490,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         if (currentId != profileId) return
         update(profileId) { p ->
             if (currentId != profileId || p.bands.getOrNull(index)?.id != bandId) p
-            else p.copy(bands = p.bands.toMutableList().also { it[index] = transform(it[index]) })
+            else p.copy(bands = p.bands.toMutableList().also { it[index] = transform(it[index]).passGainZero().onShelfGrid() })
         }
     }
 
@@ -485,7 +499,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         val p = current ?: return false
         if (p.bands.size >= maxBands) return false
         val f = freq ?: widestGapMiddle(p.bands.map { it.freqHz })
-        val band = Band(bandId(), FilterType.PEAK, Math.round(f.coerceIn(20.0, 20_000.0)).toDouble(), round1(gain.coerceIn(-10.0, 10.0)), 0.71)
+        val band = Band(bandId(), FilterType.PEAK, Math.round(f.coerceIn(20.0, 20_000.0)).toDouble(), round1(gain.coerceIn(protocol.caps.gainMinDb, protocol.caps.gainMaxDb)), 0.71)
         update { it.copy(bands = it.bands + band) }
         selectBand(p.bands.size)
         return true
@@ -518,7 +532,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     fun setType(type: FilterType) {
         val p = current ?: return
         val b = p.bands.getOrNull(selectedBand) ?: return
-        if (b.type != type) setBand(selectedBand, b.copy(type = type))
+        if (b.type != type) setBand(selectedBand, b.copy(type = type).passGainZero())
     }
 
     /** AUTO off starts manual at the shown (curve-domain) value, so the device register does not change. */
@@ -526,10 +540,10 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         update { p ->
             if (auto) {
                 if (runCatching { shownPreamp(p.copy(preampDb = null)) }.isSuccess) p.copy(preampDb = null) else p
-            } else if (protocol.walkplay?.autoRefusal(p.bands) != null) {
+            } else if (protocol.autoRefusal(p.bands) != null) {
                 p // AUTO needs more than the device takes: stay in AUTO (the refusal stays on the screen), never swap in -30
-            } else (protocol.walkplay?.manualForAuto(p.bands) // the lowest 0.1 dB value with AUTO's own register
-                ?: runCatching { Preamp.floorTo(shownPreamp(p)) }.getOrNull())?.let { p.copy(preampDb = it) } ?: p
+            } else (protocol.manualForAuto(p.bands) // the lowest 0.1 dB value with AUTO's own register
+                ?: runCatching { Preamp.floorTo(shownPreamp(p), protocol.preampStep) }.getOrNull())?.let { p.copy(preampDb = it) } ?: p
         }
     }
 
@@ -550,7 +564,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         val hs = protocol.shelfOffset(bands)
         if (!db.isFinite()) return false
         // Micro/Max: accepted iff the value that will be stored (the typed number rounded DOWN to 0.1 dB) passes the planner rule.
-        return if (protocol.walkplay != null)
+        return if (protocol.usesWalkPlayRules)
             protocol.preampFits(bands, Preamp.floorTo(db))
             else db in (protocol.preampMin - hs)..(protocol.preampMax - hs)
     }
@@ -559,9 +573,9 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     fun preampRefusal(bands: List<Band>, db: Double): String? {
         if (preampAccepted(bands, db)) return null
         if (!db.isFinite()) return "Enter a number"
-        val wp = protocol.walkplay
-        val base = wp?.let { it.preampRefusal(bands, db) ?: it.preampRefusal(bands, Preamp.floorTo(db)) } ?: "Enter a value within the range above"
-        val near = if (wp == null) null else nearestAcceptedPreamp(bands, db)
+        val wp = protocol.usesWalkPlayRules
+        val base = (if (wp) protocol.preampRefusal(bands, db) ?: protocol.preampRefusal(bands, Preamp.floorTo(db)) else null) ?: "Enter a value within the range above"
+        val near = if (!wp) null else nearestAcceptedPreamp(bands, db)
         return if (near == null) base else "$base Nearest accepted: ${if (near == Math.rint(near)) near.toLong().toString() else near.toString()}."
     }
 
@@ -575,8 +589,8 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
 
     /** Why the device would not take the STORED [db] as it is (the planner's own rule, no rounding of it), or null. */
     fun storedPreampRefusal(bands: List<Band>, db: Double): String? =
-        protocol.walkplay?.preampRefusal(bands, db)
-            ?: if (protocol.walkplay == null && !(db.isFinite() && db in protocol.preampMin..protocol.preampMax)) "Enter a value within the range above" else null
+        protocol.preampRefusal(bands, db)
+            ?: if (!protocol.usesWalkPlayRules && !(db.isFinite() && db in protocol.preampMin..protocol.preampMax)) "Enter a value within the range above" else null
 
     fun rename(id: String, name: String) = update(id) {
         it.copy(name = name.trim().take(NAME_MAX).ifEmpty { it.name })

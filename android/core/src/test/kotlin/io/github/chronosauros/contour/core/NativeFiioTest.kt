@@ -90,7 +90,8 @@ class NativeFiioTest {
             assertTrue(c.userSlots.intersect(c.stockSlots).isEmpty())
             assertTrue(c.sourceUrl.contains(FiioCatalog.PINNED_COMMIT))
             assertEquals("beta-unverified", c.status)
-            assertEquals(setOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF), c.typeCodes.keys)
+            // KA15: the three types of its capture; K13 R2R: all seven (FiiO web app capture, 14.10.2026, FINDINGS.md).
+            assertEquals(if (name == "FIIO KA15") setOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF) else FilterType.entries.toSet(), c.typeCodes.keys, name)
             FiioCodec(c) // Configuration invariants.
         }
         assertEquals(0, FiioCatalog.rules.count { it.codecBlockers.isNotEmpty() })
@@ -238,6 +239,50 @@ class NativeFiioTest {
         assertEquals(setOf(7, 8, 9), codec("FIIO KA15").config.userSlots)
         assertEquals(0x19, plan(codec("FIIO KA15")).save.bytes[4])
     }
+    @Test fun `the bypass select is the select frame with the model's bypass number, and no write path takes the bypass`() {
+        for ((config, bypass) in listOf(FiioCatalog.K13 to 240, FiioCatalog.MELODY to 240, FiioCatalog.TINY_A to 240, FiioCatalog.KA15 to 10)) {
+            val c = FiioCodec(config)
+            val f = c.selectBypassSlot()
+            assertEquals(bypass, config.bypassSlot, config.productName)
+            assertEquals(FiioEffect.SELECT_BYPASS_SLOT, f.effect)
+            // the same command and shape as the USER select (0x16, one data byte), only the number differs
+            val user = c.selectUserSlot(config.userSlots.min())
+            assertEquals(FiioCodec.SLOT, f.bytes[4], config.productName); assertEquals(1, f.bytes[5]); assertEquals(bypass, f.bytes[6])
+            assertEquals(user.bytes.size, f.bytes.size); assertEquals(user.reportId, f.reportId)
+            assertEquals(user.bytes.take(3) + user.bytes[4], f.bytes.take(3) + f.bytes[4]) // byte 3 is the host sequence where the model counts it
+            // still no way to select it as a USER slot, to plan a write to it or to select a factory preset
+            assertFailsWith<IllegalArgumentException> { c.selectUserSlot(bypass) }
+            assertFailsWith<IllegalArgumentException> { plan(c, slot = bypass) }
+            for (preset in config.stockSlots) assertFailsWith<IllegalArgumentException> { c.selectUserSlot(preset) }
+        }
+        // the K13 R2R's frame is in the 8-bit AA/BB family, command 0x16
+        assertEquals(0xAA, FiioCodec(FiioCatalog.K13).selectBypassSlot().bytes[0])
+    }
+    @Test fun `a written USER name is the full NUL padded field on every FiiO with slot names, so a 5 letter name reads back as written`() {
+        val named = FiioCatalog.rules.filter { it.userSlotNames }
+        assertEquals(setOf(FiioCatalog.KA15.productName, FiioCatalog.MELODY.productName, FiioCatalog.TINY_A.productName), named.map { it.productName }.toSet()) // the K13 has a slot picker, no names
+        for (config in named) {
+            val c = FiioCodec(config)
+            val slot = config.userSlots.min()
+            for (n in 1..config.nameLength) {
+                val name = "ABCDEFGH".take(n)
+                val f = c.writeName(slot, name)
+                val payload = f.bytes.subList(6, 6 + f.bytes[5])
+                assertEquals(1 + config.nameLength, payload.size, "${config.productName} $name: slot id plus the whole field")
+                assertEquals(name.map { it.code } + List(config.nameLength - n) { 0 }, payload.drop(1), config.productName)
+                // The SnowSky DACs keep a stale 0x44 at field index 5 (Tiny A run 25.10.2026): a DAC that copies exactly what it is sent shows the name as written.
+                val field = IntArray(config.nameLength).also { if (it.size > 5) it[5] = 0x44 }
+                payload.drop(1).forEachIndexed { i, b -> field[i] = b }
+                assertEquals(name, field.takeWhile { it != 0 }.joinToString("") { it.toChar().toString() }, "${config.productName} $name")
+            }
+        }
+    }
+    @Test fun `the wait after the flash save is per model - the KA15 about 2 s, the others 800 ms - and the plan carries the model's own`() {
+        val waits = FiioCatalog.rules.associate { it.productName to it.afterSaveMs }
+        assertEquals(2000, waits.getValue("FIIO KA15"))
+        for ((name, ms) in waits) if (name != "FIIO KA15") assertEquals(800, ms, name)
+        for (c in FiioCatalog.rules.filter { it.userSlots.isNotEmpty() }.map { FiioCodec(it) }) assertEquals(c.config.afterSaveMs, plan(c).delayAfterSaveMs, c.config.productName)
+    }
     @Test fun `NaN infinity range unsupported type missing preamp and implicit action rejected atomically`() {
         val c = codec("FIIO KA15")
         for (x in listOf(Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY)) {
@@ -248,7 +293,8 @@ class NativeFiioTest {
         }
         for (b in listOf(peak().copy(freqHz = 19.0), peak().copy(freqHz = 20001.0), peak().copy(gainDb = -12.1),
             peak().copy(gainDb = 12.1), peak().copy(q = 0.09), peak().copy(q = 10.01), peak().copy(q = 0.0),
-            peak().copy(type = FilterType.LOW_PASS), peak().copy(type = FilterType.HIGH_PASS))) {
+            peak().copy(type = FilterType.LOW_PASS), peak().copy(type = FilterType.HIGH_PASS),
+            peak().copy(type = FilterType.BAND_PASS), peak().copy(type = FilterType.ALL_PASS))) { // the KA15 has only PK/LS/HS bytes
             assertFailsWith<IllegalArgumentException> { plan(c, listOf(peak(), b)) }
         }
         assertFailsWith<IllegalArgumentException> { plan(c, preamp = null) }
@@ -282,7 +328,8 @@ class NativeFiioTest {
         val valid = plan(c).expected
         for (bad in listOf(valid.bands.single().copy(frequencyHz = 0), valid.bands.single().copy(frequencyHz = 20001),
             valid.bands.single().copy(gainTenths = -121), valid.bands.single().copy(gainTenths = 121),
-            valid.bands.single().copy(qHundredths = 0), valid.bands.single().copy(qHundredths = 1001),
+            // Past the KA15 readback drift (1 below 0.10, 5 above 10.00: see the Q readback test); 9 and 1001..1005 parse there.
+            valid.bands.single().copy(qHundredths = 0), valid.bands.single().copy(qHundredths = 8), valid.bands.single().copy(qHundredths = 1006),
             valid.bands.single().copy(typeCode = 6))) {
             assertFailsWith<IllegalArgumentException> { c.parseBand(bandReply(bad), 0, 1) }
             assertFailsWith<IllegalArgumentException> { c.importExact(valid.copy(bands = listOf(bad))) }
@@ -302,8 +349,11 @@ class NativeFiioTest {
         assertEquals(kotlin.math.sqrt(2.0), c.config.shelfQScale)
         assertEquals(12.0, c.config.preampOffsetDb)
         assertFalse(c.config.shelfAlphaCompensation)
-        // Only the KA15 carries non-neutral corrections; the defaults are neutral.
-        assertTrue(FiioCatalog.rules.filter { it.productName != "FIIO KA15" }.all { it.shelfQScale == 1.0 && it.preampOffsetDb == 0.0 })
+        // Only the KA15 carries the preamp offset; the shelf Q scale is the KA15's, the Melody's and the Tiny A's (acoustic runs 20.10 and 24.10.2026), the peak Q scale the K13 R2R's (25.10.2026).
+        val shelfScaled = setOf("FIIO KA15", "SNOWSKY Melody", "SNOWSKY TINY A")
+        assertTrue(FiioCatalog.rules.all { (it.shelfQScale == kotlin.math.sqrt(2.0)) == (it.productName in shelfScaled) && (it.shelfQScale == 1.0) == (it.productName !in shelfScaled) })
+        assertTrue(FiioCatalog.rules.all { (it.peakQScale == kotlin.math.sqrt(2.0)) == (it.productName == "FIIO K13 R2R") && (it.peakQScale == 1.0) == (it.productName != "FIIO K13 R2R") })
+        assertTrue(FiioCatalog.rules.filter { it.productName != "FIIO KA15" }.all { it.preampOffsetDb == 0.0 })
         val neutral = FiioCodec(c.config.copy(shelfQScale = 1.0, preampOffsetDb = 0.0))
         assertEquals(71, plan(neutral, listOf(peak().copy(type = FilterType.LOW_SHELF)), 0.0).expected.bands.single().qHundredths)
         for (bad in listOf(c.config.copy(shelfAlphaCompensation = true), c.config.copy(shelfQScale = 0.0),
@@ -384,31 +434,94 @@ class NativeFiioTest {
         assertFalse(c.matches(q, q.copy(bands = q.bands.map { it.copy(qHundredths = it.qHundredths + 1) })))
     }
 
-    /** The KA15 acoustic correction (shelf Q x sqrt2, preamp +12 dB) was measured on the KA15 only: an unmeasured K13 R2R
-     * gets raw values (register = intended), and its wider -24..+12 dB range and shelf Q up to 10 stay intact. */
-    @Test fun `K13 R2R encodes raw shelf Q and raw preamp without the KA15 correction`() {
+    /** KA15 USER2 on the Pixel, 21.10.2026: a profile at the Q edges was written, and the DAC read back 0.10 as 0.09, 10.00 as 10.03 and 9.99 as 10.02.
+     * The strict range check threw on the read, so that slot could no longer be read, switched to or restored. */
+    @Test fun `KA15 reads Q just past the range edges back, matches and imports it clamped, and still refuses to write it`() {
+        val ka = codec("FIIO KA15")
+        val slot = ka.config.userSlots.first()
+        val edges = listOf(peak(0).copy(q = 0.10), peak(1).copy(q = 10.00), peak(2).copy(q = 9.99))
+        val expected = plan(ka, edges).expected
+        assertEquals(listOf(10, 1000, 999), expected.bands.map { it.qHundredths })
+        fun drifted(qs: List<Int>) = FiioSnapshot(expected.productName, slot, 3, expected.preampTenths,
+            expected.bands.mapIndexed { i, r -> r.copy(qHundredths = qs[i]) })
+        // Parses (snapshot -> parseBand) and validates (matches -> validateSnapshot).
+        val read = snapshot(ka, drifted(listOf(9, 1003, 1002)))
+        assertEquals(listOf(9, 1003, 1002), read.bands.map { it.qHundredths })
+        assertTrue(ka.matches(expected, read))
+        // The imported band sits at its edge: the intended value clamped into [0.1, 10.0].
+        val imported = ka.importExact(read)
+        assertEquals(listOf(0.10, 10.00, 10.00), imported.bands.map { Math.round(it.q * 100) / 100.0 })
+        assertTrue(imported.bands.all { it.q in 0.1 - 1e-9..10.0 + 1e-9 })
+        // The edge of what the verification accepts: 5 hundredths above 10.00, 1 below 0.10; one more is a mismatch and refused on read.
+        assertEquals(1005, snapshot(ka, drifted(listOf(9, 1005, 1002))).bands[1].qHundredths)
+        assertFailsWith<IllegalArgumentException> { snapshot(ka, drifted(listOf(8, 1000, 999))) }
+        assertFailsWith<IllegalArgumentException> { snapshot(ka, drifted(listOf(10, 1006, 999))) }
+        // The write side stays strict: Q 0.09 and 10.03 are never sent.
+        assertFailsWith<IllegalArgumentException> { plan(ka, listOf(peak().copy(q = 0.09))) }
+        assertFailsWith<IllegalArgumentException> { plan(ka, listOf(peak().copy(q = 10.03))) }
+        // A config without the slack keeps the strict read, and no other field gets a tolerance.
+        val strict = FiioCodec(ka.config.copy(qReadbackSlack = false))
+        assertFailsWith<IllegalArgumentException> { snapshot(strict, drifted(listOf(9, 1000, 999))) }
+        assertFailsWith<IllegalArgumentException> { snapshot(strict, drifted(listOf(10, 1003, 999))) }
+        assertFailsWith<IllegalArgumentException> { snapshot(ka, drifted(listOf(10, 1000, 999)).let { s -> s.copy(bands = s.bands.map { it.copy(frequencyHz = 19) }) }) }
+        // Restoring the clamped band writes registers inside the range, which then verify against the DAC's drifted read.
+        val rewrite = ka.planOnExplicitSend(imported.bands, imported.preampDb, slot, explicitUserAction = true)
+        assertEquals(listOf(10, 1000, 1000), rewrite.expected.bands.map { it.qHundredths })
+        assertTrue(ka.matches(rewrite.expected, read))
+    }
+
+    /** The K13 R2R plays a peak at Q = register / sqrt2 (acoustic run 25.10.2026), so peaks go out x sqrt2; its shelves play the register as Q, and the KA15 preamp offset was measured on the KA15 only:
+     * shelves and the preamp are raw (register = intended), and its wider -24..+12 dB range and shelf Q up to 10 stay intact. */
+    @Test fun `K13 R2R encodes peak Q times sqrt2 and raw shelf Q and raw preamp`() {
         val c = codec("FIIO K13 R2R")
         assertEquals(1.0, c.config.shelfQScale)
+        assertEquals(kotlin.math.sqrt(2.0), c.config.peakQScale)
         assertEquals(0.0, c.config.preampOffsetDb)
         assertFalse(c.config.shelfAlphaCompensation)
         val expected = plan(c, listOf(Band("ls", FilterType.LOW_SHELF, 80.0, 4.0, 0.71), Band("hs", FilterType.HIGH_SHELF, 1000.0, -1.2, 1.40),
             Band("p", FilterType.PEAK, 3000.0, 3.0, 3.80), Band("hs2", FilterType.HIGH_SHELF, 9000.0, 2.0, 8.0)), -4.0).expected
-        assertEquals(listOf(71, 140, 380, 800), expected.bands.map { it.qHundredths })
+        assertEquals(listOf(71, 140, 537, 800), expected.bands.map { it.qHundredths }) // PK 3.80 x sqrt2 = 5.374
         assertEquals(-40, expected.preampTenths) // KA15 would write 80 here (-4 dB + 12 dB)
         assertEquals(0, plan(c, listOf(peak()), 0.0).expected.preampTenths) // KA15: 120
-        // Shelf Q 8 and pregain -20 dB are legal on the K13 R2R (KA15: shelf Q <= 7.07, pregain -24..0 after its offset).
+        // Shelf Q 8 and pregain -20 dB are legal on the K13 R2R (KA15: shelf Q <= 7.07, pregain -24..0 after its offset); a peak is held to 7.07 here, shelves are not.
         val t = DeviceTarget.K13
         assertEquals(24.0, -t.preampMin)
         val profile = Profile("p", "p", bands = listOf(Band("hs", FilterType.HIGH_SHELF, 9000.0, 2.0, 8.0)), preampDb = -20.0, createdAt = 0, updatedAt = 0)
         assertEquals(emptyList(), t.issues(profile))
     }
 
-    /** The K13 R2R carries only the KA15 flag its own hardware test showed (fixed band count, 10.10.2026) and the slot picker. */
-    @Test fun `K13 R2R has the slot picker and of the KA15 hardware flags only the fixed band count, the KA15 keeps its named picker`() {
+    /** K13 R2R on the Nothing Phone, 25.10.2026 (run 2026-10-25-fiio-k13-r2r-phone-nothing): the frames were right, but the DAC read the peak registers 990 and 424
+     * back as 989 and 423, so a send that had been written whole ended NOT VERIFIED. One step is inside the 1 + q/250 hundredths the config now accepts; more is still a mismatch. */
+    @Test fun `K13 R2R accepts the one-step Q readback drift of the phone run and rejects a bigger one`() {
+        val k = codec("FIIO K13 R2R")
+        assertTrue(k.config.qReadbackSlack)
+        val slot = k.config.userSlots.first()
+        val bands = k.padToDeviceCount(listOf(peak(0).copy(q = 7.0), peak(1).copy(freqHz = 2000.0, q = 3.0), peak(2).copy(freqHz = 3000.0, q = 1.0)))
+        val expected = plan(k, bands).expected
+        assertEquals(listOf(990, 424, 141), expected.bands.take(3).map { it.qHundredths }) // PK Q x sqrt2, as the phone run wrote them
+        fun drifted(vararg dq: Int) = FiioSnapshot(expected.productName, slot, expected.count, expected.preampTenths,
+            expected.bands.mapIndexed { i, r -> r.copy(qHundredths = r.qHundredths + dq.getOrElse(i) { 0 }) })
+        // The two readbacks of the run: 990 -> 989 and 424 -> 423, the rest exact.
+        val read = snapshot(k, drifted(-1, -1, 0))
+        assertEquals(listOf(989, 423, 141), read.bands.take(3).map { it.qHundredths })
+        assertTrue(k.matches(expected, read))
+        // The tolerance is the family's 1 + q/250: 4 at 990, 2 at 424, 1 at 141; one past it is a mismatch, and so is any other field.
+        assertTrue(k.matches(expected, drifted(-4, -2, -1)))
+        assertFalse(k.matches(expected, drifted(-5, 0, 0)))
+        assertFalse(k.matches(expected, drifted(0, -3, 0)))
+        assertFalse(k.matches(expected, drifted(0, 0, -2)))
+        assertFalse(k.matches(expected, drifted(0, 0, 0).let { s -> s.copy(bands = s.bands.map { if (it.index == 0) it.copy(gainTenths = it.gainTenths + 1) else it }) }))
+        // A K13 config without the slack would have refused the run's own readback.
+        assertFalse(FiioCodec(k.config.copy(qReadbackSlack = false)).matches(expected, read))
+    }
+
+    /** The K13 R2R carries of the KA15 flags only what its own hardware tests showed (fixed band count 10.10.2026, Q readback drift 25.10.2026) and the slot picker. */
+    @Test fun `K13 R2R has the slot picker and of the KA15 hardware flags only the fixed band count and the Q readback drift, the KA15 keeps its named picker`() {
         val k = FiioCatalog.K13; val a = FiioCatalog.KA15
         assertTrue(k.userSlotPicker && !k.userSlotNames)
         assertTrue(k.fixedBandCount)
-        assertFalse(k.needsAudioStream || k.consumeWriteEchoes || k.qReadbackSlack || k.checksumFrames)
+        assertFalse(k.needsAudioStream || k.consumeWriteEchoes || k.checksumFrames)
+        assertTrue(k.qReadbackSlack) // since the phone run 25.10.2026 (990 -> 989, 424 -> 423)
         assertEquals(setOf(160, 161, 162, 163, 164, 165, 166, 167, 168, 169), k.userSlots)
         assertEquals(160, DeviceTarget.K13.destinationSlot)
         assertEquals(240, k.bypassSlot); assertEquals(25, k.saveCommand); assertEquals(7, k.reportId); assertEquals(10, k.maxFilters)
@@ -431,10 +544,10 @@ class NativeFiioTest {
         // the empty band is wrong twice (freq 0 and Q 0): both are listed, so fixing the freq does not hide a second block
         assertEquals("Band 10: freq 0 Hz outside 20-20000 Hz", issues.first())
         assertEquals(2, issues.size)
-        assertTrue(issues[1].startsWith("Band 10: Q 0.00 outside"), issues[1])
+        assertTrue(issues[1].startsWith("Band 10: peak Q 0.00 outside 0.07-7.07"), issues[1]) // a peak's register Q is Q x sqrt2 on the K13 R2R
         assertEquals("BAND 10: FREQ 0 HZ - EDIT BAND", DeviceTarget.blockLabel(issues))
         assertEquals("BAND 1: GAIN 13 DB - EDIT BAND", DeviceTarget.blockLabel(t.issues(profile(listOf(peak().copy(gainDb = 13.0))))))
-        assertEquals("BAND 1: Q 0.05 - EDIT BAND", DeviceTarget.blockLabel(t.issues(profile(listOf(peak().copy(q = 0.05))))))
+        assertEquals("BAND 1: PEAK Q 0.05", DeviceTarget.blockLabel(t.issues(profile(listOf(peak().copy(q = 0.05))))))
         assertEquals("PREAMP OUT OF RANGE", DeviceTarget.blockLabel(t.issues(profile(nine, 13.0))))
         assertEquals("BAND 2: FREQ 25000 HZ", DeviceTarget.blockLabel(t.issues(profile(listOf(peak(), peak(1).copy(freqHz = 25000.0))))))
         assertEquals("11 BANDS - MAX 10", DeviceTarget.blockLabel(t.issues(profile(List(11) { peak(it) }))))

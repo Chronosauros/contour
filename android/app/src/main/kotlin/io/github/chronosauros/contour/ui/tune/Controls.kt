@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.semantics
 import io.github.chronosauros.contour.core.DevicePlan
 import io.github.chronosauros.contour.core.DeviceTarget
+import io.github.chronosauros.contour.core.native.FamilyDevices
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.dp
 import android.os.SystemClock
@@ -218,11 +219,15 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
 data class HoldView(val label: String, val eqBlocked: Boolean = false, val issues: List<String> = emptyList())
 
 fun holdView(p: Profile, device: DeviceController, sender: Sender): HoldView {
+    // A write that ended at SAVE (Allegro Mini) is not proven until the DAC is back and read: saving, or TAP TO CONNECT when the system needs a tap to let it in again.
+    if (device.verifyingSave) return if (device.tapToConnect) HoldView("TAP TO CONNECT") else HoldView(SAVING_LABEL)
     // A send, the DAC following a slot tap, the connect read, a rename: every DAC transfer the user can see (not the background scan alone).
     if (sender.sendingId == p.id || device.transferring) return HoldView(SAVING_LABEL)
     // Something to connect -> TAP TO CONNECT; nothing attached -> NO DAC (owner, 14.10.2026).
     if (device.tapToConnect) return HoldView("TAP TO CONNECT")
     if (device.link == Link.NO_DAC) return HoldView("NO DAC")
+    // A read-only DAC (the Echo-A until its write flag is set) is read, never written: no hold, no send.
+    if (device.protocol.readOnly) return HoldView(FamilyDevices.READ_ONLY_LABEL, eqBlocked = true, issues = device.sendIssues(p))
     // A slot DAC with no slot chosen yet (a SnowSky right after plug-in, a stock preset): a tap on a slot chooses where HOLD TO SEND writes.
     if (device.slotPicker && device.chosenSlot == null) return HoldView("CHOOSE A SLOT", eqBlocked = true)
     val issues = device.sendIssues(p)

@@ -35,6 +35,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -63,6 +64,8 @@ import androidx.compose.ui.unit.sp
 import io.github.chronosauros.contour.core.ApoText
 import io.github.chronosauros.contour.core.DacImport
 import io.github.chronosauros.contour.core.ImportedEq
+import io.github.chronosauros.contour.core.native.FiioReset
+import io.github.chronosauros.contour.core.native.WalkPlayReset
 import io.github.chronosauros.contour.model.AppModel
 import io.github.chronosauros.contour.model.DacEditor
 import io.github.chronosauros.contour.model.ImportFile
@@ -71,6 +74,7 @@ import io.github.chronosauros.contour.ui.kit.ProfileIcons
 import io.github.chronosauros.contour.ui.tune.Param
 import io.github.chronosauros.contour.usb.DeviceController
 import io.github.chronosauros.contour.usb.Link
+import io.github.chronosauros.contour.usb.ResetUi
 import io.github.chronosauros.contour.usb.UsbLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -88,11 +92,11 @@ sealed interface Sheet {
     data class SendFailure(val reason: String?) : Sheet
 }
 
-/** A Material 3 bottom sheet whose contents keep their test tags as resource ids (it is its own window). */
+/** A Material 3 bottom sheet whose contents keep their test tags as resource ids (it is its own window). [dismissible] false: a swipe, the scrim and BACK leave it open (the factory reset while it runs). */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
-fun SheetFrame(onDismiss: () -> Unit, content: @Composable () -> Unit) {
-    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+fun SheetFrame(onDismiss: () -> Unit, dismissible: Boolean = true, content: @Composable () -> Unit) {
+    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true, confirmValueChange = { dismissible || it != SheetValue.Hidden })
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
         Column(
             Modifier
@@ -297,7 +301,7 @@ private fun Option(title: String, detail: String, enabled: Boolean, tag: String,
     }
 }
 
-/** A typed value: the system numeric keyboard, Done = set (clamped and quantized to the device range). */
+/** A typed value: the system numeric keyboard, Done = set (clamped and quantized to the device range; a Q is only clamped, and Done on an unchanged Q keeps the stored precision). */
 @Composable
 fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
     val p = model.current ?: return onDone()
@@ -305,7 +309,7 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
     val b = p.bands.getOrNull(i)
     if (param != Param.PREAMP && b == null) return onDone()
     // The stored value opens as it is, even one outside the range (a preserved import): Done unchanged then keeps it.
-    val start = if (param == Param.PREAMP) p.preampDb ?: runCatching { model.shownPreamp(p) }.getOrNull() else param.of(b!!)
+    val start = if (param == Param.PREAMP) p.preampDb?.let { model.protocol.heldPreamp(it) } ?: runCatching { model.shownPreamp(p) }.getOrNull() else param.of(b!!)
     if (start == null) {
         SheetFrame(onDone) {
             SheetTitle("PREAMP")
@@ -347,6 +351,11 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
             }
             return@commit
         }
+        // The field shows a Q with two decimals; Done on that text must not round a stored 0.707 to 0.71.
+        if (param == Param.Q && band != null && text.text == opening.third) {
+            onDone()
+            return@commit
+        }
         val parsed = param.parse(text.text, model.protocol.caps)
         if (parsed == null || band == null) {
             invalid = true
@@ -362,7 +371,7 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
             Param.FREQ -> "20 - 20 000 Hz"
             Param.GAIN -> "%.1f - +%.1f dB".format(java.util.Locale.ROOT, caps.gainMinDb, caps.gainMaxDb)
             Param.Q -> "0.10 - 10.00"
-            Param.PREAMP -> if (model.protocol.walkplay != null) "curve preamp, device -30 - 0 dB"
+            Param.PREAMP -> if (model.protocol.usesWalkPlayRules) "curve preamp, device %.0f - %s%.0f dB".format(java.util.Locale.ROOT, model.protocol.preampMin, if (model.protocol.preampMax > 0) "+" else "", model.protocol.preampMax)
                 else "%.1f - +%.1f dB, step 0.1".format(java.util.Locale.ROOT, model.protocol.preampMin, model.protocol.preampMax)
         }
         OutlinedTextField(
@@ -407,6 +416,17 @@ fun BandSheet(model: AppModel, index: Int, onDone: () -> Unit) {
     }
 }
 
+/** One option out of several (the DAC page's long choices): a button per option, the current one in the accent colour; picking one closes the sheet. */
+@Composable
+fun ChoiceSheet(title: String, options: List<String>, current: Int?, onPick: (Int) -> Unit, onDone: () -> Unit) {
+    SheetFrame(onDone) {
+        SheetTitle(title)
+        options.forEachIndexed { i, label ->
+            AppButton(label, { onPick(i); onDone() }, Modifier.fillMaxWidth().testTag("choice_option_$i"), primary = i == current)
+        }
+    }
+}
+
 /** FAILED - HOLD TO RETRY, quick tap: the reason and the last USB log lines. */
 @Composable
 fun SendFailureSheet(reason: String?, onDone: () -> Unit) {
@@ -422,5 +442,96 @@ fun SendFailureSheet(reason: String?, onDone: () -> Unit) {
             lineHeight = 12.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+    }
+}
+
+/**
+ * FACTORY RESET of the SnowSky Melody and Tiny A and the FiiO KA15, one sheet for the whole flow ([DeviceController.resetUi]): what may be erased and the two buttons, then the steps
+ * while it runs, then what changed with the one action to write the saved copy back. It lives here, not on the DAC SETTINGS page, because the DAC leaves the bus after the
+ * reset and the page leaves with it.
+ */
+@Composable
+fun FactoryResetSheet(device: DeviceController) {
+    val state = device.resetUi
+    val busy = state is ResetUi.Running || state == ResetUi.Restoring
+    val close = { if (state == ResetUi.Confirm) device.cancelFactoryReset() else device.dismissFactoryReset() }
+    SheetFrame(close, dismissible = !busy) {
+        when (state) {
+            ResetUi.Idle -> Unit
+            ResetUi.Confirm -> {
+                SheetTitle("FACTORY RESET")
+                val walkplay = device.resetIsWalkPlay
+                Text(if (walkplay) WalkPlayReset.ERASE_NOTE else FiioReset.ERASE_NOTE, style = MaterialTheme.typography.bodyLarge)
+                Text(
+                    (if (walkplay) "Keep the DAC plugged in until Contour says the reset is done. The reset sequence comes from the manufacturer's web tool, not from a capture of this DAC."
+                    else "Keep the DAC plugged in until Contour asks you to unplug it and plug it back in after the reset. The reset command comes from FiiO's own app, not from a capture of this DAC.") +
+                        (if (device.resetProven) "" else " This reset is not verified on hardware yet."),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                AppButton("SAVE A COPY AND RESET", { device.confirmFactoryReset() }, Modifier.fillMaxWidth().testTag("reset_confirm"), primary = true)
+                AppButton("CANCEL", { device.cancelFactoryReset() }, Modifier.fillMaxWidth().testTag("reset_cancel"))
+            }
+            is ResetUi.Running -> {
+                SheetTitle("FACTORY RESET")
+                Text(state.what, style = Type.segment, color = pal.text, modifier = Modifier.testTag("reset_step"))
+                Text(
+                    if (state.what == ResetUi.REPLUG_STEP) "The reset was sent. Unplug the DAC now and plug it back in; Contour goes on when it sees it come back." else "Do not unplug the DAC.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                // The wait for the unplug and plug-in has no time limit, so it is the one running step the owner can leave (it ends as the old time limit did: STOPPED, the saved copy can be written back).
+                if (state.what == ResetUi.REPLUG_STEP) AppButton("STOP WAITING", { device.stopWaitingForReplug() }, Modifier.fillMaxWidth().testTag("reset_stop_waiting"))
+            }
+            is ResetUi.Result -> {
+                SheetTitle("RESET SENT")
+                if (state.changes.isEmpty()) Text(
+                    "The DAC reads the same as the saved copy: the reset may not have run, or it erased nothing.",
+                    style = MaterialTheme.typography.bodyLarge, modifier = Modifier.testTag("reset_unchanged"),
+                ) else {
+                    Text("The reset changed:", style = Type.label, color = pal.textDim)
+                    Text(state.changes.joinToString("\n"), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.testTag("reset_changes"))
+                }
+                state.sentNote?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                Text(
+                    "The copy from before the reset is saved on the phone (${state.backupFile}).",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (state.changes.isNotEmpty()) AppButton("WRITE THE SAVED COPY BACK", { device.restoreAfterFactoryReset() }, Modifier.fillMaxWidth().testTag("reset_restore"), primary = true)
+                AppButton("DONE", { device.dismissFactoryReset() }, Modifier.fillMaxWidth().testTag("reset_done"))
+            }
+            ResetUi.Restoring -> {
+                SheetTitle("WRITING THE SAVED COPY BACK")
+                Text(
+                    if (device.resetIsWalkPlay) "Bands, preamp and settings, one after another. Do not unplug the DAC." else "Slot names, slot EQs and settings, one after another. Do not unplug the DAC.",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+            }
+            is ResetUi.Restored -> {
+                SheetTitle(if (state.ok) "SAVED COPY WRITTEN BACK" else "SAVED COPY NOT FULLY WRITTEN")
+                Text(
+                    if (state.ok) "Every slot and setting reads back as saved." else "Something did not read back as saved:",
+                    style = MaterialTheme.typography.bodyLarge,
+                )
+                Text(
+                    state.lines.joinToString("\n"),
+                    fontFamily = FontFamily.Monospace, fontSize = 10.sp, lineHeight = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.testTag("reset_restore_lines"),
+                )
+                AppButton("DONE", { device.dismissFactoryReset() }, Modifier.fillMaxWidth().testTag("reset_done"), primary = true)
+            }
+            is ResetUi.Failed -> {
+                SheetTitle("FACTORY RESET STOPPED")
+                Text(state.reason, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.testTag("reset_failed"))
+                Text(
+                    if (state.sent) "The reset command had been sent." else "Nothing was sent to the DAC.",
+                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                state.backupFile?.let {
+                    Text("The copy of the DAC is saved on the phone ($it).", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                if (state.canRestore) AppButton("WRITE THE SAVED COPY BACK", { device.restoreAfterFactoryReset() }, Modifier.fillMaxWidth().testTag("reset_restore"), primary = true)
+                AppButton("DONE", { device.dismissFactoryReset() }, Modifier.fillMaxWidth().testTag("reset_done"))
+            }
+        }
     }
 }

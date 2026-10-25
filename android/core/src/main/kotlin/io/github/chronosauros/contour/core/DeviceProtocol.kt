@@ -1,27 +1,41 @@
 package io.github.chronosauros.contour.core
 
+import io.github.chronosauros.contour.core.devices.GeneratedDevices
+import io.github.chronosauros.contour.core.devices.WalkPlayData
+import io.github.chronosauros.contour.core.native.DacSetting
+
 /**
  * Explicit allow-list of DACs. MICRO delegates verbatim to the 1.2.2 code ([ProtocolMicro], [WalkPlay]).
  * MAX (CrinEar Protocol Max, WalkPlay SchemeNo16) is supported in every build; it runs the stricter, fail-closed path.
  * A community member tested it on 02.10.2026: 8 bands, peak and shelf filters, no crashes.
- * TRN (TRN Black Pearl, 3302:43E8, also SchemeNo16) runs the same strict path with its own write sequence
+ * TRN (TRN Black Pearl, also SchemeNo16) runs the same strict path with its own write sequence
  * ([WalkPlay.trnWriteSequence]), its own factory flat for the spare slots and a read that accepts what the TRN's
  * own tool can store (see [parseBand]). Its registers were written and read back from a PC on 19.10.2026.
  */
-enum class DeviceProtocol(val caps: DeviceCapabilities) {
-    MICRO(ProtocolMicro.CAPABILITIES),
-    MAX(ProtocolMicro.CAPABILITIES.copy(name = "CrinEar Protocol Max", productId = 0x43CC, bands = 10)),
+enum class DeviceProtocol private constructor(internal val data: WalkPlayData, val settings: List<DacSetting> = emptyList()) {
+    // The caps, preamp policy, factory flat of the spare slots and read bounds of each protocol are its record's (devices/*.json via GeneratedDevices).
+    MICRO(GeneratedDevices.CRINEAR_PROTOCOL_MICRO),
+    MAX(GeneratedDevices.CRINEAR_PROTOCOL_MAX),
     // LOW PASS and HIGH PASS (native codes 4 and 5) are proven on the TRN's registers (19.10.2026) but stay out of the
     // stable build: owner decision 14.10.2026, pass filters reach stable only with branch wip/pass-filters after the
-    // UMC202HD measurement. They plug in here (add FilterType.LOW_PASS and HIGH_PASS to `types`) together with the
-    // plain RBJ low-pass and high-pass biquads in WalkPlay.scaledCoefficients; nothing else in this file needs to change.
-    TRN(ProtocolMicro.CAPABILITIES.copy(name = "TRN Black Pearl", productId = 0x43E8, bands = 10));
+    // UMC202HD measurement. The record holds them in `peq.heldTypes`; the plain RBJ low-pass and high-pass biquads are in WalkPlay.scaledCoefficients
+    // (the Micro and the Echo-A send them through the same band frame), and a review build offers them through [ProtocolTrn.PASS_FILTERS_VERIFIED] and [Proven].
+    TRN(GeneratedDevices.TRN_BLACK_PEARL);
+
+    /** The record's caps; the Micro's and the TRN's follow their verification flags ([ProtocolMicro.PASS_FILTERS_VERIFIED], [ProtocolTrn.PASS_FILTERS_VERIFIED]: LOW PASS and HIGH PASS offered). */
+    val caps: DeviceCapabilities get() = when {
+        data === GeneratedDevices.CRINEAR_PROTOCOL_MICRO -> ProtocolMicro.CAPABILITIES
+        data === GeneratedDevices.TRN_BLACK_PEARL -> ProtocolTrn.CAPABILITIES
+        else -> recordCaps
+    }
+    private val recordCaps: DeviceCapabilities by lazy { data.caps() }
 
     /** True for protocols on the strict fail-closed path (MAX, TRN); the name is historical. */
     val experimental: Boolean get() = this != MICRO
     val supportsAb: Boolean get() = this == MICRO
-    val preampMin: Int get() = ProtocolMicro.PREAMP_MIN_DB
-    val preampMax: Int get() = ProtocolMicro.PREAMP_MAX_DB
+    val preampMin: Int get() = data.preampMinDb
+    /** The top of the device preamp the app takes: the record's, and on the Micro the vendor's +6 dB once [ProtocolMicro.MICRO_POSITIVE_PREAMP_VERIFIED] is true (the Echo-A has its own flag, read through [io.github.chronosauros.contour.core.native.WalkPlayProfile.preampMaxDb]). */
+    val preampMax: Int get() = if (this == MICRO) ProtocolMicro.PREAMP_MAX_EFFECTIVE_DB else data.preampMaxDb
 
     /** Micro: HIGH SHELF gains its emulation folds into the preamp. Max has native shelves: none. */
     fun shelfOffset(bands: List<Band>): Double = if (this == MICRO) ProtocolMicro.highShelfGainSum(bands) else 0.0
@@ -89,15 +103,11 @@ enum class DeviceProtocol(val caps: DeviceCapabilities) {
     fun shownPreamp(profile: Profile): Double = devicePreamp(profile.bands, profile.preampDb) - shelfOffset(profile.bands)
 
     /**
-     * Micro factory bytes are unchanged. Max spare slots are explicit neutral PKs, not claimed factory captures.
-     * TRN spare slots are the unit's own factory flat, read from the owner's unit before any write (19.10.2026): PK, 0 dB,
+     * The spare slots are the record's `slots.factoryFlat`. Micro factory bytes are unchanged. Max spare slots are explicit neutral PKs, not claimed
+     * factory captures. TRN spare slots are the unit's own factory flat, read from the owner's unit before any write (19.10.2026): PK, 0 dB,
      * register Q 182/256, 31 / 62 / 125 / 250 / 500 / 1000 / 2000 / 4000 / 8000 / 16000 Hz.
      */
-    private fun flatBand(index: Int): WalkPlay.BandWrite = when (this) {
-        MICRO -> WalkPlay.factoryFlat(index)
-        TRN -> WalkPlay.BandWrite(index, TRN_FACTORY_FREQS[index].toDouble(), 0.0, TRN_FACTORY_Q, WalkPlay.TYPE_PK)
-        else -> WalkPlay.BandWrite(index, 1000.0, 0.0, WalkPlay.FACTORY_Q, WalkPlay.TYPE_PK)
-    }
+    private fun flatBand(index: Int): WalkPlay.BandWrite = WalkPlay.flatWrite(index, data.factoryFlat[index])
 
     /** The reports of one send and the pause after each: Micro and Max as 1.3.x, the TRN with its own sequence. */
     fun writeSequence(plan: DevicePlan.Ready, slot: Int): List<WalkPlay.Step> =
@@ -117,14 +127,17 @@ enum class DeviceProtocol(val caps: DeviceCapabilities) {
             // Even disabled input must be finite; nothing invalid can reach a write sequence.
             if (!b.freqHz.isFinite() || !b.gainDb.isFinite() || !b.q.isFinite()) issues += "Band ${i + 1}: non-finite values"
             if (b.enabled && (b.type !in caps.types || b.freqHz !in caps.freqMinHz..caps.freqMaxHz ||
-                    b.gainDb !in caps.gainMinDb..caps.gainMaxDb || b.q !in caps.qMin..caps.qMax))
+                    b.gainDb !in caps.gainMinDb..caps.gainMaxDb || b.q !in caps.qRange(b.type)))
                 issues += "Band ${i + 1}: outside ${caps.name} supported types/ranges"
         }
         if (preampDb != null) preampRefusal(active, preampDb)?.let { issues += it }
         if (issues.isNotEmpty()) return DevicePlan.Rejected(issues)
         return runCatching {
             // Native shelves: HIGH SHELF goes out as HSQ (no Micro LOW SHELF + preamp emulation), no freq/Q compensation.
-            val writes = List(caps.bands) { i -> if (i < active.size) WalkPlay.bandWrite(i, active[i]) else flatBand(i) }
+            // There is no exact emulation to fall back on here: the Micro's one is a low shelf of the opposite gain plus the high-shelf gain sum moved into the
+            // overall gain, which a boost needs to be positive, and the preamp of these DACs stops at 0 dB (the TRN: -30..0). So a shelf whose biquad leaves
+            // signed Q30 (a boost at a low corner) is refused below, before anything is sent, and the editor shows SendBlocked.band; `validate` of the bench asks this same rule.
+            val writes = List(caps.bands) { i -> if (i < active.size) WalkPlay.bandWrite(i, active[i], caps) else flatBand(i) }
             // Preflight the entire payload, including native shelves, before the first USB write. A band whose
             // biquad does not fit signed Q30 (original or quantised values) is refused, never wrapped. Slots follow
             // the enabled bands in order; the editor numbers every band, enabled or not.
@@ -164,14 +177,14 @@ enum class DeviceProtocol(val caps: DeviceCapabilities) {
             val r = b.registers
             if (!b.enabled || r.typeCode !in setOf(WalkPlay.TYPE_PK, WalkPlay.TYPE_LSQ, WalkPlay.TYPE_HSQ))
                 return DacImport.Rejected(listOf("DAC band ${r.index + 1}: disabled or unsupported type"))
-            Band("dac${r.index}", b.type, r.freq.toDouble(), r.gain256 / 256.0, r.q256 / 256.0)
+            Band("dac${r.index}", b.type, r.freq.toDouble(), r.gain256 / 256.0, WalkPlay.intendedQ(r.q256, b.type, caps))
         }
         val eq = ImportedEq(reconstructed, preampDb.toDouble())
         val candidate = plan(eq.bands, eq.preampDb)
         if (candidate is DevicePlan.Rejected && candidate.issues.all { SendBlocked.isBandRefusal(it) }) {
             // The DAC already holds a band Contour would refuse to send (written by another tool): load what it holds,
             // with the refusal as a warning; the plan stays Rejected, so sending it back stays blocked.
-            val writes = List(caps.bands) { i -> if (i < reconstructed.size) WalkPlay.bandWrite(i, reconstructed[i]) else flatBand(i) }
+            val writes = List(caps.bands) { i -> if (i < reconstructed.size) WalkPlay.bandWrite(i, reconstructed[i], caps) else flatBand(i) }
             if (matches(DevicePlan.Ready(writes, preampDb), bands.map { it.registers }, preampDb))
                 return DacImport.Ready(eq, candidate.issues.joinToString(" ") + " Sending it back stays blocked until you change the band.")
         }
@@ -202,7 +215,7 @@ enum class DeviceProtocol(val caps: DeviceCapabilities) {
         val reconstructed = held.take(last + 1).mapIndexed { i, b ->
             val r = b.registers
             if (r.typeCode !in nativeCodes) return DacImport.Rejected(listOf("DAC band ${r.index + 1}: unsupported type"))
-            Band("dac$i", b.type, r.freq.toDouble(), r.gain256 / 256.0, r.q256 / 256.0)
+            Band("dac$i", b.type, r.freq.toDouble(), r.gain256 / 256.0, WalkPlay.intendedQ(r.q256, b.type, caps))
         }
         val eq = ImportedEq(reconstructed, preampDb.toDouble())
         val note = if (skipped == 0) "" else " $skipped disabled DAC slot${if (skipped == 1) "" else "s"} left out."
@@ -212,7 +225,7 @@ enum class DeviceProtocol(val caps: DeviceCapabilities) {
                 else DacImport.Rejected(listOf("DAC state cannot be re-encoded exactly"))
         val refused = (candidate as DevicePlan.Rejected).issues
         if (refused.all { SendBlocked.isBandRefusal(it) || it.endsWith(": outside ${caps.name} supported types/ranges") }) {
-            val writes = List(caps.bands) { i -> if (i < reconstructed.size) WalkPlay.bandWrite(i, reconstructed[i]) else flatBand(i) }
+            val writes = List(caps.bands) { i -> if (i < reconstructed.size) WalkPlay.bandWrite(i, reconstructed[i], caps) else flatBand(i) }
             if (matches(DevicePlan.Ready(writes, preampDb), held10, preampDb))
                 return DacImport.Ready(eq, refused.joinToString(" ") { if (it.endsWith(".")) it else "$it." } +
                     " Sending it back stays blocked until you change the band.$note")
@@ -247,8 +260,10 @@ enum class DeviceProtocol(val caps: DeviceCapabilities) {
             // A disabled spare slot is no read failure whatever its type byte (an erased slot reads 0xFF, a zeroed one 0).
             if (b.enabled) {
                 require(b.registers.typeCode in WalkPlay.TYPE_LSQ..WalkPlay.TYPE_HP) { "Unsupported ${caps.name} native type" }
-                require(b.registers.freq in 1..TRN_READ_MAX_HZ && b.registers.q256 in 1..0xFFFF &&
-                    b.registers.gain256 in -TRN_READ_MAX_GAIN256..TRN_READ_MAX_GAIN256) { "Malformed TRN registers" }
+                val hz = requireNotNull(data.readBoundsHz) { "devices/trn-black-pearl.json readback.readBoundsHz" }
+                val db = requireNotNull(data.readBoundsDb) { "devices/trn-black-pearl.json readback.readBoundsDb" }
+                require(b.registers.freq in hz && b.registers.q256 in 1..0xFFFF &&
+                    b.registers.gain256 in (db.start * 256).toInt()..(db.endInclusive * 256).toInt()) { "Malformed TRN registers" }
             }
             return b
         }
@@ -282,12 +297,6 @@ enum class DeviceProtocol(val caps: DeviceCapabilities) {
     }
 
     companion object {
-        /** TRN read bounds (the register format, not the editor caps): frequency below the 96 kHz design rate's Nyquist, gain +-60 dB. */
-        private const val TRN_READ_MAX_HZ = 48_000
-        private const val TRN_READ_MAX_GAIN256 = 60 * 256
-        private val TRN_FACTORY_FREQS = intArrayOf(31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000)
-        private const val TRN_FACTORY_Q = 182 / 256.0 // register 182, so round(q * 256) = 182
-
         /** Strict VID/PID pairs only. */
         fun find(vendorId: Int, productId: Int): DeviceProtocol? =
             entries.firstOrNull { it.caps.vendorId == vendorId && it.caps.productId == productId }

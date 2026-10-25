@@ -1,0 +1,174 @@
+{
+  "id": "fiio-k13-r2r",
+  "name": "FiiO K13 R2R",
+  "shortName": null,
+  "productName": "FIIO K13 R2R",
+  "vendor": "FiiO",
+  "status": "stable",
+  "usb": {
+    "vid": "0x2972",
+    "pid": "0x0120",
+    "productName": "FIIO K13 R2R",
+    "hidInterface": 3,
+    "matchByName": false,
+    "recognisedBy": "find",
+    "listOrder": 5,
+    "notes": [
+      "USB product id measured on the unit 2026-10-10 (Pixel, firmware 1.15): 2972:0120, product \"FIIO K13 R2R\" (core/native/FiioCatalog.kt:120-124)",
+      "no capture fixture: routed by the product id alone (core/native/FiioCatalog.kt:200, core/DeviceTarget.kt:158); DeviceCapabilities therefore carry vid/pid 0 today (core/DeviceTarget.kt:28-32)",
+      "two identical USB configurations; Contour opens the first one only (android/app/src/main/kotlin/io/github/chronosauros/contour/usb/HidTransport.kt:68-72)",
+      "report 7, 33 bytes in and out, declared on Generic Desktop usage 0x00 (research/protocol/PROTOCOL.md:241-247)",
+      "FiiO Control reaches the K13 R2R over Bluetooth only (connect_mode 1); over USB the only vendor path is PEQ in the FiiO web app (scope-fiio.md:22-30,111)"
+    ]
+  },
+  "family": "fiio",
+  "driver": {
+    "reportId": 7,
+    "saveCommand": 25,
+    "snowskyExchange": false,
+    "disconnectOnSave": false,
+    "peakingGainCompensation": false,
+    "shelfAlphaCompensation": false,
+    "hardwareVerified": true,
+    "capture": null
+  },
+  "peq": {
+    "bands": 10,
+    "fixedBandCount": true,
+    "freqHz": [20, 20000],
+    "gainDb": [-24, 12],
+    "q": [0.1, 10],
+    "types": { "PEAK": 0, "LOW_SHELF": 1, "HIGH_SHELF": 2, "BAND_PASS": 3, "LOW_PASS": 4, "HIGH_PASS": 5, "ALL_PASS": 6 },
+    "heldTypes": {},
+    "shelfQScale": 1.0,
+    "peakQScale": "sqrt2",
+    "emulation": null
+  },
+  "preamp": { "present": true, "db": [-24, 12], "step": 0.1, "wholeDb": false, "registerOffsetDb": 0 },
+  "slots": {
+    "user": [160, 161, 162, 163, 164, 165, 166, 167, 168, 169],
+    "declaredWritable": [160, 161, 162, 163, 164, 165, 166, 167, 168, 169],
+    "stock": [0, 1, 2, 3, 4, 5, 6, 8],
+    "bypass": 240,
+    "labels": { "0": "Jazz", "1": "Pop", "2": "Rock", "3": "Dance", "4": "R&B", "5": "Classic", "6": "Hip-hop", "8": "Retro", "9": "sDamp-1", "10": "sDamp-2", "160": "USER1", "161": "USER2", "162": "USER3", "163": "USER4", "164": "USER5", "165": "USER6", "166": "USER7", "167": "USER8", "168": "USER9", "169": "USER10", "240": "BYPASS" },
+    "picker": true,
+    "names": "app",
+    "nameLength": 7
+  },
+  "pacing": { "writeGapMs": 300, "afterSaveMs": 800, "consumeEchoes": false, "checksum": false, "needsAudioStream": false, "probeGapMs": null },
+  "readback": { "qSlack": "fiio-1+q/250" },
+  "settings": [],
+  "info": [],
+  "preview": {},
+  "reset": { "offered": false, "src": "FiiO Control resetDefault 0x110301 with show:false; only Clear pairing is shown, over Bluetooth (scope-fiio.md:39-40,134)" },
+  "hwVolume": { "inScope": false, "src": "UAC path has no Feature Unit and no vendor app has a volume item (scope-fiio.md:138)" },
+  "upstream": {
+    "sourceUrl": "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/usbDeviceConfig.js#L375",
+    "constraintsUrl": "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/peqConstraintsConfig.json#L994",
+    "constraintsRef": "peq10Band12dBWideAllFilters",
+    "vendorIds": [10610, 2578],
+    "oracle": true,
+    "status": "beta-unverified",
+    "experimental": false,
+    "bestGuessProductName": false,
+    "codecBlockers": [],
+    "evidenceCaveats": ["No capture file: the USB product ID was measured on the K13 R2R; of the KA15 hardware flags only the fixed band count"]
+  },
+  "conflicts": [
+    { "field": "peq.q", "values": ["0.1-10 code", "0.25-8 FiiO Control and FiiO web app"], "src": ["core/native/FiioCatalog.kt:184-185", "scope-fiio.md:36,131"], "resolution": "unchanged in 1.6 (code)" },
+    { "field": "peq.heldTypes", "values": ["pass filters wait for the acoustic gate (owner 14.10.2026, design draft 'Final'): none held here", "code offers all seven on wip/1.6"], "src": ["core/native/FiioCatalog.kt:204-205", "scope-fiio.md:31-35,130"], "resolution": "code: all seven offered (FiiO web app wrote BP/LP/HP/AP, HP read back 5, 2026-10-14); acoustic check A05 still open" },
+    { "field": "settings", "values": ["none in Contour", "FiiO Control: input source, lights, device name, clear pairing, all over Bluetooth with an undecoded 24-bit frame"], "src": ["scope-fiio.md:22-26,111-127,245"], "resolution": "open: owner question 3 (recommended: PEQ only over USB in 1.6)" },
+    { "field": "preamp.registerOffsetDb", "values": ["0 in code (default)", "KA15 plays USER presets 12 dB down; K13 not swept"], "src": ["core/native/FiioCatalog.kt:77-79", "research/protocol/PROTOCOL.md:256-257"], "resolution": "0 until measured (A01, A02)" },
+    { "field": "driver.hardwareVerified", "values": ["true in code (read, write, persistence confirmed 2026-10-10)", "design rule: pcBench + persistence + phone"], "src": ["core/native/FiioCatalog.kt:213"], "resolution": "code value kept; evidence below satisfies the rule only at 300 ms write gap" }
+  ],
+  "evidence": {
+    "bands": {
+      "firmware": "1.15",
+      "source": "https://www.fiio.com/k13r2r FAQ: 10-band global PEQ (number only)",
+      "vendorApp": null,
+      "pcBench": "k13.py 2026-10-13 wrote USER6-9 with ten bands each, read after slot change",
+      "persistence": "Pixel 2026-10-10: ten bands and preamp survived a power cycle in USER9 and USER10 at 300 ms write gap (research/protocol/PROTOCOL.md:253-255)",
+      "phone": "Pixel 2026-10-10: COUNT 9 reads as 10, band 10 keeps old registers (research/protocol/PROTOCOL.md:250-252)",
+      "acoustic": null
+    },
+    "types.PEAK": {
+      "firmware": "1.15",
+      "source": "devicePEQ peq10Band12dBWideAllFilters",
+      "vendorApp": "FiiO web app 2026-10-14: PK 0 written to USER10 band 3 (research/snowsky-names-types-2026-10-14/FINDINGS.md:28-32)",
+      "pcBench": "k13.py 2026-10-13: library profiles in USER6-9 read back as written",
+      "persistence": null,
+      "phone": "Pixel 2026-10-10: send to USER9 and USER10 VERIFIED; Nothing 2026-10-25 (run 2026-10-25-fiio-k13-r2r-phone-nothing): frames right, the DAC read Q registers 990 -> 989 and 424 -> 423 back one lower, readback.qSlack now accepts that",
+      "acoustic": "run:2026-10-25-fiio-k13-r2r-02-mac-eqtest PK 1000 Hz Q 0.7 / 2 / 5, +5 and -6 dB: plays Q = register / sqrt2, 6 of 6 within 0.136 dB; the register as Q gives 0.55-0.98 dB (FAIL) (dac-lab:contour-1.6/research/2026-10-25-dsp-model-k13-allegro.md)"
+    },
+    "types.LOW_SHELF": {
+      "firmware": "1.15",
+      "source": null,
+      "vendorApp": "FiiO web app 2026-10-14: LS 1 written (research/snowsky-names-types-2026-10-14/FINDINGS.md:28-29)",
+      "pcBench": "k13.py 2026-10-13: LS + PK profile in USER8 read back as written",
+      "persistence": null,
+      "phone": null,
+      "acoustic": "run:2026-10-25-fiio-k13-r2r-02-mac-eqtest LS 100 Hz +5, LS 400 Hz -6, HS 3000 Hz +5, HS 8000 Hz -6 PASS (max 0.028 dB) with the register as Q; register / sqrt2 gives 0.745 dB (dac-lab:contour-1.6/research/2026-10-25-shelf-law.md)"
+    },
+    "types.HIGH_SHELF": {
+      "firmware": "1.15",
+      "source": null,
+      "vendorApp": "FiiO web app 2026-10-14: HS 2 written (research/snowsky-names-types-2026-10-14/FINDINGS.md:28-29)",
+      "pcBench": null,
+      "persistence": null,
+      "phone": null,
+      "acoustic": "run:2026-10-25-fiio-k13-r2r-02-mac-eqtest LS 100 Hz +5, LS 400 Hz -6, HS 3000 Hz +5, HS 8000 Hz -6 PASS (max 0.028 dB) with the register as Q; register / sqrt2 gives 0.745 dB (dac-lab:contour-1.6/research/2026-10-25-shelf-law.md)"
+    },
+    "types.pass": {
+      "firmware": "1.15",
+      "source": null,
+      "vendorApp": "FiiO web app 2026-10-14: BP 3, LP 4, HP 5, AP 6 written, a read after HP returned type 5 (research/snowsky-names-types-2026-10-14/FINDINGS.md:28-30)",
+      "pcBench": null,
+      "persistence": null,
+      "phone": null,
+      "acoustic": "run:2026-10-25-fiio-k13-r2r-02-mac-eqtest LP 8000 Hz, HP 100 Hz, BP 1000 Hz, AP 1000 Hz (register Q 0.71 / 1.4) PASS (max 0.268 dB) with the register as Q"
+    },
+    "preamp": {
+      "firmware": "1.15",
+      "source": null,
+      "vendorApp": null,
+      "pcBench": "k13.py 2026-10-13: preamp per slot read back for USER1-10",
+      "persistence": "Pixel 2026-10-10: preamp survived a power cycle in USER9 and USER10 at 300 ms write gap (research/protocol/PROTOCOL.md:253-255)",
+      "phone": "Pixel 2026-10-10 VERIFIED",
+      "acoustic": null
+    },
+    "slots.write": {
+      "firmware": "1.15",
+      "source": null,
+      "vendorApp": "FiiO web app 2026-10-14: USER1-USER10, no rename (research/snowsky-names-types-2026-10-14/FINDINGS.md:23-24)",
+      "pcBench": "k13.py 2026-10-13: User6-9 written, User10 active at the end",
+      "persistence": "Pixel 2026-10-10 (300 ms gap)",
+      "phone": "Pixel 2026-10-10: USER1-10 selection, send to USER9 and USER10",
+      "acoustic": null
+    }
+  },
+  "src": {
+    "peq.peakQScale": ["run:2026-10-25-fiio-k13-r2r-02-mac-eqtest", "dac-lab:contour-1.6/research/2026-10-25-dsp-model-k13-allegro.md", "core/native/FiioCatalog.kt (FiioConfig.peakQScale; the generator emits sqrt(2.0), not a decimal literal)"],
+    "usb.vid": ["core/DeviceTarget.kt:164"],
+    "usb.pid": ["core/native/FiioCatalog.kt:120-124"],
+    "usb.productName": ["core/native/FiioCatalog.kt:178,121-122"],
+    "usb.hidInterface": ["research/protocol/PROTOCOL.md:241-247"],
+    "driver": ["core/native/FiioCatalog.kt:180,186,192-194,200,213"],
+    "peq.bands": ["core/native/FiioCatalog.kt:181"],
+    "peq.fixedBandCount": ["core/native/FiioCatalog.kt:206-208"],
+    "peq.gainDb": ["core/native/FiioCatalog.kt:182-183"],
+    "peq.q": ["core/native/FiioCatalog.kt:184-185"],
+    "peq.freqHz": ["core/native/FiioCatalog.kt:49-51 (defaults)"],
+    "peq.types": ["core/native/FiioCatalog.kt:11-14,204-205"],
+    "peq.shelfQScale": ["core/native/FiioCatalog.kt (default 1.0)", "run:2026-10-25-fiio-k13-r2r-02-mac-eqtest (shelves play the register as Q)"],
+    "preamp": ["core/native/FiioCatalog.kt:79,104-106 (default offset 0)", "core/DeviceTarget.kt:24-27"],
+    "slots": ["core/native/FiioCatalog.kt:187-191,203"],
+    "slots.names": ["core/native/FiioCatalog.kt:70,93 (defaults); the K13 stores no names, Contour keeps them on the phone (research/protocol/PROTOCOL.md:247-249)"],
+    "pacing": ["core/native/FiioCatalog.kt:58-67,209-214"],
+    "pacing.sessionDelays": ["not in the record: family-wide 100/100/300/800 ms (core/native/FiioCodec.kt:43-47)"],
+    "readback.qSlack": ["core/native/FiioCatalog.kt:55-57; K13 phone run 2026-10-25-fiio-k13-r2r-phone-nothing: Q registers 990 -> 989 and 424 -> 423 read back one lower"],
+    "settings": ["empty list by default (core/native/FiioCatalog.kt:95); no page for the K13 R2R"],
+    "upstream": ["core/native/FiioCatalog.kt:195-199,202", "android/core/src/test/kotlin/io/github/chronosauros/contour/core/NativeFiioTest.kt:75-98"],
+    "reset": ["scope-fiio.md:39-40,134"],
+    "hwVolume": ["scope-fiio.md:138"]
+  }
+}

@@ -5,6 +5,7 @@ import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -63,7 +64,16 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.graphics.vector.PathParser
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.withStyle
@@ -71,10 +81,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import io.github.chronosauros.contour.core.BandStripPlan
 import io.github.chronosauros.contour.core.FilterType
+import io.github.chronosauros.contour.core.isPass
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.model.AppModel
 import io.github.chronosauros.contour.model.DacEditor
 import io.github.chronosauros.contour.model.Sender
+import io.github.chronosauros.contour.ui.AppButton
 import io.github.chronosauros.contour.ui.Grid
 import io.github.chronosauros.contour.ui.Lift
 import io.github.chronosauros.contour.ui.Type
@@ -90,6 +102,7 @@ import io.github.chronosauros.contour.ui.pal
 import io.github.chronosauros.contour.ui.sink
 import io.github.chronosauros.contour.usb.DeviceController
 import io.github.chronosauros.contour.usb.Link
+import io.github.chronosauros.contour.core.native.FamilyState
 import io.github.chronosauros.contour.core.native.FiioCodec
 import io.github.chronosauros.contour.core.native.NativeState
 
@@ -152,40 +165,56 @@ fun TuneScreen(model: AppModel, device: DeviceController, sender: Sender, editor
         return
     }
     val bandsEnabled = !sender.bypassed && !sender.abBusy
-    // The graph takes whatever height is left, but never less than GRAPH_MIN; on short screens
-    // (FiiO JM21) the whole page scrolls instead of squashing the graph.
-    BoxWithConstraints(gestures) {
-        val viewport = constraints.maxHeight
-        Layout(
-            contents = listOf(
-                { Header(model, p, sender, actions, onDac) },
-                {
-                    Box {
-                        ResponseGraph(model, p, Modifier.fillMaxSize(), bypassed = sender.bypassed, enabled = bandsEnabled)
-                        if (sender.canAb(p)) AbButton(sender, p, Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 8.dp))
-                        GraphNotice(model, Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp, start = 12.dp, end = 12.dp))
+    // The page is two parts: the scrolling one (header, graph, controls) and the foot (slot caption and row, HOLD TO SEND), which sits right above the page bar whatever the caption says
+    // and takes its height off the scrolling part (owner, run 2026-10-23-fiio-k13-r2r-01-phone: "USER10: <name>" pushed HOLD TO SEND under the bar).
+    // The graph takes whatever height is left of the scrolling part, but never less than GRAPH_MIN; on short screens (FiiO JM21) that part scrolls instead of squashing the graph.
+    Layout(
+        contents = listOf(
+            {
+                BoxWithConstraints(Modifier.fillMaxSize()) {
+                    val viewport = constraints.maxHeight
+                    Layout(
+                        contents = listOf(
+                            { Header(model, p, sender, actions, onDac) },
+                            {
+                                Box {
+                                    ResponseGraph(model, p, Modifier.fillMaxSize(), bypassed = sender.bypassed, enabled = bandsEnabled)
+                                    if (sender.canAb(p)) AbButton(sender, p, Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 8.dp))
+                                    GraphNotice(model, Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp, start = 12.dp, end = 12.dp))
+                                }
+                            },
+                            { TuneControls(model, p, device, sender, editor, actions, bandsEnabled) },
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .verticalScroll(rememberScrollState())
+                            .padding(top = top)
+                            .padding(horizontal = SIDE),
+                    ) { (header, graph, controls), cs ->
+                        val gap = GAP.roundToPx()
+                        val loose = Constraints(maxWidth = cs.maxWidth)
+                        val h = header.first().measure(loose)
+                        val r = controls.first().measure(loose)
+                        val free = viewport - top.roundToPx() - h.height - r.height - gap * 2
+                        val gh = maxOf(GRAPH_MIN.roundToPx(), free)
+                        val g = graph.first().measure(Constraints.fixed(cs.maxWidth, gh))
+                        layout(cs.maxWidth, h.height + gap + gh + gap + r.height) {
+                            h.place(0, 0)
+                            g.place(0, h.height + gap)
+                            r.place(0, h.height + gap + gh + gap)
+                        }
                     }
-                },
-                { TuneControls(model, p, device, sender, editor, actions, bandsEnabled) },
-            ),
-            modifier = Modifier
-                .fillMaxWidth()
-                .verticalScroll(rememberScrollState())
-                .padding(top = top, bottom = bottomPad)
-                .padding(horizontal = SIDE),
-        ) { (header, graph, controls), cs ->
-            val gap = GAP.roundToPx()
-            val loose = Constraints(maxWidth = cs.maxWidth)
-            val h = header.first().measure(loose)
-            val r = controls.first().measure(loose)
-            val free = viewport - top.roundToPx() - bottomPad.roundToPx() - h.height - r.height - gap * 2
-            val gh = maxOf(GRAPH_MIN.roundToPx(), free)
-            val g = graph.first().measure(Constraints.fixed(cs.maxWidth, gh))
-            layout(cs.maxWidth, h.height + gap + gh + gap + r.height) {
-                h.place(0, 0)
-                g.place(0, h.height + gap)
-                r.place(0, h.height + gap + gh + gap)
-            }
+                }
+            },
+            { Box(Modifier.padding(horizontal = SIDE).padding(top = GAP, bottom = bottomPad)) { TuneFoot(model, p, device, sender, editor, actions) } },
+        ),
+        modifier = gestures,
+    ) { (scrolling, foot), cs ->
+        val f = foot.first().measure(Constraints(maxWidth = cs.maxWidth))
+        val sc = scrolling.first().measure(Constraints.fixed(cs.maxWidth, (cs.maxHeight - f.height).coerceAtLeast(0)))
+        layout(cs.maxWidth, cs.maxHeight) {
+            sc.place(0, 0)
+            f.place(0, cs.maxHeight - f.height)
         }
     }
 }
@@ -209,33 +238,55 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
             if (b != null) {
                 TypeRow(model, b.type, bandsEnabled)
                 for (param in listOf(Param.FREQ, Param.GAIN, Param.Q)) {
-                    ParamRow(param, param.of(b), enabled = bandsEnabled, scale = param.scaleFor(model.protocol.caps)!!, onTap = { actions.value(param) }) { v ->
+                    ParamRow(param, param.of(b), enabled = bandsEnabled, scale = param.scaleFor(model.protocol.caps)!!, onTap = { actions.value(param) },
+                        locked = b.type.isPass && param == Param.GAIN) { v ->
                         if (!sender.bypassed && !sender.abBusy)
                             model.transformBandIfCurrent(p.id, i, b.id) { current -> param.set(current, v) }
                     }
                 }
             }
         }
-        PreampRow(model, p, sender, actions)
+        // The Allegro Mini has no preamp (its Global Gain is the analog DAC gain, never written): no row for it.
+        if (model.protocol.hasPreamp) PreampRow(model, p, sender, actions)
         // AUTO that needs more than the device takes: it stays AUTO (MANUAL does not swap in -30) and says why.
-        if (p.preampDb == null) model.protocol.walkplay?.autoRefusal(p.bands)?.let {
+        if (p.preampDb == null) model.protocol.autoRefusal(p.bands)?.let {
             Text("AUTO PREAMP: $it", color = pal.textDim, style = Type.small)
         }
         p.preampDb?.let { db ->
             if (!model.protocol.preampFits(p.bands, db)) {
-                Text("PREAMP ${Param.PREAMP.number(db)} dB is outside the device range. Tap the number to type a new value, or switch to AUTO.", color = pal.textDim, style = Type.small)
+                Text("${model.protocol.preampLabel} ${Param.PREAMP.number(db)} dB is outside the device range. Tap the number to type a new value, or switch to AUTO.", color = pal.textDim, style = Type.small)
             }
         }
         // FiiO KA15 (read, USER1-3 writes, slot names and rename tested on a Pixel 04.10.2026): why a send is blocked,
         // a note or failure from the DAC, and the USER slot row right above HOLD TO SEND (one group, so the page fits).
-        val slots = device.slotPicker && device.link == Link.CONNECTED
+        // A send that did not finish stays on the page, DAC or no DAC, until a send is verified or it is tapped away.
+        device.interruptedSend?.let { why ->
+            Text(
+                if (device.interruptedReadAgain) "SEND INTERRUPTED - the DAC was read again and shows what it holds now; it may hold a partial EQ. Tap to dismiss. ($why)"
+                else "SEND INTERRUPTED - the DAC may hold a partial EQ. Plug it back in; it will be read again. Tap to dismiss. ($why)",
+                color = pal.text, style = Type.small,
+                modifier = Modifier.fillMaxWidth().clickable { device.dismissInterruptedSend() }.padding(vertical = 8.dp).testTag("send_interrupted"),
+            )
+        }
         // Micro/Max too: a band that does not fit the DAC's filter format, or an AUTO preamp below its floor, says why.
         if (device.link == Link.CONNECTED) {
             // KA15, K13 R2R, Melody and Tiny A: read, write and persistence confirmed on hardware (FiioConfig.hardwareVerified)
-            if (device.protocol.native && !device.hardwareVerified) Text("Native beta recipe: not hardware tested. Readback verifies registers, not audio/persistence.", color = pal.textDim, style = Type.small)
-            device.sendIssues(p).firstOrNull()?.let { Text("SEND BLOCKED: $it (saved values unchanged)", color = pal.textDim, style = Type.small) }
+            if (device.protocol.fiio != null && !device.hardwareVerified) Text("Native beta recipe: not hardware tested. Readback verifies registers, not audio/persistence.", color = pal.textDim, style = Type.small)
+            FamilyNotes(device)
+            if (!device.protocol.readOnly) device.sendIssues(p).firstOrNull()?.let { Text("SEND BLOCKED: $it (saved values unchanged)", color = pal.textDim, style = Type.small) }
             if (device.protocol.native) device.error?.let { Text(it, color = pal.textDim, style = Type.small) }
         }
+    }
+}
+
+/**
+ * The foot of the page: the chosen slot's caption, the USER slot row and HOLD TO SEND. It is laid out apart from the scrolling part and stays above the page bar whatever the caption says
+ * (a long "USER10: <name>" is cut to one line; it never pushes the button down), the graph and the controls above it give way instead.
+ */
+@Composable
+private fun TuneFoot(model: AppModel, p: Profile, device: DeviceController, sender: Sender, editor: DacEditor, actions: TuneActions) {
+    val slots = device.slotPicker && device.link == Link.CONNECTED
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(GAP)) {
         // The slot row says which slot is chosen (white) and whether this profile is on it (orange, as ON DAC) - no slot text.
         // K13 R2R: its ten slots show numbers and the DAC stores no names; the chosen slot's last verified profile is
         // centred in the gap above the row (owner 14.10.2026).
@@ -257,6 +308,35 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
         HoldToSend(p, device, sender, actions::sendDetails,
             Modifier.padding(top = if (slots) 0.dp else Grid.GROUP - GAP).fillMaxWidth().height(ROW_H))
     }
+}
+
+/**
+ * The notes of the Contour 1.6 families (Moondrop Dawn Pro 2, Kiwi Ears Allegro Mini, Moondrop Echo-A) under the controls: what is not verified yet, what a send
+ * does to the DAC, and - the Dawn only - the one explicit way back to the EQ index it was on. The numbers come from the DAC's :core catalog.
+ */
+@Composable
+private fun FamilyNotes(device: DeviceController) {
+    val target = device.protocol
+    if (!target.isFamily) return
+    val dim = pal.textDim
+    val bands = target.caps.bands
+    when {
+        target.readOnly -> Text("READ ONLY - NOT VERIFIED ON HARDWARE. Contour reads ${target.caps.name} and sends nothing to it.", color = dim, style = Type.small)
+        // A writable Echo-A: sent like the Protocol Micro, read back after each send. "Not verified" only while a review build runs it ahead of its flag.
+        target.echo != null -> Text((if (target.echo?.hardwareVerified == true) "" else "Not verified on hardware yet. ") + "$bands bands: PEAK, LOW SHELF, HIGH SHELF, LOW PASS and HIGH PASS. Each send is read back and compared.", color = dim, style = Type.small)
+        target.moondrop != null -> {
+            Text("$bands PEAK bands; LOW SHELF, HIGH SHELF, LOW PASS and HIGH PASS stay off until measured.", color = dim, style = Type.small)
+            (device.snapshot?.familyState as? FamilyState.Dawn)?.bankNotice?.let { Text(it, color = dim, style = Type.small) }
+            device.returnIndex?.let { index ->
+                Text("Sent to EQ index ${target.moondrop?.writableIndex}. The DAC was on EQ index $index.", color = dim, style = Type.small)
+                AppButton("RETURN TO INDEX $index", { device.returnToPreviousIndex() }, Modifier.fillMaxWidth().testTag("return_index"), enabled = !device.busy)
+            }
+        }
+        // Allegro Mini: verified on the phone 25.10.2026. The DSP designs its filters for 24 kHz and plays them at the stream rate, so Contour writes for a 48 kHz stream (owner decision 25.10.2026).
+        else -> Text("$bands PEAK bands, no preamp. Contour assumes this DAC plays at 48 kHz; at 44.1 kHz every band sounds about 8 % lower. After SAVE the DAC reconnects; the send counts only after Contour has read it back.",
+            color = dim, style = Type.small)
+    }
+    if (device.verifyingSave) Text("Saved. Waiting for the DAC to reconnect, then reading it back.", color = dim, style = Type.small)
 }
 
 @Composable
@@ -614,6 +694,11 @@ private fun PmCell(icon: androidx.compose.ui.graphics.vector.ImageVector, name: 
 /** Filter type: a pressed-in well with a raised orange pill that slides to the chosen type. */
 @Composable
 private fun TypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
+    // A DAC with pass filters gets the icon bar; every other device keeps this text bar exactly as it is.
+    if (model.protocol.caps.types.any { it.isPass }) {
+        PassTypeRow(model, type, enabled)
+        return
+    }
     val c = pal
     val haptics = LocalHaptics.current
     val types = listOf(FilterType.PEAK to "PEAK", FilterType.LOW_SHELF to "LOW SHELF", FilterType.HIGH_SHELF to "HIGH SHELF")
@@ -659,35 +744,143 @@ private fun TypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
     }
 }
 
+/** Response curve of each filter type in a 30 x 20 box (SVG path syntax). */
+private val TYPE_ICON_PATHS = mapOf(
+    FilterType.PEAK to "M2 14 C9 14 10 4 15 4 C20 4 21 14 28 14",
+    FilterType.LOW_SHELF to "M2 5 L9 5 C14 5 15 14 20 14 L28 14",
+    FilterType.HIGH_SHELF to "M2 14 L10 14 C15 14 16 5 21 5 L28 5",
+    FilterType.HIGH_PASS to "M4 18 C8 9 10 6 16 6 L28 6",
+    FilterType.LOW_PASS to "M2 6 L14 6 C20 6 22 9 26 18",
+    // A hill that falls to the bottom on both sides: narrower and taller than the PEAK bump.
+    FilterType.BAND_PASS to "M3 18 C8 18 10 4 15 4 C20 4 22 18 27 18",
+    // Flat magnitude (the line) with a loop in the middle for the phase turn; it must not read as a shelf.
+    FilterType.ALL_PASS to "M2 10 H10 C10 4.5 20 4.5 20 10 C20 15.5 10 15.5 10 10 M20 10 H28",
+)
+
+/** The type bar of a DAC that offers pass filters: icons only, the chosen cell widens to show its name. */
+private val PASS_TYPES = listOf(
+    FilterType.PEAK to "PEAK", FilterType.LOW_SHELF to "LOW SHELF", FilterType.HIGH_SHELF to "HIGH SHELF",
+    FilterType.HIGH_PASS to "HIGH PASS", FilterType.LOW_PASS to "LOW PASS",
+    FilterType.BAND_PASS to "BAND PASS", FilterType.ALL_PASS to "ALL PASS",
+)
+private val TYPE_ICON_W = 30.dp
+private val TYPE_ICON_H = 20.dp
+private val TYPE_ICON_GAP = 6.dp
+private val TYPE_CELL_PAD = 10.dp
+/** Weight of the chosen cell against 1 for the others; raised per name when the name needs more room. */
+private const val TYPE_CHOSEN_WEIGHT = 2.3f
+
+@Composable
+private fun FilterIcon(type: FilterType, name: String, color: Color) {
+    val path = remember(type) { PathParser().parsePathString(TYPE_ICON_PATHS.getValue(type)).toPath() }
+    Canvas(Modifier.size(TYPE_ICON_W, TYPE_ICON_H).semantics { contentDescription = name }) {
+        scale(size.width / 30f, size.width / 30f, pivot = Offset.Zero) {
+            drawPath(path, color, style = Stroke(width = 2.4f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        }
+    }
+}
+
+@Composable
+private fun PassTypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
+    val c = pal
+    val haptics = LocalHaptics.current
+    val density = LocalDensity.current
+    val measurer = rememberTextMeasurer()
+    val cells = PASS_TYPES.filter { it.first in model.protocol.caps.types || it.first == type }
+    val well = RoundedCornerShape(Radii.L)
+    val pill = RoundedCornerShape(Radii.M)
+    val idx = cells.indexOfFirst { it.first == type }.coerceAtLeast(0)
+    val at by animateFloatAsState(idx.toFloat(), label = "type")
+    BoxWithConstraints(
+        Modifier
+            .fillMaxWidth()
+            .height(ROW_H)
+            .clip(well)
+            .background(c.track)
+            .sink(well)
+            .padding(Grid.INSET),
+    ) {
+        val total = maxWidth
+        val name = cells.getOrNull(idx)?.second.orEmpty()
+        // The chosen cell must hold icon, gap, the whole name and its padding: weight so that it does, never an ellipsis.
+        val chosen = remember(name, total, density, cells.size) {
+            val text = with(density) { measurer.measure(name, Type.segment, maxLines = 1, softWrap = false).size.width.toDp() }
+            val need = TYPE_ICON_W + TYPE_ICON_GAP + text + TYPE_CELL_PAD * 2
+            val room = (total - need).coerceAtLeast(1.dp)
+            maxOf(TYPE_CHOSEN_WEIGHT, (cells.size - 1) * need.value / room.value)
+        }
+        val weights = cells.mapIndexed { i, _ -> animateFloatAsState(if (i == idx) chosen else 1f, label = "typeWeight$i").value }
+        val unit = total / weights.sum()
+        fun left(i: Int) = unit * weights.take(i).sum()
+        val lo = at.toInt().coerceIn(0, cells.size - 1)
+        val hi = (lo + 1).coerceAtMost(cells.size - 1)
+        val f = (at - lo).coerceIn(0f, 1f)
+        if (type in model.protocol.caps.types) Box(
+            Modifier
+                .offset(x = left(lo) + (left(hi) - left(lo)) * f)
+                .width(unit * weights[lo] + unit * (weights[hi] - weights[lo]) * f)
+                .fillMaxHeight()
+                .lift(pill, Lift.RAISED)
+                .background(c.accent, pill),
+        )
+        Row(Modifier.fillMaxSize()) {
+            cells.forEachIndexed { i, (t, label) ->
+                val sel = t == type
+                val labelAlpha by animateFloatAsState(if (sel) 1f else 0f, label = "typeLabel$i")
+                val color = if (sel && t in model.protocol.caps.types) c.onAccent else c.text
+                Box(
+                    Modifier
+                        .weight(weights[i].coerceAtLeast(0.01f))
+                        .fillMaxHeight()
+                        .clip(pill)
+                        .clickable(enabled = enabled && t in model.protocol.caps.types) { if (!sel) { haptics.segment(); model.setType(t) } }
+                        .testTag("type_${t.name.lowercase()}"),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Row(Modifier.wrapContentWidth(unbounded = true), verticalAlignment = Alignment.CenterVertically) {
+                        FilterIcon(t, label, color)
+                        if (labelAlpha > 0f) {
+                            Spacer(Modifier.width(TYPE_ICON_GAP))
+                            Text(label, style = Type.segment, color = color, maxLines = 1, softWrap = false, modifier = Modifier.alpha(labelAlpha))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /** A small label over the value: the number big, its unit small and dim beside it. [unit] is empty for Q. */
 @Composable
-private fun StackedValue(label: String, number: String, unit: String, numberColor: Color, modifier: Modifier = Modifier) {
+internal fun StackedValue(label: String, number: String, unit: String, numberColor: Color, modifier: Modifier = Modifier, fit: Boolean = false) {
     val c = pal
     Column(modifier, verticalArrangement = Arrangement.Center) {
         Text(label, style = Type.paramLabel, color = c.textDim, maxLines = 1)
         Spacer(Modifier.height(1.dp))
-        Text(
-            buildAnnotatedString {
-                withStyle(SpanStyle(color = numberColor)) { append(number) }
-                if (unit.isNotEmpty()) withStyle(SpanStyle(color = c.textDim, fontSize = Type.paramLabel.fontSize)) { append(" $unit") }
-            },
-            style = Type.value,
-            maxLines = 1,
-            softWrap = false,
-        )
+        val text = buildAnnotatedString {
+            withStyle(SpanStyle(color = numberColor)) { append(number) }
+            if (unit.isNotEmpty()) withStyle(SpanStyle(color = c.textDim, fontSize = Type.paramLabel.fontSize)) { append(" $unit") }
+        }
+        // [fit]: a long text (CLASS AB) steps its size down to the column instead of being cut
+        if (fit) BasicText(
+            text, style = Type.value, maxLines = 1, softWrap = false,
+            autoSize = TextAutoSize.StepBased(minFontSize = 11.sp, maxFontSize = Type.value.fontSize, stepSize = 1.sp),
+        ) else Text(text, style = Type.value, maxLines = 1, softWrap = false)
     }
 }
 
 /** Width of the label-and-value column: FREQ, GAIN, Q and PREAMP line up on it. */
-private val VALUE_W = 108.dp
+internal val VALUE_W = 108.dp
 
 /** One value row: the label over the value (tap = type it), and the slider as tall as the card allows. */
 @Composable
-private fun ParamRow(param: Param, value: Double, enabled: Boolean, scale: io.github.chronosauros.contour.ui.kit.Scale, onTap: () -> Unit, onChange: (Double) -> Unit) {
+private fun ParamRow(param: Param, value: Double, enabled: Boolean, scale: io.github.chronosauros.contour.ui.kit.Scale, onTap: () -> Unit, locked: Boolean = false, onChange: (Double) -> Unit) {
     val c = pal
+    val live = enabled && !locked // a locked row (GAIN of a pass filter) is dimmed, not draggable, not tappable
     Row(
         Modifier
             .fillMaxWidth()
+            .alpha(if (locked) 0.4f else 1f)
             .height(ROW_H)
             .lift(ROW_SHAPE)
             .background(c.surface, ROW_SHAPE)
@@ -699,13 +892,13 @@ private fun ParamRow(param: Param, value: Double, enabled: Boolean, scale: io.gi
                 .width(VALUE_W - Grid.TEXT)
                 .fillMaxHeight()
                 .clip(RoundedCornerShape(Radii.S))
-                .clickable(enabled = enabled, onClick = onTap)
+                .clickable(enabled = live, onClick = onTap)
                 .testTag("value_${param.name.lowercase()}"),
             contentAlignment = Alignment.CenterStart,
         ) {
             StackedValue(param.label, param.number(value), param.unit, c.text)
         }
-        RelSlider(param, value, onChange, Modifier.weight(1f).fillMaxHeight().padding(Grid.INSET), enabled = enabled, scale = scale)
+        RelSlider(param, value, onChange, Modifier.weight(1f).fillMaxHeight().padding(Grid.INSET), enabled = live, scale = scale)
     }
 }
 
@@ -724,7 +917,7 @@ private fun PreampRow(model: AppModel, p: Profile, sender: Sender, actions: Tune
     val c = pal
     val auto = p.preampDb == null
     val autoDb = runCatching { model.shownPreamp(p.copy(preampDb = null)) }.getOrNull()
-    val db = if (auto) autoDb else p.preampDb
+    val db = if (auto) autoDb else p.preampDb?.let { model.protocol.heldPreamp(it) } // the value the DAC holds (a whole dB on the Melody and Tiny A)
     Row(
         Modifier
             .fillMaxWidth()
@@ -745,7 +938,7 @@ private fun PreampRow(model: AppModel, p: Profile, sender: Sender, actions: Tune
         ) {
             // AUTO: a computed value, dimmed; manual: bright
             StackedValue(
-                Param.PREAMP.label,
+                model.protocol.preampLabel, // PREAMP; the Moondrop manufacturer's name for the same register is PRE GAIN
                 db?.let { Param.PREAMP.number(it) } ?: "--",
                 if (db != null) Param.PREAMP.unit else "",
                 if (auto) c.textDim else c.text,
@@ -838,7 +1031,7 @@ private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, v
                             atEnd = false
                         }
                         acc = raw.coerceIn(lo, hi)
-                        val next = io.github.chronosauros.contour.core.Preamp.floorTo(acc) // down: never louder than the finger
+                        val next = io.github.chronosauros.contour.core.Preamp.floorTo(acc, model.protocol.preampStep) // down: never louder than the finger
                         if (next != now) model.setPreamp(next)
                         guard.move(ch.uptimeMillis, ch.position, next)
                         if (next != ticked && !guard.settling(ch.uptimeMillis)) {

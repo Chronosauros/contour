@@ -69,6 +69,9 @@ Everything marked VERIFIED was observed on the owner's device on 2026-09-25 (fir
 (`supportsHSFilter: false`), even though type code 3 exists in the shared handler. Pregain:
 `deviceHandlesPregain: false` - the host computes it and writes CMD 0x03 as an integer dB (rounded!),
 range int8 (UI practical range <= 0). No BP/notch/allpass.
+Contour 1.6.0 offers LOW PASS (code 4) and HIGH PASS (code 5) on the Protocol Micro and the Moondrop Echo-A (same scheme), with the
+coefficients designed for 93 750 Hz (see "Measured Q conventions" under the KA15). The Micro's DAC takes a positive preamp, but the level does not rise,
+so Contour stays at 0 dB and below.
 
 ## Contour does NOT use the compensation below (decision 26.09.2026)
 CrinEar's own tool - devicePEQ v0.20 on graph.hangout.audio/plugins/devicePEQ (walkplayHidHandler.js
@@ -156,8 +159,7 @@ Hardware facts: `research/black-pearl-pc-2026-10-19/FINDINGS.md` (written and re
 - Proven on the unit (registers and every biquad byte identical after the write): LOW SHELF, HIGH SHELF and peaks across the
   caps, PK 500 Hz **-10.4 dB Q 0.1 stored as sent** (no firmware clamp at +/-10 dB; the TRN's own tool stores -10.4 too),
   and the **pass filters: LOW PASS 18 kHz is code 4, HIGH PASS 30 Hz code 5, both kept as sent** (not coerced to PK).
-  Pass filters are NOT in the stable build (owner decision 14.10.2026: they come with branch `wip/pass-filters` after the
-  UMC202HD measurement); a read still accepts codes 1 to 5 so a state written by the TRN's tool does not stop a send.
+  Pass filters are NOT offered for the TRN in 1.6.0 (they stay out until they are proven on the unit); a read still accepts codes 1 to 5 so a state written by the TRN's tool does not stop a send.
 - Persistence: unplug and replug with the headphones kept in: the whole state came back identical, **the preamp
   (-12 dB) included**, after `01 04 00`. Not tested: whether the preamp also persists without `01 04 00`.
 - Read: VERSION, bulk slot, ten band requests, preamp, as the Max. A stored band is checked against the register format
@@ -168,7 +170,7 @@ Hardware facts: `research/black-pearl-pc-2026-10-19/FINDINGS.md` (written and re
 - Off on the TRN: A/B (TEMP_WRITE is proven RAM-only on the Micro only) and the service screen's band-1 test write.
 - Contour on a phone (Pixel 9 Pro, 19.10.2026): recognised, HID interface 0 with IN 0x86 / OUT 0x05, read in about
   400 ms; a five-band profile with preamp -6 dB sent VERIFIED, and a PC read afterwards showed the same state.
-- Not yet proven: the audible response (register and biquad identity only; needs the UMC202HD measurement).
+- Audible response: measured on the test rig on 25.10.2026, 12 of 12 cases (see "Measured Q conventions" under the KA15).
 
 ## Other WalkPlay groups (for extensibility)
 Same handler/wire format for SchemeNo10-21 (WH L7). Differences are config only:
@@ -234,6 +236,29 @@ Sweeps 10 Hz-22 kHz through the KA15 to a line input, each result minus Close EQ
 - Contour writes shelf Q register = Q x sqrt(2) and preamp register = preamp + 12 dB (shown range -24..0 dB, shelf Q up
   to 7.07), so squig.link/AutoEQ profiles play as designed. FiiO's app and web app show the raw registers.
 
+### Measured Q conventions and coefficient rate on other DACs (24-25.10.2026)
+Same rule as the KA15 (owner precedent 04.10.2026): Contour corrects the measured behaviour at the register boundary (register = intended x scale, the editor and
+every comparison stay in the intended domain); the vendor tools show the raw registers. UMC202HD rig, stream 44.1 kHz, runs in `dac-lab/runs`; models in
+`dac-lab/contour-1.6/research/2026-10-25-shelf-law.md`, `2026-10-25-dsp-model-k13-allegro.md`, `2026-10-24-dsp-model-walkplay.md`. Records: `peq.shelfQScale`,
+`peq.peakQScale`, `peq.coefficientRateHz` (devices/README.md).
+- FiiO K13 R2R, 25.10.2026 (`2026-10-25-fiio-k13-r2r-02-mac-eqtest`): a PK plays RBJ with Q = register / sqrt(2) (6 of 6 cases within 0.136 dB; the register as Q: 0.55-0.98 dB).
+  Shelves, LP, HP, BP and AP play the register as Q. Contour writes the PK register = Q x sqrt(2) (Q 2.00 -> 2.83; PK Q range 0.07-7.07).
+- SnowSky Melody and Tiny A, 24.10.2026 (`2026-10-24-snowsky-melody-05-mac-eqtest`, `2026-10-24-snowsky-tiny-a-05-mac-eqtest`): shelves play Q = register / sqrt(2) like the
+  KA15 (Melody 12 of 12 cases with it, 8 of 12 with the register as Q; Tiny A 7 of 7 and 6 of 7), PK plays the register as Q. Contour writes the shelf register = Q x sqrt(2)
+  (Q 0.70 -> 0.99; shelf Q range 0.07-7.07).
+- TRN Black Pearl, 25.10.2026 (`2026-10-25-trn-black-pearl-01-mac-eqtest`, 12 of 12): shelves play RBJ with Q = register / sqrt(2), computed by the DAC from the f / gain / Q
+  registers at the stream rate; the coefficient bytes Contour sends in the same frame are not played (a fit with them at 96 kHz is 0.35 dB worse). PK plays the register as Q.
+  Contour writes the shelf register = Q x sqrt(2) and still designs the coefficient bytes for the intended Q.
+- CrinEar Protocol Micro and Moondrop Echo-A, 24.10.2026 (`2026-10-24-crinear-protocol-micro-04-mac-eqtest` and `-05-`, `2026-10-24-moondrop-echo-a-03-mac-eqtest` and `-04-`):
+  the DSP plays the coefficient bytes, but at 93 750 Hz (96 000 x 125/128), while the vendor tool (`computeIIRFilter(..., a = 96e3)`) and Contour designed them for 96 000 Hz, so every
+  filter landed 2.34 % low (PK Q5 up to 0.88 dB, LP 8000 0.56 dB). Coefficients designed for 93 750 Hz fit every valid case within 0.057 dB. Shelves play the slope form Contour uses
+  (not rescaled). Contour designs the Micro's and the Echo-A's bytes for 93 750 Hz; the TRN, Max and Dawn Pro 2 stay at 96 000 Hz (not measured, or not played). Not checked at a 48 kHz stream.
+- Kiwi Ears Allegro Mini, 25.10.2026 (`2026-10-25-kiwi-ears-allegro-mini-07-mac-eqtest-48k`, a 44.1 kHz stream despite the name, and `-08-` at 48 kHz): the DSP designs its RBJ biquads for a fixed 24 000 Hz and runs them at the stream rate, so a band plays at register f x stream / 24 000 (x1.84 at 44.1 kHz, x2.00 at 48 kHz; gain and Q as written; free fits 24 061 and 24 143 Hz). The vendor tool writes the UI frequency as it is. Contour assumes a 48 kHz stream (owner decision 25.10.2026) and writes register f = intended f x 24 000 / 48 000 (1000 Hz -> 500), converting a read back; the editor offers 40-20000 Hz (register 20-10000; a register below 20 was never written). A player that forces 44.1 kHz shifts every band about 8 % down. Open: a Q 5 band whose register sits at 6000 Hz plays wider than the model.
+- Moondrop Dawn Pro 2, 24.10.2026 (MOONDROP Hub Beta 1.6.5 "Write Cfg" captured on the owner's unit, firmware 1.5, USB 35D8:011D; `2026-10-24-moondrop-dawn-pro-2-04-mac`, result `-05-mac`
+  and `-06-mac`): the Hub does not check the EQ index. It sends `01 0F 01 07`, eight band frames (`01 09 21 00 i ...`, last byte the bank tag 07), `01 0A 04 00 00 FF FF`, `01 23 02 lo hi`,
+  `01 03 02 lo hi`, `01 01 00`, 30-65 ms apart; the unit ignores the switch and stays on index 9, and the bands of bank 9 took the written values and kept them over a replug. Contour writes this
+  sequence (global gain written back as read, the pre-gain from the profile) when the unit is on one of Contour's banks (EQ index 7 or 9; on a preset index nothing is sent) and verifies by reading the eight bands back, whatever index the unit reports. The unit's Global Gain register is ignored.
+
 ## FiiO K13 R2R (2972:0120, supported in Contour 1.4.1)
 
 Measured on the owner's K13 R2R on a Pixel 9 Pro, 10.10.2026 (firmware 1.15, USB product "FIIO K13 R2R").
@@ -253,8 +278,8 @@ Measured on the owner's K13 R2R on a Pixel 9 Pro, 10.10.2026 (firmware 1.15, USB
 - Persistence: writes 16 ms apart all read back correctly, but after a power cycle only the first one to three
   survived (USER10: band 1; USER9: preamp and bands 1-2). With 300 ms after every write, preamp and all ten bands
   survived a power cycle on USER9 and USER10, both on advBeta and on stable 1.4.1.
-- Not measured: the acoustic result (the KA15 plays shelf Q / sqrt(2) and USER presets 12 dB down; the K13 has
-  not been swept). Contour writes the K13 values as shown.
+- Acoustic result: see "Measured Q conventions" under the KA15 (25.10.2026): a PK plays Q = register / sqrt(2), shelves play the register as Q. Not measured: the preamp
+  offset (the KA15 plays USER presets 12 dB down), so the preamp register is written as shown.
 
 ## SnowSky Melody and Tiny A (2972:0126 and 2972:0147, supported in Contour 1.5.0)
 
@@ -284,10 +309,63 @@ firmware family and behave the same way.
   the stored field, upper-case, with the old tail cleared. The FiiO app allows A-Z and 0-9 only. Contour reads the names
   after the slot and band reads (never between a select and its slot check). Details:
   `research/snowsky-names-types-2026-10-14/FINDINGS.md`.
-- Filter type byte over USB (Tiny A and K13 R2R, FiiO web app, 14.10.2026): PK 0, LS 1, HS 2, BP 3, LP 4, HP 5, AP 6.
+- Filter type byte over USB (Tiny A and K13 R2R, FiiO web app, 14.10.2026): see "FiiO filter type byte" below.
 - Selecting the already active USER slot again did not hang either unit.
 - Not measured: the acoustic result (shelf Q scaling and preamp offset, which the KA15 needed). Contour writes the
   values as shown.
+
+## FiiO DAC page and factory reset (KA15, Melody, Tiny A; Contour 1.6.0)
+
+- The DAC page reads and writes the FiiO settings commands that the maker's app offers for the model: KA15 VOLUME, VOLUME STEPS, BALANCE, DAC FILTER, OUTPUT, DRE,
+  BRIGHTNESS, SCREEN OFF, ROTATION, LANGUAGE; Melody VOLUME, VOLUME STEPS, BALANCE, FILTER, GAIN, OUTPUT, DRE, IN-LINE MIC, LIGHT, BUTTONS; Tiny A VOLUME, VOLUME STEPS, BALANCE,
+  IN-LINE MIC, LIGHT. USB AUDIO (UAC, setting 0x20) is read-only on all of them: switching it re-enumerates the DAC, so a read-back cannot close the loop. The K13 R2R has no settings list.
+- Factory reset (KA15 and Melody) is the one place where FiiO command 0x21 is ever sent, and only after Contour has read the USER slots, their names and the settings and saved them on the phone.
+  After the frame the DAC is read again only once it has been unplugged and plugged back in (the command does not restart the controller). The change list is the difference between the saved copy and
+  the read after the reset; WRITE THE SAVED COPY BACK writes the slots, names and settings again, steps before volume. The Tiny A (firmware 1.2.0) ignores the command, so it has no reset in the app.
+
+## Moondrop Dawn Pro 2 (35D8:011D, supported in Contour 1.6.0)
+
+- Matched by VID:PID and the exact USB name `DAWN PRO2` (no space). The name `DAWN PRO 2` with a space is another device, routed as WalkPlay SchemeNo15 in advBeta, and is not matched.
+- HID interface 0, report ID `0x4B` (64 bytes, vendor page 0xFF01). Frame after the report id: `OP CMD LEN payload`, OP read `0x80`, write `0x01`; values Q8.8 little-endian; band biquads for 96 kHz.
+- Write sequence: the one MOONDROP Hub "Write Cfg" sends (captured 24.10.2026, Hub Beta 1.6.5, firmware 1.5): `01 0F 01 07`, eight band frames (`01 09 21 00 i ...`, last byte the bank tag 07),
+  `01 0A 04 00 00 FF FF`, pre-gain `01 23 02 lo hi`, global gain `01 03 02 lo hi` (written back as read), `01 01 00`, 30-65 ms apart. Contour writes only while the unit's EQ index (register `0x0F`) is 7 or 9,
+  and sends nothing while the unit is on one of its own presets; it verifies by reading the eight bands back. The unit ignores the Global Gain write.
+- Filter types: PEAK 2, LOW SHELF 1, HIGH SHELF 3, LOW PASS 4, HIGH PASS 5. Shelves play Q = register / sqrt(2); measured on the test rig on 25.10.2026 (shelves, LOW PASS, HIGH PASS).
+  8 bands, gain -18..+12 dB (the Hub's class defaults), Q 0.1-10, 20-20000 Hz; pre-gain register `0x23` -128..0 dB in 0.1 dB steps.
+- Never sent: `01 05 01 04` (flash clear) and `01 FF` (firmware upgrade). No factory reset, no slot names, no hardware volume.
+- The vendor tuning config (custom EQ) is switched on and off by holding both volume buttons for 2 seconds and, according to Moondrop's product page, is off after every plug-in. Whether register `0x0F` carries that state is not known.
+
+## Moondrop Echo-A (3302:12C5, supported in Contour 1.6.0)
+
+- WalkPlay SchemeNo11 through the Protocol Micro's code: HID interface 3, report ID `0x4B`, firmware 0.1, USB maker string "TTGK Technology". No vendor software lists the Echo-A.
+- 8 bands, gain -10..+10 dB, Q 0.1-10, 20-20000 Hz (the Micro's range; no source names one for the Echo-A). PEAK, LOW SHELF, LOW PASS and HIGH PASS are written natively; HIGH SHELF is emulated as on the
+  Micro (a LOW SHELF with the negated gain and the HIGH SHELF gain in the preamp, so in whole dB; Contour can lower the preamp to fit it, for example -6 to -9). Preamp up to 0 dB.
+- The DSP runs the coefficient bytes at 93 750 Hz whatever the stream rate (checked at a 48 kHz stream, 25.10.2026), so Contour designs them for 93 750 Hz; shelves play the slope form.
+- The microphone setting takes only some values and stays read-only. A positive preamp, settings, hardware volume and reset are not offered.
+
+## Kiwi Ears Allegro Mini (31B2:0111, supported in Contour 1.6.0)
+
+- KT Micro register protocol, HID interface 3, report ID `0x4B` with 10 data bytes. Matched by VID, PID and the exact USB name `Kiwi Ears-Allegro Mini`.
+- Five bands from register `0x26` (two registers per band: gain and frequency, Q and type), EQ switch register `0x24` (3 = on, 2 = off), SAVE `0x53`, Global Gain register `0x3B`. PEAK only, -12..+12 dB, Q 0.1-10.
+  There is no preamp: Contour accepts only 0 dB and refuses a profile with more than five bands, other filter types or a preamp, naming the reason. A send does not touch the EQ switch; the DAC page does.
+- The DSP designs its biquads for 24 kHz and runs them at the stream rate; Contour assumes a 48 kHz stream and writes the register frequency = intended frequency / 2 (see "Measured Q conventions" under the KA15).
+  The unit re-enumerates on USB for about 1.3 s after each save; Contour waits for it. Global Gain: -18..+3 dB in 1.5 dB steps.
+
+## FiiO filter type byte (band write `aa 0a .. 15 08 <idx> <gain2> <freq2> <q2> <type>`)
+
+| Type | Byte | KA15 | K13 R2R | SnowSky Tiny A | SnowSky Melody |
+|---|---|---|---|---|---|
+| PEAK (PK) | 0 | capture 03.10.2026 | capture 14.10.2026 | capture 14.10.2026 | Contour sends (hardware 13.10.2026) |
+| LOW SHELF (LS) | 1 | capture 03.10.2026 | capture 14.10.2026 | capture 14.10.2026 | Contour sends (hardware 13.10.2026) |
+| HIGH SHELF (HS) | 2 | capture 03.10.2026 | capture 14.10.2026 | capture 14.10.2026 | Contour sends (hardware 13.10.2026) |
+| BAND PASS (BP) | 3 | Contour sends (hardware, 1.6.0) | capture 14.10.2026 | capture 14.10.2026 | Contour sends (hardware, 1.6.0) |
+| LOW PASS (LP) | 4 | Contour sends (hardware, 1.6.0) | capture 14.10.2026 | capture 14.10.2026 | Contour sends (hardware, 1.6.0) |
+| HIGH PASS (HP) | 5 | Contour sends (hardware, 1.6.0) | capture 14.10.2026; a read after HP returned `15 08 02 00 00 00 64 00 64 05` | capture 14.10.2026 | Contour sends (hardware, 1.6.0) |
+| ALL PASS (AP) | 6 | Contour sends (hardware, 1.6.0) | capture 14.10.2026 | capture 14.10.2026 | Contour sends (hardware, 1.6.0) |
+
+- Sources: FiiO's web app (fiiocontrol.fiio.com, WebHID hook) on the Tiny A (band 3, 0 dB, 100 Hz, Q 1.00, every write echoed) and on the K13 R2R fw 1.15 (USER10 band 3, same values; the K13 sends no write echo). Details: `research/snowsky-names-types-2026-10-14/FINDINGS.md`. The BLE handler's 3 = LP / 4 = HP does not apply over USB.
+- Contour 1.6.0 sends BP/LP/HP/AP to all four FiiO-family DACs: the KA15, K13 R2R, Melody and Tiny A. FiiO's own app was captured offering them on the K13 R2R and Tiny A; for the KA15 and Melody the type bytes are the same family's and the types were checked on the DACs themselves.
+- The gain register of a pass filter is written 0 and Contour keeps pass filters at 0 dB. A band read from a DAC with a pass type and a nonzero gain register is not loaded (the import names the band, type and gain). The test rig measures amplitude only, and ALL PASS changes just the phase, so for ALL PASS it shows only that the amplitude is left alone.
 
 ## FiiO roadmap note (config/handler only; written before the KA15 work above)
 - FiiO is matched by VID 0x2972 (and 0x0A12) + **USB product name string**, not by PID (UC L16, L360-400).

@@ -1,0 +1,162 @@
+{
+  "id": "kiwi-ears-allegro-mini",
+  "name": "Kiwi Ears Allegro Mini",
+  "shortName": "Allegro Mini",
+  "productName": "Kiwi Ears-Allegro Mini",
+  "vendor": "Kiwi Ears",
+  "status": "stable",
+  "usb": {
+    "vid": "0x31B2",
+    "pid": "0x0111",
+    "productName": "Kiwi Ears-Allegro Mini",
+    "hidInterface": 3,
+    "matchByName": true,
+    "nameAliases": ["Kiwi Ears Allegro Mini"],
+    "recognisedBy": "findDevice",
+    "listOrder": 9,
+    "notes": [
+      "Contour converts the frequency for a 48 kHz stream: the DAC designs every band for 24 kHz and plays it at the stream rate, so a band is written at half its frequency; a player that forces 44.1 kHz shifts every band about 8 % down (the editor offers 40-20000 Hz)",
+      "recognised by VID, PID and the literal USB product name: the unit reports \"Kiwi Ears-Allegro Mini\" (productName); devicePEQ also lists the spelling without the hyphen, kept as a name alias (nameAliases)",
+      "register layout: five bands, each a gain-and-frequency register and a Q-and-type register, consecutive from 0x26 (0x26-0x2F), read back on the unit (bench log allegro-mini-read-232520, run:2026-10-20-kiwi-ears-allegro-mini-05; scope-kt-walkplay.md:65; devicePEQ usbDeviceConfig.js, KT_0211L, baseRegisterOffset 0x26)",
+      "chip family KT_0211L (KTMicro); bcdDevice 0x0001; read on a PC without sending anything (run:2026-10-20-kiwi-ears-allegro-mini-05)",
+      "HID interface 3, report 0x4B with 10 data bytes (scope-kt-walkplay.md:52; run:2026-10-20-kiwi-ears-allegro-mini-05)",
+      "advBeta's KtMicro catalog has the Model PID 0x0111 while the kt0211 register map lists productIds {0x0113}; the unit seen here is 0x0111 (advbeta-reddit-astra@39c16e3:android/core/src/main/kotlin/io/github/chronosauros/contour/core/native/KtMicroCatalog.kt)",
+      "KTMicro register protocol: single 16-bit registers addressed by one byte, not the WalkPlay band frame; EQ enable register 0x24 (3 = on, 2 = off), SAVE 0x53, CLEAR 0x43, digital gain 0x66, Global Gain register 0x3B (scope-kt-walkplay.md)"
+    ]
+  },
+  "family": "ktmicro",
+  "driver": {
+    "reportId": 75,
+    "payloadBytes": 10,
+    "readOp": "0x52",
+    "writeOp": "unknown",
+    "bandRegisters": { "base": "0x26", "perBand": 2, "layout": ["gainFrequency", "qType"] },
+    "writeAck": 3,
+    "eqEnableRegister": "0x24",
+    "eqEnableOn": 3,
+    "eqEnableOff": 2,
+    "saveCommand": "0x53",
+    "clearCommand": "0x43",
+    "digitalGainRegister": "0x66",
+    "globalGainRegister": "0x3B",
+    "reconnectAfterSave": "unknown",
+    "designRateHz": "unknown"
+  },
+  "peq": {
+    "bands": 5,
+    "fixedBandCount": "unknown",
+    "freqHz": [20, 20000],
+    "designRateHz": 24000,
+    "assumedStreamHz": 48000,
+    "gainDb": [-12, 12],
+    "q": [0.1, 10],
+    "types": { "PEAK": 0 },
+    "heldTypes": { "LOW_SHELF": 3, "HIGH_SHELF": 4 },
+    "shelfQScale": "unknown",
+    "emulation": null
+  },
+  "preamp": {
+    "present": false,
+    "db": "unknown",
+    "step": "unknown",
+    "wholeDb": "unknown",
+    "registerOffsetDb": "unknown",
+    "globalGain": { "register": "0x3B", "steps": 16, "rangeDb": [-18, 3], "stepDb": 1.5, "defaultStep": 13, "defaultDb": 0, "userSteps": [1, 15] }
+  },
+  "slots": {
+    "user": "unknown",
+    "declaredWritable": "unknown",
+    "stock": "unknown",
+    "bypass": "EQ enable register 0x24 (2 = off)",
+    "labels": "unknown",
+    "picker": false,
+    "names": "none"
+  },
+  "pacing": {
+    "writeGapMs": "unknown",
+    "consumeEchoes": "unknown",
+    "checksum": "unknown",
+    "needsAudioStream": "unknown",
+    "probeGapMs": "unknown",
+    "afterSaveMs": "unknown"
+  },
+  "readback": { "qSlack": "unknown" },
+  "settings": [],
+  "info": [],
+  "preview": {},
+  "reset": { "offered": true, "src": "vendor web tool CLEAR (command 0x43); Contour ships no reset for any device (scope-kt-walkplay.md)" },
+  "hwVolume": { "inScope": "unknown", "src": "not examined for the Allegro Mini" },
+  "conflicts": [
+    {"field": "settings.eq-switch / settings.global-gain write flags", "values": ["both passed the PC bench (run:2026-10-21-kiwi-ears-allegro-mini-02 T14: 13 -> 12 -> 13, written, saved and read back after the DAC re-enumerated)", "the first phone run (run:2026-10-22-kiwi-ears-allegro-mini-01-phone) could not open the 10-byte HID report (fixed in 289fbfb)", "the Pixel run run:2026-10-24-kiwi-ears-allegro-mini-04-phone switched the EQ OFF and ON and set Global Gain 1, 15 and 13, each VERIFIED after the re-enumeration; the replug kept them (P07)"], "src": ["core/native/FamilySettings.kt (writeVerified true)"], "resolution": "on in every build since 2026-10-25"},
+    { "field": "peq.gainDb", "values": ["+-12 dB (vendor web tool)", "+-10 dB (advBeta Mini row)"], "src": ["scope-kt-walkplay.md", "advbeta-reddit-astra@39c16e3:android/core/src/main/kotlin/io/github/chronosauros/contour/core/native/KtMicroCatalog.kt"], "resolution": "vendor value +-12; edges need a capture" },
+    { "field": "peq.q", "values": ["0.1-10 (vendor web tool)", "0.1-5 (advBeta Mini row)"], "src": ["scope-kt-walkplay.md", "advbeta-reddit-astra@39c16e3:android/core/src/main/kotlin/io/github/chronosauros/contour/core/native/KtMicroCatalog.kt"], "resolution": "vendor value 0.1-10" },
+    { "field": "peq.types", "values": ["PK only (vendor web tool)", "LS and HS offered (advBeta Mini row)"], "src": ["scope-kt-walkplay.md:57-59,214", "advbeta-reddit-astra@39c16e3:android/core/src/main/kotlin/io/github/chronosauros/contour/core/native/KtMicroCatalog.kt"], "resolution": "PK offered, LS 3 and HS 4 held until the vendor tool or a capture shows them" },
+    { "field": "preamp", "values": ["digital gain register 0x66 (advBeta calls it preamp)", "Global Gain register 0x3B, 16 steps, -18..+3 dB in 1.5 dB steps (vendor web tool)"], "src": ["scope-kt-walkplay.md", "advbeta-reddit-astra@39c16e3:android/core/src/main/kotlin/io/github/chronosauros/contour/core/native/KtMicroCatalog.kt"], "resolution": "open: no preamp claimed; the Global Gain block is recorded separately" },
+    { "field": "preamp.globalGain.maxDb", "values": ["+3 dB (vendor step table 1..15 = -18..+3 dB, default 13 = 0 dB)", "0 dB cap (Contour policy option)"], "src": ["scope-kt-walkplay.md:67,215"], "resolution": "open: owner question 4; step 0 (possibly mute) and the read value need a capture" },
+    { "field": "driver.writeAck", "values": ["3 = FLAG_OK, byte 6 of the vendor tool's SAVE 0x53 and CLEAR 0x43 replies", "the code also expects 3 for every register write (devicePEQ); the vendor tool does not wait for register-write replies"], "src": ["scope-kt-walkplay.md:65", "dac-lab:devices/kiwi-ears-allegro-mini.md:48"], "resolution": "3 (code and vendor tool agree on the value); open: needs a capture of the vendor tool writing registers" },
+    { "field": "driver.reconnectAfterSave", "values": ["true (advBeta: the USB device leaves the bus after SAVE; the write counts as done after a read when it is back)", "vendor tool code says nothing about re-enumeration; scope item 1.7.3 asks for a capture"], "src": ["scope-kt-walkplay.md:89,1.7"], "resolution": "open: stays \"unknown\" here; the code value (true) is held in core/devices/PendingRecords.kt until a capture proves it"},
+    { "field": "driver.writeRegister", "values": ["_writeRegister(reg, gain, freq)", "_writeRegister(reg, freq, gain)"], "src": ["scope-kt-walkplay.md:93-95", "dac-lab:devices/kiwi-ears-allegro-mini.md:79"], "resolution": "open: not resolved from code reading; needs a capture" },
+    { "field": "usb.hidInterface", "values": ["3 (enumerated on the unit)", "0 (interfaceNumber field in the KWEQ device entry; a tool-config field that WebHID does not use)"], "src": ["run:2026-10-20-kiwi-ears-allegro-mini-05", "dac-lab:devices/kiwi-ears-allegro-mini.md:20"], "resolution": "3 (observed)" }
+  ],
+  "evidence": {
+    "usb": {
+      "firmware": "bcdDevice 0x0001",
+      "source": null,
+      "vendorApp": null,
+      "pcBench": "run:2026-10-20-kiwi-ears-allegro-mini-05 read-only tests T01 and T02: 31B2:0111, HID interface 3, report 0x4B; nothing written",
+      "persistence": null,
+      "phone": null,
+      "acoustic": null
+    },
+    "bands": {
+      "firmware": "bcdDevice 0x0001",
+      "source": null,
+      "vendorApp": "vendor web tool: 5 PEQ bands, peak only, +-12 dB, Q 0.1-10 (scope-kt-walkplay.md; read from code, not seen in the UI)",
+      "pcBench": null,
+      "persistence": null,
+      "phone": null,
+      "acoustic": null
+    },
+    "output.impedance": {
+      "firmware": "bcdDevice 0x0001",
+      "source": null,
+      "vendorApp": null,
+      "pcBench": "run:2026-10-20-kiwi-ears-allegro-mini-03 3.5 mm: 0.303 Ohm",
+      "persistence": null,
+      "phone": null,
+      "acoustic": null
+    },
+    "peq.designRateHz": {
+      "firmware": "bcdDevice 0x0001",
+      "source": null,
+      "vendorApp": "the vendor tool writes the UI frequency as-is (code read 2026-10-25)",
+      "pcBench": "run:2026-10-25-kiwi-ears-allegro-mini-07-mac-eqtest-48k (44.1 kHz stream despite the name) and -08-mac-eqtest-48k (48 kHz): the DSP designs its RBJ biquads for 24000 Hz and runs them at the stream rate; free fit 24061 and 24143 Hz, shift x1.84 at 44.1 kHz and x2.00 at 48 kHz (dac-lab:contour-1.6/research/2026-10-25-dsp-model-k13-allegro.md). Below 8 kHz the model fits within 0.17 dB; a Q 5 band at register 6000 Hz plays wider than the model (open)",
+      "persistence": null,
+      "phone": null,
+      "acoustic": "as pcBench"
+    },
+    "peq.assumedStreamHz": {
+      "firmware": null,
+      "source": "owner decision 2026-10-25: Contour writes f x 24000 / 48000 and says in the device card that it assumes 48 kHz",
+      "vendorApp": null,
+      "pcBench": null,
+      "persistence": null,
+      "phone": null,
+      "acoustic": "Android's usual USB audio rate is 48 kHz; a stream at 44.1 kHz plays every band 8.1 % lower than intended"
+    }
+  },
+  "src": {
+    "peq.designRateHz": ["run:2026-10-25-kiwi-ears-allegro-mini-07-mac-eqtest-48k", "run:2026-10-25-kiwi-ears-allegro-mini-08-mac-eqtest-48k", "dac-lab:contour-1.6/research/2026-10-25-dsp-model-k13-allegro.md", "core/native/KtMicroCatalog.kt"],
+    "peq.assumedStreamHz": ["owner decision 2026-10-25", "core/native/KtMicroCatalog.kt (Model.registerFrequency)"],
+    "usb": ["run:2026-10-20-kiwi-ears-allegro-mini-05", "dac-lab:devices/kiwi-ears-allegro-mini.md"],
+    "driver": ["scope-kt-walkplay.md"],
+    "driver.readOp": ["allegro-mini-read-232520 (bench log, run:2026-10-20-kiwi-ears-allegro-mini-05)"],
+    "driver.bandRegisters": ["scope-kt-walkplay.md:65", "allegro-mini-read-232520 (bench log)", "devicePEQ usbDeviceConfig.js KT_0211L"],
+    "driver.payloadBytes": ["scope-kt-walkplay.md:52", "run:2026-10-20-kiwi-ears-allegro-mini-05"],
+    "driver.writeAck": ["scope-kt-walkplay.md:65", "dac-lab:devices/kiwi-ears-allegro-mini.md:48"],
+    "preamp.globalGain.userSteps": ["scope-kt-walkplay.md:67"],
+    "peq": ["scope-kt-walkplay.md"],
+    "preamp": ["scope-kt-walkplay.md"],
+    "reset": ["scope-kt-walkplay.md"]
+  }
+}

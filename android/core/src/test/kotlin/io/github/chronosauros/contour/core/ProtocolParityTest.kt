@@ -3,6 +3,7 @@ package io.github.chronosauros.contour.core
 import java.io.File
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertFailsWith
 import kotlin.test.assertTrue
@@ -428,9 +429,9 @@ class ProtocolParityTest {
         }
     }
 
-    /** devicePEQ v0.20 computeIIRFilter + quantizer (graph.hangout.audio, 02.07.2026): the PK biquad for every type. */
-    private fun hangoutPkBiquad(freq: Double, gain: Double, q: Double): ByteArray {
-        val a = Math.sqrt(Math.pow(10.0, gain / 20)); val w = freq * 6.283185307179586 / 96000
+    /** devicePEQ v0.20 computeIIRFilter + quantizer (graph.hangout.audio, 02.07.2026): the PK biquad for every type, designed for [rate] (the vendor's tool: 96 kHz). */
+    private fun hangoutPkBiquad(freq: Double, gain: Double, q: Double, rate: Double = 96000.0): ByteArray {
+        val a = Math.sqrt(Math.pow(10.0, gain / 20)); val w = freq * 6.283185307179586 / rate
         val sn = Math.sin(w) / (2 * q); val d4 = sn * a; val d5 = sn / a; val d6 = d5 + 1
         fun r(x: Double) = Math.round(x * 1073741824)
         val den = listOf(1.0, Math.cos(w) * -2 / d6, (1 - d5) / d6).map(::r)
@@ -440,6 +441,20 @@ class ProtocolParityTest {
             val n = v.toInt(); for (k in 0..3) out[i * 4 + k] = ((n shr (8 * k)) and 0xFF).toByte()
         }
         return out
+    }
+
+    /** The vendor's formula at its own 96 kHz is still [WalkPlay.computeIir]'s default; only the Micro's and the Echo-A's records move the rate (peq.coefficientRateHz). */
+    @Test
+    fun `computeIir at the vendor's 96 kHz equals devicePEQ's bytes and the Micro's rate is 93750`() {
+        assertEquals(93750.0, DeviceProtocol.MICRO.caps.coefficientRateHz)
+        assertEquals(96000.0, WalkPlay.DESIGN_FS)
+        for ((f, g, q) in listOf(Triple(6900.0, -5.0, 10.0), Triple(1000.0, 5.0, 2.0), Triple(20.0, -1.8, 0.5), Triple(16000.0, 3.0, 0.7))) {
+            val vendor = hangoutPkBiquad(f, g, q)
+            assertEquals(hex(vendor), hex(WalkPlay.computeIir(f, g, q, WalkPlay.TYPE_PK)), "$f Hz")
+            assertEquals(hex(vendor), hex(WalkPlay.computeIir(f, g, q, WalkPlay.TYPE_PK, 96000.0)), "$f Hz explicit")
+            assertEquals(hex(hangoutPkBiquad(f, g, q, 93750.0)), hex(WalkPlay.computeIir(f, g, q, WalkPlay.TYPE_PK, 93750.0)), "$f Hz at 93750")
+            assertNotEquals(hex(vendor), hex(WalkPlay.computeIir(f, g, q, WalkPlay.TYPE_PK, 93750.0)), "$f Hz differs between the rates")
+        }
     }
 
     @Test
@@ -460,7 +475,8 @@ class ProtocolParityTest {
             assertEquals(b.gainDb, read.gainDb, "band $i gain")
             assertEquals(b.type, read.type, "band $i type")
             if (b.type == FilterType.PEAK) {
-                assertEquals(hex(hangoutPkBiquad(b.freqHz, b.gainDb, b.q)), hex(report.copyOfRange(8, 28)), "band $i biquad")
+                // The Micro's DSP runs the bytes at 93 750 Hz (acoustic runs 24.10.2026), so Contour writes the vendor formula designed for that rate.
+                assertEquals(hex(hangoutPkBiquad(b.freqHz, b.gainDb, b.q, 93750.0)), hex(report.copyOfRange(8, 28)), "band $i biquad")
             }
         }
         // A profile saved on graph.hangout.audio imports with the same numbers.
@@ -761,5 +777,7 @@ private object ApoType {
         FilterType.HIGH_SHELF -> "HSQ"
         FilterType.LOW_PASS -> "LP"
         FilterType.HIGH_PASS -> "HP"
+        FilterType.BAND_PASS -> "BP"
+        FilterType.ALL_PASS -> "AP"
     }
 }

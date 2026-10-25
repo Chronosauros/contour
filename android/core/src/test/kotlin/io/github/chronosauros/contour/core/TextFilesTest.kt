@@ -114,42 +114,73 @@ class TextFilesTest {
 
     // ---- graph.hangout.audio: ten slots, unused ones at 0 dB -----------------------------------------------------
 
-    @Test fun `hangout ten-filter file drops the zero-gain slots and counts them`() {
+    @Test fun `hangout ten-filter file keeps its zero-gain slots, they have a frequency and a Q of their own`() {
         val eq = ApoText.parseImport(res("hangout-10-filters.txt"))
-        assertEquals(listOf(62.0, 250.0, 1000.0, 2000.0, 4000.0), eq.bands.map { it.freqHz })
-        assertEquals(listOf("5 empty filters skipped"), eq.notes)
+        assertEquals(listOf(31.0, 62.0, 125.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0, 8000.0, 16000.0), eq.bands.map { it.freqHz })
+        assertEquals(listOf(0.0, 1.8, 0.0, -1.4, 0.0, 0.5, 2.3, -3.2, 0.0, 0.0), eq.bands.map { it.gainDb })
+        assertTrue(eq.notes.isEmpty())
         assertEquals(-2.6, eq.preampDb)
-        assertEquals(5, eq.bands.map { it.id }.toSet().size)
-        // the plain parser keeps all ten
-        assertEquals(10, ApoText.parse(res("hangout-10-filters.txt")).bands.size)
+        assertEquals(10, eq.bands.map { it.id }.toSet().size)
+        assertEquals(eq, ApoText.parse(res("hangout-10-filters.txt"))) // nothing was left out or changed
     }
 
-    @Test fun `one empty filter is singular and a disabled filter with gain is kept`() {
+    @Test fun `a zero-gain filter with no frequency and no Q is padding and is dropped and counted, one with its own frequency stays`() {
+        val eq = ApoText.parseImport(
+            "Filter 1: ON PK Fc 100 Hz Gain 0 dB Q 1\nFilter 2: ON PK Fc 0 Hz Gain 0 dB Q 0\nFilter 3: ON PK Fc 200 Hz Gain -3 dB Q 1\nFilter 4: ON PK Fc 0 Hz Gain 0 dB Q 1\n",
+        )
+        assertEquals(listOf(100.0, 200.0), eq.bands.map { it.freqHz })
+        assertEquals(listOf("2 empty filters skipped"), eq.notes)
+        assertEquals(2, eq.bands.map { it.id }.toSet().size)
+    }
+
+    @Test fun `a disabled filter with gain and a zero-gain one both stay`() {
         val eq = ApoText.parseImport(
             "Filter 1: ON PK Fc 100 Hz Gain 0 dB Q 1\nFilter 2: OFF PK Fc 200 Hz Gain -3 dB Q 1\nFilter 3: ON LSC Fc 90 Hz Gain 2 dB Q 0.7\n",
         )
-        assertEquals(listOf(200.0, 90.0), eq.bands.map { it.freqHz })
-        assertFalse(eq.bands[0].enabled)
-        assertEquals(listOf("1 empty filter skipped"), eq.notes)
+        assertEquals(listOf(100.0, 200.0, 90.0), eq.bands.map { it.freqHz })
+        assertTrue(eq.bands[0].enabled && !eq.bands[1].enabled)
+        assertTrue(eq.notes.isEmpty())
     }
 
-    @Test fun `zero-gain shelves go too but pass filters stay`() {
+    @Test fun `zero-gain shelves stay like zero-gain peaks, and pass filters stay`() {
         val eq = ApoText.parseImport(
             "Filter 1: ON LSC Fc 90 Hz Gain 0 dB Q 0.7\nFilter 2: ON HSC Fc 9000 Hz Gain 0.0 dB Q 0.7\n" +
                 "Filter 3: ON HP Fc 20 Hz Q 0.7\nFilter 4: ON PK Fc 1000 Hz Gain 1.5 dB Q 1\n",
         )
-        assertEquals(listOf(FilterType.HIGH_PASS, FilterType.PEAK), eq.bands.map { it.type })
-        assertEquals(listOf("2 empty filters skipped"), eq.notes)
+        assertEquals(listOf(FilterType.LOW_SHELF, FilterType.HIGH_SHELF, FilterType.HIGH_PASS, FilterType.PEAK), eq.bands.map { it.type })
+        assertTrue(eq.notes.isEmpty())
     }
 
-    @Test fun `a file of only empty filters keeps the first so a flat export imports as flat`() {
+    @Test fun `a file of only empty filters keeps them, a flat export imports as flat, and padding alone keeps the first`() {
         val flat = ApoText.format(listOf(band(1, FilterType.PEAK, 1000.0, 0.0, 0.71)), 0.0)
         val eq = ApoText.parseImport(flat)
         assertEquals(1, eq.bands.size)
         assertEquals(0.0, eq.bands[0].gainDb)
         val two = ApoText.parseImport("Filter 1: ON PK Fc 100 Hz Gain 0 dB Q 1\nFilter 2: ON PK Fc 200 Hz Gain 0 dB Q 1\n")
-        assertEquals(listOf(100.0), two.bands.map { it.freqHz })
-        assertEquals(listOf("1 empty filter skipped"), two.notes)
+        assertEquals(listOf(100.0, 200.0), two.bands.map { it.freqHz })
+        assertTrue(two.notes.isEmpty())
+    }
+
+    @Test fun `a DAC with fewer bands than the file has filters gets the zero-gain ones left out, last first and only as many as it takes`() {
+        val eq = ApoText.parseImport(res("hangout-10-filters.txt"))
+        val (fits, n) = ApoText.dropEmptyToFit(eq.bands, 8)
+        assertEquals(2, n)
+        assertEquals(listOf(31.0, 62.0, 125.0, 250.0, 500.0, 1000.0, 2000.0, 4000.0), fits.map { it.freqHz }) // 8000 and 16000 Hz (0 dB) went, the rest kept in order
+        assertEquals(8, ApoText.dropEmptyToFit(eq.bands, 8).first.size)
+        assertEquals(10, ApoText.dropEmptyToFit(eq.bands, 10).first.size) // room for all: nothing is left out
+        assertEquals(0, ApoText.dropEmptyToFit(eq.bands, 10).second)
+        // filters with gain are never left out: with 4 slots the 5 empty ones all go, the 5 with gain stay (over by one, which the caller reports)
+        val four = ApoText.dropEmptyToFit(eq.bands, 4)
+        assertEquals(listOf(62.0, 250.0, 1000.0, 2000.0, 4000.0), four.first.map { it.freqHz })
+        assertEquals(5, four.second)
+        // a pass filter has no gain but is not empty
+        val pass = ApoText.parseImport("Filter 1: ON HP Fc 20 Hz Q 0.7\nFilter 2: ON PK Fc 100 Hz Gain 0 dB Q 1\n")
+        assertEquals(listOf(FilterType.HIGH_PASS), ApoText.dropEmptyToFit(pass.bands, 1).first.map { it.type })
+    }
+
+    @Test fun `a typed-in Q keeps its precision through an import`() {
+        val eq = ApoText.parseImport("Filter 1: ON PK Fc 1000 Hz Gain 3 dB Q 0.707\n")
+        assertEquals(0.707, eq.bands.single().q)
     }
 
     @Test fun `text with no filters is empty`() {

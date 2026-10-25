@@ -1,5 +1,8 @@
 package io.github.chronosauros.contour.core
 
+import io.github.chronosauros.contour.core.devices.FlatBand
+import io.github.chronosauros.contour.core.devices.GeneratedDevices
+import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.pow
@@ -7,7 +10,7 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 /**
- * WalkPlay HID PEQ protocol, SchemeNo11 (CrinEar Protocol Micro, 3302:C20F).
+ * WalkPlay HID PEQ protocol, SchemeNo11 (CrinEar Protocol Micro).
  *
  * A 1:1 port of `research/protocol/walkplay.py`, itself a port of devicePEQ's walkplayHidHandler.js
  * (0BSD, Jerome O'Flaherty, commit 0617f382) verified bit-exact against the device - except the SchemeNo11
@@ -19,9 +22,11 @@ import kotlin.math.sqrt
  * `>> 0` truncation, int32 wrap.
  */
 object WalkPlay {
-    const val VENDOR_ID: Int = 0x3302
-    const val PRODUCT_ID: Int = 0xC20F
-    const val REPORT_ID: Int = 0x4B
+    // Identity, band count, report id and design rate are the records' (devices/crinear-protocol-micro.json, the report id and design rate shared by
+    // every WalkPlay record); the generator checks that the WalkPlay records agree on both.
+    const val VENDOR_ID: Int = GeneratedDevices.CRINEAR_PROTOCOL_MICRO_VENDOR_ID
+    const val PRODUCT_ID: Int = GeneratedDevices.CRINEAR_PROTOCOL_MICRO_PRODUCT_ID
+    const val REPORT_ID: Int = GeneratedDevices.CRINEAR_PROTOCOL_MICRO_REPORT_ID
     const val REPORT_SIZE: Int = 64            // report ID + 63 payload bytes
     const val READ: Int = 0x80
     const val WRITE: Int = 0x01
@@ -29,18 +34,14 @@ object WalkPlay {
     const val CMD_GLOBAL_GAIN: Int = 0x03
     const val CMD_PEQ: Int = 0x09
     const val CMD_VERSION: Int = 0x0C
-    const val BANDS: Int = 8
-    const val DESIGN_FS: Double = 96_000.0     // the biquad design rate
+    const val BANDS: Int = GeneratedDevices.CRINEAR_PROTOCOL_MICRO_BANDS
+    const val DESIGN_FS: Double = GeneratedDevices.CRINEAR_PROTOCOL_MICRO_DESIGN_RATE_HZ     // the biquad design rate
 
     const val TYPE_LSQ: Int = 1
     const val TYPE_PK: Int = 2
     const val TYPE_HSQ: Int = 3
     const val TYPE_LP: Int = 4
     const val TYPE_HP: Int = 5
-
-    /** What the device holds today in every slot (factory flat): PK, 0 dB, Q 0.75, these raw frequencies. */
-    val FACTORY_FREQS: IntArray = intArrayOf(31, 62, 125, 250, 500, 1000, 2000, 4000)
-    const val FACTORY_Q: Double = 0.75
 
     // ---- JS number semantics ---------------------------------------------------------------------
 
@@ -56,6 +57,9 @@ object WalkPlay {
         FilterType.HIGH_SHELF -> TYPE_HSQ
         FilterType.LOW_PASS -> TYPE_LP
         FilterType.HIGH_PASS -> TYPE_HP
+        // WalkPlay has no band-pass or all-pass code: refuse by name, never fall back to a peak.
+        FilterType.BAND_PASS, FilterType.ALL_PASS ->
+            throw IllegalArgumentException("${type.name} is not supported by WalkPlay DACs")
     }
 
     /** devicePEQ convertToFilterType: unknown codes read as PK. */
@@ -150,23 +154,44 @@ object WalkPlay {
 
     /**
      * One band as it goes on the wire: the biquad uses [freq] and [q] unrounded, the metadata fields get
-     * `trunc(freq)`, `round(q * 256)`, `round(gain * 256)`.
+     * `trunc(freq)`, `round(q * qScale * 256)`, `round(gain * 256)`. [q] is the intended Q: [qScale] is the factor between it and the Q register
+     * (the TRN's shelves play the register divided by sqrt(2), `DeviceCapabilities.shelfQScale`), and everything that derives coefficients stays on [q].
+     * [rateHz] is the rate the biquad is designed for (`DeviceCapabilities.coefficientRateHz`).
      */
-    data class BandWrite(val index: Int, val freq: Double, val gainDb: Double, val q: Double, val typeCode: Int) {
+    data class BandWrite(
+        val index: Int, val freq: Double, val gainDb: Double, val q: Double, val typeCode: Int,
+        val qScale: Double = 1.0, val rateHz: Double = DESIGN_FS,
+    ) {
+        /** The Q register value this write stores. */
+        internal val qRegister: Int get() = toInt32(jsRound(q * qScale * 256)) and 0xFFFF
+
         /** The registers the device will hold after this write (for the read-back comparison). */
         fun registers(): Registers {
             var g = toInt32(jsRound(gainDb * 256)) and 0xFFFF
             if (g > 32767) g -= 65536
-            return Registers(index, toInt32(freq) and 0xFFFF, toInt32(jsRound(q * 256)) and 0xFFFF, g, typeCode)
+            return Registers(index, toInt32(freq) and 0xFFFF, qRegister, g, typeCode)
         }
     }
 
-    /** Factory flat band of [index]: byte-identical to the device's own. */
-    fun factoryFlat(index: Int): BandWrite = BandWrite(index, FACTORY_FREQS[index].toDouble(), 0.0, FACTORY_Q, TYPE_PK)
+    /** Factory flat band of [index] on the Micro: byte-identical to the device's own (the record's `slots.factoryFlat`: PK, 0 dB, Q 0.75, 31 / 62 / ... / 4000 Hz). */
+    fun factoryFlat(index: Int): BandWrite = flatWrite(index, GeneratedDevices.CRINEAR_PROTOCOL_MICRO.factoryFlat[index])
 
-    /** A user band -> its wire values, unchanged (no SchemeNo11 compensation, see the class comment). */
+    /** A flat band (peak at 0 dB) as a record gives it. */
+    internal fun flatWrite(index: Int, flat: FlatBand): BandWrite = BandWrite(index, flat.freqHz.toDouble(), 0.0, flat.q, TYPE_PK)
+
+    /** A user band -> its wire values, unchanged (no SchemeNo11 compensation, see the class comment); a pass filter has no gain, so 0 goes out. */
     fun bandWrite(index: Int, band: Band): BandWrite =
-        BandWrite(index, band.freqHz, band.gainDb, band.q, typeCode(band.type))
+        BandWrite(index, band.freqHz, if (band.type.isPass) 0.0 else band.gainDb, band.q, typeCode(band.type))
+
+    /** [bandWrite] for a DAC with measured conventions: the Q register scale of the band's type and the coefficient rate of [caps]. */
+    fun bandWrite(index: Int, band: Band, caps: DeviceCapabilities): BandWrite =
+        bandWrite(index, band).copy(qScale = caps.qScale(band.type), rateHz = caps.coefficientRateHz)
+
+    /**
+     * The decoded band of a read-back, in the intended domain: the register Q divided by the scale of its type. The inverse of [bandWrite]'s Q register
+     * (the editor and every comparison work on intended values; the registers stay as read).
+     */
+    fun intendedQ(q256: Int, type: FilterType, caps: DeviceCapabilities): Double = q256 / 256.0 / caps.qScale(type)
 
     /** A band whose biquad does not fit signed Q30: refused, never wrapped into a different filter. */
     class Q30Overflow(message: String) : IllegalArgumentException(message)
@@ -186,19 +211,34 @@ object WalkPlay {
     }
 
     /** Null when the biquad for these values fits signed Q30 exactly as [computeIir] writes it; else why not. */
-    fun q30Violation(freq: Double, gainDb: Double, q: Double, typeCode: Int): String? =
-        q30Violation(scaledCoefficients(freq, gainDb, q, typeCode))
+    fun q30Violation(freq: Double, gainDb: Double, q: Double, typeCode: Int, rateHz: Double = DESIGN_FS): String? =
+        q30Violation(scaledCoefficients(freq, gainDb, q, typeCode, rateHz))
 
-    /** [q30Violation] for the values the registers of [w] would hold, i.e. what a read-back decodes. */
-    fun q30ViolationQuantized(w: BandWrite): String? {
-        val r = w.registers()
-        return q30Violation(r.freq.toDouble(), r.gain256 / 256.0, r.q256 / 256.0, r.typeCode)
+    /**
+     * The largest shelf Q (two decimals, as a Q is written) for which the shelf biquad stays a real filter at every gain up to [maxAbsGainDb]. The shelf formula takes the
+     * square root of `(A + 1/A) * (1/Q - 1) + 2`, which turns negative for a large Q and a large gain: the coefficients are then not numbers ("non-finite biquad coefficients").
+     * The vendor's table says Q 0.1-10 for a shelf too, but its own maths (the code here is the vendor's computeIIRFilter) has no answer for the corner; the refusal is right and
+     * the table is what overstates. Null when no Q is ruled out (gain 0).
+     */
+    fun shelfQCeiling(maxAbsGainDb: Double): Double? {
+        val a = sqrt(10.0.pow(abs(maxAbsGainDb) / 20))
+        val spread = a + 1 / a
+        if (spread <= 2.0 + 1e-12) return null
+        var q = floor(100.0 / (1 - 2 / spread)) / 100.0 // (spread)(1/q - 1) + 2 >= 0  <=>  1/q >= 1 - 2/spread
+        while (spread * (1 / q - 1) + 2 < 0) q -= 0.01
+        return q
     }
 
-    /** computeIIRFilter before rounding: 2^30 x [b0, b1, b2, -a1, -a2] / a0, RBJ at 96 kHz. */
-    private fun scaledCoefficients(freq: Double, gainDb: Double, q: Double, typeCode: Int): DoubleArray {
+    /** [q30Violation] for the values the registers of [w] would hold, i.e. what a read-back decodes (the Q back in the intended domain, see [BandWrite.qScale]). */
+    fun q30ViolationQuantized(w: BandWrite): String? {
+        val r = w.registers()
+        return q30Violation(r.freq.toDouble(), r.gain256 / 256.0, r.q256 / 256.0 / w.qScale, r.typeCode, w.rateHz)
+    }
+
+    /** computeIIRFilter before rounding: 2^30 x [b0, b1, b2, -a1, -a2] / a0, RBJ at [rateHz] (the vendor's tool designs for [DESIGN_FS]). */
+    private fun scaledCoefficients(freq: Double, gainDb: Double, q: Double, typeCode: Int, rateHz: Double): DoubleArray {
         val a = sqrt(10.0.pow(gainDb / 20))
-        val w0 = freq * 6.283185307179586 / 96000
+        val w0 = freq * 6.283185307179586 / rateHz
         val s = sin(w0)
         val c = cos(w0)
         val alpha = s / (2 * q)
@@ -220,7 +260,16 @@ object WalkPlay {
                 b2 = a * ((a + 1) + (a - 1) * c - k); a0 = (a + 1) - (a - 1) * c + k
                 a1 = 2 * ((a - 1) - (a + 1) * c); a2 = (a + 1) - (a - 1) * c - k
             }
-        } else { // PK; devicePEQ uses the PK formula for LP/HP as well
+        } else if (typeCode == TYPE_LP || typeCode == TYPE_HP) {
+            // Plain RBJ low-pass / high-pass (no gain term), the project's intent for these codes (DeviceProtocol).
+            // UNVERIFIED on hardware: devicePEQ sends the PK coefficients for codes 4 and 5; bench test T07 decides.
+            if (typeCode == TYPE_LP) {
+                b0 = (1 - c) / 2; b1 = 1 - c; b2 = (1 - c) / 2
+            } else {
+                b0 = (1 + c) / 2; b1 = -(1 + c); b2 = (1 + c) / 2
+            }
+            a0 = 1 + alpha; a1 = -2 * c; a2 = 1 - alpha
+        } else { // PK
             b0 = 1 + alpha * a; b1 = -2 * c; b2 = 1 - alpha * a
             a0 = 1 + alpha / a; a1 = -2 * c; a2 = 1 - alpha / a
         }
@@ -231,9 +280,12 @@ object WalkPlay {
         )
     }
 
-    /** computeIIRFilter: 5 x int32 LE, Q30 - b0, b1, b2, -a1, -a2 normalised by a0, RBJ at 96 kHz. */
-    fun computeIir(freq: Double, gainDb: Double, q: Double, typeCode: Int): ByteArray {
-        val values = scaledCoefficients(freq, gainDb, q, typeCode)
+    /**
+     * computeIIRFilter: 5 x int32 LE, Q30 - b0, b1, b2, -a1, -a2 normalised by a0, RBJ at [rateHz]. The vendor's tool designs for 96 kHz ([DESIGN_FS], the default); the Micro's
+     * and the Echo-A's DSP runs the coefficients at 93 750 Hz, so their writes design for that (`peq.coefficientRateHz`, carried by [BandWrite.rateHz]).
+     */
+    fun computeIir(freq: Double, gainDb: Double, q: Double, typeCode: Int, rateHz: Double = DESIGN_FS): ByteArray {
+        val values = scaledCoefficients(freq, gainDb, q, typeCode, rateHz)
         require(values.all { it.isFinite() }) { "non-finite biquad coefficients" }
         q30Violation(values)?.let { throw Q30Overflow(it) }
         val out = ByteArray(20)
@@ -248,17 +300,17 @@ object WalkPlay {
     }
 
     /** The length byte of a filter write on Micro and Max (devicePEQ). The TRN Black Pearl takes [TRN_BAND_LEN]. */
-    const val BAND_LEN: Int = 0x18
-    const val TRN_BAND_LEN: Int = 0x21
+    const val BAND_LEN: Int = GeneratedDevices.CRINEAR_PROTOCOL_MICRO_BAND_LEN
+    const val TRN_BAND_LEN: Int = GeneratedDevices.TRN_BLACK_PEARL_BAND_LEN
 
     /** Filter write `01 09 18 00 i 00 00` + biquad + freq + q + gain + type + 00 + slot + 00 ([lenByte] 0x21 for the TRN). */
     fun bandWriteReport(w: BandWrite, slot: Int, lenByte: Int = BAND_LEN): ByteArray {
-        val biquad = computeIir(w.freq, w.gainDb, w.q, w.typeCode)
+        val biquad = computeIir(w.freq, w.gainDb, w.q, w.typeCode, w.rateHz)
         q30ViolationQuantized(w)?.let { throw Q30Overflow(it) }
         // The frequency register is truncated here; FreeDSP-Studio rounds. For whole Hz (every band the editor
         // makes) they agree, so Contour's rule stays as it is for every DAC.
         val f = toInt32(w.freq) and 0xFFFF
-        val q = toInt32(jsRound(w.q * 256)) and 0xFFFF
+        val q = w.qRegister
         val g = toInt32(jsRound(w.gainDb * 256)) and 0xFFFF
         val payload = IntArray(7 + 20 + 10)
         intArrayOf(WRITE, CMD_PEQ, lenByte, 0x00, w.index, 0x00, 0x00).copyInto(payload)

@@ -1,0 +1,230 @@
+{
+  "id": "snowsky-melody",
+  "name": "SnowSky Melody",
+  "shortName": "Melody",
+  "productName": "SNOWSKY Melody",
+  "vendor": "SnowSky",
+  "status": "stable",
+  "usb": {
+    "vid": "0x2972",
+    "pid": "0x0126",
+    "productName": "SNOWSKY Melody",
+    "hidInterface": 0,
+    "matchByName": false,
+    "recognisedBy": "find",
+    "listOrder": 6,
+    "notes": [
+      "USB product id measured on the unit 11-13.10.2026 (core/native/FiioCatalog.kt:126-127)",
+      "no capture fixture: routed by the product id alone (core/native/FiioCatalog.kt:239, core/DeviceTarget.kt:158); DeviceCapabilities therefore carry vid/pid 0 today (core/DeviceTarget.kt:28-32)",
+      "bcdDevice 1.20 on the PC probe 13.10.2026; FiiO Control read FW 1.2.0 on 17.10.2026 (core/native/DacSettings.kt:199 preview fw 10200); same firmware family as the Tiny A",
+      "one HID collection (interface 0), report 7, usage page 0x0C (advbeta-reddit-astra@39c16e3:research/melody-pc-2026-10-13/FINDINGS.md:3; research/protocol/PROTOCOL.md:265)",
+      "every write except SAVE echoes in about 4-12 ms; SAVE answers with a short 00 EE frame instead of an AA echo; reply frames carry stale bytes after EE (research/protocol/PROTOCOL.md:265-267)",
+      "the slot query 0x16 returns stale data on a USER slot after any band or preamp traffic; right only straight after a select or a SAVE (research/protocol/PROTOCOL.md:270-273); this is the snowskyExchange path (core/native/FiioCatalog.kt:83-85)",
+      "FiiO Control in the background holds the HID interface; Contour cannot connect while it runs (dac-lab:devices/snowsky-melody.md)",
+      "FiiO Control config lists a coaxial switch for the Melody that is a template copy (no coaxial jack); left out (scope-fiio.md:168,236-239)"
+    ]
+  },
+  "family": "fiio",
+  "driver": {
+    "reportId": 7,
+    "saveCommand": 25,
+    "snowskyExchange": true,
+    "disconnectOnSave": false,
+    "peakingGainCompensation": false,
+    "shelfAlphaCompensation": false,
+    "hardwareVerified": true,
+    "capture": null
+  },
+  "peq": {
+    "bands": 10,
+    "fixedBandCount": true,
+    "freqHz": [20, 20000],
+    "gainDb": [-12, 12],
+    "q": [0.1, 10],
+    "types": { "PEAK": 0, "LOW_SHELF": 1, "HIGH_SHELF": 2 },
+    "heldTypes": { "BAND_PASS": 3, "LOW_PASS": 4, "HIGH_PASS": 5, "ALL_PASS": 6 },
+    "shelfQScale": "sqrt2",
+    "peakQScale": 1.0,
+    "emulation": null
+  },
+  "preamp": { "present": true, "db": [-12, 12], "step": 0.1, "wholeDb": true, "registerOffsetDb": 0 },
+  "slots": {
+    "user": [160, 161, 162],
+    "declaredWritable": [160, 161, 162],
+    "stock": [0, 1, 2, 3, 4, 5, 6],
+    "bypass": 240,
+    "labels": { "0": "Jazz", "1": "Pop", "2": "Rock", "3": "Dance", "4": "R&B", "5": "Classic", "6": "Hip-hop", "160": "USER1", "161": "USER2", "162": "USER3", "240": "Close EQ" },
+    "picker": true,
+    "names": "device-by-slot",
+    "nameLength": 8
+  },
+  "pacing": { "writeGapMs": 0, "afterSaveMs": 800, "consumeEchoes": true, "checksum": false, "needsAudioStream": false, "probeGapMs": 100 },
+  "readback": { "qSlack": "fiio-1+q/250" },
+  "settings": [
+    { "id": "volume", "section": "SOUND", "group": 0, "writeVerified": true },
+    { "id": "volume-steps", "section": null, "group": 0, "writeVerified": true },
+    { "id": "balance", "section": null, "group": 0, "writeVerified": true },
+    { "id": "filter", "section": null, "group": 0, "writeVerified": true },
+    { "id": "gain", "section": null, "group": 0, "writeVerified": true },
+    { "id": "output", "section": null, "group": 0, "writeVerified": true },
+    { "id": "dre", "section": null, "group": 0, "writeVerified": true },
+    { "id": "mic", "section": "DEVICE", "group": 1, "writeVerified": true },
+    { "id": "light", "section": null, "group": 1, "writeVerified": true },
+    { "id": "buttons", "section": null, "group": 1, "writeVerified": true },
+    { "id": "uac", "section": null, "group": 1, "writeVerified": false }
+  ],
+  "info": ["rate", "fw"],
+  "preview": { "volume": 38, "volume-steps": 0, "balance": 0, "filter": 4, "gain": 0, "output": 1, "dre": 1, "mic": 0, "light": 1, "buttons": 0, "uac": 1, "rate": 2, "fw": 10200 },
+  "reset": { "offered": true, "src": "FiiO Control shows Restore default settings (command 0x21; payload 01 00 comes from the FiiO web app generic builder, not from a capture on the Melody); Contour ships none for any device (scope-fiio.md:169,176-178,244)" },
+  "hwVolume": { "inScope": true, "src": "vendor HID volume 0x02 write verified on hardware (scope-fiio.md:157,181); UAC Feature Unit 0x0A exists but no vendor software uses it" },
+  "upstream": {
+    "sourceUrl": "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/usbDeviceConfig.js#L102",
+    "constraintsUrl": "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/peqConstraintsConfig.json#L1029",
+    "constraintsRef": "peq10Band12dBAllFilters7",
+    "vendorIds": [10610, 2578],
+    "oracle": false,
+    "status": "beta-unverified",
+    "experimental": false,
+    "bestGuessProductName": false,
+    "codecBlockers": [],
+    "evidenceCaveats": ["No capture file: the USB product ID (2972:0126) was measured on the Melody; fixture comment claims -24/+12, authoritative resolved constraints remain -12/+12"]
+  },
+  "conflicts": [
+    { "field": "peq.gainDb", "values": ["-12..12 code and FiiO Control config", "-24..12 FiiO web app (no Melody override)", "-24/+12 devicePEQ fixture comment"], "src": ["core/native/FiioCatalog.kt:222-223,241", "scope-fiio.md:37-38,174"], "resolution": "-12..12 (code) until a capture shows the DAC keeps -13 dB" },
+    { "field": "peq.q", "values": ["0.1-10 code", "0.25-8 FiiO Control and FiiO web app"], "src": ["core/native/FiioCatalog.kt:223-224", "scope-fiio.md:36,174"], "resolution": "unchanged in 1.6 (code)" },
+    { "field": "peq.heldTypes", "values": ["BP/LP/HP/AP held back (code: FiiO's own app was never seen offering them for the Melody, owner 14.10.2026)", "both vendor apps list all 7 types for the Melody (FiiO Control filterList 0-6, web app default list, no override for this model)"], "src": ["core/native/FiioCatalog.kt:250-251", "research/protocol/PROTOCOL.md:299-305", "scope-fiio.md:31-35,173"], "resolution": "offered in every build since 2026-10-25 (SnowSkyMelody.PASS_FILTERS_VERIFIED = true): the phone run wrote and read back all four; the web app was never captured on a Melody" },
+    { "field": "driver.hardwareVerified", "values": ["true in code (read, write and persistence confirmed 13.10.2026)", "register: power-cycle persistence not tested, only a slot switch and back"], "src": ["core/native/FiioCatalog.kt:80-81,252", "dac-lab:devices/snowsky-melody.md"], "resolution": "code value kept; persistence axis stays null until a power cycle is tested (T09, P07)" },
+    { "field": "preamp.registerOffsetDb", "values": ["0 in code (default)", "KA15 plays USER presets 12 dB down; Melody not swept"], "src": ["core/native/FiioCatalog.kt:77-79", "research/protocol/PROTOCOL.md:289-290"], "resolution": "0 until measured (A01, A02)" },
+    { "field": "reset.offered", "values": ["FiiO Control shows Restore default settings (0x21)", "Contour ships none"], "src": ["scope-fiio.md:169,176-178,231,244"], "resolution": "open: owner question 2 (recommended: ship on Melody and Tiny A behind backup and confirm)" },
+    { "field": "settings.coaxial", "values": ["in FiiO Control config (0x08 reads 00)", "no coaxial jack on the product"], "src": ["scope-fiio.md:168,236-239"], "resolution": "left out; do not write 0x08" }
+  ],
+  "evidence": {
+    "bands": {
+      "firmware": "bcdDevice 1.20 (FW 1.2.0)",
+      "source": "devicePEQ peq10Band12dBAllFilters7",
+      "vendorApp": null,
+      "pcBench": "melody.py 2026-10-13: COUNT 10, ten cut bands written, read back equal; a shorter COUNT was tested on the Tiny A only (advbeta-reddit-astra@39c16e3:research/melody-pc-2026-10-13/FINDINGS.md:10)",
+      "persistence": null,
+      "phone": "Pixel 2026-10-13: send to USER1-3, COUNT 2 echoed and read back 10 (core/native/FiioCatalog.kt:245-247; dac-lab:devices/snowsky-melody.md)",
+      "acoustic": null
+    },
+    "types.PEAK": {
+      "firmware": "bcdDevice 1.20 (FW 1.2.0)",
+      "source": "devicePEQ peq10Band12dBAllFilters7",
+      "vendorApp": null,
+      "pcBench": "melody.py 2026-10-13: frequency, gain and type read back equal, Q 3.00 reads 3.01 (advbeta-reddit-astra@39c16e3:research/melody-pc-2026-10-13/FINDINGS.md:10)",
+      "persistence": null,
+      "phone": "Pixel 2026-10-13: USER1-3 ON DAC (dac-lab:devices/snowsky-melody.md)",
+      "acoustic": "run:2026-10-24-snowsky-melody-05-mac-eqtest PK 1000 Hz Q 0.7 / 2 / 5, +5 and -6 dB, 6 of 6 PASS (max 0.083 dB) with the register as Q: peaks are not scaled"
+    },
+    "types.LOW_SHELF": {
+      "firmware": "bcdDevice 1.20 (FW 1.2.0)",
+      "source": "devicePEQ peq10Band12dBAllFilters7",
+      "vendorApp": null,
+      "pcBench": null,
+      "persistence": null,
+      "phone": "Contour sends PK/LS/HS to the Melody, hardware 13.10.2026 (research/protocol/PROTOCOL.md:296-298)",
+      "acoustic": "run:2026-10-24-snowsky-melody-05-mac-eqtest LS 100 Hz +5 and HS 3000 Hz +5 (register Q 0.70), LS 400 Hz -6 and HS 8000 Hz -6 (1.00) PASS (max 0.075 dB): shelf Q = register / sqrt2, the model fits 12 of 12 cases, the register as Q 8 of 12 (dac-lab:contour-1.6/research/2026-10-25-shelf-law.md)"
+    },
+    "types.HIGH_SHELF": {
+      "firmware": "bcdDevice 1.20 (FW 1.2.0)",
+      "source": "devicePEQ peq10Band12dBAllFilters7",
+      "vendorApp": null,
+      "pcBench": null,
+      "persistence": null,
+      "phone": "Contour sends PK/LS/HS to the Melody, hardware 13.10.2026 (research/protocol/PROTOCOL.md:296-298)",
+      "acoustic": "run:2026-10-24-snowsky-melody-05-mac-eqtest LS 100 Hz +5 and HS 3000 Hz +5 (register Q 0.70), LS 400 Hz -6 and HS 8000 Hz -6 (1.00) PASS (max 0.075 dB): shelf Q = register / sqrt2, the model fits 12 of 12 cases, the register as Q 8 of 12 (dac-lab:contour-1.6/research/2026-10-25-shelf-law.md)"
+    },
+    "types.pass": {
+      "firmware": null,
+      "source": "devicePEQ lists all 7 types",
+      "vendorApp": "FiiO Control and web app default type list (scope-fiio.md:31-35,173); not captured on a Melody",
+      "pcBench": null,
+      "persistence": null,
+      "phone": "Nothing 2026-10-25 (run 2026-10-25-snowsky-melody-phone-nothing, send B): LP 15000 Hz, HP 30 Hz, BP 2000 Hz, AP 500 Hz written as types 4, 5, 3, 6 and read back, VERIFIED; SnowSkyMelody.PASS_FILTERS_VERIFIED is true",
+      "acoustic": null
+    },
+    "preamp": {
+      "firmware": "bcdDevice 1.20 (FW 1.2.0)",
+      "source": null,
+      "vendorApp": null,
+      "pcBench": "melody.py 2026-10-13: preamp -3.0 dB written and read back; factory USER1 +7.0, USER2 +6.0, USER3 +8.0, Jazz -6.0, Close EQ +2.0 (advbeta-reddit-astra@39c16e3:research/melody-pc-2026-10-13/FINDINGS.md:10,14); run:2026-10-22-snowsky-melody-02 T08: preamp -12, 0, +12 dB hold; -11.9 dB is written as register -119 and reads back -110 (-11.0 dB): the DAC keeps whole dB only, so the plan rounds the preamp down to a whole dB (preamp.wholeDb)",
+      "persistence": null,
+      "phone": "Pixel 2026-10-13: USER1-3 ON DAC (dac-lab:devices/snowsky-melody.md); run:2026-10-22-snowsky-melody-01-phone P3FRAC (run.md L39-46): preamp -3.5 dB sent as -35, read back -30, NOT VERIFIED (expected; the DAC keeps whole dB)",
+      "acoustic": null
+    },
+    "slots.write": {
+      "firmware": "bcdDevice 1.20 (FW 1.2.0)",
+      "source": null,
+      "vendorApp": null,
+      "pcBench": "melody.py 2026-10-13: select USER1-3, SAVE, read after a switch to USER2 and back equal; USER1 restored bit for bit (advbeta-reddit-astra@39c16e3:research/melody-pc-2026-10-13/FINDINGS.md:3,10)",
+      "persistence": null,
+      "phone": "Pixel 2026-10-13: select and send to USER1-3, re-select of the active slot without a hang (dac-lab:devices/snowsky-melody.md)",
+      "acoustic": null
+    },
+    "names": {
+      "firmware": "bcdDevice 1.20 (FW 1.2.0)",
+      "source": null,
+      "vendorApp": "FiiO web app 2026-10-14 captured on the Tiny A, not on the Melody (research/snowsky-names-types-2026-10-14/FINDINGS.md:14-21)",
+      "pcBench": null,
+      "persistence": null,
+      "phone": "Melody confirmed from a Pixel (research/protocol/PROTOCOL.md:281)",
+      "acoustic": null
+    },
+    "setting.write": {
+      "firmware": "FW 1.2.0",
+      "source": null,
+      "vendorApp": "FiiO Control 4.6.2 config lists the settings (scope-fiio.md:149-150)",
+      "pcBench": null,
+      "persistence": null,
+      "phone": "Pixel 2026-10-17: SET, echo, read-back, restore, read-back for ten settings; filter echo after about 340 ms (core/native/DacSettings.kt:159-161; scope-fiio.md:157-166)",
+      "acoustic": null
+    },
+    "output.impedance": {
+      "firmware": "bcdDevice 0x0120",
+      "source": null,
+      "vendorApp": null,
+      "pcBench": "run:2026-10-20-snowsky-melody-01 3.5 mm, Low gain: 0.736 Ohm +/- 0.02 at 1 kHz",
+      "persistence": null,
+      "phone": null,
+      "acoustic": null
+    },
+    "reset": {
+      "firmware": "bcdDevice 1.20 (FW 1.2.0)",
+      "source": null,
+      "vendorApp": "FiiO Control shows Restore default settings (command 0x21)",
+      "pcBench": "run:2026-10-22-snowsky-melody-03: reset with backup and restore",
+      "persistence": null,
+      "phone": "run:2026-10-22-snowsky-melody-01-phone (run.md L118-133): one 0x21 frame, replug, the change list as on the PC, WRITE THE SAVED COPY BACK with USER1-3 VERIFIED; FiioReset.VERIFIED holds the Melody",
+      "acoustic": null
+    }
+  },
+  "src": {
+    "peq.peakQScale": ["run:2026-10-24-snowsky-melody-05-mac-eqtest (PK plays the register as Q, not measured different)", "core/native/FiioCatalog.kt (FiioConfig.peakQScale)"],
+    "usb.vid": ["core/DeviceTarget.kt:164"],
+    "usb.pid": ["core/native/FiioCatalog.kt:126-127"],
+    "usb.productName": ["core/native/FiioCatalog.kt:217"],
+    "usb.hidInterface": ["research/protocol/PROTOCOL.md:265"],
+    "driver": ["core/native/FiioCatalog.kt:219,225,231-233,252-253"],
+    "peq.bands": ["core/native/FiioCatalog.kt:220"],
+    "peq.fixedBandCount": ["core/native/FiioCatalog.kt:245-247"],
+    "peq.gainDb": ["core/native/FiioCatalog.kt:221-222"],
+    "peq.q": ["core/native/FiioCatalog.kt:223-224"],
+    "peq.freqHz": ["core/native/FiioCatalog.kt:49-51 (defaults)"],
+    "peq.types": ["core/native/FiioCatalog.kt:45-48 (default map PK 0, LS 1, HS 2)", "core/native/FiioCatalog.kt:250-251"],
+    "peq.heldTypes": ["core/native/FiioCatalog.kt:11-14 (codes 3-6 from the K13 / Tiny A capture), :47,250-251"],
+    "peq.shelfQScale": ["run:2026-10-24-snowsky-melody-05-mac-eqtest", "dac-lab:contour-1.6/research/2026-10-25-shelf-law.md", "core/native/FiioCatalog.kt (FiioConfig.shelfQScale; the generator emits sqrt(2.0), not a decimal literal)"],
+    "preamp": ["core/native/FiioCatalog.kt:79,104-106 (default offset 0)", "core/DeviceTarget.kt:24-27"],
+    "slots": ["core/native/FiioCatalog.kt:226-230,248-249"],
+    "slots.names": ["core/native/FiioCatalog.kt:88-93,255-258"],
+    "pacing": ["core/native/FiioCatalog.kt:58-67,99,243"],
+    "pacing.sessionDelays": ["not in the record: family-wide 100/100/300/800 ms (core/native/FiioCodec.kt:43-47); the Melody exchange path is core/native/FiioMelodyExchange.kt"],
+    "readback.qSlack": ["core/native/FiioCatalog.kt:55-57,244"],
+    "settings": ["core/native/DacSettings.kt:120-155,159-161,166-170"],
+    "info": ["core/native/DacSettings.kt:185-190"],
+    "preview": ["core/native/DacSettings.kt:197-200"],
+    "upstream": ["core/native/FiioCatalog.kt:118,234-241", "oracle covers KA15 and K13 R2R only: android/core/src/test/kotlin/io/github/chronosauros/contour/core/NativeFiioTest.kt:75-98"],
+    "reset": ["scope-fiio.md:169,176-178"],
+    "hwVolume": ["core/native/DacSettings.kt:120-121", "scope-fiio.md:157,181"]
+  }
+}

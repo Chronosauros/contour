@@ -1,0 +1,189 @@
+{
+  "id": "crinear-protocol-max",
+  "name": "CrinEar Protocol Max",
+  "shortName": "Max",
+  "productName": "CrinEar Protocol Max",
+  "vendor": "CrinEar",
+  "status": "stable",
+  "usb": {
+    "vid": "0x3302",
+    "pid": "0x43CC",
+    "productName": "unknown",
+    "hidInterface": "unknown",
+    "matchByName": false,
+    "recognisedBy": "find",
+    "listOrder": 2,
+    "notes": [
+      "WalkPlay SchemeNo16; the Android USB attach filter is generated from this record at build time (research/protocol/PROTOCOL.md:112-114)",
+      "exact allow-list 3302:43CC only; no vendor-wide and no name matching; no other SchemeNo16 pid (research/protocol/PROTOCOL.md:112-114)",
+      "fails closed: exactly one HID interface with a 64-byte interrupt IN endpoint, else no I/O; the interface number is not recorded (android/app/src/main/kotlin/io/github/chronosauros/contour/usb/HidTransport.kt:79-87; research/protocol/PROTOCOL.md:120-123)",
+      "no unit in the maintainer's hands: the only contact with hardware is a community test on 2026-10-02 with a 1.2.2 beta build, firmware unknown (research/protocol/PROTOCOL.md:126-128)",
+      "USB product string and bcdDevice never recorded",
+      "A/B and the service screen's band-1 test write are off on the Max (TEMP_WRITE is proven RAM-only on the Micro only); no extra WalkPlay commands (research/protocol/PROTOCOL.md:124-125)"
+    ]
+  },
+  "family": "walkplay",
+  "driver": {
+    "reportId": 75,
+    "schemeNo": 16,
+    "bandLen": 24,
+    "writeSequence": "devicepeq",
+    "strictParse": true,
+    "importMode": "strict",
+    "ab": false,
+    "designRateHz": 96000
+  },
+  "peq": {
+    "bands": 10,
+    "fixedBandCount": true,
+    "freqHz": [20, 20000],
+    "gainDb": [-10, 10],
+    "q": [0.1, 10],
+    "types": { "PEAK": 2, "LOW_SHELF": 1, "HIGH_SHELF": 3 },
+    "heldTypes": {},
+    "shelfQScale": 1.0,
+    "coefficientRateHz": 96000,
+    "emulation": null
+  },
+  "preamp": { "present": true, "db": [-30, 0], "step": 0.1, "wholeDb": true, "registerOffsetDb": 0 },
+  "slots": {
+    "user": [0],
+    "declaredWritable": [0],
+    "stock": [],
+    "bypass": null,
+    "labels": { "0": "Custom" },
+    "picker": false,
+    "names": "none",
+    "slotByte": "echo-read-value",
+    "factoryFlat": [[1000, 0.75, "PEAK"], [1000, 0.75, "PEAK"], [1000, 0.75, "PEAK"], [1000, 0.75, "PEAK"], [1000, 0.75, "PEAK"], [1000, 0.75, "PEAK"], [1000, 0.75, "PEAK"], [1000, 0.75, "PEAK"], [1000, 0.75, "PEAK"], [1000, 0.75, "PEAK"]]
+  },
+  "pacing": {
+    "writeGapMs": 20,
+    "consumeEchoes": false,
+    "checksum": false,
+    "needsAudioStream": false,
+    "probeGapMs": null,
+    "afterSaveMs": 200,
+    "sequence": [
+      "every band write, 20 ms after it (120 ms after the last band)",
+      "preamp write 01 03 02 00 g, 50 ms",
+      "commit 01 05, 20 ms; 01 17, 20 ms; TEMP_WRITE 01 0A 04 00 00 FF FF, 50 ms; FLASH_EQ 01 01 01, 0 ms, then 200 ms",
+      "then a full strict read-back of every band, the preamp and the slot byte; any mismatch is a failure, not ON DAC"
+    ]
+  },
+  "readback": { "qSlack": "q256", "readBoundsHz": [20, 20000], "readBoundsDb": [-10, 10] },
+  "settings": [],
+  "info": [],
+  "preview": {},
+  "reset": { "offered": "unknown", "src": "no Max-specific vendor tool read; the official route is the devicePEQ plugin of graph.hangout.audio (Device PEQ, Connect, slot Custom, Pull / Push), which has no reset; the WalkPlay web tool's resetDevice is unattributed (scope-kt-walkplay.md:22-23,182,191)" },
+  "hwVolume": { "inScope": "unknown", "src": "no unit; nothing recorded about a UAC Feature Unit or vendor volume control for the Max" },
+  "upstream": {
+    "sourceUrl": "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/usbDeviceConfig.js#L940",
+    "constraintsUrl": "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/peqConstraintsConfig.json",
+    "constraintsRef": "peq10Band10dBFullShelves",
+    "vendorIds": [13058],
+    "oracle": false
+  },
+  "conflicts": [
+    { "field": "peq.bands", "values": ["10 (code caps, devicePEQ peq10Band10dBFullShelves, crinacle.com user guide 'up to 10 bands')", "a community tester on 2026-10-02 saw 8 bands on a 1.2.2 beta build", "the header comment of DeviceProtocol.kt says '8 bands' for the same test"], "src": ["core/DeviceProtocol.kt:6-8,15", "research/protocol/PROTOCOL.md:115,126-127", "dac-lab:devices/crinear-protocol-max.md"], "resolution": "10 in code; open: needs a unit or a tester log (the Max caps are a copy of the Micro's with bands = 10)" },
+    { "field": "peq.heldTypes", "values": ["LP/HP not offered (no evidence either way on a Max)", "the WalkPlay family code table has LP 4 and HP 5; the WalkPlay web tool offers them on every scheme; devicePEQ's Max constraints disable LP ('C (none)')"], "src": ["core/WalkPlay.kt:35-39", "scope-kt-walkplay.md:34-37", "dac-lab:devices/crinear-protocol-max.md"], "resolution": "open: nothing known about pass types on a Max; record keeps heldTypes empty" },
+    { "field": "peq.gainDb", "values": ["-10..10 (a copy of the Micro caps)", "devicePEQ peq10Band10dBFullShelves: +-10 dB"], "src": ["core/DeviceProtocol.kt:15", "research/protocol/PROTOCOL.md:115"], "resolution": "-10..10 (code); edges never measured on a Max" },
+    { "field": "preamp.db", "values": ["-30..0 dB (Contour policy, 'not a proven Max limit')", "int8 register; devicePEQ deviceHandlesPregain false"], "src": ["core/DeviceProtocol.kt:25-26", "research/protocol/PROTOCOL.md:117-119"], "resolution": "-30..0 (code); T08 needs a unit" },
+    { "field": "slots.factoryFlat", "values": ["ten neutral PK bands at 1000 Hz, 0 dB, Q 0.75 (explicit spares, not claimed factory captures)", "the factory state of a Max is not known"], "src": ["core/DeviceProtocol.kt:94,101", "research/protocol/PROTOCOL.md:118-119"], "resolution": "code value; a Max unit would show the real factory state" },
+    { "field": "driver.designRateHz", "values": ["96000 (code, as the Micro and TRN)", "not checked on a Max; the TRN factory biquads fit 96 kHz, a vendor-written TRN state may not"], "src": ["core/WalkPlay.kt:33", "scope-kt-walkplay.md:130-132"], "resolution": "96000 (code)" }
+  ],
+  "evidence": {
+    "bands": {
+      "firmware": null,
+      "source": "devicePEQ peq10Band10dBFullShelves; crinacle.com Protocol Max user guide 'up to 10 bands of PEQ' (number only)",
+      "vendorApp": null,
+      "pcBench": null,
+      "persistence": null,
+      "phone": "community tester 2026-10-02, Max beta build 1.2.2-maxbeta1: '8 bands, peak and shelf filters, no crashes' (research/protocol/PROTOCOL.md:126-127); firmware unknown",
+      "acoustic": null
+    },
+    "types.PEAK": {
+      "firmware": null,
+      "source": "devicePEQ peq10Band10dBFullShelves",
+      "vendorApp": null,
+      "pcBench": null,
+      "persistence": null,
+      "phone": "community tester 2026-10-02: peak filters (research/protocol/PROTOCOL.md:126-127); firmware unknown",
+      "acoustic": null
+    },
+    "types.LOW_SHELF": {
+      "firmware": null,
+      "source": "devicePEQ peq10Band10dBFullShelves",
+      "vendorApp": null,
+      "pcBench": null,
+      "persistence": null,
+      "phone": "community tester 2026-10-02: shelf filters (research/protocol/PROTOCOL.md:126-127); firmware unknown",
+      "acoustic": null
+    },
+    "types.HIGH_SHELF": {
+      "firmware": null,
+      "source": "devicePEQ peq10Band10dBFullShelves",
+      "vendorApp": null,
+      "pcBench": null,
+      "persistence": null,
+      "phone": "community tester 2026-10-02: shelf filters (research/protocol/PROTOCOL.md:126-127); firmware unknown",
+      "acoustic": null
+    },
+    "preamp": {
+      "firmware": null,
+      "source": "devicePEQ deviceHandlesPregain false (research/protocol/PROTOCOL.md:117-119)",
+      "vendorApp": null,
+      "pcBench": null,
+      "persistence": null,
+      "phone": null,
+      "acoustic": null
+    },
+    "slots.write": {
+      "firmware": null,
+      "source": null,
+      "vendorApp": null,
+      "pcBench": null,
+      "persistence": "community tester 2026-10-02: a small pop when sending, 'the dongle saves the EQ to its memory' (research/protocol/PROTOCOL.md:126-128); long-term persistence not checked",
+      "phone": "community tester 2026-10-02 (as above)",
+      "acoustic": null
+    },
+    "peq.coefficientRateHz": {
+      "firmware": null,
+      "source": "devicePEQ computeIIRFilter(..., a = 96e3); the Max is not measured, so the vendor design rate stays (the Micro and the Echo-A run the same coefficients at 93 750 Hz, dac-lab:contour-1.6/research/2026-10-24-dsp-model-walkplay.md)",
+      "vendorApp": null,
+      "pcBench": null,
+      "persistence": null,
+      "phone": null,
+      "acoustic": null
+    }
+  },
+  "src": {
+    "peq.coefficientRateHz": ["core/WalkPlay.kt (DESIGN_FS; not measured on a Max)"],
+    "driver.schemeNo": ["research/protocol/PROTOCOL.md:112-114"],
+    "usb.vid": ["core/DeviceProtocol.kt:15 (copy of ProtocolMicro.CAPABILITIES with vendorId 0x3302)", "core/WalkPlay.kt:22"],
+    "usb.pid": ["core/DeviceProtocol.kt:15"],
+    "usb.hidInterface": ["not recorded: android/app/src/main/kotlin/io/github/chronosauros/contour/usb/HidTransport.kt:79-87 picks the one interface with a 64-byte IN endpoint"],
+    "driver.reportId": ["core/WalkPlay.kt:24"],
+    "driver.bandLen": ["core/WalkPlay.kt:254", "core/DeviceProtocol.kt:105-107"],
+    "driver.writeSequence": ["core/DeviceProtocol.kt:105-107"],
+    "driver.strictParse": ["core/DeviceProtocol.kt:22-23,227-262"],
+    "driver.importMode": ["core/DeviceProtocol.kt:158-181"],
+    "driver.ab": ["core/DeviceProtocol.kt:24"],
+    "driver.designRateHz": ["core/WalkPlay.kt:33"],
+    "peq.bands": ["core/DeviceProtocol.kt:15"],
+    "peq.fixedBandCount": ["core/DeviceProtocol.kt:127-129 (every send writes all ten slots)"],
+    "peq.gainDb": ["core/Device.kt:75-76"],
+    "peq.q": ["core/Device.kt:77-78"],
+    "peq.freqHz": ["core/Device.kt:79-80"],
+    "peq.types": ["core/Device.kt:83", "core/WalkPlay.kt:35-37,53-62", "core/DeviceProtocol.kt:126-129 (native shelves, no Micro emulation)"],
+    "peq.shelfQScale": ["not scaled: core/DeviceProtocol.kt:128"],
+    "preamp": ["core/Device.kt:84,88-89", "core/DeviceProtocol.kt:25-26,31-37"],
+    "slots": ["core/DeviceProtocol.kt:264-269 (slot byte echoed unchanged)"],
+    "slots.factoryFlat": ["core/DeviceProtocol.kt:94,98-102", "core/WalkPlay.kt:43"],
+    "pacing": ["core/WalkPlay.kt:278-310"],
+    "readback": ["core/DeviceProtocol.kt:257-262 (Q tolerance 1/256, bounds from the caps)"],
+    "settings": ["core/DeviceProtocol.kt:13 (empty list by default)"],
+    "reset": ["scope-kt-walkplay.md:22-23,182,191"],
+    "upstream": ["research/protocol/PROTOCOL.md:110-119,176"]
+  }
+}

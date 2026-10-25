@@ -22,3 +22,8 @@ dependencyResolutionManagement {
 rootProject.name = "contour"
 include(":core")
 include(":app")
+// Bench tool for the measuring rig (maintainer only): android/tools is local-only, the public export drops it.
+if (file("tools/bench").isDirectory) {
+    include(":bench")
+    project(":bench").projectDir = file("tools/bench")
+}

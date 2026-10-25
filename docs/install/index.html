@@ -4,12 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Install Contour</title>
-<meta name="description" content="Install Contour, a free open-source EQ manager for Protocol Micro/Max, FiiO KA15, K13 R2R, SnowSky Melody, Tiny A and TRN Black Pearl, via Obtainium or APK.">
+<meta name="description" content="Install Contour, a free open-source EQ manager for CrinEar Protocol, FiiO, SnowSky, TRN, Moondrop and Kiwi Ears USB DACs, via Obtainium or APK.">
 <link rel="canonical" href="https://contoureq.app/install/">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://contoureq.app/install/">
 <meta property="og:title" content="Install Contour">
-<meta property="og:description" content="An on-the-go EQ manager for the CrinEar Protocol Micro, Protocol Max, FiiO KA15, K13 R2R, SnowSky Melody, Tiny A and TRN Black Pearl. Free and open source.">
+<meta property="og:description" content="An on-the-go EQ manager for the CrinEar Protocol Micro and Max, FiiO KA15 and K13 R2R, SnowSky Melody and Tiny A, TRN Black Pearl, Moondrop Dawn Pro 2 and Echo-A, and Kiwi Ears Allegro Mini. Free and open source.">
 <meta property="og:image" content="https://contoureq.app/images/icon-512.png">
 <meta property="og:site_name" content="Contour">
 <meta property="og:image:width" content="512">
@@ -17,7 +17,7 @@
 <meta property="og:image:alt" content="Contour app icon: a white EQ curve with an orange dot at its peak on a dark background">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Install Contour">
-<meta name="twitter:description" content="An on-the-go EQ manager for the CrinEar Protocol Micro, Protocol Max, FiiO KA15, K13 R2R, SnowSky Melody, Tiny A and TRN Black Pearl. Free and open source.">
+<meta name="twitter:description" content="An on-the-go EQ manager for the CrinEar Protocol Micro and Max, FiiO KA15 and K13 R2R, SnowSky Melody and Tiny A, TRN Black Pearl, Moondrop Dawn Pro 2 and Echo-A, and Kiwi Ears Allegro Mini. Free and open source.">
 <meta name="theme-color" content="#EFECE8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#171615" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
@@ -218,6 +218,11 @@ footer .footer-icons a:hover{opacity:1}
   details.grp::details-content{content-visibility:visible;display:block}
   details.grp > summary{pointer-events:none}
 }
+.dac-list{margin:14px 0 12px;padding:0;border-top:2px solid var(--track)}
+.dac-list > div{display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:16px;align-items:baseline;padding:11px 0;border-bottom:2px solid var(--track)}
+.dac-list dt{margin:0;font-size:18px;font-weight:700;letter-spacing:-.015em;line-height:1.3}
+.dac-list dd{margin:0;color:var(--text-dim);font-size:15px;font-weight:600;line-height:1.3;text-align:right}
+.dac-list dd.by{grid-column:1 / -1;margin-top:3px;font-weight:400;font-size:14px;text-align:left}
 </style>
 <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
 <script defer src="/_vercel/insights/script.js"></script>
@@ -228,8 +233,8 @@ footer .footer-icons a:hover{opacity:1}
 <header class="hero">
   <img class="icon" src="../images/icon-512.png" width="88" height="88" alt="Contour app icon">
   <h1>Install Contour</h1>
-  <p class="lede">An on-the-go EQ manager for the CrinEar Protocol Micro, Protocol Max, FiiO KA15, K13 R2R, SnowSky Melody, Tiny A and TRN Black Pearl. Free and open source.</p>
-  <p class="ver"><span class="dot" aria-hidden="true"></span><span id="ver-line">Latest: 1.5.2 - 19 Oct 2026</span></p>
+  <p class="lede">An on-the-go EQ manager for ten USB DACs from CrinEar, FiiO, SnowSky, TRN, Moondrop and Kiwi Ears. Free and open source.</p>
+  <p class="ver"><span class="dot" aria-hidden="true"></span><span id="ver-line">Latest: 1.6.0 - 26 Oct 2026</span></p>
   <div class="cta">
     <a class="btn btn-primary" href="#obtainium">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
@@ -249,11 +254,24 @@ footer .footer-icons a:hover{opacity:1}
 <section class="plain" id="need">
   <h2>What you need</h2>
   <ul class="needs">
-    <li><strong>A CrinEar Protocol Micro, Protocol Max, FiiO KA15, FiiO K13 R2R, SnowSky Melody, SnowSky Tiny A or TRN Black Pearl USB DAC</strong><span>Contour works with these seven DACs for now. The Micro, the KA15, the K13 R2R, the Melody, the Tiny A and the Black Pearl are tested on the developer's own hardware, the Max by a community member on a real device.</span></li>
+    <li><strong>A supported USB DAC</strong>
+      <dl class="dac-list">
+        <div><dt>Protocol Micro</dt><dd>CrinEar</dd></div>
+        <div><dt>Protocol Max</dt><dd>CrinEar</dd><dd class="by">Tested by a community member</dd></div>
+        <div><dt>KA15</dt><dd>FiiO</dd></div>
+        <div><dt>K13 R2R</dt><dd>FiiO</dd></div>
+        <div><dt>Melody</dt><dd>SnowSky</dd></div>
+        <div><dt>Tiny A</dt><dd>SnowSky</dd></div>
+        <div><dt>Black Pearl</dt><dd>TRN</dd></div>
+        <div><dt>Dawn Pro 2</dt><dd>Moondrop</dd></div>
+        <div><dt>Echo-A</dt><dd>Moondrop</dd></div>
+        <div><dt>Allegro Mini</dt><dd>Kiwi Ears</dd></div>
+      </dl>
+      <span>Every other device is tested on the developer's own hardware. <a href="../devices/">Details for every device</a>.</span></li>
     <li><strong>An Android phone with Android 9 or newer</strong><span>It needs USB host support (USB OTG). Almost every phone with USB-C has it.</span></li>
     <li><strong>Nothing else</strong><span>No account, no internet connection, no extra hardware.</span></li>
   </ul>
-  <p class="note">Contour is unofficial and not affiliated with CrinEar, FiiO, SnowSky or TRN.</p>
+  <p class="note">Contour is unofficial and not affiliated with CrinEar, FiiO, SnowSky, TRN, Moondrop or Kiwi Ears.</p>
   <div class="shots">
     <figure><img src="../images/eq-1.3.2.png" width="480" height="966" loading="lazy" decoding="async" alt="Contour EQ page on a FiiO KA15: a PEAK at 3 kHz, AUTO preamp, USER1-3 slot names, ON DAC"><figcaption>EQ</figcaption></figure>
     <figure><img src="../images/library-1.3.2.png" width="480" height="966" loading="lazy" decoding="async" alt="Contour Library: eight profiles with their curves, TEA PRO OG on the DAC"><figcaption>Library</figcaption></figure>
@@ -312,11 +330,11 @@ footer .footer-icons a:hover{opacity:1}
     <ol class="steps">
       <li>
         <p><strong>Download the app file.</strong></p>
-        <a class="btn btn-primary" id="dl-btn" href="https://github.com/Chronosauros/contour/releases/download/v1.5.2/contour-1.5.2.apk">
+        <a class="btn btn-primary" id="dl-btn" href="https://github.com/Chronosauros/contour/releases/download/v1.6.0/contour-1.6.0.apk">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
-          <span id="dl-label">Download Contour 1.5.2</span>
+          <span id="dl-label">Download Contour 1.6.0</span>
         </a>
-        <p class="sub">The file is <code id="apk-name">contour-1.5.2.apk</code>, about <span id="apk-size">3.6 MB</span>. If the button fails, get it from the <a href="https://github.com/Chronosauros/contour/releases/latest">latest release page</a>.</p>
+        <p class="sub">The file is <code id="apk-name">contour-1.6.0.apk</code>, about <span id="apk-size">3.9 MB</span>. If the button fails, get it from the <a href="https://github.com/Chronosauros/contour/releases/latest">latest release page</a>.</p>
       </li>
       <li>
         <p><strong>Open the downloaded file</strong> - from the download notification or your Files app.</p>
@@ -343,7 +361,7 @@ footer .footer-icons a:hover{opacity:1}
   </summary>
   <div class="grp-body">
     <ol class="steps">
-      <li><p><strong>Plug in your Protocol Micro, Max, KA15, K13 R2R, Melody, Tiny A or Black Pearl.</strong> Plug your headphones into the Black Pearl first: without them it does not show up on USB.</p></li>
+      <li><p><strong>Plug in your DAC.</strong> Plug your headphones into the TRN Black Pearl first: without them it does not show up on USB. A Moondrop Dawn Pro 2 needs its custom EQ switched on: according to Moondrop it is off after every plug-in, and both volume buttons held for 2 seconds toggle it.</p></li>
       <li><p><strong>Allow USB access</strong> when Android asks. Tick "always" to skip this next time.</p></li>
       <li><p>The status shows <strong>CONNECTED</strong> with a green dot.</p></li>
       <li><p>Pick a profile in <strong>LIBRARY</strong>, then hold <strong>HOLD TO SEND</strong> until it fills. The profile now shows <strong>ON DAC</strong>.</p></li>
@@ -390,16 +408,16 @@ C8:C8:CA:EA:76:16:28:ED:9D:50:5F:F0:73:42:EE:5E:A0:D4:66:A4:AD:71:8D:0D:B0:77:42
     <h3>File checksum</h3>
     <p>Each release lists the APK's SHA-256 in its <a href="https://github.com/Chronosauros/contour/releases/latest">release notes</a>. For the latest version:</p>
     <div class="copy">
-      <span class="lbl" id="sha-label">contour-1.5.2.apk</span>
-      <p class="val" id="sha-val">f7eb381a622c057dc49a994c11c37e27313566735502a5dd79f0567c0d7e9ce5</p>
-      <button type="button" class="copy-btn" id="sha-btn" data-copy="f7eb381a622c057dc49a994c11c37e27313566735502a5dd79f0567c0d7e9ce5">Copy</button>
+      <span class="lbl" id="sha-label">contour-1.6.0.apk</span>
+      <p class="val" id="sha-val">bada0c6e90e79af91adf34d5767d4f4fe23d45b0cc2fe221ec0d48314e7b2855</p>
+      <button type="button" class="copy-btn" id="sha-btn" data-copy="bada0c6e90e79af91adf34d5767d4f4fe23d45b0cc2fe221ec0d48314e7b2855">Copy</button>
     </div>
 
     <h3>For developers</h3>
     <div class="copy">
       <span class="lbl">Command</span>
-      <p class="val" id="cmd-val">apksigner verify --print-certs contour-1.5.2.apk</p>
-      <button type="button" class="copy-btn" id="cmd-btn" data-copy="apksigner verify --print-certs contour-1.5.2.apk">Copy</button>
+      <p class="val" id="cmd-val">apksigner verify --print-certs contour-1.6.0.apk</p>
+      <button type="button" class="copy-btn" id="cmd-btn" data-copy="apksigner verify --print-certs contour-1.6.0.apk">Copy</button>
     </div>
     <p>It should print <code>CN=Chronosaur</code> and this digest (lowercase, no colons):</p>
     <div class="copy">
@@ -469,7 +487,7 @@ C8:C8:CA:EA:76:16:28:ED:9D:50:5F:F0:73:42:EE:5E:A0:D4:66:A4:AD:71:8D:0D:B0:77:42
     <li>Privacy: <a href="https://github.com/Chronosauros/contour/blob/main/PRIVACY.md">PRIVACY.md</a> - the app has no internet permission, no analytics, no accounts; this website counts anonymous visits, without cookies</li>
   </ul>
   <p class="footer-icons"><a href="https://github.com/Chronosauros" rel="noopener" target="_blank" aria-label="GitHub profile" title="GitHub"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a><a href="https://www.reddit.com/user/T6_8K/" rel="noopener" target="_blank" aria-label="Reddit profile" title="Reddit"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 0C5.373 0 0 5.373 0 12c0 3.314 1.343 6.314 3.515 8.485l-2.286 2.286C.775 23.225 1.097 24 1.738 24H12c6.627 0 12-5.373 12-12S18.627 0 12 0Zm4.388 3.199c1.104 0 1.999.895 1.999 1.999 0 1.105-.895 2-1.999 2-.946 0-1.739-.657-1.947-1.539v.002c-1.147.162-2.032 1.15-2.032 2.341v.007c1.776.067 3.4.567 4.686 1.363.473-.363 1.064-.58 1.707-.58 1.547 0 2.802 1.254 2.802 2.802 0 1.117-.655 2.081-1.601 2.531-.088 3.256-3.637 5.876-7.997 5.876-4.361 0-7.905-2.617-7.998-5.87-.954-.447-1.614-1.415-1.614-2.538 0-1.548 1.255-2.802 2.803-2.802.645 0 1.239.218 1.712.585 1.275-.79 2.881-1.291 4.64-1.365v-.01c0-1.663 1.263-3.034 2.88-3.207.188-.911.993-1.595 1.959-1.595Zm-8.085 8.376c-.784 0-1.459.78-1.506 1.797-.047 1.016.64 1.429 1.426 1.429.786 0 1.371-.369 1.418-1.385.047-1.017-.553-1.841-1.338-1.841Zm7.406 0c-.786 0-1.385.824-1.338 1.841.047 1.017.634 1.385 1.418 1.385.785 0 1.473-.413 1.426-1.429-.046-1.017-.721-1.797-1.506-1.797Zm-3.703 4.013c-.974 0-1.907.048-2.77.135-.147.015-.241.168-.183.305.483 1.154 1.622 1.964 2.953 1.964 1.33 0 2.47-.81 2.953-1.964.057-.137-.037-.29-.184-.305-.863-.087-1.795-.135-2.769-.135Z"/></svg></a><a href="https://discord.gg/msgvnUG7js" rel="noopener" target="_blank" aria-label="Discord server" title="Discord"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg></a><a href="https://x.com/soundblooms" rel="noopener" target="_blank" aria-label="X profile" title="X"><svg viewBox="-2 -2 28 28" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z"/></svg></a></p>
-  <p>Contour is an unofficial project, not affiliated with or endorsed by CrinEar. Product names belong to their owners.</p>
+  <p>Contour is an unofficial project, not affiliated with or endorsed by CrinEar, FiiO, SnowSky, TRN, Moondrop or Kiwi Ears. Product names belong to their owners.</p>
   <p>Made by Chronosaur</p>
 </footer>
 

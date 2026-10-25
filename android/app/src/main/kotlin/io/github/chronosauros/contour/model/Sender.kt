@@ -164,8 +164,11 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
         UsbLog.line("HOLD TO SEND failed: $reason")
     }
 
-    /** FAILED - HOLD TO RETRY applies to [p] until it is edited. */
-    fun failedFor(p: Profile): Boolean = failedId == p.id && p.updatedAt <= failedAt
+    /**
+     * FAILED - HOLD TO RETRY applies to [p] until it is edited. A send that ended NOT VERIFIED (the DAC took longer to come back than the wait, e.g. while the system's
+     * USB permission dialog was open) stops failing once a read of the DAC shows exactly [p]; a read-back that does not match leaves it failed.
+     */
+    fun failedFor(p: Profile): Boolean = failedId == p.id && p.updatedAt <= failedAt && !(failure?.startsWith(DeviceController.NOT_VERIFIED) == true && isOnDac(p))
 
     private companion object {
         const val PROGRESS_SETTLE_MS = 250L

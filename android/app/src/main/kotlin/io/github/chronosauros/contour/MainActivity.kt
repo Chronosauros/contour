@@ -122,6 +122,8 @@ class MainActivity : ComponentActivity() {
         device.start()
         applyReviewExtras(intent, first = true)
         // Not again when the system recreates the Activity and hands it the launch intent a second time.
+        if (savedInstanceState == null) runProbe(intent)
+        // Not again when the system recreates the Activity and hands it the launch intent a second time.
         pendingSaveId = savedInstanceState?.getString(KEY_SAVE_ID)
         if (savedInstanceState == null) readIncoming(intent) else restoreIncoming(savedInstanceState)
 
@@ -148,8 +150,12 @@ class MainActivity : ComponentActivity() {
 
     /**
      * Review hooks for screenshots and scripted checks (perf and debug builds only, never release):
-     * `--es theme light|dark`, `--es screen tune|library`, `--es sheet edit|new|value|band`,
-     * No mutating or exporting intent extras: this activity is exported for USB attachment.
+     * `--es theme light|dark`, `--es screen tune|library|dac`, `--es sheet edit|new|value|band`,
+     * `--es probe <label>` (the DAC probe: reads only, see [runProbe]),
+     * `--es dac tinya|melody|ka15|off` (the DAC Settings page for that DAC's list and the values its hardware showed, while no attached DAC has
+     * a list - controls move locally, nothing touches USB - or back to the real DAC),
+     * `--es writetest <id> [--ei to <v>]` (the DAC write self-test, see [runWriteTest]: onNewIntent only).
+     * No other mutating or exporting intent extras: this activity is exported for USB attachment.
      */
     private fun applyReviewExtras(i: Intent?, first: Boolean) {
         if (i == null || !reviewBuild || model.loadError) return
@@ -162,9 +168,17 @@ class MainActivity : ComponentActivity() {
             "light" -> forcedDark = false
             "dark" -> forcedDark = true
         }
+        // before "screen": the DAC page exists only while the preview (or a DAC with settings) is there
+        when (i.getStringExtra("dac")) {
+            "tinya" -> device.dacPreview = io.github.chronosauros.contour.core.DeviceTarget.TINY_A
+            "melody" -> device.dacPreview = io.github.chronosauros.contour.core.DeviceTarget.MELODY
+            "ka15" -> device.dacPreview = io.github.chronosauros.contour.core.DeviceTarget.KA15
+            "off" -> device.dacPreview = null
+        }
         val page = when (i.getStringExtra("screen")) {
             "tune" -> Page.TUNE
             "library" -> Page.LIBRARY
+            "dac" -> Page.DAC
             else -> null
         }
         val sheet = when (i.getStringExtra("sheet")) {
@@ -190,7 +204,30 @@ class MainActivity : ComponentActivity() {
             refreshDevice()
         }
         applyReviewExtras(intent, first = false)
+        runProbe(intent)
+        runWriteTest(intent)
         readIncoming(intent)
+    }
+
+    /**
+     * `--es probe <label>` (perf and debug builds only): one read-only pass over everything Contour may read from the attached DAC, logged
+     * as `PROBE <label> ...` under the tag ContourUsb and appended to `<external files>/probe/<label>.txt`. On a running app this is
+     * onNewIntent: no cold start, no slot scan, no read for the app.
+     */
+    private fun runProbe(i: Intent?) {
+        val label = i?.getStringExtra("probe")?.takeIf { it.isNotBlank() } ?: return
+        if (reviewBuild) device.probe(label)
+    }
+
+    /**
+     * `--es writetest <setting id> [--ei to <value>]` (perf and debug builds only, and only here in onNewIntent, never on a cold start): the DAC
+     * write self-test on the attached DAC - read, write, echo, read back, restore, read back - see [DeviceController.writeTest]. It is the one review
+     * hook that writes to a DAC, so it is run by hand on a running app; it refuses USB AUDIO and a setting that is not in the model's list.
+     */
+    private fun runWriteTest(i: Intent?) {
+        val id = i?.getStringExtra("writetest")?.takeIf { it.isNotBlank() } ?: return
+        if (!reviewBuild) return
+        device.writeTest(id, if (i.hasExtra("to")) i.getIntExtra("to", 0) else null)
     }
 
     /**

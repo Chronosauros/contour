@@ -1,7 +1,7 @@
 package io.github.chronosauros.contour.core.native
 
 import io.github.chronosauros.contour.core.FilterType
-import kotlin.math.sqrt
+import io.github.chronosauros.contour.core.devices.GeneratedDevices
 
 /** Source rules are evidence, not transport authorisation or hardware support claims. */
 data class FiioCaptureIdentity(val vendorId: Int, val productId: Int, val productName: String, val fixturePath: String)
@@ -32,8 +32,9 @@ data class FiioConfig(
     val codecBlockers: List<String>,
     val evidenceCaveats: List<String>,
     val status: String = "beta-unverified",
-    // Only source handler's actual types: PK=0, LSQ=1, HSQ=2. JSON advertises
-    // more types but no supported writer/decoder exists; do not use those codes.
+    // Default = what the upstream handler writes and the KA15 capture shows: PK=0, LSQ=1, HSQ=2. The JSON advertises
+    // more types, but a device takes the others only with captured bytes: BP/LP/HP/AP are set per device from
+    // [FIIO_ALL_TYPE_CODES] (research/snowsky-names-types-2026-10-14/FINDINGS.md). The KA15 and the Melody stay on these three: a device gets pass types only when FiiO's own app offers them for it.
     val typeCodes: Map<FilterType, Int> = mapOf(FilterType.PEAK to 0, FilterType.LOW_SHELF to 1, FilterType.HIGH_SHELF to 2),
     // Conservative source connector input range, not an acoustic/firmware guarantee.
     val minFrequencyHz: Int = 20,
@@ -41,13 +42,18 @@ data class FiioConfig(
     // Hardware-observed (KA15, 03.10.2026): the DAC ignores a lower filter count and keeps reading back
     // maxFilters, so the unused tail must be written as neutral filters instead of shortening the count.
     val fixedBandCount: Boolean = false,
-    // KA15 and Melody read Q back slightly off: KA15 605 -> 607 and 390 -> 391 on hardware, the Melody 300 -> 301
-    // (PC probe 13.10.2026). Allowed drift is 1 + q/250 hundredths; more, or any other field, is a mismatch.
+    // KA15, Melody and K13 R2R read Q back slightly off: KA15 605 -> 607 and 390 -> 391 on hardware, the Melody 300 -> 301
+    // (PC probe 13.10.2026), the K13 R2R one lower, 990 -> 989 and 424 -> 423 (phone run 2026-10-25-fiio-k13-r2r-phone-nothing, Nothing, 25.10.2026;
+    // a peak's register is intended Q x sqrt2, so 7.0 and 3.0 landed on those). Allowed drift is 1 + q/250 hundredths; more, or any other field, is a mismatch. The same drift is allowed at the
+    // Q range edges when reading (KA15 USER2, Pixel 21.10.2026: 0.10 -> 0.09, 10.00 -> 10.03, 9.99 -> 10.02), see FiioCodec.validateRegisters.
     val qReadbackSlack: Boolean = false,
     // KA15 echoes every AA write; reading each echo keeps request and reply in lockstep.
     val consumeWriteEchoes: Boolean = false,
     // Pause after every AA write, for DACs that do not echo writes (consumeWriteEchoes paces the KA15 instead).
     val writeGapMs: Int = 0,
+    // Wait after the flash save (0x19) before the first read: the KA15 stays busy about 2 s after it (devices/fiio-ka15.json pacing, hang analysis 22.10.2026: a name-read poll
+    // 845 ms after the save met a DAC that never answered again), the other models answer within 800 ms. Per model, from the device record's pacing.afterSaveMs.
+    val afterSaveMs: Int = 800,
     // Official web app (fiiocontrol.fiio.com, captured 03.10.2026): byte 3 = host sequence, byte before EE =
     // CRC-8/MAXIM over header..data. The device also answers zeros, so this is fidelity, not a requirement.
     val checksumFrames: Boolean = false,
@@ -63,9 +69,15 @@ data class FiioConfig(
     // for every type, frequency, gain and Q, so the register holds intended Q * shelfQScale. PK Q is played as stored.
     // Not combinable with shelfAlphaCompensation (the devicePEQ slope law measured wrong on the KA15).
     val shelfQScale: Double = 1.0,
+    // Hardware-measured (K13 R2R, 25.10.2026, run 2026-10-25-fiio-k13-r2r-02-mac-eqtest): the peaking filter plays Q = register / sqrt(2) (shelves and pass filters play the register as Q),
+    // so the register holds intended Q * peakQScale. Not combinable with peakingGainCompensation.
+    val peakQScale: Double = 1.0,
     // Hardware-measured (KA15, 04.10.2026): with any USER preset active, output = input - 12 dB + preamp register,
     // so the register holds intended preamp + preampOffsetDb.
     val preampOffsetDb: Double = 0.0,
+    // Hardware-measured (SnowSky Melody and Tiny A, 22.10.2026): the DAC keeps whole dB of the preamp only (a write of -3.5 dB reads back -3.0 and the send was NOT VERIFIED), so the plan
+    // rounds the preamp DOWN to a whole dB before it is sent (-3.5 -> -4, quieter, as the WalkPlay family's `floor(preamp + 1e-6)`) and the read-back compares whole dB. Record `preamp.wholeDb`.
+    val preampWholeDb: Boolean = false,
     // Read, write and persistence confirmed on the real DAC (KA15 04.10.2026, K13 R2R 10.10.2026, Melody 13.10.2026, Tiny A 14.10.2026): the
     // Tune page drops its "not hardware tested" line. [status] stays the catalog's source-evidence label.
     val hardwareVerified: Boolean = false,
@@ -80,6 +92,15 @@ data class FiioConfig(
     val nameBySlotId: Boolean = false,
     // Longest USER name the DAC stores: KA15 7, SnowSky 8 (the FiiO web app allows 8).
     val nameLength: Int = 7,
+    // The DAC Settings page is generated from this list (see [DacSettings]); empty = the device has no such page.
+    val settings: List<DacSetting> = emptyList(),
+    // The DAC probe (review builds): pause between its 1-byte GETs, FiiO Control's own deviceCommandInterval for the model (Tiny A 50 ms,
+    // Melody 100 ms, KA15 200 ms; FIIO-CONTROL-APP.md). null = FiiO Control drives this model with another protocol (K13 R2R: 24-bit command
+    // IDs), so our 1-byte GETs mean nothing there and the probe skips the FiiO frame layer.
+    val probeGapMs: Int? = 100,
+    // Reads shown in the DAC Settings page header (sample rate, firmware), the review preview's values per setting id (the hardware values).
+    val info: List<DacInfo> = emptyList(),
+    val settingsPreview: Map<String, Int> = emptyMap(),
 ) {
     /** Intended (acoustic) preamp range: the register range minus [preampOffsetDb]. */
     val preampMinDb: Double get() = minGainDb - preampOffsetDb
@@ -87,6 +108,9 @@ data class FiioConfig(
     /** Intended (acoustic) shelf Q range: the register Q range divided by [shelfQScale]. */
     val shelfQMin: Double get() = minQ / shelfQScale
     val shelfQMax: Double get() = maxQ / shelfQScale
+    /** Intended (acoustic) peak Q range: the register Q range divided by [peakQScale]. */
+    val peakQMin: Double get() = minQ / peakQScale
+    val peakQMax: Double get() = maxQ / peakQScale
     val hardwareGates: List<String> get() = listOf(
         "Verify exact USB identity and HID interface/descriptor/report size before I/O",
         "Verify selection, complete backup, post-save native readback on actual firmware",
@@ -95,193 +119,39 @@ data class FiioConfig(
 }
 
 object FiioCatalog {
+    // The numbers of every rule below (limits, slots, codes, pacing, flags, upstream pins, settings placement, capture identity) are the device
+    // records in devices/*.json, turned into Kotlin by :core:generateDeviceCatalog (GeneratedDevices, see devices/README.md); the evidence for each
+    // value (hardware notes, conflicts) lives in the record. What stays here is the choice and order of the rules and the behaviour behind the flags.
+
+    /** The upstream commit the oracle (catalog-oracle.json) and every rule's source URL are pinned to. */
     const val PINNED_COMMIT = "0617f382e76629792a5933e6933e4b396a756a93"
 
-    /**
-     * USB product ID of the FiiO K13 R2R (vendor 0x2972), measured on the hardware 10.10.2026 (Pixel, firmware 1.15:
-     * "vidpid 2972:0120", product "FIIO K13 R2R"). The same number goes into `res/xml/device_filter.xml` (decimal 288).
-     */
-    const val K13_R2R_PRODUCT_ID = 0x0120
+    /** USB product ID of the FiiO K13 R2R (vendor id and product id both come from its record; the Android attach filter is generated from the same record). */
+    const val K13_R2R_PRODUCT_ID = GeneratedDevices.FIIO_K13_R2R_PRODUCT_ID
 
-    /** USB product IDs of the SnowSky Melody and Tiny A (vendor 0x2972; decimal 294 and 327 in `res/xml/device_filter.xml`). */
-    const val MELODY_PRODUCT_ID = 0x0126
-    const val TINY_A_PRODUCT_ID = 0x0147
+    /** USB product IDs of the SnowSky Melody and Tiny A, from their records. */
+    const val MELODY_PRODUCT_ID = GeneratedDevices.SNOWSKY_MELODY_PRODUCT_ID
+    const val TINY_A_PRODUCT_ID = GeneratedDevices.SNOWSKY_TINY_A_PRODUCT_ID
 
-    /** Contour stable: the FiiO KA15 (hardware-tested on a Pixel, 04.10.2026), the K13 R2R, the SnowSky Melody and Tiny A. Exact literal rules from the
-     * pinned upstream source; the KA15 is extended with what it showed on hardware (see the flags below), the K13 R2R
-     * only with what its own hardware test showed (the fixed band count).
+    /** Contour stable: the FiiO KA15, the K13 R2R, the SnowSky Melody and Tiny A, in this order (the oracle test takes the first two). A new
+     * FiiO-family record is generated as soon as it exists in devices/, but is part of the catalog only when it is listed here.
      */
     val rules: List<FiioConfig> = listOf(
-        FiioConfig(
-            productName = "FIIO KA15",
-            vendorIds = setOf(10610, 2578),
-            reportId = 7,
-            maxFilters = 10,
-            minGainDb = -12.0,
-            maxGainDb = 12.0,
-            minQ = 0.1,
-            maxQ = 10.0,
-            saveCommand = 25,
-            userSlots = setOf(7, 8, 9),
-            declaredWritableSlots = setOf(7, 8, 9),
-            stockSlots = setOf(0, 1, 2, 3, 4, 5, 6),
-            slotLabels = mapOf(0 to "Jazz", 1 to "Pop", 2 to "Rock", 3 to "Dance", 4 to "R&B", 5 to "Classic", 6 to "Hip-hop", 7 to "USER1", 8 to "USER2", 9 to "USER3", 10 to "Close EQ"),
-            bypassSlot = 10,
-            disconnectOnSave = false,
-            peakingGainCompensation = false,
-            shelfAlphaCompensation = false,
-            sourceUrl = "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/usbDeviceConfig.js#L360",
-            constraintsUrl = "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/peqConstraintsConfig.json#L1029",
-            constraintsRef = "peq10Band12dBAllFilters7",
-            upstreamExperimental = false,
-            bestGuessProductName = false,
-            capture = FiioCaptureIdentity(10610, 260, "FIIO KA15", "tests/captures/fiio_fiio_ka15.json"),
-            codecBlockers = listOf(),
-            evidenceCaveats = listOf("Explicit FiiO route for exact FIIO KA15 2972:0104; ignore upstream WalkPlay-SchemeNo10 collision"),
-            fixedBandCount = true,
-            qReadbackSlack = true,
-            consumeWriteEchoes = true,
-            checksumFrames = true,
-            needsAudioStream = true,
-            userSlotNames = true,
-            // Measured 04.10.2026 (research/protocol/PROTOCOL.md, FiiO KA15): shelf Q register = Q * sqrt(2),
-            // preamp register = preamp + 12 dB. Intended ranges: shelf Q up to 10 / sqrt(2), preamp -24..0 dB.
-            shelfQScale = sqrt(2.0),
-            preampOffsetDb = 12.0,
-            hardwareVerified = true,
-        ),
-        FiioConfig(
-            productName = "FIIO K13 R2R",
-            vendorIds = setOf(10610, 2578),
-            reportId = 7,
-            maxFilters = 10,
-            minGainDb = -24.0,
-            maxGainDb = 12.0,
-            minQ = 0.1,
-            maxQ = 10.0,
-            saveCommand = 25,
-            userSlots = setOf(160, 161, 162, 163, 164, 165, 166, 167, 168, 169),
-            declaredWritableSlots = setOf(160, 161, 162, 163, 164, 165, 166, 167, 168, 169),
-            stockSlots = setOf(0, 1, 2, 3, 4, 5, 6, 8),
-            slotLabels = mapOf(240 to "BYPASS", 0 to "Jazz", 1 to "Pop", 2 to "Rock", 3 to "Dance", 4 to "R&B", 5 to "Classic", 6 to "Hip-hop", 8 to "Retro", 9 to "sDamp-1", 10 to "sDamp-2", 160 to "USER1", 161 to "USER2", 162 to "USER3", 163 to "USER4", 164 to "USER5", 165 to "USER6", 166 to "USER7", 167 to "USER8", 168 to "USER9", 169 to "USER10"),
-            bypassSlot = 240,
-            disconnectOnSave = false,
-            peakingGainCompensation = false,
-            shelfAlphaCompensation = false,
-            sourceUrl = "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/usbDeviceConfig.js#L375",
-            constraintsUrl = "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/peqConstraintsConfig.json#L994",
-            constraintsRef = "peq10Band12dBWideAllFilters",
-            upstreamExperimental = false,
-            bestGuessProductName = false,
-            capture = null,
-            codecBlockers = listOf(),
-            evidenceCaveats = listOf("No capture file: the USB product ID was measured on the K13 R2R; of the KA15 hardware flags only the fixed band count"),
-            userSlotPicker = true,
-            // Hardware 10.10.2026 (Pixel): a COUNT write of 9 read back 10 and band 10 kept its old registers. Without
-            // the neutral pad a shorter profile would leave the slot's previous band 10 active and audible.
-            fixedBandCount = true,
-            // Hardware 10.10.2026: writes 16 ms apart all read back, but after a power cycle only the first one to three
-            // survived (USER10: band 1; USER9: preamp and bands 1-2), the rest reverted. With 300 ms per write both
-            // slots kept preamp and all ten bands across a power cycle (same day).
-            writeGapMs = 300,
-            hardwareVerified = true,
-        ),
-        FiioConfig(
-            productName = "SNOWSKY Melody",
-            vendorIds = setOf(10610, 2578),
-            reportId = 7,
-            maxFilters = 10,
-            minGainDb = -12.0,
-            maxGainDb = 12.0,
-            minQ = 0.1,
-            maxQ = 10.0,
-            saveCommand = 25,
-            userSlots = setOf(160, 161, 162),
-            declaredWritableSlots = setOf(160, 161, 162),
-            stockSlots = setOf(0, 1, 2, 3, 4, 5, 6),
-            slotLabels = mapOf(0 to "Jazz", 1 to "Pop", 2 to "Rock", 3 to "Dance", 4 to "R&B", 5 to "Classic", 6 to "Hip-hop", 160 to "USER1", 161 to "USER2", 162 to "USER3", 240 to "Close EQ"),
-            bypassSlot = 240,
-            disconnectOnSave = false,
-            peakingGainCompensation = false,
-            shelfAlphaCompensation = false,
-            sourceUrl = "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/usbDeviceConfig.js#L102",
-            constraintsUrl = "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/peqConstraintsConfig.json#L1029",
-            constraintsRef = "peq10Band12dBAllFilters7",
-            upstreamExperimental = false,
-            bestGuessProductName = false,
-            capture = null,
-            codecBlockers = listOf(),
-            evidenceCaveats = listOf("No capture file: the USB product ID (2972:0126) was measured on the Melody; fixture comment claims -24/+12, authoritative resolved constraints remain -12/+12"),
-            // Melody 1.20, PC capture 13.10.2026: parameter writes echo; Q 3.00 reads back as 3.01.
-            consumeWriteEchoes = true,
-            qReadbackSlack = true,
-            // Pixel 13.10.2026: a COUNT write of 2 echoed and read back 10, and bands 2-9 kept the slot's previous
-            // registers (as on the K13 R2R). The neutral pad keeps a shorter profile from leaving them active.
-            fixedBandCount = true,
-            // Owner 13.10.2026: pick USER1-3 like the K13 R2R. Writes, SAVE and readback confirmed on his unit (PC + Pixel).
-            userSlotPicker = true,
-            hardwareVerified = true,
-            snowskyExchange = true,
-            shortName = "Melody",
-            // FiiO web app 14.10.2026: names stored in the DAC (Tiny A captured; the owner saw names on the Melody too).
-            userSlotNames = true,
-            nameBySlotId = true,
-            nameLength = 8,
-        ),
-        FiioConfig(
-            productName = "SNOWSKY TINY A",
-            vendorIds = setOf(10610, 2578),
-            reportId = 7,
-            // devicePEQ says 5; the owner's Tiny A (2972:0147, 1.10) reads COUNT 10 on every slot (PC probe 13.10.2026).
-            maxFilters = 10,
-            minGainDb = -12.0,
-            maxGainDb = 12.0,
-            minQ = 0.1,
-            maxQ = 10.0,
-            saveCommand = 25,
-            userSlots = setOf(160, 161, 162),
-            declaredWritableSlots = setOf(160, 161, 162),
-            stockSlots = setOf(0, 1, 2, 3, 4, 5, 6),
-            slotLabels = mapOf(0 to "Jazz", 1 to "Pop", 2 to "Rock", 3 to "Dance", 4 to "R&B", 5 to "Classic", 6 to "Hip-hop", 160 to "USER1", 161 to "USER2", 162 to "USER3", 240 to "Close EQ"),
-            bypassSlot = 240,
-            disconnectOnSave = false,
-            peakingGainCompensation = false,
-            shelfAlphaCompensation = false,
-            sourceUrl = "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/usbDeviceConfig.js#L457",
-            constraintsUrl = "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/peqConstraintsConfig.json#L1167",
-            constraintsRef = "peq5Band12dBAllFilters7",
-            upstreamExperimental = false,
-            bestGuessProductName = false,
-            capture = null,
-            codecBlockers = listOf(),
-            evidenceCaveats = listOf("No capture file: the USB product ID (2972:0147) was measured on the Tiny A; devicePEQ constraints say 5 bands, hardware reads 10"),
-            // PC probe 13.10.2026: the Melody firmware behaviour - writes echo, Q 3.00
-            // reads back 3.01, COUNT 2 and 5 read back 10 with the old bands still active, SAVE has no echo, the slot
-            // reply goes stale on USER slots.
-            consumeWriteEchoes = true,
-            qReadbackSlack = true,
-            fixedBandCount = true,
-            userSlotPicker = true,
-            // Owner 14.10.2026: hardware verified, like the Melody.
-            hardwareVerified = true,
-            snowskyExchange = true,
-            shortName = "Tiny A",
-            // FiiO web app 14.10.2026: names stored in the DAC (Tiny A captured; the owner saw names on the Melody too).
-            userSlotNames = true,
-            nameBySlotId = true,
-            nameLength = 8,
-        ),
+        GeneratedDevices.FIIO_KA15,
+        GeneratedDevices.FIIO_K13_R2R,
+        GeneratedDevices.SNOWSKY_MELODY,
+        GeneratedDevices.SNOWSKY_TINY_A,
     )
 
     /** The SnowSky Melody and Tiny A by their exact USB identities (see DeviceTarget.find). */
-    val MELODY: FiioConfig = rules.single { it.productName == "SNOWSKY Melody" }
-    val TINY_A: FiioConfig = rules.single { it.productName == "SNOWSKY TINY A" }
+    val MELODY: FiioConfig = GeneratedDevices.SNOWSKY_MELODY
+    val TINY_A: FiioConfig = GeneratedDevices.SNOWSKY_TINY_A
 
-    /** The KA15 by its exact USB identity 2972:0104 (stable builds route by VID:PID, see DeviceTarget.find). */
-    val KA15: FiioConfig = rules.single { it.productName == "FIIO KA15" }
+    /** The KA15 by its exact USB identity, from its record (stable builds route by VID:PID, see DeviceTarget.find). */
+    val KA15: FiioConfig = GeneratedDevices.FIIO_KA15
 
-    /** The K13 R2R by its exact USB identity 2972:[K13_R2R_PRODUCT_ID] (see DeviceTarget.find). */
-    val K13: FiioConfig = rules.single { it.productName == "FIIO K13 R2R" }
+    /** The K13 R2R by its exact USB identity from its record (see DeviceTarget.find). */
+    val K13: FiioConfig = GeneratedDevices.FIIO_K13_R2R
 
     /** Positive route solely for the captured exact VID/PID/name identity; the HID descriptor is still
      * required before any I/O. Every unknown PID/name returns null; no probing writes.

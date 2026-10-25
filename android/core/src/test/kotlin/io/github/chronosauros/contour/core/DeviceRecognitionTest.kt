@@ -1,5 +1,6 @@
 package io.github.chronosauros.contour.core
 
+import io.github.chronosauros.contour.core.devices.GeneratedDevices
 import io.github.chronosauros.contour.core.native.FiioCatalog
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -41,11 +42,30 @@ class DeviceRecognitionTest {
         assertNull(FiioCatalog.MELODY.capture); assertNull(FiioCatalog.TINY_A.capture)
     }
 
-    /** The USB attach prompt (res/xml/device_filter.xml) lists exactly the same identities, in decimal. */
+    /**
+     * The USB attach prompt (the generated device_filter.xml) lists the seven 1.5 identities in their old order, then the three 1.6 ones, in decimal;
+     * the list is the same as `GeneratedDevices.USB_IDS`, and every one of those identities is a DeviceTarget.
+     */
     @Test fun `device filter lists exactly the recognised identities`() {
-        val xml = java.io.File("../app/src/main/res/xml/device_filter.xml").readText()
+        val xml = java.io.File(requireNotNull(System.getProperty("contour.usbFilterXml"))).readText()
         val listed = Regex("""<usb-device\s+vendor-id="(\d+)"\s+product-id="(\d+)"""").findAll(xml)
-            .map { it.groupValues[1].toInt() to it.groupValues[2].toInt() }.toSet()
-        assertEquals(expected.keys, listed)
+            .map { it.groupValues[1].toInt() to it.groupValues[2].toInt() }.toList()
+        val added = listOf(0x35D8 to 0x011D, 0x31B2 to 0x0111, 0x3302 to 0x12C5) // Dawn Pro 2, Allegro Mini, Echo-A
+        assertEquals(expected.keys.toList() + added, listed)
+        assertEquals(GeneratedDevices.USB_IDS.map { it.vendorId to it.productId }, listed)
+        for ((vid, pid) in added) assertNull(DeviceTarget.find(vid, pid), "%04X:%04X is not in the 1.5 list".format(vid, pid))
+    }
+
+    /** `findDevice` knows all ten identities; the Dawn Pro 2 and the Allegro Mini need their exact USB product name, the Echo-A does not. */
+    @Test fun `findDevice recognises the ten identities of the device records`() {
+        expected.forEach { (id, target) -> assertEquals(target, DeviceTarget.findDevice(id.first, id.second, null)) }
+        assertEquals(DeviceTarget.DAWN_PRO_2, DeviceTarget.findDevice(0x35D8, 0x011D, GeneratedDevices.MOONDROP_DAWN_PRO_2.productName))
+        assertEquals(DeviceTarget.ALLEGRO_MINI, DeviceTarget.findDevice(0x31B2, 0x0111, GeneratedDevices.KIWI_EARS_ALLEGRO_MINI.productName))
+        assertEquals(DeviceTarget.ECHO_A, DeviceTarget.findDevice(0x3302, 0x12C5, null))
+        assertNull(DeviceTarget.findDevice(0x35D8, 0x011D, null))
+        assertNull(DeviceTarget.findDevice(0x31B2, 0x0111, null))
+        // Every identity of the records resolves to its own target, and no two records resolve to one target.
+        val targets = GeneratedDevices.USB_IDS.map { u -> DeviceTarget.findDevice(u.vendorId, u.productId, u.productName) ?: error("${u.recordId} is not recognised") }
+        assertEquals(10, targets.toSet().size)
     }
 }

@@ -7,8 +7,8 @@ import android.hardware.usb.UsbEndpoint
 import android.hardware.usb.UsbInterface
 import android.hardware.usb.UsbManager
 import android.os.SystemClock
-import io.github.chronosauros.contour.core.WalkPlay
 import io.github.chronosauros.contour.core.DeviceTarget
+import io.github.chronosauros.contour.core.WalkPlay
 import io.github.chronosauros.contour.core.native.NativeHidReports
 import java.io.Closeable
 import java.io.IOException
@@ -32,7 +32,6 @@ class HidTransport private constructor(
 
     companion object {
         const val REPLY_TIMEOUT_MS = 200
-        const val RETRIES = 2
         private const val WRITE_TIMEOUT_MS = 1000
 
         /** First configuration only: usbfs returns every configuration, and the FiiO K13 R2R declares two identical ones. */
@@ -73,9 +72,10 @@ class HidTransport private constructor(
 
         fun open(manager: UsbManager, device: UsbDevice, guard: () -> Unit = {}): HidTransport {
             val hids = firstConfigInterfaces(device).filter { it.interfaceClass == UsbConstants.USB_CLASS_HID }
-            val target = DeviceTarget.find(device.vendorId, device.productId)
-                ?: throw IOException("Unsupported DAC")
-            target.fiio?.let { return openNative(manager, device, hids, it.reportId, guard) }
+            val target = DeviceIdentity.target(device) ?: throw IOException("Unsupported DAC")
+            target.fiio?.let { return openNative(manager, device, hids, target, it.reportId, guard) }
+            // Contour 1.6 families (Dawn Pro 2, Allegro Mini, Echo-A): report 0x4B, opened only through the report descriptor that proves its sizes.
+            if (target.walkplay == null) return openNative(manager, device, hids, target, WalkPlay.REPORT_ID, guard)
             val p = requireNotNull(target.walkplay)
             val intf = if (p.experimental) {
                 val suitable = hids.filter { h -> h.alternateSetting == 0 &&
@@ -109,9 +109,10 @@ class HidTransport private constructor(
             return HidTransport(connection, intf, epIn, epOut).also { it.drain() }
         }
 
-        /** FiiO KA15: the one HID interface whose report descriptor declares vendor Input and Output reports
-         * [reportId] in the same collection; nothing is written before this read-only proof. */
-        private fun openNative(manager: UsbManager, device: UsbDevice, hids: List<UsbInterface>, reportId: Int,
+        /** FiiO KA15 and the 1.6 families: the one HID interface whose report descriptor declares vendor Input and Output reports
+         * [reportId] in the same collection, each at least as big as [target]'s protocol needs ([NativeHidReports.minimumRawBytes]: FiiO 17, Allegro Mini 11, Dawn Pro 2
+         * 37 and 38, Echo-A 64); nothing is written before this read-only proof. */
+        private fun openNative(manager: UsbManager, device: UsbDevice, hids: List<UsbInterface>, target: DeviceTarget, reportId: Int,
                                guard: () -> Unit): HidTransport {
             guard()
             data class Target(val intf: UsbInterface, val input: UsbEndpoint, val output: UsbEndpoint?, val shape: NativeHidReports.Shape)
@@ -130,11 +131,9 @@ class HidTransport private constructor(
                         UsbLog.line("HID if ${h.id} report descriptor ${UsbLog.hex(descriptor)}")
                         val eps = (0 until h.endpointCount).map { h.getEndpoint(it) }.filter { it.type == UsbConstants.USB_ENDPOINT_XFER_INT }
                         val shape = NativeHidReports.parse(descriptor, undefinedDesktop = true)
+                        shape.qualify(target, reportId)
                         val outSize = shape.rawSize(reportId, NativeHidReports.Kind.OUTPUT)
-                        require(outSize >= 17)
                         val inSize = shape.rawSize(reportId, NativeHidReports.Kind.INPUT)
-                        require(inSize >= 17)
-                        shape.requireSameOwner(reportId, NativeHidReports.Kind.INPUT, NativeHidReports.Kind.OUTPUT)
                         val input = eps.filter { it.direction == UsbConstants.USB_DIR_IN && it.maxPacketSize >= inSize }.singleOrNull()
                             ?: error("No matching native interrupt IN")
                         // Send like the FiiO web app (WebHID writes to the interrupt OUT endpoint when there is one).
@@ -143,7 +142,7 @@ class HidTransport private constructor(
                         Target(h, input, out, shape)
                     }.onFailure { connection.releaseInterface(h); UsbLog.line("HID if ${h.id} rejected: ${it.message ?: it.javaClass.simpleName}") }.getOrNull()
                 }
-                val target = targets.singleOrNull() ?: throw IOException("No unambiguous descriptor-proven FiiO HID interface")
+                val target = targets.singleOrNull() ?: throw IOException("No unambiguous descriptor-proven native HID interface")
                 guard()
                 if (!connection.claimInterface(target.intf, true)) throw IOException("claimInterface failed")
                 return HidTransport(connection, target.intf, target.input, target.output, target.shape, reportId, guard).also { it.drain() }
@@ -156,6 +155,8 @@ class HidTransport private constructor(
     private val inBuf = ByteArray(maxOf(epIn.maxPacketSize, WalkPlay.REPORT_SIZE,
         nativeReports?.let { s -> nativeReportId?.let { id -> s.rawSizes[NativeHidReports.Key(id, NativeHidReports.Kind.INPUT)] } } ?: 0))
 
+    /** Opened through its HID report descriptor (FiiO, native Moondrop, KT Micro and the read-only Echo-A): the report sizes are proven. */
+    val isNative: Boolean get() = nativeReports != null
     fun nativePayloadSize(id: Int, kind: NativeHidReports.Kind): Int = requireNotNull(nativeReports).payloadSize(id, kind)
     fun checkSession() = sessionGuard()
 
@@ -187,20 +188,22 @@ class HidTransport private constructor(
         if (nativeReports != null && dropped >= 16) throw IOException("Native input queue did not drain; reconnect and read again")
     }
 
-    /** Lock-step request/reply: send, wait up to 200 ms for a matching reply, at most 2 retries. */
-    fun request(report: ByteArray, what: String, matches: (ByteArray) -> Boolean): ByteArray {
-        for (attempt in 0..RETRIES) {
-            send(report)
-            val deadline = SystemClock.elapsedRealtime() + REPLY_TIMEOUT_MS
-            while (true) {
-                val left = deadline - SystemClock.elapsedRealtime()
-                if (left <= 0) break
-                val r = receive(left.toInt()) ?: break
-                if (matches(r)) return r
-            }
-            UsbLog.line("no reply to $what (attempt ${attempt + 1}/${RETRIES + 1})")
+    /** WalkPlay report (64 bytes with the report ID): the reply the family session asked for. Lock-step request: the input queue that built up is
+     * dropped, the report goes out once, and the first reply [matches] accepts within 200 ms is returned. A silent DAC throws the message the native
+     * ports throw ("Native request timed out ..."): the session (WalkPlaySession) asks again, up to 3 attempts. */
+    fun requestOnce(report: ByteArray, matches: (ByteArray) -> Boolean): ByteArray {
+        drain()
+        send(report)
+        val deadline = SystemClock.elapsedRealtime() + REPLY_TIMEOUT_MS
+        while (true) {
+            checkSession()
+            val left = deadline - SystemClock.elapsedRealtime()
+            if (left <= 0) break
+            val r = receive(left.toInt()) ?: break
+            if (matches(r)) { checkSession(); return r }
         }
-        throw IOException("the DAC did not answer $what")
+        UsbLog.line("no reply to %02x %02x %02x".format(report[0], report[1], report[2]))
+        throw IOException("Native request timed out or returned invalid state")
     }
 
     /** Native (KA15): one logical payload, padded to the descriptor's report size behind the report ID. */
