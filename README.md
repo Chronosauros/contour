@@ -2,8 +2,8 @@
 
 # Contour
 
-**An on-the-go EQ manager for the CrinEar Protocol Micro and Max, FiiO KA15 and K13 R2R, SnowSky Melody and Tiny A, TRN Black Pearl, Moondrop Dawn Pro 2 and Echo-A, and Kiwi Ears Allegro Mini.** Keep all your EQ profiles on your phone, plug the
-dongle in, pick one and send it. Plug in, send, unplug - that is the whole routine. On DACs with their own settings, a DAC page changes those from the phone too.
+**An on-the-go EQ manager for USB DACs from CrinEar, FiiO, SnowSky, TRN, Moondrop and Kiwi Ears.** Keep all your EQ profiles on your phone, plug the
+DAC in, pick one and send it. Plug in, send, unplug - that is the whole routine. On DACs with their own settings, a DAC page changes those from the phone too.
 
 **Website: [contoureq.app](https://contoureq.app/)** - a 1.5-minute demo film, the full guide film and the install page.
 
@@ -15,29 +15,31 @@ dongle in, pick one and send it. Plug in, send, unplug - that is the whole routi
 
 ## Why it exists
 
-All ten DACs Contour supports have a parametric EQ built into the DAC itself. Whatever EQ a DAC holds works with every
-app and every device you plug it into - no system equaliser, no app running in the background. But
-the official way to change it on the Protocol dongles is CrinEar's browser tool at [eq.hangout.audio](https://eq.hangout.audio/),
-which the maker lists for desktop (PC and macOS) browsers. There is no official mobile app, and phone
-browsers lack the WebHID support the tool relies on - so in practice you need a computer nearby.
+Contour aims to be the only app you need for your DAC/amp: your EQ profiles on the phone, sent to whichever DAC
+you plug in, and the DAC's own settings where it has them - no vendor app for each brand, no computer.
 
-Contour puts that on your phone. It is deliberately a small, simple tool:
+It started smaller: in September 2026 it was a phone stand-in for
+[CrinEar's desktop browser tool](https://eq.hangout.audio/), for the Protocol Micro alone. A month later it works
+with ten DACs from six makers.
 
-- **Your EQs are saved.** One profile per pair of earphones, or per mood. They live on the phone, ready
-  whenever the dongle is plugged in.
-- **Sending takes seconds.** Plug the dongle in, tap a profile, hold HOLD TO SEND. Contour writes it, reads
-  it back to check every value, and stores it in the dongle's memory.
-- **Then the phone is out of the picture.** Unplug the dongle and use it with your laptop, another phone or
+Every one of them keeps its parametric EQ inside the DAC itself, so the EQ works with every app and every device
+you plug the DAC into - no system equaliser, no app running in the background.
+
+- **Your EQs are saved.** One profile per pair of headphones or IEMs, or per mood. They live on the phone, ready
+  whenever the DAC is plugged in.
+- **Sending takes seconds.** Plug the DAC in, tap a profile, hold HOLD TO SEND. Contour writes it, reads
+  it back to check every value, and stores it in the DAC's memory.
+- **Then the phone is out of the picture.** Unplug the DAC and use it with your laptop, another phone or
   anything else. The EQ stays in it until you send another one.
 - **Real examples to start from.** The first launch includes NIGHTFALL, the maintainer's own tuning for
   the CrinEar Nightfall, and DUSK, the default curve of Moondrop's DSP cable for the Moondrop x Crinacle
   DUSK (so the analog cable sounds like the DSP one), next to a flat PROFILE 1.
 - **You can still tune on the go.** Drag bands on the graph, fine-tune with sliders, paste an AutoEQ
-  profile from the clipboard, or read the current EQ off the dongle.
+  profile from the clipboard, or read the current EQ off the DAC.
 
-Contour does not process audio, does not need the internet and has no accounts. It only talks to the dongle.
+Contour does not process audio, does not need the internet and has no accounts. It only talks to the DAC.
 
-**Watch the [guide](https://contoureq.app/guide/)**: every function of the app in a 6-minute film, with chapters and the full text.
+**See the [guide](https://contoureq.app/guide/)**: a 6-minute film of the basics, with chapters, and the steps written out.
 
 ## Supported hardware
 
@@ -117,7 +119,7 @@ Contour does not process audio, does not need the internet and has no accounts. 
   hardware, the EQ also measured on a test rig.
 
 Contour is unofficial and not affiliated with CrinEar, FiiO, SnowSky, TRN, Moondrop or Kiwi Ears. Other WalkPlay, FiiO,
-Moondrop and KT Micro dongles are possible later (see `ROADMAP.md`); they are not enabled until someone confirms one
+Moondrop and KT Micro DACs are possible later (see `ROADMAP.md`); they are not enabled until someone confirms one
 on real hardware.
 
 Needs Android 9 or newer and a phone with USB host (USB OTG) support.
@@ -132,8 +134,8 @@ gets a third page, **DAC**, in front of them.
   shows only the types your DAC takes); FREQ, GAIN and Q sliders that are fine when you drag slowly and cover the
   whole range when you drag fast; tap any number to type it; tap the selected band chip again to bypass or
   delete the band, or delete it with the minus chip; PREAMP with a MANUAL / AUTO anti-clipping bar; A/B to hear the curve off and on at the same volume (the preamp stays; Protocol Micro only for now).
-- **HOLD TO SEND** (0.7 s hold) writes the profile to the dongle, reads it back, compares every register and
-  only then saves it to the dongle's memory. The button then shows ON DAC, and the profile is saved. HOLD TO SEND,
+- **HOLD TO SEND** (0.7 s hold) writes the profile to the DAC, reads it back, compares every register and
+  only then saves it to the DAC's memory. The button then shows ON DAC, and the profile is saved. HOLD TO SEND,
   its caption and the slot picker sit in a fixed footer, and messages appear under the header, so they never
   cover the button. A send that is interrupted leaves SEND INTERRUPTED, and the DAC is read again when you plug it back in.
 - **DAC** (KA15, Melody, Tiny A, Dawn Pro 2, Allegro Mini): the DAC's own settings, only the ones that DAC has
@@ -151,18 +153,19 @@ gets a third page, **DAC**, in front of them.
   the card. Swipe a card right to SAVE or RESTORE the saved version (a full swipe right saves); swipe it left to
   archive or delete, with UNDO. New profiles start flat, come from the clipboard or a .txt file
   (Equalizer APO, AutoEQ, squig.link or graph.hangout.audio parametric text, or EQ by Ear JSON; Contour also
-  shows up in Open with and Share for .txt files) or are read from the dongle. SAVE .TXT saves a profile as a
+  shows up in Open with and Share for .txt files) or are read from the DAC. SAVE .TXT saves a profile as a
   file in the squig.link format.
 
-On the Protocol Micro and the Echo-A only, HIGH SHELF bands are sent as a mirrored LOW SHELF plus preamp, which gives exactly the
-same curve shape (the Protocol Max, KA15, K13 R2R, Melody, Tiny A, Black Pearl and Dawn Pro 2 have native shelf filters and need no mirroring; the Allegro Mini has PEAK only) (the maths is in `android/core/src/main/kotlin/io/github/chronosauros/contour/core/Device.kt`).
+On the Protocol Micro and the Echo-A, a HIGH SHELF band is sent as a mirrored LOW SHELF plus preamp, which gives exactly
+the same curve shape (the maths is in `android/core/src/main/kotlin/io/github/chronosauros/contour/core/Device.kt`).
+The other DACs have native shelf filters, except the Allegro Mini, which takes PEAK only.
 
 ## Safety
 
 Contour writes to the DAC only when you hold HOLD TO SEND (or confirm an action on the service screen). It
 sends only commands documented in `research/protocol/PROTOCOL.md`, checked on a real device, and verifies
 every write by reading it back. Every value is rounded toward quieter, never louder, and a band or preamp the
-dongle can't store as asked is refused before anything is sent. Still, this is an unofficial tool talking to hardware: use it at your own
+DAC can't store as asked is refused before anything is sent. Still, this is an unofficial tool talking to hardware: use it at your own
 risk (see the warranty disclaimer in `LICENSE`).
 
 ## Install
@@ -208,7 +211,8 @@ Contour has no internet permission, no analytics and no accounts. Profiles stay 
 
 ## Contributing
 
-Issues and pull requests are welcome, especially reports from other WalkPlay-based DACs. Read
+Issues and pull requests are welcome, especially reports from DACs Contour does not support yet (WalkPlay, FiiO,
+Moondrop or KT Micro based). Read
 `CONTRIBUTING.md` first.
 
 ## Licence and credits

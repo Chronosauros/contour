@@ -1,6 +1,6 @@
 # Privacy policy
 
-Last updated: 25 September 2026
+Last updated: 26 October 2026
 
 Contour is an offline Android app. It collects no personal data and sends nothing anywhere.
 
@@ -16,9 +16,19 @@ Contour is an offline Android app. It collects no personal data and sends nothin
   including those local copies.
 - **USB.** The app talks only to the supported USB DAC you plug in, and only after you allow access in
   Android's USB permission dialog. It reads the DAC's EQ settings and writes new ones when you ask it to.
-- **Clipboard.** When you open the new-profile sheet, the app reads the clipboard once, on the phone, to offer
-  pasting an EQ profile. Nothing leaves the phone.
+- **DAC factory reset.** Before a factory reset, Contour saves a copy of the DAC's USER slots, their names and its
+  settings as a text file in the app's private storage, so it can write them back afterwards. Uninstalling the app
+  deletes it.
+- **Clipboard.** When you open the new-profile sheet, the app reads the clipboard on the phone to offer pasting an
+  EQ profile, and reads it again if you plug in a different DAC while the sheet is open. Nothing leaves the phone.
 - **Sharing.** If you use SHARE on a profile, Android's share sheet sends the profile text to the app you pick.
-- **Permissions.** USB host access (for the DAC) and vibration (for haptic feedback). Nothing else.
+- **Files.** SAVE .TXT writes a profile to the file and place you pick in Android's file dialog. When you open or
+  share a .txt file with Contour, it reads only that file, shows you what it found and imports it after you
+  confirm; OPEN FILE in the new-profile sheet reads the file you pick. The app has no storage permission.
+- **Permissions.** Vibration, for haptic feedback. Access to the DAC is granted in Android's USB dialog (see USB
+  above). Nothing else.
+- **This website.** contoureq.app counts anonymous visits with Vercel Web Analytics, without cookies. According to
+  Vercel, a visitor is identified only by a hash created from the request, which is discarded after 24 hours, and the
+  counts are not tied to any individual or IP address.
 
 Questions: open an issue at https://github.com/Chronosauros/contour/issues.

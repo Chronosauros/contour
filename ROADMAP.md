@@ -1,6 +1,7 @@
 # ROADMAP - Contour
 
-Ideas and devices for later. None of these is enabled until it is confirmed on real hardware.
+Contour aims to be the only app you need for your DAC/amp. This file keeps the supported DACs with their protocol
+notes, and the devices and ideas for later; nothing new is enabled until it is confirmed on real hardware.
 
 ## FiiO KA15
 - Supported since Contour 1.3.2, tested on the developer's own hardware (Pixel, 04.10.2026): read on connect, USER1-3 slot picker above HOLD TO SEND, writes only to USER slots (never the stock presets), slot names read from and written to the DAC (up to 7 letters and digits), long-press a slot to rename it.
@@ -31,8 +32,8 @@ Ideas and devices for later. None of these is enabled until it is confirmed on r
 - Open: a test rig measures amplitude, and ALL PASS changes only the phase, so for ALL PASS the evidence is that it leaves the amplitude alone.
 
 ## CrinEar Protocol Max (WalkPlay SchemeNo16)
-- 10 bands, +-10 dB, low and high shelf, no frequency/Q compensation, pregain via command 0x03.
-- Supported since Contour 1.3.0: 10-band PEQ with native shelves, host pregain, strict read-back; A/B off. Tested by a community member on 02.10.2026 (8 bands, peak and shelf filters, no crashes; a small pop when sending is normal - the dongle saves to its memory). Pre-releases are tested in the `beta` build type ("Contour Beta").
+- Supported since Contour 1.3.0, tested by a community member on 02.10.2026 (8 bands, peak and shelf filters, no crashes; a small pop when sending is normal - the dongle saves to its memory): 10-band PEQ with native shelves, host pregain, strict read-back; A/B off.
+- Protocol: 10 bands, +-10 dB, low and high shelf, no frequency/Q compensation, pregain via command 0x03.
 
 ## Moondrop Dawn Pro 2 (Moondrop protocol)
 - Supported since Contour 1.6.0, tested on the developer's own hardware: USB `35D8:011D` with the name `DAWN PRO2` matched exactly. 8 bands, PEAK, LOW SHELF, HIGH SHELF, LOW PASS and HIGH PASS, -18..+12 dB, Q 0.1-10, with a preamp (pre-gain) in the profile. Contour sends the frames of Moondrop Hub to the active PEQ bank (EQ index 7 or 9), reads them back, and writes nothing while the DAC is on one of its own presets. The EQ is measured on a test rig (25.10.2026).
@@ -50,16 +51,15 @@ Ideas and devices for later. None of these is enabled until it is confirmed on r
 - Second protocol family, separate from WalkPlay. devicePEQ matches VID `0x31B2` plus the USB product name ("Kiwi Ears-Allegro Mini", with a hyphen; "Kiwi Ears-Allegro PRO").
 - Register protocol over HID: report ID `0x4B`, frames `<reg> 00 00 00 <cmd>`, base register offset `0x26` on both Allegros (confirmed from a USB capture in devicePEQ).
 - 5 bands, +-12 dB, PEAK only in Kiwi's own tool (devicePEQ lists low and high shelf too), no pregain. One writable slot ("Custom", id `0x03`); `0x02` = EQ off. The device disconnects after save.
-- Not in our copy yet: `ktmicroUsbHidHandler.js` has to be pulled from devicePEQ (MIT) into `research/protocol/devicepeq-ref/`.
 - Other `0x31B2` devices (e.g. "Space Gaming IEM") do not answer this protocol - leave them out.
 
 ## Other brands, grouped by driver
 Source: devicePEQ `usbDeviceConfig.js` (26.09.2026). One driver unlocks the whole group, but each device still needs its own confirmation. devicePEQ marks some devices `experimental` - treat those as unconfirmed even there.
 
-- **WalkPlay (the driver Contour already has)** - only IDs and capability profiles to add: Tanchjim (Space Pro, Ola II DSP, Stargate II), NiceHCK Octave, Truthear KeyX, ddHiFi DSP Cable, Moondrop Dawn Pro 2 under the WalkPlay name `DAWN PRO 2` (not the supported `DAWN PRO2`), CrinEar Protocol Max, generic CS43131 / CS43198 / ES9039 dongles. Experimental there: BGVP MX1, Letshuoer DT04, Moondrop MD-QT-042 / HiFi with PD. Band layouts vary per scheme: 5, 6, 8 or 10 bands, +-10 dB, some peaking only.
+- **WalkPlay (the driver Contour already has)** - only IDs and capability profiles to add: Tanchjim (Space Pro, Ola II DSP, Stargate II), NiceHCK Octave, Truthear KeyX, ddHiFi DSP Cable, Moondrop Dawn Pro 2 under the WalkPlay name `DAWN PRO 2` (not the supported `DAWN PRO2`), generic CS43131 / CS43198 / ES9039 dongles. Experimental there: BGVP MX1, Letshuoer DT04, Moondrop MD-QT-042 / HiFi with PD. Band layouts vary per scheme: 5, 6, 8 or 10 bands, +-10 dB, some peaking only.
 - **KT Micro (the driver above)** - besides both Allegros: Kiwi Ears Chorus and other KT_* chips (matched by PID, registers laid out differently per chip), JCally KT02H20, Tanchjim One DSP / Bunny DSP / Fission, Moondrop CDSP and Chu 2 DSP. All 5 bands, +-12 dB, no pregain.
 - **FiiO / JadeAudio** - the largest group, framed HID protocol (`fiioUsbHidHandler.js` is already in our copy): KA15, KA17, K13 R2R, K15, K17, K19, BTR13, BTR17, BT11, QX11, QX13, FX17, Oak Nano, Retro Nano, Air Link, Air Amp, FP3, FG3, BR15 R2R, JadeAudio JA11 / JIEZI, Snowsky Tiny B. 5 to 31 bands, user slots differ per model (see FiiO KA15, supported since 1.3.2, K13 R2R, and SnowSky Melody and Tiny A above).
-- **Moondrop (own protocol)** - Rays, AG Rays, Marigold, FreeDSP Mini / Pro, Moonriver 3, Dawn Pro 2 (supported since 1.6.0), Echo A (a WalkPlay device, supported since 1.6.0), DHA15, Deco, ddHiFi DSP IEM. Mostly 8 bands, +-12 dB. Old Fashioned uses an older, separate Moondrop protocol (5 bands, max +3 dB).
+- **Moondrop (own protocol)** - Rays, AG Rays, Marigold, FreeDSP Mini / Pro, Moonriver 3, Dawn Pro 2 (supported since 1.6.0), DHA15, Deco, ddHiFi DSP IEM. Mostly 8 bands, +-12 dB. Old Fashioned uses an older, separate Moondrop protocol (5 bands, max +3 dB).
 - **Conexant** - Moondrop FreeDSP and Echo-B (9 bands, +-12 dB).
 - **Fosi Audio / Topping** (VID `0x152A`, shared with Topping) - Fosi DS3: 8 bands, +-12 dB, all filter types, no pregain. The driver is experimental in devicePEQ.
 
@@ -74,8 +74,5 @@ Suggested order after 1.6.0: more FiiO models (the handler is already in our cop
 ## Reddit feedback 27.09.2026 (freestyler7) - to check later
 - Clear EQ - done in 1.1.1 (CLEAR EQ in EDIT PROFILE).
 - A screen with the DAC's own settings (01.10) - done in 1.6.0 as the DAC page on the KA15, Melody, Tiny A, Dawn Pro 2 and Allegro Mini. Hardware volume (30.09) - done there as VOLUME on the KA15, Melody and Tiny A; not yet on the Protocol Micro, which needs WalkPlay's own tool.
-- Quick A/B button: bypass EQ but keep the preamp. Concern: Micro pops when saving a profile while music plays, so A/B through flash writes would be jarring. **Planned for the next release (owner, 29.09).** Switch through RAM: send only the changed bands + TEMP_WRITE, no preamp, no ramp - the quietest method in the ear test. A/B must never commit to flash; after unplug the DAC falls back to the last sent EQ. Placement chosen 29.09: raised "A/B" button in the top-right corner of the graph card; in B it turns accent and reads "EQ OFF  PREAMP KEPT" (owner), the curve lies flat with a ghost of the EQ, band controls dim, preamp row stays bright (`docs/changes/2026-09-29-ab-toggle/variant-graph-*.png`).
+- Quick A/B button: bypass the EQ but keep the preamp - done in 1.2.0 for the Protocol Micro. It switches through RAM (only the changed bands + TEMP_WRITE, no preamp, no ramp - the quietest method in the ear test) and never commits to flash; after unplugging, the DAC falls back to the last sent EQ. Other DACs: not yet.
 - Question: does the DAC have an in-memory (RAM) mode? Answered 29.09: yes, TEMP_WRITE applies band writes live and is lost on unplug. CLEAR EQ stays as it is (flash write) unless the owner decides otherwise.
-
-## Header layout after the undo buttons
-- 1.1.1 shrinks the name 30 -> 17 sp before the ellipsis. A full header rebuild waits for A/B, which also wants header space.
