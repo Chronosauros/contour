@@ -316,7 +316,7 @@ firmware family and behave the same way.
 
 ## FiiO DAC page and factory reset (KA15, Melody, Tiny A; Contour 1.6.0)
 
-- The DAC page reads and writes the FiiO settings commands that the maker's app offers for the model: KA15 VOLUME, VOLUME STEPS, BALANCE, DAC FILTER, OUTPUT, DRE,
+- The DAC page reads and writes the FiiO settings commands that the maker's app offers for the model: KA15 VOLUME, VOLUME STEPS, BALANCE, FILTER, OUTPUT, DRE,
   BRIGHTNESS, SCREEN OFF, ROTATION, LANGUAGE; Melody VOLUME, VOLUME STEPS, BALANCE, FILTER, GAIN, OUTPUT, DRE, IN-LINE MIC, LIGHT, BUTTONS; Tiny A VOLUME, VOLUME STEPS, BALANCE,
   IN-LINE MIC, LIGHT. USB AUDIO (UAC, setting 0x20) is read-only on all of them: switching it re-enumerates the DAC, so a read-back cannot close the loop. The K13 R2R has no settings list.
 - Factory reset (KA15 and Melody) is the one place where FiiO command 0x21 is ever sent, and only after Contour has read the USER slots, their names and the settings and saved them on the phone.

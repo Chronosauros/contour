@@ -62,7 +62,7 @@ Contour does not process audio, does not need the internet and has no accounts. 
   quieter than EQ off. Since 1.3.3 Contour compensates both, so the curve and preamp you see are what it plays
   (measured on the device, see `research/protocol/PROTOCOL.md`). The FiiO app shows the stored values, so its
   shelf Q and preamp look higher. Since 1.6.0 a Q just outside the range is read instead of blocking the slot.
-  The DAC page has VOLUME, VOLUME STEPS, BALANCE, DAC FILTER, OUTPUT, DRE, BRIGHTNESS, SCREEN OFF, ROTATION and
+  The DAC page has VOLUME, VOLUME STEPS, BALANCE, FILTER, OUTPUT, DRE, BRIGHTNESS, SCREEN OFF, ROTATION and
   LANGUAGE (USB AUDIO is shown, read-only). FACTORY RESET first saves a copy of the USER slots, their names and
   the settings on the phone, then resets the DAC, shows what changed and offers WRITE THE SAVED COPY BACK.
 - **FiiO K13 R2R** (USB `2972:0120`, FiiO protocol, desktop DAC/amp): 10 bands, PEAK, LOW SHELF and HIGH SHELF, and

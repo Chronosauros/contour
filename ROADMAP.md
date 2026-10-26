@@ -5,7 +5,7 @@ Ideas and devices for later. None of these is enabled until it is confirmed on r
 ## FiiO KA15
 - Supported since Contour 1.3.2, tested on the developer's own hardware (Pixel, 04.10.2026): read on connect, USER1-3 slot picker above HOLD TO SEND, writes only to USER slots (never the stock presets), slot names read from and written to the DAC (up to 7 letters and digits), long-press a slot to rename it.
 - Protocol: HID, report ID 7, 10 bands, +-12 dB, PEAK, LOW SHELF and HIGH SHELF, plus HIGH PASS, LOW PASS, BAND PASS and ALL PASS since 1.6.0 (see "High pass, low pass, band pass, all pass" below). USB `2972:0104` matched exactly. The KA15 answers HID only while a USB audio stream runs, so Contour plays a silent stream during reads and writes.
-- 1.6.0: DAC page (VOLUME, VOLUME STEPS, BALANCE, DAC FILTER, OUTPUT, DRE, BRIGHTNESS, SCREEN OFF, ROTATION, LANGUAGE; USB AUDIO read-only; sample rate and firmware in the header) and FACTORY RESET that saves the USER slots, their names and the settings on the phone first and offers to write them back. A Q just outside the range is read instead of blocking the slot.
+- 1.6.0: DAC page (VOLUME, VOLUME STEPS, BALANCE, FILTER, OUTPUT, DRE, BRIGHTNESS, SCREEN OFF, ROTATION, LANGUAGE; USB AUDIO read-only; sample rate and firmware in the header) and FACTORY RESET that saves the USER slots, their names and the settings on the phone first and offers to write them back. A Q just outside the range is read instead of blocking the slot.
 - Open: one save out of ten on 04.10 got no answer until the dongle was replugged; not reproduced since.
 
 ## FiiO K13 R2R
