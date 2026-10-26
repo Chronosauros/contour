@@ -157,11 +157,9 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
                         // A previous launch may have written one or two seed files then failed. Keep their
                         // ids and finish only missing roles; unrelated pre-state libraries are never seeded.
                         val now = System.currentTimeMillis()
-                        val seeds = listOf(
-                            Profile(newId(), "PROFILE 1", "", "headphones", listOf(flatBand()), null, now, now),
-                            Profile(newId(), "NIGHTFALL", "CRINEAR NIGHTFALL", "moon", nightfallBands(), null, now, now + 1),
-                            Profile(newId(), "DUSK", "MOONDROP DUSK DEFAULT DSP", "sun", duskBands(), null, now, now + 2),
-                        )
+                        val seeds = EXAMPLES.mapIndexed { i, (name, icon, bands) ->
+                            Profile(newId(), name, "", icon, bands.map { it.copy(id = bandId()) }, null, now, now + i)
+                        }
                         for (seed in seeds) if (list.none { it.name == seed.name }) {
                             store.save(seed)
                             list = list + seed
@@ -203,14 +201,9 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     }
 
     private fun isOriginalSeed(p: Profile): Boolean {
-        if (p.archived || p.preampDb != null || p.bands.any { it.type != FilterType.PEAK || !it.enabled }) return false
-        val shape = p.bands.map { listOf(it.freqHz, it.gainDb, it.q) }
-        return when (p.name) {
-            "PROFILE 1" -> p.subtitle == "" && p.icon == "headphones" && shape == listOf(listOf(1000.0, 0.0, 0.71))
-            "NIGHTFALL" -> p.subtitle == "CRINEAR NIGHTFALL" && p.icon == "moon" && shape == listOf(listOf(6207.0, -3.0, 3.9), listOf(12450.0, -4.5, 6.05), listOf(15911.0, 3.0, 6.3))
-            "DUSK" -> p.subtitle == "MOONDROP DUSK DEFAULT DSP" && p.icon == "sun" && shape == listOf(listOf(1400.0, -3.0, 0.8), listOf(5400.0, -3.0, 2.0), listOf(14000.0, -5.0, 2.0))
-            else -> false
-        }
+        if (p.archived || p.preampDb != null) return false
+        val shape = p.bands.map { it.copy(id = "") }
+        return EXAMPLES.any { (name, icon, bands) -> p.name == name && p.subtitle == "" && p.icon == icon && shape == bands }
     }
 
     fun newId(): String = UUID.randomUUID().toString().substring(0, 13)
@@ -218,20 +211,6 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
 
     /** The band a fresh profile starts with: PEAK 1 kHz, 0 dB, Q 0.71 (flat, ready to drag). */
     fun flatBand() = Band(bandId(), FilterType.PEAK, 1000.0, 0.0, 0.71)
-
-    /** The maintainer's own tuning for the CrinEar Nightfall, shipped as the example profile. */
-    private fun nightfallBands() = listOf(
-        Band(bandId(), FilterType.PEAK, 6207.0, -3.0, 3.9),
-        Band(bandId(), FilterType.PEAK, 12450.0, -4.5, 6.05),
-        Band(bandId(), FilterType.PEAK, 15911.0, 3.0, 6.3),
-    )
-
-    /** The DUSK-Default curve of Moondrop's DSP cable (values published by Crinacle), for the analog cable. */
-    private fun duskBands() = listOf(
-        Band(bandId(), FilterType.PEAK, 1400.0, -3.0, 0.8),
-        Band(bandId(), FilterType.PEAK, 5400.0, -3.0, 2.0),
-        Band(bandId(), FilterType.PEAK, 14000.0, -5.0, 2.0),
-    )
 
     // ---- persistence ----------------------------------------------------------------------------------
 
@@ -715,6 +694,13 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         const val UNDO_MS = 5000L
         /** Steps of UNDO (and REDO) kept per profile. */
         const val HISTORY_MAX = 100
+        /** The first-run library (since 1.6.1): three general profiles, no headphone names (band ids are given when seeded).
+         *  Whole-dB shelf gains stay on the Micro's preamp grid; the Allegro Mini, PEAK only, takes SOFTER VOCALS alone. */
+        private val EXAMPLES = listOf(
+            Triple("BASS BOOST", "speaker", listOf(Band("", FilterType.LOW_SHELF, 105.0, 5.0, 0.7))),
+            Triple("SOFTER VOCALS", "leaf", listOf(Band("", FilterType.PEAK, 3196.0, -3.0, 0.85), Band("", FilterType.PEAK, 6001.0, -1.2, 2.06))),
+            Triple("TREBLE BOOST", "sun", listOf(Band("", FilterType.HIGH_SHELF, 7000.0, 4.0, 0.7))),
+        )
     }
 }
 

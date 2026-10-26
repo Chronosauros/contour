@@ -44,7 +44,7 @@
     "peakQScale": 1.0,
     "emulation": null
   },
-  "preamp": { "present": true, "db": [-24, 0], "step": 0.1, "wholeDb": false, "registerOffsetDb": 12 },
+  "preamp": { "present": true, "db": [-24, 0], "step": 0.1, "wholeDb": true, "registerOffsetDb": 12 },
   "slots": {
     "user": [7, 8, 9],
     "declaredWritable": [7, 8, 9],
@@ -146,7 +146,7 @@
       "vendorApp": "FiiO Control and web app show the raw register (research/protocol/PROTOCOL.md:235)",
       "pcBench": "run:2026-10-20-fiio-ka15-09-eqtest preamp -6 and -3 dB in USER2: level -6.001 / -3.001 dB, PASS",
       "persistence": null,
-      "phone": "Pixel 2026-10-04 preamp -4.0 AUTO, register +8.0, level -4.00 dB",
+      "phone": "Pixel 2026-10-04 preamp -4.0 AUTO, register +8.0, level -4.00 dB; Pixel 2026-10-26 (FW 1.1.6, play-store/bug-2026-10-26-ka15-fractional-preamp.md): a fractional preamp resets the DAC during the send (-4.5, -3.5, -2.5 dB = register 7.5, 8.5, 9.5), every whole dB passes (-6, -5, -4, -3, -2): the plan rounds the preamp down to a whole dB (preamp.wholeDb)",
       "acoustic": "run:2026-10-20-fiio-ka15-04-fr USER1 plays 5.00 dB below Close EQ = register 7 - 12 dB"
     },
     "slots.write": {
@@ -204,7 +204,7 @@
     "peq.types": ["core/native/FiioCatalog.kt:45-48 (default map PK 0, LS 1, HS 2)"],
     "peq.heldTypes": ["core/native/FiioCatalog.kt:11-14 (codes 3-6 from the K13 / Tiny A capture), :47"],
     "peq.shelfQScale": ["core/native/FiioCatalog.kt:73-76,169 (sqrt(2.0), not a decimal literal)"],
-    "preamp": ["core/native/FiioCatalog.kt:77-79,104-106,170", "core/DeviceTarget.kt:24-27 (step 0.1 for every device)"],
+    "preamp": ["core/native/FiioCatalog.kt:77-79,104-106,170", "core/DeviceTarget.kt:79 (preampStep: whole dB where preamp.wholeDb)", "core/native/FiioCodec.kt:100 (send floors to whole dB)"],
     "slots": ["core/native/FiioCatalog.kt:145-149,166"],
     "slots.names": ["core/native/FiioCatalog.kt:68-70,93 (nameLength default 7)"],
     "pacing": ["core/native/FiioCatalog.kt:58-67,172"],

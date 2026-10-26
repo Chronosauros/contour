@@ -52,12 +52,12 @@ class NativeBenchLogTest {
                 ?: throw java.io.IOException("Native request timed out or returned invalid state")
     }
 
-    /** The example EQ: bands 0-6 of the upstream KA15 capture (all PK), preamp -11.8 dB = the capture's preamp write (register 2). */
+    /** The example EQ: bands 0-6 of the upstream KA15 capture (all PK), preamp -12.0 dB = register 0 (the capture wrote register 2 = -11.8 dB; the KA15 keeps whole dB since 26.10.2026, so the log writes 0). */
     private val example = Profile("bench", "", bands = listOf(
         Band("b0", FilterType.PEAK, 20.0, 4.2, 0.60), Band("b1", FilterType.PEAK, 56.0, 1.2, 2.90),
         Band("b2", FilterType.PEAK, 150.0, -3.1, 0.70), Band("b3", FilterType.PEAK, 430.0, 11.8, 3.82),
         Band("b4", FilterType.PEAK, 770.0, -3.9, 0.90), Band("b5", FilterType.PEAK, 2900.0, 1.9, 3.72),
-        Band("b6", FilterType.PEAK, 5000.0, 6.7, 1.00)), preampDb = -11.8, createdAt = 0, updatedAt = 0)
+        Band("b6", FilterType.PEAK, 5000.0, 6.7, 1.00)), preampDb = -12.0, createdAt = 0, updatedAt = 0)
 
     @Test fun `KA15 write to USER1 from USER3 replays byte for byte and verifies`() {
         val frames = log("ka15-user1-write.log")
@@ -67,7 +67,7 @@ class NativeBenchLogTest {
         assertTrue(r.verified); assertNull(r.reason)
         val back = r.readback as NativeState.Fiio
         assertEquals(7, back.slot)
-        assertEquals(-11.8, back.preamp)
+        assertEquals(-12.0, back.preamp)
         assertEquals(10, back.raw.count)
         assertEquals(FiioRegisters(3, 430, 118, 383, 0), back.raw.bands[3]) // written 382, read 383: inside the app's Q slack
         assertEquals(FiioRegisters(7, 100, 0, 100, 0), back.raw.bands[7]) // the neutral pad after the seven bands
@@ -91,6 +91,7 @@ class NativeBenchLogTest {
         val captured = capture.filter { it[4] in setOf(FiioCodec.PREAMP, FiioCodec.COUNT, FiioCodec.BAND) }
         for ((ours, theirs) in writes.map(::masked).zip(captured)) {
             if (ours[4] == FiioCodec.BAND && ours[6] == 7) continue // capture band 7 (7200 Hz) is not in the 7-band example: Contour pads it
+            if (ours[4] == FiioCodec.PREAMP) { assertEquals(listOf(0, 2), theirs.subList(6, 8)); assertEquals(listOf(0, 0), ours.subList(6, 8)); continue } // the capture wrote -11.8 dB, the example whole -12.0
             assertEquals(theirs, ours)
         }
         val pad = writes.single { (it[4].toInt() and 255) == FiioCodec.BAND && it[6].toInt() == 7 }

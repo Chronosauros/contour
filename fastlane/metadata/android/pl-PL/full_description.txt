@@ -7,7 +7,7 @@
 <li><b>Strojenie w drodze</b> - przeciągaj pasma na wykresie, dostrajaj suwakami, wklej lub otwórz profil parametryczny AutoEQ, squig.link lub Equalizer APO (schowek albo plik .txt) albo odczytaj aktualne EQ z dongla. Profil można udostępnić jako tekst Equalizer APO albo zapisać jako plik .txt.</li>
 <li><b>Typy filtrów tam, gdzie przetwornik je ma</b> - PEAK, LOW SHELF i HIGH SHELF, a do tego HIGH PASS i LOW PASS w większości przetworników oraz BAND PASS i ALL PASS w FiiO i SnowSky.</li>
 <li><b>Ustawienia samego przetwornika</b> - w DAC-ach, które je mają (FiiO KA15, SnowSky Melody i Tiny A, Moondrop Dawn Pro 2, Kiwi Ears Allegro Mini), strona DAC pokazuje głośność, balans, filtr, wyjście i resztę. FACTORY RESET w KA15 i Melody najpierw zapisuje kopię slotów i ustawień, a potem proponuje jej przywrócenie.</li>
-<li><b>Przykłady na start</b> - NIGHTFALL i DUSK obok płaskiego profilu.</li>
+<li><b>Przykłady na start</b> - BASS BOOST, SOFTER VOCALS i TREBLE BOOST.</li>
 </ul>
 <p>Contour jest darmowy i open source (Apache-2.0). Nie przetwarza dźwięku, nie potrzebuje internetu, nie ma kont, reklam ani śledzenia. Rozmawia tylko z donglem. Wymaga Androida 9+ i obsługi USB host (OTG).</p>
 <p>Każdy przetwornik z listy poza Protocol Max jest przetestowany na sprzęcie autora; Protocol Max przetestował użytkownik ze społeczności na prawdziwym urządzeniu. Pasma: Protocol Micro, Echo-A i Dawn Pro 2 mają 8, Allegro Mini 5, pozostałe 10. FiiO KA15, SnowSky Melody i Tiny A mają po trzy sloty USER, FiiO K13 R2R dziesięć. Do TRN Black Pearl najpierw wepnij słuchawki: bez nich nie pojawia się na USB.</p>

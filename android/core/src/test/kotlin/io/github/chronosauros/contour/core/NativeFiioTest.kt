@@ -186,17 +186,20 @@ class NativeFiioTest {
         val c = codec("FIIO KA15")
         val b = peak().copy(freqHz = 1000.9, gainDb = -3.26, q = 0.716)
         // KA15 register = intended pregain + 12 dB (measured 04.10.2026). Pregain is rounded DOWN (quieter, never louder):
-        // -4.35 -> -44 tenths + 120 = 76 (it was -43 + 120 = 77 with nearest rounding). On the 0.1 dB grid nothing changes.
-        val p = plan(c, listOf(b), -4.35)
+        // -4.35 -> -44 tenths + 120 = 76 (it was -43 + 120 = 77 with nearest rounding) on a 0.1 dB DAC; the KA15 itself keeps whole dB (Pixel 26.10.2026: a fractional preamp reset it), -4.35 -> -5 -> register 70.
+        assertEquals(70, plan(c, listOf(b), -4.35).expected.preampTenths)
+        assertEquals(80, plan(c, listOf(b), -4.0 - 1e-9).expected.preampTenths) // -4.0 a hair off the grid stays -4
+        val tenth = FiioCodec(c.config.copy(preampWholeDb = false))
+        val p = plan(tenth, listOf(b), -4.35)
         // Band gain -3.26 is rounded DOWN too: -33 tenths (it was -32, JS truncation toward zero, a shallower cut).
         assertEquals(FiioRegisters(0, 1000, -33, 72, 0), p.expected.bands.single())
         assertEquals(76, p.expected.preampTenths)
         assertEquals(listOf(0, 76), p.writes.first().bytes.subList(6, 8))
-        assertEquals(77, plan(c, listOf(b), -4.3).expected.preampTenths) // already on the grid: unchanged
+        assertEquals(77, plan(tenth, listOf(b), -4.3).expected.preampTenths) // already on the grid: unchanged
         assertEquals(-43, c.parsePreamp(reply(FiioCodec.PREAMP, pair(-43))))
         val zero = plan(c, preamp = -12.0)
         assertEquals(listOf(0, 0), zero.writes.first().bytes.subList(6, 8))
-        val negative = FiioCodec(c.config.copy(preampOffsetDb = 0.0))
+        val negative = FiioCodec(tenth.config.copy(preampOffsetDb = 0.0))
         assertEquals(listOf(255, 212), plan(negative, listOf(b), -4.35).writes.first().bytes.subList(6, 8))
         assertEquals(0, plan(c, listOf(b.copy(enabled = false))).expected.bands.single().gainTenths)
         assertEquals(1, plan(c, listOf(peak().copy(type = FilterType.LOW_SHELF))).expected.bands.single().typeCode)
@@ -382,9 +385,11 @@ class NativeFiioTest {
             val eq = c.importExact(native)
             assertEquals(native, plan(c, eq.bands, eq.preampDb, 7).expected, "type $type gain $gain Q $q")
         }
+        // Whole dB registers come back exactly; a 0.1 dB register (another app, a stock preset) reads as it is and the next send rounds it down to a whole dB.
         for (r in -120..120) {
             val eq = c.importExact(FiioSnapshot("FIIO KA15", 7, 1, r, listOf(FiioRegisters(0, 1000, 0, 100, 0))))
-            assertEquals(r, plan(c, eq.bands, eq.preampDb, 7).expected.preampTenths)
+            assertEquals((r - 120) / 10.0, eq.preampDb, 1e-9)
+            assertEquals(Math.floorDiv(r, 10) * 10, plan(c, eq.bands, eq.preampDb, 7).expected.preampTenths, "register $r")
         }
 
         // Boundaries: shelf Q 7.07 -> register 1000, 7.08 refused with the intended range; PK keeps Q 10.

@@ -7948,7 +7948,7 @@
                 "gainMinDb": -12.0,
                 "name": "FIIO KA15",
                 "peakQScale": 1.0,
-                "preampWholeDb": false,
+                "preampWholeDb": true,
                 "productId": 260,
                 "qMax": 10.0,
                 "qMin": 0.1,
@@ -7971,7 +7971,7 @@
                 "supportsAb": false,
                 "preampMin": -24.0,
                 "preampMax": 0.0,
-                "preampStep": 0.1,
+                "preampStep": 1.0,
                 "destinationSlot": 7,
                 "settingsCount": 11,
                 "infoCount": 2
@@ -8099,7 +8099,7 @@
                     "peakQScale": 1.0,
                     "peakingGainCompensation": false,
                     "preampOffsetDb": 12.0,
-                    "preampWholeDb": false,
+                    "preampWholeDb": true,
                     "probeGapMs": 200,
                     "productName": "FIIO KA15",
                     "qReadbackSlack": true,
@@ -9253,7 +9253,7 @@
                                 "productName": "FIIO KA15",
                                 "activeSlot": 7,
                                 "count": 10,
-                                "preampTenths": 85,
+                                "preampTenths": 80,
                                 "bands": [
                                     "0:1000:-20:100:0",
                                     "1:100:0:100:0",
@@ -9275,7 +9275,7 @@
                                 "READ_ONLY 07 bb0b0010170047ee"
                             ],
                             "writes": [
-                                "WRITE_ACTIVE_BANK 07 aa0a00001702005508ee",
+                                "WRITE_ACTIVE_BANK 07 aa0a00001702005037ee",
                                 "WRITE_ACTIVE_BANK 07 aa0a000118010a66ee",
                                 "WRITE_ACTIVE_BANK 07 aa0a0002150800ffec03e800640046ee",
                                 "WRITE_ACTIVE_BANK 07 aa0a00031508010000006400640007ee",
@@ -9325,7 +9325,7 @@
                                     "PEAK 100.0 0.0 1.0 true",
                                     "PEAK 100.0 0.0 1.0 true"
                                 ],
-                                "preampDb": -3.5
+                                "preampDb": -4.0
                             }
                         }
                     },
@@ -11269,7 +11269,7 @@
                                 "productName": "FIIO KA15",
                                 "activeSlot": 7,
                                 "count": 10,
-                                "preampTenths": 95,
+                                "preampTenths": 90,
                                 "bands": [
                                     "0:8000:40:99:2",
                                     "1:1000:-20:100:0",
@@ -11291,7 +11291,7 @@
                                 "READ_ONLY 07 bb0b0010170047ee"
                             ],
                             "writes": [
-                                "WRITE_ACTIVE_BANK 07 aa0a00001702005f76ee",
+                                "WRITE_ACTIVE_BANK 07 aa0a00001702005a49ee",
                                 "WRITE_ACTIVE_BANK 07 aa0a000118010a66ee",
                                 "WRITE_ACTIVE_BANK 07 aa0a000215080000281f4000630239ee",
                                 "WRITE_ACTIVE_BANK 07 aa0a0003150801ffec03e8006400d0ee",
@@ -11341,7 +11341,7 @@
                                     "PEAK 100.0 0.0 1.0 true",
                                     "PEAK 100.0 0.0 1.0 true"
                                 ],
-                                "preampDb": -2.5
+                                "preampDb": -3.0
                             }
                         }
                     },

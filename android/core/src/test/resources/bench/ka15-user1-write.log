@@ -1,6 +1,6 @@
 # Bench log (format of the PC measuring rig's bench tool, which drives this same NativeSession): TX = a report
 # Contour sends (report ID 7 first, zero padding removed), RX = every input report read for it (none = no reply).
-# KA15 plays USER3 (slot 9); write of 7 PK bands and preamp -11.8 dB to USER1 (slot 7), no rename. Comments name
+# KA15 plays USER3 (slot 9); write of 7 PK bands and preamp -12.0 dB to USER1 (slot 7), no rename. Comments name
 # the frame and the pause the session asks before it.
 # SYNTHETIC run (20.10.2026, no hardware): contour-bench drove a scripted DAC. The RX of the first read (active slot,
 # count, preamp, bands 0-9 and the closing slot) are copied verbatim from the upstream capture fiio_fiio_ka15.json
@@ -79,8 +79,8 @@ TX 07 bb 0b 00 40 15 01 09 0a ee  # query band 9
 RX 07 bb 0b 00 14 15 08 09 00 00 00 64 00 64 00 00 ee
 TX 07 bb 0b 00 41 16 00 53 ee  # query active slot
 RX 07 bb 0b 00 15 16 01 07 00 ee
-TX 07 aa 0a 00 11 17 02 00 02 e1 ee  # write preamp register 2 (-11.8 dB intended)
-RX 07 aa 0a 00 11 17 02 00 02 e1 ee
+TX 07 aa 0a 00 11 17 02 00 00 5d ee  # write preamp register 0 (-12.0 dB intended; the capture wrote register 2 = -11.8, the KA15 keeps whole dB since 26.10.2026)
+RX 07 aa 0a 00 11 17 02 00 00 5d ee
 TX 07 aa 0a 00 12 18 01 0a d6 ee  # write filter count 10
 RX 07 aa 0a 00 12 18 01 0a d6 ee
 TX 07 aa 0a 00 13 15 08 00 00 2a 00 14 00 3c 00 71 ee  # write band 0: PEAK 20 Hz, gain 4.2 dB, Q register 60 (pause 100 ms before)
@@ -115,7 +115,7 @@ RX 07 bb 0b 00 1a 16 01 07 00 ee
 TX 07 bb 0b 00 46 18 00 f5 ee  # query filter count
 RX 07 bb 0b 00 1b 18 01 0a 00 ee
 TX 07 bb 0b 00 47 17 00 46 ee  # query preamp
-RX 07 bb 0b 00 1c 17 02 00 02 00 ee
+RX 07 bb 0b 00 1c 17 02 00 00 00 ee
 TX 07 bb 0b 00 48 15 01 00 8a ee  # query band 0
 RX 07 bb 0b 00 1d 15 08 00 00 2a 00 14 00 3c 00 00 ee
 TX 07 bb 0b 00 49 15 01 01 5b ee  # query band 1

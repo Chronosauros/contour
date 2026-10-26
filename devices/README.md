@@ -44,7 +44,7 @@ its record still holds `"unknown"` for the fields a `stable` walkplay record nee
   gain registers).
 - `peq`: `bands`, `fixedBandCount`, `freqHz`, `gainDb`, `q`, `types` (offered, with their code), `heldTypes`
   (known to the code but not offered), `shelfQScale`, `peakQScale` (FiiO records), `coefficientRateHz` (WalkPlay records), `emulation`.
-- `preamp`: `present`, `db`, `step`, `wholeDb` (the DAC keeps whole dB of the preamp only, so the plan rounds it down to a whole dB: WalkPlay Micro, Max, TRN and, since 1.6, the SnowSky Melody and Tiny A), `registerOffsetDb`.
+- `preamp`: `present`, `db`, `step`, `wholeDb` (the DAC keeps whole dB of the preamp only, so the plan rounds it down to a whole dB: WalkPlay Micro, Max, TRN and, since 1.6, the SnowSky Melody and Tiny A; since 1.6.1 the FiiO KA15, which resets during a send with a fractional preamp), `registerOffsetDb`.
 - `slots`: `user`, `declaredWritable`, `stock`, `bypass`, `labels`, `picker`, `names`; for WalkPlay also
   `slotByte` and `factoryFlat`; for Moondrop also `writableIndexes` (every EQ index whose bank Contour writes, with evidence per index; `driver.peqBank` is the one the Hub's first frame
   asks for and must be in the set; on any other index the unit is on one of its own presets and nothing is written).

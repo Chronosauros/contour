@@ -78,7 +78,7 @@ class NativeIntegrationTest {
         val p = profile(preamp = -2.3)
         val result = NativeSession(t, port).write(p, true)
         assertTrue(result.verified); assertTrue(result.readback!!.matches(p))
-        assertEquals(-2.3, result.readback!!.preamp)
+        assertEquals(-3.0, result.readback!!.preamp) // the KA15 keeps whole dB: -2.3 goes out as -3, and the read-back matches the profile
         val select = port.events.indexOf("write:22"); val pregain = port.events.indexOf("write:23")
         assertTrue(select >= 0 && pregain > select)
         assertEquals(listOf("pause:300", "read:22", "read:48", "read:48", "read:48", "read:22", "read:24", "read:23", "read:21", "read:22"), port.events.subList(select + 1, pregain))
@@ -219,11 +219,11 @@ class NativeIntegrationTest {
         assertFails { NativeSession(t, port).write(profile(), true) }
         assertFalse(port.events.any { it.startsWith("write") })
     }
-    @Test fun `native imports retain fractional preamp and reproduce raw matcher`() {
+    @Test fun `native imports return the whole-dB preamp the KA15 holds and reproduce raw matcher`() {
         val t = fiio(); val port = FiioPort(t)
         val p = profile(preamp = -2.3); NativeSession(t, port).write(p, true)
         val state = NativeSession(t, port).read(); val eq = state.importExact()
-        assertEquals(-2.3, eq.preampDb); assertTrue(state.matches(p.copy(bands = eq.bands, preampDb = eq.preampDb)))
+        assertEquals(-3.0, eq.preampDb); assertTrue(state.matches(p.copy(bands = eq.bands, preampDb = eq.preampDb)))
     }
     @Test fun `generation change after mutation prevents every following report and publication`() {
         val t = fiio(); val port = FiioPort(t); port.detachAfterMutation = true
@@ -235,9 +235,10 @@ class NativeIntegrationTest {
         assertFails { NativeSession(t, port).write(profile(), true) }
         assertFalse(port.live)
     }
-    @Test fun `KA15 pregain is fractional within its own range and A B stays Micro only`() {
+    @Test fun `KA15 pregain is whole dB within its own range and A B stays Micro only`() {
         // Intended range: register -12..+12 dB minus the measured 12 dB offset (04.10.2026).
-        val t = fiio(); assertEquals(-24.0, t.preampMin); assertEquals(0.0, t.preampMax); assertEquals(0.1, t.preampStep)
+        // Whole dB since 26.10.2026: a fractional preamp reset the KA15 during the send (Pixel, FW 1.1.6).
+        val t = fiio(); assertEquals(-24.0, t.preampMin); assertEquals(0.0, t.preampMax); assertEquals(1.0, t.preampStep)
         assertEquals(-11.7, t.shownPreamp(profile(preamp = -11.7)))
         assertFalse(t.supportsAb); assertTrue(t.native); assertFalse(t.stable)
         assertEquals(10, t.caps.bands); assertEquals(-12.0, t.caps.gainMinDb); assertEquals(12.0, t.caps.gainMaxDb)

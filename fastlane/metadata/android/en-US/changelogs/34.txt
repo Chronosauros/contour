@@ -1,0 +1,3 @@
+The privacy policy is now in the app: ABOUT · PRIVACY · LICENCES at the foot of the Library.
+New installs start with three general profiles: BASS BOOST, SOFTER VOCALS and TREBLE BOOST. An existing library stays as it is.
+FiiO KA15: a preamp with a fraction (for example -4.5 dB from an imported file) is sent as the whole dB below it (-5 dB). A fractional preamp reset the KA15 during the send.

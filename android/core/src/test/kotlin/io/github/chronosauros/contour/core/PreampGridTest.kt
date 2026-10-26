@@ -4,19 +4,17 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
 
-/** The editor keeps what the DAC cannot hold off the screen: a whole-dB preamp on the SnowSky DACs and the gain of an emulated HIGH SHELF on the Micro and the Echo-A. */
+/** The editor keeps what the DAC cannot hold off the screen: a whole-dB preamp on the SnowSky DACs and the KA15 and the gain of an emulated HIGH SHELF on the Micro and the Echo-A. */
 class PreampGridTest {
     @Test fun `a manual preamp moves in whole dB exactly where the DAC keeps whole dB, and 0,1 dB elsewhere`() {
-        for (t in listOf(DeviceTarget.MELODY, DeviceTarget.TINY_A)) {
+        for (t in listOf(DeviceTarget.MELODY, DeviceTarget.TINY_A, DeviceTarget.KA15)) { // KA15: a fractional preamp reset it during the send (Pixel 26.10.2026)
             assertEquals(1.0, t.preampStep, t.caps.name)
             assertEquals(-4.0, t.heldPreamp(-3.5), t.caps.name) // the number the DAC holds after a send (Melody and Tiny A phone runs 25.10.2026: -3.5 written as -4)
             assertEquals(-3.0, t.heldPreamp(-3.0), t.caps.name)
             assertEquals(2.0, t.heldPreamp(2.9), t.caps.name)
         }
-        for (t in listOf(DeviceTarget.KA15, DeviceTarget.K13)) {
-            assertEquals(0.1, t.preampStep, t.caps.name)
-            assertEquals(-3.5, t.heldPreamp(-3.5), t.caps.name)
-        }
+        assertEquals(0.1, DeviceTarget.K13.preampStep)
+        assertEquals(-3.5, DeviceTarget.K13.heldPreamp(-3.5))
     }
 
     @Test fun `an emulated HIGH SHELF keeps its gain on the preamp grid, so the level is exact`() {

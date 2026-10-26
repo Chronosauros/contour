@@ -24,8 +24,8 @@ android {
         minSdk = 28
         targetSdk = 36
         // v0.2 (versionCode 2) is on the Pixel; `install -r` refuses a lower code, and keeps the data only on update.
-        versionCode = 33
-        versionName = "1.6.0" // literal: F-Droid reads it for update checks
+        versionCode = 34
+        versionName = "1.6.1" // literal: F-Droid reads it for update checks
     }
 
     signingConfigs {
@@ -86,7 +86,7 @@ android {
     }
 }
 
-/** Copies the repo's licence files into the APK (assets/licences/), for the in-app licences screen. */
+/** Copies the repo's licence files and PRIVACY.md into the APK (assets/licences/), for the in-app about, privacy and licences screen. */
 abstract class CopyLicences : DefaultTask() {
     @get:InputFiles
     abstract val sources: ConfigurableFileCollection
@@ -105,7 +105,7 @@ abstract class CopyLicences : DefaultTask() {
 
 val copyLicences = tasks.register<CopyLicences>("copyLicences") {
     val repo = rootProject.projectDir.parentFile
-    sources.from(repo.resolve("NOTICE"), repo.resolve("THIRD_PARTY_NOTICES.md"), repo.resolve("LICENSE"))
+    sources.from(repo.resolve("NOTICE"), repo.resolve("THIRD_PARTY_NOTICES.md"), repo.resolve("LICENSE"), repo.resolve("PRIVACY.md"))
 }
 
 /**

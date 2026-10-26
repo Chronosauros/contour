@@ -95,7 +95,7 @@ class QConventionsTest {
 
     // ---- SnowSky Melody and Tiny A: the preamp in whole dB ------------------------------------------------------------------------------------------
 
-    @Test fun `Melody and Tiny A keep whole dB of the preamp - the plan rounds down and the read-back verifies - KA15 and K13 keep 0_1 dB`() {
+    @Test fun `Melody and Tiny A keep whole dB of the preamp - the plan rounds down and the read-back verifies - KA15 rounds to whole dB too - K13 keeps 0_1 dB`() {
         for ((name, t) in listOf("SNOWSKY Melody" to DeviceTarget.MELODY, "SNOWSKY TINY A" to DeviceTarget.TINY_A)) {
             val c = codec(name)
             assertTrue(c.config.preampWholeDb && t.caps.preampWholeDb, name)
@@ -109,10 +109,13 @@ class QConventionsTest {
             }
             assertEquals(emptyList(), t.issues(profile(listOf(Band("p", FilterType.PEAK, 1000.0, 1.0, 1.0)), -3.5)), name)
         }
-        // KA15 (register = preamp + 12 dB) and K13 hold 0.1 dB on hardware: unchanged
-        assertEquals(85, plan(codec("FIIO KA15"), listOf(Band("p", FilterType.PEAK, 1000.0, 1.0, 1.0)), -3.5).expected.preampTenths)
+        // KA15 (register = preamp + 12 dB): a fractional preamp reset the DAC during the send (Pixel 26.10.2026: -4.5, -3.5, -2.5 dB), so -3.5 goes out as -4 (register 80)
+        assertTrue(DeviceTarget.KA15.caps.preampWholeDb)
+        assertEquals(80, plan(codec("FIIO KA15"), listOf(Band("p", FilterType.PEAK, 1000.0, 1.0, 1.0)), -3.5).expected.preampTenths)
+        assertEquals(1.0, DeviceTarget.KA15.preampStep)
+        // K13 holds 0.1 dB (no fractional failure seen)
         assertEquals(-35, plan(codec("FIIO K13 R2R"), listOf(Band("p", FilterType.PEAK, 1000.0, 1.0, 1.0)), -3.5).expected.preampTenths)
-        for (t in listOf(DeviceTarget.KA15, DeviceTarget.K13)) assertFalse(t.caps.preampWholeDb, t.caps.name)
+        assertFalse(DeviceTarget.K13.caps.preampWholeDb)
     }
 
     // ---- WalkPlay: coefficient rate ------------------------------------------------------------------------------------------------------------------

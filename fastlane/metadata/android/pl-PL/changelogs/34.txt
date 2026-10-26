@@ -1,0 +1,3 @@
+Polityka prywatności jest teraz w aplikacji: ABOUT · PRIVACY · LICENCES na dole Biblioteki.
+Nowa instalacja zaczyna od trzech ogólnych profili: BASS BOOST, SOFTER VOCALS i TREBLE BOOST. Istniejąca biblioteka zostaje bez zmian.
+FiiO KA15: preamp z ułamkiem (np. -4.5 dB z importowanego pliku) idzie jako niższy cały dB (-5 dB). Ułamkowy preamp resetował KA15 przy wysyłce.

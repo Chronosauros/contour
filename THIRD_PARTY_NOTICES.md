@@ -10,8 +10,7 @@ Summary:
 - The only code from other projects is a port of the WalkPlay protocol and coefficient maths from
   devicePEQ, licensed under 0BSD, and the TRN Black Pearl write sequence from FreeDSP-Studio, licensed under
   the MIT License (both in section 2).
-- The app bundles no fonts, images or sounds made by others. The only outside data is the three filter
-  settings of the DUSK example profile, credited in section 3.
+- The app bundles no fonts, images, sounds or EQ settings made by others.
 
 ## 1. Libraries inside the app (all Apache License 2.0)
 
@@ -122,12 +121,8 @@ Formulas and formats, no code copied:
 - Fonts: none bundled. On Pixel phones the app asks the system for its Google Sans font by name; elsewhere it
   uses the system sans-serif. Google Sans is not part of this project and is not distributed with it.
 - Icons: Material Icons, from the AndroidX libraries in section 1 (Apache License 2.0).
-- Example profiles created on first launch:
-  - NIGHTFALL: the maintainer's own tuning, part of this project under the Apache License 2.0.
-  - DUSK: the "DUSK-Default" curve of the Moondrop DSP cable for the Moondrop x Crinacle DUSK, as published by
-    Crinacle at https://crinacle.com/2024/04/10/moondrop-x-crinacle-dusk-eq-dsp-values/ (three peaking
-    filters: 1400 Hz -3 dB Q 0.8, 5400 Hz -3 dB Q 2.0, 14000 Hz -5 dB Q 2.0). These are factual EQ settings,
-    included with credit so users can hear the DSP cable's default on other sources.
+- Example profiles created on first launch: general settings written for this project, part of it under the
+  Apache License 2.0.
 - The launcher icon and all other graphics are drawn in code or as vector resources in this repo, under the
   project's Apache License 2.0.
 
@@ -156,6 +151,6 @@ app's response maths, under the Apache License 2.0.
 
 ## 6. Trademarks
 
-CrinEar, Protocol Micro, Nightfall, WalkPlay, Moondrop, Crinacle, DUSK, Google, Pixel, Google Sans, Android and all other product names belong to
+CrinEar, Protocol Micro, WalkPlay, Moondrop, Google, Pixel, Google Sans, Android and all other product names belong to
 their owners. Contour is an unofficial project and is not affiliated with or endorsed by any of them. Names are
 used only to say which hardware and formats Contour works with.

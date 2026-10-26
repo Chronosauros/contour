@@ -167,13 +167,13 @@ fun LibraryScreen(
     val listState = rememberLazyListState()
     var openId by remember { mutableStateOf<String?>(null) }
     var openSide by remember { mutableStateOf(Side.RIGHT) }
-    // The shipped DUSK profile hints the swipe until someone swipes a row once - remembered for good
-    // (app data survives updates), so the hint never returns, whatever happens to the DUSK profile.
+    // The shipped SOFTER VOCALS profile (DUSK before 1.6.1) hints the swipe until someone swipes a row once - remembered
+    // for good (app data survives updates), so the hint never returns, whatever happens to that profile.
     val context = androidx.compose.ui.platform.LocalContext.current
     val prefs = remember { context.getSharedPreferences("ui", android.content.Context.MODE_PRIVATE) }
     var swiped by remember { mutableStateOf(prefs.getBoolean("swipeHintDone", false)) }
     var nudge by remember { mutableIntStateOf(0) }
-    val hintId = if (swiped) null else model.active.firstOrNull { it.name == "DUSK" }?.id
+    val hintId = if (swiped) null else model.active.firstOrNull { it.name == "SOFTER VOCALS" || it.name == "DUSK" }?.id
     LaunchedEffect(visible, hintId) {
         if (!visible || hintId == null) return@LaunchedEffect
         delay(900)
@@ -326,7 +326,7 @@ fun LibraryScreen(
                 }
             }
             item(key = "licences") {
-                // the way to the open-source notices, always visible at the foot of the library, with the version
+                // the way to the privacy policy and the open-source notices, always visible at the foot of the library, with the version
                 Box(
                     Modifier
                         .fillMaxWidth()
@@ -336,7 +336,7 @@ fun LibraryScreen(
                         .testTag("licences"),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("ABOUT & LICENCES · ${BuildConfig.VERSION_NAME}", style = Type.small, color = c.textMute)
+                    Text("ABOUT · PRIVACY · LICENCES · ${BuildConfig.VERSION_NAME}", style = Type.small, color = c.textMute)
                 }
             }
         }

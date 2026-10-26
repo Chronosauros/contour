@@ -464,7 +464,8 @@ class FiioCodec(val config: FiioConfig) {
         val compiled = bands.mapIndexed { i, b -> compileBand(b, i) }
         require(compiled.size == registers.size && compiled.zip(registers).all { (c, r) -> registersMatch(c, r) }) { "Import cannot reproduce exact native registers" }
         val preamp = intendedPreampDb(snapshot.preampTenths)
-        require(preampTenths(preamp) + offsetTenths == snapshot.preampTenths) { "Import cannot reproduce exact native pregain" }
+        // A [FiioConfig.preampWholeDb] DAC is sent whole dB only, but a 0.1 dB register it holds (KA15 set by another app, a stock preset) reads as it is: the next send rounds it down.
+        require(config.preampWholeDb || preampTenths(preamp) + offsetTenths == snapshot.preampTenths) { "Import cannot reproduce exact native pregain" }
         return FiioExactEq(bands, preamp)
     }
 }

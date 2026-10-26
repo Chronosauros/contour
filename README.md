@@ -31,9 +31,8 @@ you plug the DAC into - no system equaliser, no app running in the background.
   it back to check every value, and stores it in the DAC's memory.
 - **Then the phone is out of the picture.** Unplug the DAC and use it with your laptop, another phone or
   anything else. The EQ stays in it until you send another one.
-- **Real examples to start from.** The first launch includes NIGHTFALL, the maintainer's own tuning for
-  the CrinEar Nightfall, and DUSK, the default curve of Moondrop's DSP cable for the Moondrop x Crinacle
-  DUSK (so the analog cable sounds like the DSP one), next to a flat PROFILE 1.
+- **Examples to start from.** The first launch includes three general profiles: BASS BOOST, SOFTER VOCALS
+  and TREBLE BOOST.
 - **You can still tune on the go.** Drag bands on the graph, fine-tune with sliders, paste an AutoEQ
   profile from the clipboard, or read the current EQ off the DAC.
 
@@ -222,11 +221,9 @@ Contour is licensed under the Apache License, Version 2.0 (`LICENSE`).
 The WalkPlay and FiiO protocols and the biquad coefficient maths are ported from
 [devicePEQ](https://github.com/jeromeof/devicePEQ) by Jerome O'Flaherty (0BSD). The TRN Black Pearl write sequence follows
 [FreeDSP-Studio](https://github.com/EffectiveEquivalent/FreeDSP-Studio) by EffectiveEquivalent (MIT). Every third-party
-component and its licence is listed in `THIRD_PARTY_NOTICES.md`; attributions are in `NOTICE`. The DUSK
-example profile uses the DUSK-Default DSP curve
-[published by Crinacle](https://crinacle.com/2024/04/10/moondrop-x-crinacle-dusk-eq-dsp-values/). In the app,
+component and its licence is listed in `THIRD_PARTY_NOTICES.md`; attributions are in `NOTICE`. In the app,
 all of this is under **ABOUT & LICENCES** at the bottom of the Library.
 
 Contour is an unofficial project, not affiliated with or endorsed by CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears or any other brand. CrinEar,
-Protocol Micro, Protocol Max, FiiO, KA15, K13, SnowSky, Melody, Tiny A, TRN, Black Pearl, Moondrop, Dawn Pro 2, Echo-A, Kiwi Ears, Allegro Mini, KT Micro, Nightfall, WalkPlay, Crinacle, DUSK and other product names belong to their owners
+Protocol Micro, Protocol Max, FiiO, KA15, K13, SnowSky, Melody, Tiny A, TRN, Black Pearl, Moondrop, Dawn Pro 2, Echo-A, Kiwi Ears, Allegro Mini, KT Micro, WalkPlay and other product names belong to their owners
 and are used only to say what Contour works with.

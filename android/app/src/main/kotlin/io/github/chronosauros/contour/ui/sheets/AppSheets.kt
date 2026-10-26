@@ -372,7 +372,7 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
             Param.GAIN -> "%.1f - +%.1f dB".format(java.util.Locale.ROOT, caps.gainMinDb, caps.gainMaxDb)
             Param.Q -> "0.10 - 10.00"
             Param.PREAMP -> if (model.protocol.usesWalkPlayRules) "curve preamp, device %.0f - %s%.0f dB".format(java.util.Locale.ROOT, model.protocol.preampMin, if (model.protocol.preampMax > 0) "+" else "", model.protocol.preampMax)
-                else "%.1f - +%.1f dB, step 0.1".format(java.util.Locale.ROOT, model.protocol.preampMin, model.protocol.preampMax)
+                else "%.1f - +%.1f dB, step %s".format(java.util.Locale.ROOT, model.protocol.preampMin, model.protocol.preampMax, if (model.protocol.preampStep == 1.0) "1" else "0.1")
         }
         OutlinedTextField(
             value = text,
