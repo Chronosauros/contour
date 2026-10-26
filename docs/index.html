@@ -107,7 +107,10 @@ h2.mega{margin-bottom:.36em}
 .on-o .btn{background:var(--k);color:var(--o)}
 .on-k .btn{background:var(--o);color:var(--k)}
 .btn.line{background:transparent;color:inherit;box-shadow:inset 0 0 0 3px currentColor}
-.kofi-line{font-size:15px;line-height:1.4;margin-top:12px}
+.cta-note{font-size:14px;line-height:1.4;margin:10px 0 0}
+.hero .cta .btn.line{min-height:52px;padding:0 18px;font-size:16px;box-shadow:inset 0 0 0 2px currentColor}
+.hero .cta .btn.line svg{width:20px;height:20px}
+.hero .cta .btn.line.kofi svg{width:22px;height:22px}
 .play-clip{display:none}
 .reduced .play-clip{display:inline-flex}
 
@@ -139,21 +142,19 @@ h2.mega{margin-bottom:.36em}
 .hero .mega{--mega:min(12vw,17svh,210px)}
 /* the image bottom is flush with the section bottom: phone and wrist always run off the edge; the phone top lands 88px down */
 .hero .dev-pos{position:absolute;z-index:2;width:var(--dw);right:calc(var(--dw) * -.12);bottom:var(--sink)}
-/* supported devices: makers in columns, models big enough to read at a glance */
-.devs{margin-top:clamp(22px,2.4vw,34px);max-width:40em}
-.devs-h{font-size:15px;font-weight:600;display:flex;gap:14px;align-items:baseline}
-.devs-h a{font-weight:600;text-decoration-thickness:1.5px;text-underline-offset:3px}
-.devs-list{list-style:none;margin:10px 0 0;padding:0;display:grid;grid-template-columns:repeat(3,max-content);row-gap:10px;border-top:3px solid currentColor}
-.devs-list li{display:flex;flex-direction:column;padding:12px clamp(14px,2vw,32px) 0 0}
-.devs-list li + li{padding-left:clamp(12px,1.2vw,18px);border-left:3px solid currentColor}
-@media (min-width:1000px){.devs-list li:nth-child(3n+1){border-left:0;padding-left:0}}
-.devs .mk{font-size:15px;font-weight:600;margin-bottom:4px}
-.devs .md{font-size:clamp(20px,1.75vw,27px);font-weight:700;letter-spacing:-.015em;line-height:1.18;white-space:nowrap}
+/* supported devices: one tile per DAC, brand small above the model name */
+.devs{margin-top:clamp(22px,2.4vw,34px);max-width:min(100%,46em)}
+.devs-h{font-size:16px;font-weight:700;display:flex;flex-wrap:wrap;gap:4px 14px;align-items:baseline}
+.devs-h a{font-weight:600;font-size:15px;text-decoration-thickness:1.5px;text-underline-offset:3px}
+.devs-list{list-style:none;margin:10px 0 0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(146px,1fr));gap:6px}
+.devs-list li{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:8px;background:rgba(0,0,0,.08)}
+.devs .tx{display:block;min-width:0}
+.devs .mk{display:block;font-size:12px;font-weight:600;line-height:1.2}
+.devs .md{display:block;font-size:16px;font-weight:700;letter-spacing:-.01em;line-height:1.2}
 .devs-soon{font-size:15px;font-weight:600;margin-top:12px}
-@media (min-width:821px) and (max-height:940px){.devs{margin-top:16px}.devs .md{font-size:min(22px,2.9svh)}.devs-list li{padding-top:8px}}
-@media (min-width:821px) and (max-width:999px){.devs-list{grid-template-columns:repeat(2,max-content);row-gap:10px}.devs-list li:nth-child(odd){border-left:0;padding-left:0}}
-@media (min-width:821px) and (max-height:940px){.hero .mega{--mega:min(11vw,calc(28svh - 128px))}.hero .intro{font-size:16px;line-height:1.4;margin-top:4px}.hero .sub{margin-top:6px}.hero .cta{margin-top:14px}.hero .kofi-line{margin-top:6px}.hero-text{padding-bottom:12px}.hero .devs{margin-top:6px}.hero .devs-list{margin-top:6px;row-gap:4px}.hero .devs-list li{padding-top:6px}.hero .devs-soon{margin-top:8px}}
-@media (min-width:821px) and (max-width:999px) and (max-height:940px){.hero{--dw:min(calc((var(--hh) - 88px) * 1.029),42vw,1100px)}.hero .mega{--mega:min(11vw,calc(28svh - 152px))}.hero .intro{max-width:36em}.hero .devs .md{line-height:1.1}.hero .devs-list{row-gap:2px}.hero .devs-list li{padding-top:4px}.hero .cta{margin-top:10px}}
+@media (min-width:821px) and (max-height:940px){.devs{margin-top:16px}.devs .md{font-size:min(16px,2.4svh)}.devs-list li{padding-top:6px;padding-bottom:6px}}
+@media (min-width:821px) and (max-height:940px){.hero .mega{--mega:min(11vw,calc(28svh - 128px))}.hero .intro{font-size:16px;line-height:1.4;margin-top:4px}.hero .sub{margin-top:6px}.hero .cta{margin-top:14px}.hero .cta-note{margin-top:6px}.hero-text{padding-bottom:12px}.hero .devs{margin-top:6px}.hero .devs-list{margin-top:6px}.hero .devs-soon{margin-top:8px}}
+@media (min-width:821px) and (max-width:999px) and (max-height:940px){.hero{--dw:min(calc((var(--hh) - 88px) * 1.029),42vw,1100px)}.hero .mega{--mega:min(11vw,calc(28svh - 152px))}.hero .intro{max-width:36em}.hero .cta{margin-top:10px}.hero .cta .btn:not(.line){flex:1 0 100%;min-height:52px}}
 
 /* phone sections: phone bleeds off the bottom and one side */
 .show{--dw:min(calc((100svh - 40px) * .944),50vw,860px);position:relative;overflow:hidden;min-height:calc(var(--dw) * .972 + 72px)}
@@ -224,12 +225,10 @@ footer a{margin-right:14px}
   .cta .btn{flex:1 1 auto}
   /* the buttons come before the device list, so they stay on the first screen */
   .hero .devs{order:1}
-  /* devices: one maker per row, models side by side */
-  .devs-list{grid-template-columns:minmax(0,1fr)}
-  .devs-list li,.devs-list li + li{display:grid;grid-template-columns:84px minmax(0,1fr);align-items:baseline;column-gap:12px;padding:10px 0;border-left:0;border-bottom:3px solid currentColor}
-  .devs .mk{grid-row:span 2;margin:0}
-  .devs .md{grid-column:2}
-  .devs .md{font-size:21px}
+  /* devices: two tiles per row */
+  .devs-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .hero .cta .btn:not(.line){flex:1 0 100%}
+  .hero .cta .btn.line{flex:1 1 100%;min-height:48px}
   .show{--dw:142vw;min-height:0;display:flex;flex-direction:column}
   .show-text{order:1}
   .show .dev-box{order:2}
@@ -259,6 +258,8 @@ footer a{margin-right:14px}
 .pend .ln > span{transform:translateY(108%)}
 .dev.pend{transform:translateY(34%)}
 @media print{.drift,.dev-pos,.pair-phones,.cta,.elsewhere{display:none!important}}
+/* hero buttons: the main key spans the two secondary keys */@media (min-width:821px){.hero .cta{display:grid;grid-template-columns:repeat(2,max-content);justify-content:start;gap:10px 12px}.hero .cta .btn:first-child{grid-column:1 / -1;justify-self:stretch}.hero .cta .btn.line{flex:none}}
+/* device tiles: 3 columns on narrow desktops, 5 columns (two rows) from 1200 px */@media (min-width:821px) and (max-width:1199px) and (max-height:940px){.hero .devs-list{gap:4px}.hero .devs-list li{padding:3px 8px}.hero .devs .mk{line-height:1.1}.hero .devs-soon{margin-top:6px}.hero .cta{margin-top:8px;gap:8px 10px}}@media (min-width:821px) and (max-width:1199px){.devs-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}.devs-list li{padding:5px 8px}.devs .md{font-size:14px;white-space:nowrap}.devs .mk{font-size:11px}}@media (min-width:1200px){.devs-list{grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}.devs-list li{padding:6px 8px;gap:6px}.devs .md{font-size:14px;white-space:nowrap}.devs .mk{font-size:11px}}
 </style>
 <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
 <script defer src="/_vercel/insights/script.js"></script>
@@ -277,22 +278,27 @@ footer a{margin-right:14px}
     <p class="sub" data-fade>Edit, keep and send EQ profiles to your DAC.</p>
     <p class="intro" data-fade>Shape the parametric EQ on your Android phone, keep a profile for every pair of headphones or IEMs and send one to your DAC with a single hold. The DAC stores it, so it works with every app and every device you plug it into.</p>
     <div class="devs" data-fade>
-      <p class="devs-h">Works with <a href="devices/">device details</a></p>
-      <ul class="devs-list">
-        <li><span class="mk">CrinEar</span><span class="md">Protocol Micro</span><span class="md">Protocol Max</span></li>
-        <li><span class="mk">FiiO</span><span class="md">KA15</span><span class="md">K13 R2R</span></li>
-        <li><span class="mk">SnowSky</span><span class="md">Melody</span><span class="md">Tiny A</span></li>
-        <li><span class="mk">TRN</span><span class="md">Black Pearl</span></li>
-        <li><span class="mk">Moondrop</span><span class="md">Dawn Pro 2</span><span class="md">Echo-A</span></li>
-        <li><span class="mk">Kiwi Ears</span><span class="md">Allegro Mini</span></li>
+      <p class="devs-h">Works with 10 USB DACs <a href="devices/">device details</a></p>
+      <ul class="devs-list" aria-label="Supported USB DACs, brand and model">
+        <li><span class="tx"><span class="mk">CrinEar</span> <span class="md">Protocol Micro</span></span></li>
+        <li><span class="tx"><span class="mk">CrinEar</span> <span class="md">Protocol Max</span></span></li>
+        <li><span class="tx"><span class="mk">FiiO</span> <span class="md">KA15</span></span></li>
+        <li><span class="tx"><span class="mk">FiiO</span> <span class="md">K13 R2R</span></span></li>
+        <li><span class="tx"><span class="mk">SnowSky</span> <span class="md">Melody</span></span></li>
+        <li><span class="tx"><span class="mk">SnowSky</span> <span class="md">Tiny A</span></span></li>
+        <li><span class="tx"><span class="mk">TRN</span> <span class="md">Black Pearl</span></span></li>
+        <li><span class="tx"><span class="mk">Moondrop</span> <span class="md">Dawn Pro 2</span></span></li>
+        <li><span class="tx"><span class="mk">Moondrop</span> <span class="md">Echo-A</span></span></li>
+        <li><span class="tx"><span class="mk">Kiwi Ears</span> <span class="md">Allegro Mini</span></span></li>
       </ul>
       <p class="devs-soon">More devices coming soon.</p>
     </div>
     <div class="cta" data-fade>
       <a class="btn" href="https://groups.google.com/g/contour-eq-testers">Join the Google Play test</a>
-      <a class="btn line" href="https://github.com/Chronosauros/contour">GitHub</a>
+      <a class="btn line" href="https://github.com/Chronosauros/contour" aria-label="Contour on GitHub - free and open source"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg>Free and open source</a>
+      <a class="btn line kofi" href="https://ko-fi.com/chronosaur"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.351 2.715c-2.7 0-4.986.025-6.83.26C2.078 3.285 0 5.154 0 8.61c0 3.506.182 6.13 1.585 8.493 1.584 2.701 4.233 4.182 7.662 4.182h.83c4.209 0 6.494-2.234 7.637-4a9.5 9.5 0 0 0 1.091-2.338C21.792 14.688 24 12.22 24 9.208v-.415c0-3.247-2.13-5.507-5.792-5.87-1.558-.156-2.65-.208-6.857-.208m0 1.947c4.208 0 5.09.052 6.571.182 2.624.311 4.13 1.584 4.13 4v.39c0 2.156-1.792 3.844-3.87 3.844h-.935l-.156.649c-.208 1.013-.597 1.818-1.039 2.546-.909 1.428-2.545 3.064-5.922 3.064h-.805c-2.571 0-4.831-.883-6.078-3.195-1.09-2-1.298-4.155-1.298-7.506 0-2.181.857-3.402 3.012-3.714 1.533-.233 3.559-.26 6.39-.26m6.547 2.287c-.416 0-.65.234-.65.546v2.935c0 .311.234.545.65.545 1.324 0 2.051-.754 2.051-2s-.727-2.026-2.052-2.026m-10.39.182c-1.818 0-3.013 1.48-3.013 3.142 0 1.533.858 2.857 1.949 3.897.727.701 1.87 1.429 2.649 1.896a1.47 1.47 0 0 0 1.507 0c.78-.467 1.922-1.195 2.623-1.896 1.117-1.039 1.974-2.364 1.974-3.897 0-1.662-1.247-3.142-3.039-3.142-1.065 0-1.792.545-2.338 1.298-.493-.753-1.246-1.298-2.312-1.298"/></svg>Support on Ko-fi</a>
     </div>
-    <p class="kofi-line" data-fade>Free and open source. Tips on <a href="https://ko-fi.com/chronosaur">Ko-fi</a> buy the next DAC for Contour to support.</p>
+    <p class="cta-note" data-fade>Tips buy the next DAC for Contour to support.</p>
   </div>
   <div class="dev-box"><div class="dev-pos"><div class="drift" data-drift="hero"><div class="dev">
     <div class="scr app-dark"><img src="images/screen-eq.webp" width="720" height="1465" fetchpriority="high" alt="The Contour EQ page: a curve with draggable band dots, sliders below and a row of slot buttons"></div>
