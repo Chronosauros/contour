@@ -42,80 +42,173 @@ Contour does not process audio, does not need the internet and has no accounts. 
 
 ## Supported hardware
 
-- **CrinEar Protocol Micro** (USB `3302:C20F`, WalkPlay chip): 8 bands, PEAK, LOW SHELF and HIGH SHELF, and since
-  1.6.0 LOW PASS and HIGH PASS, gain -10 to +10 dB, Q 0.1 to 10, 20 Hz to 20 kHz, preamp -30 to 0 dB in whole dB.
-  Since 1.6.0 the filters are computed for the 93 750 Hz the DAC's DSP runs at (before, every filter played about
-  2% too low). The DAC accepts a positive preamp but does not get louder, so Contour offers none. Tested on the
-  developer's own hardware, the EQ also measured on a test rig. Its settings, hardware volume and reset are not
-  supported yet: they would need the maker's own tool (WalkPlay), which Contour has no access to.
-- **CrinEar Protocol Max** (USB `3302:43CC`, WalkPlay chip): 10 bands, PEAK, LOW SHELF and HIGH SHELF as native filters,
-  gain -10 to +10 dB, Q 0.1 to 10, 20 Hz to 20 kHz, preamp -30 to 0 dB in whole dB, computed and sent by the app.
-  Tested by a Reddit community member on a real Protocol Max (8 bands, peak and shelf filters, no crashes).
-  Large HIGH SHELF boosts at lower frequencies don't fit the Max's filter format; since 1.4.0 Contour refuses them
-  with a message instead of sending them.
-- **FiiO KA15** (USB `2972:0104`, FiiO protocol): 10 bands, PEAK, LOW SHELF and HIGH SHELF, and since 1.6.0 HIGH PASS,
-  LOW PASS, BAND PASS and ALL PASS, gain -12 to +12 dB,
-  Q 0.1 to 10 (shelves up to 7.07), 20 Hz to 20 kHz, preamp -24 to 0 dB. Pick USER1, USER2 or USER3 above HOLD TO
-  SEND; Contour writes the profile to that slot and names the slot after it (up to 7 letters and digits). Long-press
-  a slot to rename it. The KA15 answers only while audio is streaming to it, so Contour plays a silent stream to it
-  while it reads or writes (no audio focus, your music keeps playing). Tested on the developer's own hardware.
-  The KA15 plays its shelf filters with a Q 1.41 times lower than the value it stores, and every USER preset 12 dB
-  quieter than EQ off. Since 1.3.3 Contour compensates both, so the curve and preamp you see are what it plays
-  (measured on the device, see `research/protocol/PROTOCOL.md`). The FiiO app shows the stored values, so its
-  shelf Q and preamp look higher. Since 1.6.0 a Q just outside the range is read instead of blocking the slot.
-  The DAC page has VOLUME, VOLUME STEPS, BALANCE, FILTER, OUTPUT, DRE, BRIGHTNESS, SCREEN OFF, ROTATION and
-  LANGUAGE (USB AUDIO is shown, read-only). FACTORY RESET first saves a copy of the USER slots, their names and
-  the settings on the phone, then resets the DAC, shows what changed and offers WRITE THE SAVED COPY BACK.
-- **FiiO K13 R2R** (USB `2972:0120`, FiiO protocol, desktop DAC/amp): 10 bands, PEAK, LOW SHELF and HIGH SHELF, and
-  since 1.6.0 HIGH PASS, LOW PASS, BAND PASS and ALL PASS, gain -24 to +12 dB, Q 0.1 to 10, 20 Hz to 20 kHz, preamp -24 to +12 dB. Pick USER1 to USER10 above HOLD TO SEND;
-  Contour writes the profile to that slot and makes it the active one. The slots keep their USER names (Contour
-  does not rename K13 slots). The K13 always holds ten bands, so a shorter profile is filled up with flat 0 dB bands.
-  Writes are paced 300 ms apart, so a send takes about five seconds: faster writes read back fine but did not
-  survive turning the K13 off. BYPASS and the stock presets are chosen on the K13 itself. Tested on the developer's
-  own hardware, the EQ also measured on a test rig. The K13 plays a PEAK with its Q divided by the square root of 2,
-  so since 1.6.0 Contour writes Q x 1.41 and the PEAK plays as set. The K13 has no DAC page yet.
-- **SnowSky Melody** (USB `2972:0126`, FiiO protocol): 10 bands, PEAK, LOW SHELF and HIGH SHELF, and since 1.6.0
-  HIGH PASS, LOW PASS, BAND PASS and ALL PASS, gain -12 to +12 dB,
-  Q 0.1 to 10, 20 Hz to 20 kHz, preamp -12 to +12 dB in whole dB. Pick USER1, USER2 or USER3 above HOLD TO SEND;
-  Contour writes the profile to that slot, checks it and makes it the active one. The Melody always holds ten
-  bands, so a shorter profile is filled up with flat 0 dB bands. Since 1.6.0 shelves play as set (Q written x 1.41,
-  like on the KA15). The DAC page has VOLUME, VOLUME STEPS, BALANCE, FILTER, GAIN, OUTPUT, DRE, IN-LINE MIC, LIGHT
-  and BUTTONS (USB AUDIO is shown, read-only). FACTORY RESET saves a copy first, as on the KA15; after the reset you
-  unplug the DAC and plug it back in, and on the Melody Contour waits for that with no time limit (STOP WAITING ends the wait). Tested on the
-  developer's own hardware, the EQ also measured on a test rig.
-- **SnowSky Tiny A** (USB `2972:0147`, FiiO protocol): the same as the Melody - 10 bands, PEAK, shelves and, since
-  1.6.0, the four pass filters, gain -12 to +12 dB, preamp -12 to +12 dB in whole dB, USER1, USER2 or USER3, shelves
-  with Q x 1.41. Its DAC page has VOLUME, VOLUME STEPS, BALANCE, IN-LINE MIC and LIGHT (USB AUDIO read-only). It has
-  no factory reset in Contour: the DAC (firmware 1.2.0) ignores the command. Tested on the developer's own hardware,
-  the EQ also measured on a test rig.
-- **TRN Black Pearl** (USB `3302:43E8`, WalkPlay chip): 10 bands, PEAK, LOW SHELF and HIGH SHELF as native filters,
-  gain -10 to +10 dB, Q 0.1 to 10, 20 Hz to 20 kHz, preamp -30 to 0 dB in whole dB. **Plug your headphones into the
-  Black Pearl first:** without headphones it does not show up on USB at all, so Contour shows NO DAC. Every send is
-  read back and stays in the DAC after unplugging, preamp included. Since 1.6.0 shelves play as set (Q written
-  x 1.41). Tested on the developer's own hardware, the EQ also measured on a test rig. LOW PASS, HIGH PASS, the DAC
-  filter, settings, hardware volume and reset are not supported yet.
-- **Moondrop Dawn Pro 2** (USB `35D8:011D`, USB name `DAWN PRO2`, Moondrop protocol): 8 bands, PEAK, LOW SHELF,
-  HIGH SHELF, LOW PASS and HIGH PASS, gain -18 to +12 dB, Q 0.1 to 10, 20 Hz to 20 kHz, plus a preamp (pre-gain)
-  stored with the profile. Contour sends the same frames as Moondrop's own tool (Moondrop Hub) to the DAC's active
-  PEQ bank, reads them back, and never writes over a factory preset. The DAC must have its custom EQ (tuning mode)
-  switched on; according to Moondrop it is off after every plug-in and is toggled by holding both volume buttons
-  for 2 seconds. The DAC page shows EQ INDEX, GLOBAL GAIN and PRE GAIN, read-only (the DAC ignores a GLOBAL GAIN
-  write). A Dawn Pro 2 that reports the name `DAWN PRO 2` (with a space) is a different version and is not
-  supported. Tested on the developer's own hardware, measured on a test rig on 25.10.2026.
-- **Moondrop Echo-A** (USB `3302:12C5`, USB name `ECHO-A`, WalkPlay chip): 8 bands, PEAK, LOW SHELF, LOW PASS and
-  HIGH PASS, gain -10 to +10 dB, Q 0.1 to 10, 20 Hz to 20 kHz, preamp up to 0 dB. HIGH SHELF is made from a LOW
-  SHELF and the preamp as on the Micro, so its gain goes in whole dB and Contour may lower the preamp to fit it
-  (for example -6 to -9). The filters are computed for 93 750 Hz, like the Micro's. Every send is read back. A
-  positive preamp, settings, hardware volume and reset are not supported yet. Tested on the developer's own
-  hardware, the EQ also measured on a test rig.
-- **Kiwi Ears Allegro Mini** (USB `31B2:0111`, USB name `Kiwi Ears-Allegro Mini`, KT Micro chip): 5 bands, PEAK
-  only, gain -12 to +12 dB, Q 0.1 to 10, 40 Hz to 20 kHz, no preamp. A profile with more bands, other filter
-  types or a preamp has to be changed before it can be sent; Contour says why. The DAC works out its filters as
-  if the stream ran at 24 kHz, so Contour assumes the usual 48 kHz USB stream and writes the frequency converted
-  for it (a player that forces 44.1 kHz shifts every band about 8% down). The DAC page has the EQ switch (OFF /
-  ON) and GLOBAL GAIN from -18 to +3 dB in 1.5 dB steps; HOLD TO SEND leaves the switch where it is. The Allegro
-  Mini drops off USB for about a second after each save, and Contour waits for it. Tested on the developer's own
-  hardware, the EQ also measured on a test rig.
+Ten DACs from six makers. Every one of them was tested on real hardware before Contour enabled it.
+
+### EQ limits
+
+| DAC | Bands | Filters | Gain | Preamp |
+|---|---|---|---|---|
+| CrinEar Protocol Micro | 8 | PK, LS, HS, LP, HP | -10 to +10 dB | -30 to 0 dB, whole dB |
+| CrinEar Protocol Max | 10 | PK, LS, HS | -10 to +10 dB | -30 to 0 dB, whole dB |
+| FiiO KA15 | 10 | PK, LS, HS, LP, HP, BP, AP | -12 to +12 dB | -24 to 0 dB |
+| FiiO K13 R2R | 10 | PK, LS, HS, LP, HP, BP, AP | -24 to +12 dB | -24 to +12 dB |
+| SnowSky Melody | 10 | PK, LS, HS, LP, HP, BP, AP | -12 to +12 dB | -12 to +12 dB, whole dB |
+| SnowSky Tiny A | 10 | PK, LS, HS, LP, HP, BP, AP | -12 to +12 dB | -12 to +12 dB, whole dB |
+| TRN Black Pearl | 10 | PK, LS, HS | -10 to +10 dB | -30 to 0 dB, whole dB |
+| Moondrop Dawn Pro 2 | 8 | PK, LS, HS, LP, HP | -18 to +12 dB | pre-gain, stored with the profile |
+| Moondrop Echo-A | 8 | PK, LS, HS, LP, HP | -10 to +10 dB | up to 0 dB |
+| Kiwi Ears Allegro Mini | 5 | PK | -12 to +12 dB | none |
+
+PK = PEAK, LS = LOW SHELF, HS = HIGH SHELF, LP = LOW PASS, HP = HIGH PASS, BP = BAND PASS, AP = ALL PASS.
+Q is 0.1 to 10 and frequency 20 Hz to 20 kHz on every DAC, with two exceptions: KA15 shelves go up to Q 7.07, and
+the Allegro Mini starts at 40 Hz. The pass filters on the Micro, KA15, K13, Melody and Tiny A arrived in 1.6.0.
+
+### Slots, settings and testing
+
+| DAC | USB ID | Chip / protocol | Where the EQ goes | DAC page | Tested |
+|---|---|---|---|---|---|
+| CrinEar Protocol Micro | `3302:C20F` | WalkPlay | DAC memory | - | developer + test rig |
+| CrinEar Protocol Max | `3302:43CC` | WalkPlay | DAC memory | - | Reddit community member |
+| FiiO KA15 | `2972:0104` | FiiO | USER1 to USER3, named by Contour | yes, with factory reset | developer |
+| FiiO K13 R2R | `2972:0120` | FiiO | USER1 to USER10 | - | developer + test rig |
+| SnowSky Melody | `2972:0126` | FiiO | USER1 to USER3 | yes, with factory reset | developer + test rig |
+| SnowSky Tiny A | `2972:0147` | FiiO | USER1 to USER3 | yes | developer + test rig |
+| TRN Black Pearl | `3302:43E8` | WalkPlay | DAC memory | - | developer + test rig |
+| Moondrop Dawn Pro 2 | `35D8:011D` | Moondrop | active PEQ bank | read-only | developer + test rig |
+| Moondrop Echo-A | `3302:12C5` | WalkPlay | DAC memory | - | developer + test rig |
+| Kiwi Ears Allegro Mini | `31B2:0111` | KT Micro | DAC memory | EQ switch and GLOBAL GAIN | developer + test rig |
+
+What the DAC pages hold:
+
+- **KA15:** VOLUME, VOLUME STEPS, BALANCE, FILTER, OUTPUT, DRE, BRIGHTNESS, SCREEN OFF, ROTATION and LANGUAGE (USB AUDIO
+  shown, read-only).
+- **Melody:** VOLUME, VOLUME STEPS, BALANCE, FILTER, GAIN, OUTPUT, DRE, IN-LINE MIC, LIGHT and BUTTONS (USB AUDIO
+  shown, read-only).
+- **Tiny A:** VOLUME, VOLUME STEPS, BALANCE, IN-LINE MIC and LIGHT (USB AUDIO read-only).
+- **Dawn Pro 2:** EQ INDEX, GLOBAL GAIN and PRE GAIN, read-only (the DAC ignores a GLOBAL GAIN write).
+- **Allegro Mini:** the EQ switch (OFF / ON) and GLOBAL GAIN from -18 to +3 dB in 1.5 dB steps; HOLD TO SEND leaves
+  the switch where it is.
+
+FACTORY RESET on the KA15 and Melody first saves a copy of the USER slots, their names and the settings on the
+phone, then resets the DAC, shows what changed and offers WRITE THE SAVED COPY BACK. After a reset you unplug the
+Melody and plug it back in; Contour waits for that with no time limit (STOP WAITING ends the wait).
+
+### How we test a DAC
+
+A DAC is enabled in Contour only after it passed these steps on real hardware. Others stay off until someone
+confirms one.
+
+1. **Research.** We start from the maker's own app and public sources, and keep every limit (bands, gain, Q,
+   preamp) inside what the maker's app allows.
+2. **Read first, back up, then write.** On a computer, the DAC is read in full and every slot is backed up before
+   the first write. Writes go only to user slots, never to factory presets or bypass. After every write the DAC
+   is read back and compared, and the DAC is turned off and on to check the EQ survives. At the end the original
+   state is written back.
+3. **Contour on a phone.** A full profile is sent with HOLD TO SEND, read back from the DAC and checked after
+   unplugging.
+4. **Measured on a test rig** (where the table says so). The DAC's analog output is recorded through an audio
+   interface while a frequency sweep plays, with the EQ off and on, and the result is compared with the curve
+   Contour shows. This is how we found the KA15 shelf Q, the K13 PEAK Q and the 93 750 Hz of the Micro and Echo-A
+   (notes below); Contour now compensates for them.
+
+Bug reports and confirmations from users of a DAC we do not own count too, as for the Protocol Max. The
+protocol notes and measurements are in [`research/protocol/PROTOCOL.md`](research/protocol/PROTOCOL.md).
+
+### Notes per DAC
+
+<details>
+<summary><b>CrinEar Protocol Micro</b></summary>
+
+Since 1.6.0 the filters are computed for the 93 750 Hz the DAC's DSP runs at (before, every filter played about
+2% too low). The DAC accepts a positive preamp but does not get louder, so Contour offers none. Its settings,
+hardware volume and reset are not supported yet: they would need the maker's own tool (WalkPlay), which Contour
+has no access to.
+</details>
+
+<details>
+<summary><b>CrinEar Protocol Max</b></summary>
+
+PEAK, LOW SHELF and HIGH SHELF are native filters, computed and sent by the app. Tested by a Reddit community
+member on a real Protocol Max (8 bands, peak and shelf filters, no crashes). Large HIGH SHELF boosts at lower
+frequencies don't fit the Max's filter format; since 1.4.0 Contour refuses them with a message instead of sending
+them.
+</details>
+
+<details>
+<summary><b>FiiO KA15</b></summary>
+
+Pick USER1, USER2 or USER3 above HOLD TO SEND; Contour writes the profile to that slot and names the slot after it
+(up to 7 letters and digits). Long-press a slot to rename it. The KA15 answers only while audio is streaming to
+it, so Contour plays a silent stream to it while it reads or writes (no audio focus, your music keeps playing).
+The KA15 plays its shelf filters with a Q 1.41 times lower than the value it stores, and every USER preset 12 dB
+quieter than EQ off. Since 1.3.3 Contour compensates both, so the curve and preamp you see are what it plays
+(measured on the device, see `research/protocol/PROTOCOL.md`). The FiiO app shows the stored values, so its shelf
+Q and preamp look higher. Since 1.6.0 a Q just outside the range is read instead of blocking the slot.
+</details>
+
+<details>
+<summary><b>FiiO K13 R2R</b></summary>
+
+Desktop DAC/amp. Pick USER1 to USER10 above HOLD TO SEND; Contour writes the profile to that slot and makes it the
+active one. The slots keep their USER names (Contour does not rename K13 slots). The K13 always holds ten bands, so
+a shorter profile is filled up with flat 0 dB bands. Writes are paced 300 ms apart, so a send takes about five
+seconds: faster writes read back fine but did not survive turning the K13 off. BYPASS and the stock presets are
+chosen on the K13 itself. The K13 plays a PEAK with its Q divided by the square root of 2, so since 1.6.0 Contour
+writes Q x 1.41 and the PEAK plays as set. The K13 has no DAC page yet.
+</details>
+
+<details>
+<summary><b>SnowSky Melody</b></summary>
+
+Pick USER1, USER2 or USER3 above HOLD TO SEND; Contour writes the profile to that slot, checks it and makes it the
+active one. The Melody always holds ten bands, so a shorter profile is filled up with flat 0 dB bands. Since 1.6.0
+shelves play as set (Q written x 1.41, like on the KA15).
+</details>
+
+<details>
+<summary><b>SnowSky Tiny A</b></summary>
+
+The same as the Melody: USER1, USER2 or USER3, ten bands, shelves with Q x 1.41. It has no factory reset in
+Contour: the DAC (firmware 1.2.0) ignores the command.
+</details>
+
+<details>
+<summary><b>TRN Black Pearl</b></summary>
+
+**Plug your headphones into the Black Pearl first:** without headphones it does not show up on USB at all, so
+Contour shows NO DAC. PEAK, LOW SHELF and HIGH SHELF are native filters. Every send is read back and stays in the
+DAC after unplugging, preamp included. Since 1.6.0 shelves play as set (Q written x 1.41). LOW PASS, HIGH PASS,
+the DAC filter, settings, hardware volume and reset are not supported yet.
+</details>
+
+<details>
+<summary><b>Moondrop Dawn Pro 2</b></summary>
+
+USB name `DAWN PRO2`. Contour sends the same frames as Moondrop's own tool (Moondrop Hub) to the DAC's active PEQ
+bank, reads them back, and never writes over a factory preset. The DAC must have its custom EQ (tuning mode)
+switched on; according to Moondrop it is off after every plug-in and is toggled by holding both volume buttons for
+2 seconds. A Dawn Pro 2 that reports the name `DAWN PRO 2` (with a space) is a different version and is not
+supported. Measured on the test rig on 25.10.2026.
+</details>
+
+<details>
+<summary><b>Moondrop Echo-A</b></summary>
+
+USB name `ECHO-A`. HIGH SHELF is made from a LOW SHELF and the preamp as on the Micro, so its gain goes in whole dB
+and Contour may lower the preamp to fit it (for example -6 to -9). The filters are computed for 93 750 Hz, like
+the Micro's. Every send is read back. A positive preamp, settings, hardware volume and reset are not supported
+yet.
+</details>
+
+<details>
+<summary><b>Kiwi Ears Allegro Mini</b></summary>
+
+USB name `Kiwi Ears-Allegro Mini`. A profile with more bands, other filter types or a preamp has to be changed
+before it can be sent; Contour says why. The DAC works out its filters as if the stream ran at 24 kHz, so Contour
+assumes the usual 48 kHz USB stream and writes the frequency converted for it (a player that forces 44.1 kHz
+shifts every band about 8% down). The Allegro Mini drops off USB for about a second after each save, and Contour
+waits for it.
+</details>
 
 Contour is unofficial and not affiliated with CrinEar, FiiO, SnowSky, TRN, Moondrop or Kiwi Ears. Other WalkPlay, FiiO,
 Moondrop and KT Micro DACs are possible later (see `ROADMAP.md`); they are not enabled until someone confirms one
