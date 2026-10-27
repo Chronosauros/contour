@@ -50,7 +50,7 @@ Ten DACs from six makers. Every one of them was tested on real hardware before C
 |---|---|---|---|---|
 | CrinEar Protocol Micro | 8 | PK, LS, HS, LP, HP | -10 to +10 dB | -30 to 0 dB, whole dB |
 | CrinEar Protocol Max | 10 | PK, LS, HS | -10 to +10 dB | -30 to 0 dB, whole dB |
-| FiiO KA15 | 10 | PK, LS, HS, LP, HP, BP, AP | -12 to +12 dB | -24 to 0 dB |
+| FiiO KA15 | 10 | PK, LS, HS, LP, HP, BP, AP | -12 to +12 dB | -24 to 0 dB, whole dB |
 | FiiO K13 R2R | 10 | PK, LS, HS, LP, HP, BP, AP | -24 to +12 dB | -24 to +12 dB |
 | SnowSky Melody | 10 | PK, LS, HS, LP, HP, BP, AP | -12 to +12 dB | -12 to +12 dB, whole dB |
 | SnowSky Tiny A | 10 | PK, LS, HS, LP, HP, BP, AP | -12 to +12 dB | -12 to +12 dB, whole dB |
@@ -246,7 +246,10 @@ gets a third page, **DAC**, in front of them.
   archive or delete, with UNDO. New profiles start flat, come from the clipboard or a .txt file
   (Equalizer APO, AutoEQ, squig.link or graph.hangout.audio parametric text, or EQ by Ear JSON; Contour also
   shows up in Open with and Share for .txt files) or are read from the DAC. SAVE .TXT saves a profile as a
-  file in the squig.link format.
+  file in the squig.link format. A user loaded that file in Topping's web interface (DX1ii): the peaking and
+  shelf filters and the preamp came through.
+- **PREAMP** moves in whole dB on a DAC that keeps whole dB only (the "whole dB" rows in the table above), so the
+  number on screen is the number the DAC holds.
 
 On the Protocol Micro and the Echo-A, a HIGH SHELF band is sent as a mirrored LOW SHELF plus preamp, which gives exactly
 the same curve shape (the maths is in `android/core/src/main/kotlin/io/github/chronosauros/contour/core/Device.kt`).

@@ -126,7 +126,7 @@
                 "supportsAb": true,
                 "preampMin": -30.0,
                 "preampMax": 0.0,
-                "preampStep": 0.1,
+                "preampStep": 1.0,
                 "destinationSlot": null,
                 "settingsCount": 0,
                 "infoCount": 0
@@ -2827,7 +2827,7 @@
                 "supportsAb": false,
                 "preampMin": -30.0,
                 "preampMax": 0.0,
-                "preampStep": 0.1,
+                "preampStep": 1.0,
                 "destinationSlot": null,
                 "settingsCount": 0,
                 "infoCount": 0
@@ -5409,7 +5409,7 @@
                 "supportsAb": false,
                 "preampMin": -30.0,
                 "preampMax": 0.0,
-                "preampStep": 0.1,
+                "preampStep": 1.0,
                 "destinationSlot": null,
                 "settingsCount": 0,
                 "infoCount": 0
@@ -27302,7 +27302,7 @@
                 "supportsAb": false,
                 "preampMin": -30.0,
                 "preampMax": 0.0,
-                "preampStep": 0.1,
+                "preampStep": 1.0,
                 "destinationSlot": null,
                 "settingsCount": 0,
                 "infoCount": 0

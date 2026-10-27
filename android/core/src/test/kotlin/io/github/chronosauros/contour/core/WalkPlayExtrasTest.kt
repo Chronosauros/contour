@@ -192,7 +192,7 @@ class WalkPlayExtrasTest {
         assertTrue(up.preampFits(listOf(pk), 6.0)); assertFalse(up.preampFits(listOf(pk), 7.0)); assertFalse(off.preampFits(listOf(pk), 1.0))
         assertTrue(up.preampFits(listOf(hs), 6.0))     // 6 - 4 = 2
         assertTrue(up.preampRefusal(listOf(pk), 7.0)!!.contains("-30..6 dB"))
-        assertEquals(5.9, up.fitImportedPreamp(listOf(pk), 5.96))
+        assertEquals(5.0, up.fitImportedPreamp(listOf(pk), 5.96))       // whole dB since 1.6.2: the number the planner sends
         assertEquals(3.0, off.fitImportedPreamp(listOf(pk), 3.0))      // nothing is capped: the send check says no
         assertTrue(up.issues(profile(listOf(pk), 6.0)).isEmpty())
         assertTrue(off.issues(profile(listOf(pk), 6.0)).isNotEmpty())

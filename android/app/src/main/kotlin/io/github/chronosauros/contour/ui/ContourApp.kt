@@ -56,6 +56,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -160,6 +161,9 @@ fun ContourApp(
         var licences by remember { mutableStateOf(false) }
         var confirmSync by remember { mutableStateOf(false) }
         var archiveOpen by remember { mutableStateOf(prefs.getBoolean("archiveOpen", false)) }
+        // The Google Play beta board of the APK builds: decided once per start of the app (not while a shared file waits), kept over a recreated Activity.
+        var playBeta by rememberSaveable { mutableStateOf<Boolean?>(null) }
+        LaunchedEffect(Unit) { if (playBeta == null) playBeta = incoming == null && PlayBeta.takeShowing(context, prefs) }
         val snackbar = remember { SnackbarHostState() }
         val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         val nav = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -400,14 +404,17 @@ fun ContourApp(
             is Sheet.Value -> ValueSheet(model, s.param, close)
             is Sheet.BandActions -> BandSheet(model, s.index, close)
             is Sheet.SendFailure -> SendFailureSheet(s.reason, close)
+            Sheet.PlayBetaPreview -> Unit // drawn over everything below
             null -> Unit
         }
         // The factory reset sheet is outside the DAC SETTINGS page: the DAC leaves the bus after the reset and the page goes with it.
         if (device.resetUi != ResetUi.Idle) FactoryResetSheet(device)
+        if (playBeta == true) PlayBetaBoard(onClose = { playBeta = false }, onNever = { PlayBeta.never(prefs); playBeta = false })
+        else if (sheet == Sheet.PlayBetaPreview) PlayBetaBoard(onClose = close, onNever = close)
 
         // Back from EQ goes to the Library (as before); back from DAC Settings goes to EQ.
         val backFrom = logicalPage(pager.currentPage)
-        BackHandler(enabled = sheet == null && !service && !licences && (backFrom == Page.TUNE || backFrom == Page.DAC)) {
+        BackHandler(enabled = sheet == null && playBeta != true && !service && !licences && (backFrom == Page.TUNE || backFrom == Page.DAC)) {
             val to = if (backFrom == Page.DAC) Page.TUNE else Page.LIBRARY
             sender.leaveAb { scope.launch { pagesNow.value.indexOf(to).takeIf { it >= 0 }?.let { pager.animateScrollToPage(it) } } }
         }

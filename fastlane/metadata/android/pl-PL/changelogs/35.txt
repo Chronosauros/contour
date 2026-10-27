@@ -1,0 +1,3 @@
+PREAMP zmienia się o cały dB na Protocol Micro i Max, TRN Black Pearl i Echo-A, jak na KA15 i DAC-ach SnowSky. Ręczne -2.5 dB szło jako -3 dB, a ekran pokazywał -2.5. Dzięki, freestyler.
+Plik .txt z Contour wczytuje się w panelu WWW Toppinga (DX1ii), potwierdził użytkownik.
+Contour jest w zamkniętej becie w Google Play: wersje APK zapraszają do testu, najwyżej trzy razy.

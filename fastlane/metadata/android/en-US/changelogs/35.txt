@@ -1,0 +1,3 @@
+PREAMP moves in whole dB on the Protocol Micro and Max, TRN Black Pearl and Echo-A, like on the KA15 and SnowSky DACs. A manual -2.5 dB was sent as -3 dB while the screen showed -2.5. Thanks freestyler.
+A Contour .txt loads in Topping's web interface (DX1ii), a user confirmed.
+Contour is in a closed beta on Google Play: the APK builds invite you to the test, three times at most.

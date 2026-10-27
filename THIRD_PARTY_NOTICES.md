@@ -10,7 +10,9 @@ Summary:
 - The only code from other projects is a port of the WalkPlay protocol and coefficient maths from
   devicePEQ, licensed under 0BSD, and the TRN Black Pearl write sequence from FreeDSP-Studio, licensed under
   the MIT License (both in section 2).
-- The app bundles no fonts, images, sounds or EQ settings made by others.
+- The app bundles one font made by others, Geom (SIL Open Font License 1.1, section 3), and the Google Play
+  mark on the closed-beta invitation of the APK builds (a trademark of Google LLC, section 6); no other fonts,
+  images, sounds or EQ settings made by others.
 
 ## 1. Libraries inside the app (all Apache License 2.0)
 
@@ -118,13 +120,17 @@ Formulas and formats, no code copied:
 
 ## 3. Fonts, icons and images
 
-- Fonts: none bundled. On Pixel phones the app asks the system for its Google Sans font by name; elsewhere it
+- Fonts: Geom 500, (c) 2022 The Geom Project Authors (https://github.com/ThanosPoulakidas/Geom), SIL Open
+  Font License 1.1 (`OFL-Geom.txt`, shipped next to this file): the "d" and "b" around the Soundblooms face on the
+  Google Play beta invitation (`android/app/src/main/res/font/geom_500.ttf`, the sfnt of the website's
+  `docs/shared/fonts/geom-500.woff`). Everything else: on Pixel phones the app asks the system for its Google Sans font by name; elsewhere it
   uses the system sans-serif. Google Sans is not part of this project and is not distributed with it.
 - Icons: Material Icons, from the AndroidX libraries in section 1 (Apache License 2.0).
 - Example profiles created on first launch: general settings written for this project, part of it under the
   Apache License 2.0.
 - The launcher icon and all other graphics are drawn in code or as vector resources in this repo, under the
-  project's Apache License 2.0.
+  project's Apache License 2.0. The Google Play mark (`res/drawable/ic_google_play.xml`, paths from
+  Wikimedia Commons "Google_Play_Arrow_logo.svg") is the exception: see section 6.
 
 ## 4. Build and test tools (not inside the app)
 
@@ -151,6 +157,6 @@ app's response maths, under the Apache License 2.0.
 
 ## 6. Trademarks
 
-CrinEar, Protocol Micro, WalkPlay, Moondrop, Google, Pixel, Google Sans, Android and all other product names belong to
+Google Play and the Google Play logo are trademarks of Google LLC. CrinEar, Protocol Micro, WalkPlay, Moondrop, Google, Pixel, Google Sans, Android and all other product names belong to
 their owners. Contour is an unofficial project and is not affiliated with or endorsed by any of them. Names are
 used only to say which hardware and formats Contour works with.

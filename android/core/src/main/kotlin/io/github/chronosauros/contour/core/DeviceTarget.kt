@@ -73,10 +73,12 @@ data class DeviceTarget private constructor(
     val preampMin: Double get() = fiio?.preampMinDb ?: walkplay?.preampMin?.toDouble() ?: moondrop?.preGainMinDb ?: echo?.protocol?.preampMin?.toDouble() ?: 0.0
     val preampMax: Double get() = fiio?.preampMaxDb ?: walkplay?.preampMax?.toDouble() ?: moondrop?.preGainMaxDb ?: echo?.preampMaxDb?.toDouble() ?: 0.0
     /**
-     * The grid the editor keeps a manual preamp on: 0.1 dB, or a whole dB for a FiiO-family DAC that keeps whole dB only (SnowSky Melody, Tiny A: [FiioConfig.preampWholeDb]),
-     * so the number on screen is the number the DAC holds after a send (the WalkPlay targets fold their high-shelf emulation into the register and keep their own rule).
+     * The grid the editor keeps a manual preamp on: 0.1 dB, or a whole dB for a DAC that keeps whole dB only ([DeviceCapabilities.preampWholeDb]: the KA15, SnowSky Melody
+     * and Tiny A, and since 1.6.2 the WalkPlay targets - Protocol Micro, Protocol Max, TRN Black Pearl, Echo-A), so the number on screen is the number the DAC holds after a send.
+     * On the WalkPlay targets the planner sends `floor(preamp + 1e-6)` (plus an emulated high shelf's gain, kept on the same grid by [highShelfStepDb]): a manual -2.5 dB went out
+     * as -3 while the editor showed -2.5 (user report 27.10.2026).
      */
-    val preampStep: Double get() = if (fiio?.preampWholeDb == true) 1.0 else 0.1
+    val preampStep: Double get() = if (caps.preampWholeDb) 1.0 else 0.1
     /** A stored manual preamp as the DAC holds it: [preampDb] rounded down to [preampStep] (a value saved before the editor kept the grid, or one of a file). */
     fun heldPreamp(preampDb: Double): Double = if (preampStep == 0.1) preampDb else Preamp.floorTo(preampDb, preampStep)
     val caps: DeviceCapabilities get() = walkplay?.caps ?: fiio?.let { f ->
@@ -110,7 +112,7 @@ data class DeviceTarget private constructor(
      * gain goes into the preamp register. Off the grid the register rounds down and the level ends below what the editor shows (Echo-A phone run 25.10.2026: -3 dB preamp and a -1.5 dB
      * shelf wrote -5, 0.5 dB low).
      */
-    val highShelfStepDb: Double? get() = if (emulatesHighShelf) (if (caps.preampWholeDb) 1.0 else preampStep) else null
+    val highShelfStepDb: Double? get() = if (emulatesHighShelf) preampStep else null
     /** Does this stored explicit preamp fit the device with these bands? The planner's own rule (WalkPlay) or the KA15 range. */
     fun preampFits(bands: List<Band>, preampDb: Double): Boolean =
         writableEcho?.let { preampDb.isFinite() && ProtocolMicro.preampFits(bands, preampDb, it.preampMaxDb) }

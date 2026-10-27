@@ -90,6 +90,8 @@ sealed interface Sheet {
     data class Value(val param: Param) : Sheet
     data class BandActions(val index: Int) : Sheet
     data class SendFailure(val reason: String?) : Sheet
+    /** Review hook only (`--es sheet playbeta`): the Google Play beta board, which a review build never shows by itself. */
+    data object PlayBetaPreview : Sheet
 }
 
 /** A Material 3 bottom sheet whose contents keep their test tags as resource ids (it is its own window). [dismissible] false: a swipe, the scrim and BACK leave it open (the factory reset while it runs). */

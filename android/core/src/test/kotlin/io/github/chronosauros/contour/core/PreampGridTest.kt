@@ -17,6 +17,17 @@ class PreampGridTest {
         assertEquals(-3.5, DeviceTarget.K13.heldPreamp(-3.5))
     }
 
+    @Test fun `the WalkPlay targets show the whole dB the planner sends`() {
+        // 1.6.2: a manual -2.5 dB on the Protocol Micro showed -2.5 and went out as -3 (user report 27.10.2026); the editor now keeps whole dB there.
+        for (t in listOf(DeviceTarget.MICRO, DeviceTarget.MAX, DeviceTarget.TRN, DeviceTarget.ECHO_A)) {
+            assertEquals(1.0, t.preampStep, t.caps.name)
+            assertEquals(-3.0, t.heldPreamp(-2.5), t.caps.name)
+            assertEquals(kotlin.math.floor(-2.5 + 1e-6), t.heldPreamp(-2.5), t.caps.name) // the planner's rule, the same number
+        }
+        val plan = DeviceProtocol.MICRO.plan(listOf(Band("pk", FilterType.PEAK, 1000.0, 2.5, 1.0)), -2.5)
+        assertEquals(DeviceTarget.MICRO.heldPreamp(-2.5).toInt(), (plan as DevicePlan.Ready).preampDb)
+    }
+
     @Test fun `an emulated HIGH SHELF keeps its gain on the preamp grid, so the level is exact`() {
         assertEquals(1.0, DeviceTarget.MICRO.highShelfStepDb)
         for (t in listOf(DeviceTarget.MAX, DeviceTarget.TRN, DeviceTarget.KA15, DeviceTarget.K13, DeviceTarget.MELODY, DeviceTarget.TINY_A)) assertNull(t.highShelfStepDb, t.caps.name) // native shelves

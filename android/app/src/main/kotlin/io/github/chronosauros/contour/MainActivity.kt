@@ -150,7 +150,7 @@ class MainActivity : ComponentActivity() {
 
     /**
      * Review hooks for screenshots and scripted checks (perf and debug builds only, never release):
-     * `--es theme light|dark`, `--es screen tune|library|dac`, `--es sheet edit|new|value|band`,
+     * `--es theme light|dark`, `--es screen tune|library|dac`, `--es sheet edit|new|value|band|playbeta`,
      * `--es probe <label>` (the DAC probe: reads only, see [runProbe]),
      * `--es dac tinya|melody|ka15|off` (the DAC Settings page for that DAC's list and the values its hardware showed, while no attached DAC has
      * a list - controls move locally, nothing touches USB - or back to the real DAC),
@@ -186,6 +186,7 @@ class MainActivity : ComponentActivity() {
             "new" -> Sheet.New
             "value" -> Sheet.Value(Param.FREQ)
             "band" -> Sheet.BandActions(model.selectedBand)
+            "playbeta" -> Sheet.PlayBetaPreview
             else -> null
         }
         val sheetPage = when (sheet) {
