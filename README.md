@@ -73,7 +73,7 @@ the Allegro Mini starts at 40 Hz. The pass filters on the Micro, KA15, K13, Melo
 | FiiO K13 R2R | `2972:0120` | FiiO | USER1 to USER10 | - | developer + test rig |
 | SnowSky Melody | `2972:0126` | FiiO | USER1 to USER3 | yes, with factory reset | developer + test rig |
 | SnowSky Tiny A | `2972:0147` | FiiO | USER1 to USER3 | yes | developer + test rig |
-| TRN Black Pearl | `3302:43E8` | WalkPlay | DAC memory | - | developer + test rig |
+| TRN Black Pearl | `3302:43E8` | WalkPlay | DAC memory | yes | developer + test rig |
 | Moondrop Dawn Pro 2 | `35D8:011D` | Moondrop | active PEQ bank | read-only | developer + test rig |
 | Moondrop Echo-A | `3302:12C5` | WalkPlay | DAC memory | - | developer + test rig |
 | Kiwi Ears Allegro Mini | `31B2:0111` | KT Micro | DAC memory | EQ switch and GLOBAL GAIN | developer + test rig |
@@ -85,6 +85,8 @@ What the DAC pages hold:
 - **Melody:** VOLUME, VOLUME STEPS, BALANCE, FILTER, GAIN, OUTPUT, DRE, IN-LINE MIC, LIGHT and BUTTONS (USB AUDIO
   shown, read-only).
 - **Tiny A:** VOLUME, VOLUME STEPS, BALANCE, IN-LINE MIC and LIGHT (USB AUDIO read-only).
+- **Black Pearl:** FILTER (FAST-LL, FAST-PC, SLOW-LL, SLOW-PC, NON-OS), OUTPUT (CLASS H, CLASS AB), GAIN (LOW,
+  HIGH) and BALANCE (up to 15 steps to either side), since 1.6.4.
 - **Dawn Pro 2:** EQ INDEX, GLOBAL GAIN and PRE GAIN, read-only (the DAC ignores a GLOBAL GAIN write).
 - **Allegro Mini:** the EQ switch (OFF / ON) and GLOBAL GAIN from -18 to +3 dB in 1.5 dB steps; HOLD TO SEND leaves
   the switch where it is.
@@ -177,8 +179,11 @@ Contour: the DAC (firmware 1.2.0) ignores the command.
 
 **Plug your headphones into the Black Pearl first:** without headphones it does not show up on USB at all, so
 Contour shows NO DAC. PEAK, LOW SHELF and HIGH SHELF are native filters. Every send is read back and stays in the
-DAC after unplugging, preamp included. Since 1.6.0 shelves play as set (Q written x 1.41). LOW PASS, HIGH PASS,
-the DAC filter, settings, hardware volume and reset are not supported yet.
+DAC after unplugging, preamp included. Since 1.6.0 shelves play as set (Q written x 1.41). Since 1.6.4 the DAC
+page has the settings TRN's own WalkPlay tool offers for the Black Pearl: FILTER, OUTPUT, GAIN and BALANCE. Each
+change is read back and stays after unplugging. TRN's WalkPlay web tool sets the preamp to 0 dB every time it
+connects, so after using it, send your profile from Contour again. LOW PASS, HIGH PASS, hardware volume and reset
+are not supported yet.
 </details>
 
 <details>
@@ -230,7 +235,7 @@ gets a third page, **DAC**, in front of them.
   only then saves it to the DAC's memory. The button then shows ON DAC, and the profile is saved. HOLD TO SEND,
   its caption and the slot picker sit in a fixed footer, and messages appear under the header, so they never
   cover the button. A send that is interrupted leaves SEND INTERRUPTED, and the DAC is read again when you plug it back in.
-- **DAC** (KA15, Melody, Tiny A, Dawn Pro 2, Allegro Mini): the DAC's own settings, only the ones that DAC has
+- **DAC** (KA15, Melody, Tiny A, Black Pearl, Dawn Pro 2, Allegro Mini): the DAC's own settings, only the ones that DAC has
   (VOLUME, BALANCE, FILTER and the rest); USB AUDIO (UAC) is only shown. The header shows the sample rate and
   the firmware. **FACTORY RESET** (KA15, Melody) first reads the USER slots, their names and the settings and
   saves them on the phone, then resets the DAC, shows what changed and offers WRITE THE SAVED COPY BACK.
@@ -257,7 +262,7 @@ The other DACs have native shelf filters, except the Allegro Mini, which takes P
 
 ## Safety
 
-Contour writes to the DAC only when you hold HOLD TO SEND (or confirm an action on the service screen). It
+Contour writes to the DAC only when you hold HOLD TO SEND (or change a setting on the DAC page). It
 sends only commands documented in `research/protocol/PROTOCOL.md`, checked on a real device, and verifies
 every write by reading it back. Every value is rounded toward quieter, never louder, and a band or preamp the
 DAC can't store as asked is refused before anything is sent. Still, this is an unofficial tool talking to hardware: use it at your own

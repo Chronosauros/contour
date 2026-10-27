@@ -264,7 +264,7 @@ class WalkPlaySession(val profile: WalkPlayProfile, private val port: NativePort
         return out
     }
 
-    // ---- settings (walkplay-plan.md item 7 and 8; nothing here is proven on a unit: the app calls it behind the gate only, [WalkPlaySettings.offered]) ---------------------------------------------------
+    // ---- settings (walkplay-plan.md item 7 and 8; the app writes the rows [WalkPlaySettings.offered] gives it: the TRN's four proven ones, the rest in review builds only) ---------------------------------------------------
 
     /** One row's value, or null when the DAC stays silent (the Micro does not answer 0x11/0x16/0x19/0x1B/0x1D). The reads are the plan's, one report (the balance: two). */
     private fun readValue(s: DacSetting): Int? = try {
@@ -348,7 +348,7 @@ class WalkPlaySession(val profile: WalkPlayProfile, private val port: NativePort
 
     /**
      * Writes [backup] back after a reset: all bands and the preamp through the ordinary write of this DAC ([writePlan]: its own sequence, the read-back and the comparison),
-     * then every saved setting of [settingRows] (default: all rows; the app passes [WalkPlaySettings.offered], where the gain mode and the balance are read only) that has a write and differs from what the DAC reads now (the read-only ones are a line, never written). A step that
+     * then every saved setting of [settingRows] (default: all rows; the app passes [WalkPlaySettings.offered], where the mic is read only) that has a write and differs from what the DAC reads now (the read-only ones are a line, never written). A step that
      * fails is a line, never a silent skip; a lost session stops the restore. [WalkPlayRestoreResult.ok] is true only when everything that had to be written read back as saved.
      * On the TRN the backup holds bands 8 and 9 too, so they are written back whatever the reset did to them.
      */

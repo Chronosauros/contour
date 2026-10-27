@@ -61,6 +61,7 @@ internal class SimWalkPlay(private val profile: WalkPlayProfile) : NativePort {
             WalkPlaySettings.CMD_DAC_FILTER -> filter = one - 1
             WalkPlaySettings.CMD_WORK_MODE -> work = one
             WalkPlaySettings.CMD_GAIN_MODE -> gain = one
+            WalkPlaySettings.CMD_BALANCE -> if (one == 0) balanceR0 = b[6].toInt() and 255 else balanceR1 = b[6].toInt() and 255 // `01 16 04 c 00 a 00`
             // the steps of the reset: the vendor's four `01 05 n` and the closing `01 17 00` clear the settings
             0x05 -> if ((b[3].toInt() and 255) in 1..4) resetSteps++
             0x17 -> if (resetSteps == 4) { filter = 0; work = 0; gain = 0; mic = 0; resetSteps = 0 }

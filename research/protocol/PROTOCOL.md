@@ -168,6 +168,15 @@ Hardware facts: `research/black-pearl-pc-2026-10-19/FINDINGS.md` (written and re
   A band that did not come back is asked for once more, alone, after draining the input (on 19.10.2026 a stale reply
   made band 1 go missing once).
 - Off on the TRN: A/B (TEMP_WRITE is proven RAM-only on the Micro only) and the service screen's band-1 test write.
+- DAC settings (WalkPlay's "DAC Filter" tab, captured from peq.szwalkplay.com on 27.10.2026, `research/trn-settings-walkplay-2026-10-27/FINDINGS.md`).
+  Reads: filter `80 11` -> d[3] 1..5, work mode `80 1D` -> d[3] (0 Class-H, 1 Class-AB), output gain mode `80 19` -> d[3] (0 Low, 1 High),
+  balance `80 16 02 00 00` / `80 16 02 01 00` -> d[3] channel, d[5] attenuation byte (0 or 256 - steps). Writes, no reply, no flash save:
+  filter `01 11 01 t` (1 FAST-LL, 2 FAST-PC, 3 SLOW-LL, 4 SLOW-PC, 5 NON OS), work mode `01 1D 01 t`, gain `01 19 01 m`, balance two frames
+  `01 16 04 01 00 a1 00` + `01 16 04 00 00 a0 00` (channel 1 then channel 0). **Channel 0 is the left one, channel 1 the right one** (owner's listening
+  test: the vendor slider at L attenuates channel 1 and the right ear goes quiet). The vendor's slider has 15 steps each side, no unit.
+  The vendor's own centre pair `01 16 04 00 01 00 00` + `01 16 04 00 00 00 00` does **not** clear channel 1 (read back 15 after it); Contour sends
+  two explicit zero frames for the centre. All four rows survived an unplug without `01 01 00`. On every connect the vendor page writes
+  `01 03 02 00 00` (preamp 0 dB) before its first read.
 - Contour on a phone (Pixel 9 Pro, 19.10.2026): recognised, HID interface 0 with IN 0x86 / OUT 0x05, read in about
   400 ms; a five-band profile with preamp -6 dB sent VERIFIED, and a PC read afterwards showed the same state.
 - Audible response: measured on the test rig on 25.10.2026, 12 of 12 cases (see "Measured Q conventions" under the KA15).

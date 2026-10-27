@@ -61,7 +61,7 @@ class WalkPlayExtrasTest {
             val b = byteArrayOf(id.toByte()) + payload
             events += "tx:${hex(b)}"
             val v = b[5].toInt()          // preamp and mic: `01 03 02 00 g`, `01 02 02 80 e`
-            val one = b[4].toInt() and 255 // the one-byte rows: `01 11 01 t`, `01 1D 01 t`, `01 19 01 m`
+            val one = b[4].toInt() and 255 // the one-byte rows: `01 11 01 t`, `01 1D 01 t`, `01 19 01 m` (the balance: the channel)
             when (b[2].toInt() and 0xFF) {
                 WalkPlay.CMD_PEQ -> if (!ignoreBands) {
                     bandFrames[b[5].toInt() and 0xFF] = b.copyOf().also { it[1] = WalkPlay.READ.toByte(); it[3] = 0 }
@@ -72,8 +72,9 @@ class WalkPlayExtrasTest {
                 WalkPlaySettings.CMD_DAC_FILTER -> if (WalkPlaySettings.CMD_DAC_FILTER !in ignored) filter = one - 1
                 WalkPlaySettings.CMD_WORK_MODE -> if (WalkPlaySettings.CMD_WORK_MODE !in ignored) work = one
                 WalkPlaySettings.CMD_GAIN_MODE -> if (WalkPlaySettings.CMD_GAIN_MODE !in ignored) gain = one
+                WalkPlaySettings.CMD_BALANCE -> if (WalkPlaySettings.CMD_BALANCE !in ignored) { if (one == 0) balanceR0 = b[6].toInt() and 255 else balanceR1 = b[6].toInt() and 255 }   // `01 16 04 c 00 a 00`
                 0x05 -> if ((b[3].toInt() and 255) in 1..4) resetSteps++
-                0x17 -> if (resetSteps == 4 && resetClearsSettings) { filter = 0; work = 0; gain = 0; mic = 0 }
+                0x17 -> if (resetSteps == 4 && resetClearsSettings) { filter = 0; work = 0; gain = 0; mic = 0; balanceR0 = 0; balanceR1 = 0 }
             }
         }
 
@@ -252,18 +253,20 @@ class WalkPlayExtrasTest {
         assertTrue(dac.events.isEmpty())
     }
 
-    @Test fun `the settings writes follow the tabs of the scheme - the DAC filter, gain mode and work mode on the TRN only, the mic on the three`() {
-        val filter = payload(0x01, 0x11, 0x01, 0x03); val work = payload(0x01, 0x1D, 0x01, 0x01); val gain = payload(0x01, 0x19, 0x01, 0x02)
-        for (f in listOf(filter, work, gain)) {
+    @Test fun `the settings writes follow the tabs of the scheme - the DAC filter, gain mode, work mode and balance on the TRN only, the mic on the three`() {
+        val filter = payload(0x01, 0x11, 0x01, 0x03); val work = payload(0x01, 0x1D, 0x01, 0x01); val gain = payload(0x01, 0x19, 0x01, 0x01)
+        val balance = payload(0x01, 0x16, 0x04, 0x01, 0x00, 0xF1, 0x00)
+        for (f in listOf(filter, work, gain, balance)) {
             assertNull(refusal(f, trn), hex(f.copyOf(5)))
             assertNotNull(refusal(f, micro)); assertNotNull(refusal(f, echo)); assertNotNull(refusal(f, WalkPlayProfiles.max))
         }
         val mic = payload(0x01, 0x02, 0x02, 0x80, 0xF1)
         for (profile in listOf(micro, echo, trn)) assertNull(refusal(mic, profile), profile.id)
         assertNotNull(refusal(mic, WalkPlayProfiles.max))
-        // the balance is read, never written
-        assertNotNull(refusal(payload(0x01, 0x16, 0x02, 0x00, 0x00), trn)); assertNotNull(refusal(payload(0x01, 0x16, 0x02, 0x00, 0x00), micro))
-        assertNull(refusal(payload(0x80, 0x16, 0x02, 0x00, 0x00), trn))
+        // the balance read passes on the TRN, and the vendor's centre pair (the one that left channel 1 at 15 on the unit) is just another 01 16 write the guard lets through there
+        assertNull(refusal(payload(0x80, 0x16, 0x02, 0x00, 0x00), trn)); assertNull(refusal(payload(0x01, 0x16, 0x04, 0x00, 0x00, 0x00, 0x00), trn))
+        // the non-TRN WalkPlay DACs refuse 0x11, 0x16, 0x19 and 0x1D writes
+        for (cmd in listOf(0x11, 0x16, 0x19, 0x1D)) for (p in listOf(micro, echo, WalkPlayProfiles.max)) assertNotNull(refusal(payload(0x01, cmd, 0x01, 0x00), p), "${p.id} ${hex(byteArrayOf(cmd.toByte()))}")
     }
 
     @Test fun `the shelf Q ceiling is where the shelf formula's square root turns negative, so the table's Q 10 box overstates a shelf at +-10 dB`() {
@@ -278,39 +281,50 @@ class WalkPlayExtrasTest {
 
     // ---- the settings rows ------------------------------------------------------------------------------------------------------------------------------
 
-    @Test fun `the rows of each DAC - five on the TRN, the mic on the Micro and the Echo-A, none on the Max - and none is verified`() {
+    @Test fun `the rows of each DAC - five on the TRN, the mic on the Micro and the Echo-A, none on the Max - the four DAC Filter tab rows are verified and the mics are not`() {
         assertEquals(listOf("dac-filter", "work-mode", "gain-mode", "balance", "mic"), WalkPlaySettings.of(trn).map { it.id })
         assertEquals(listOf("mic"), WalkPlaySettings.of(micro).map { it.id })
         assertEquals(listOf("mic"), WalkPlaySettings.of(echo).map { it.id })
         assertTrue(WalkPlaySettings.of(WalkPlayProfiles.max).isEmpty())
-        for (p in listOf(trn, micro, echo)) for (s in WalkPlaySettings.of(p)) assertFalse(s.writeVerified, "${p.id} ${s.id}")   // the TRN DAC filter too: owner decision 25.10.2026, the vendor tool has not been seen offering it
-        assertNull(WalkPlaySettings.row(trn, WalkPlaySettings.BALANCE).writeCommand)         // read only: unit and step unknown
+        // released by the WalkPlay capture of 27.10.2026: the TRN's four DAC Filter tab rows; every mic stays read only
+        assertEquals(listOf(true, true, true, true, false), WalkPlaySettings.of(trn).map { it.writeVerified })
+        for (p in listOf(micro, echo)) for (s in WalkPlaySettings.of(p)) assertFalse(s.writeVerified, "${p.id} ${s.id}")
+        for (id in listOf("dac-filter", "work-mode", "gain-mode", "balance")) assertNotNull(WalkPlaySettings.row(trn, id).writeCommand, id)
+        assertEquals(listOf("LOW", "HIGH"), WalkPlaySettings.row(trn, WalkPlaySettings.GAIN_MODE).options)
+        WalkPlaySettings.row(trn, WalkPlaySettings.BALANCE).let { assertEquals(SettingKind.BALANCE, it.kind); assertEquals(15, it.max); assertEquals(WalkPlaySettings.BALANCE_STEPS, it.max) }
         // the TRN ignores the mic write (runs/2026-10-21-trn-black-pearl-01 and -02 T14); the Micro and the Echo-A take it for some values only (Echo-A phone: 0 and +1 accepted, -1 ignored; Micro phone:
         // -3 accepted, -1 ignored): read only on all three, in every build
         for (p in listOf(trn, micro, echo)) assertNull(WalkPlaySettings.row(p, WalkPlaySettings.MIC).writeCommand, p.id)
         assertFailsWith<IllegalArgumentException> { WalkPlaySettings.row(micro, WalkPlaySettings.DAC_FILTER) }
-        // the DAC Settings page of the app shows the proven rows only: none for a WalkPlay DAC in a release
-        assertTrue(DeviceTarget.MICRO.settings.isEmpty() && DeviceTarget.MAX.settings.isEmpty() && DeviceTarget.TRN.settings.isEmpty())
+        // the DAC Settings page of the app shows the proven rows only: the TRN's four in a release, no page for the Micro, the Echo-A and the Max
+        assertEquals(listOf("dac-filter", "work-mode", "gain-mode", "balance"), DeviceTarget.TRN.settings.map { it.id })
+        assertTrue(DeviceTarget.MICRO.settings.isEmpty() && DeviceTarget.ECHO_A.settings.isEmpty() && DeviceTarget.MAX.settings.isEmpty())
     }
 
     @Test fun `every settings write is the plan's frame, byte for byte, and out-of-range values leave no frame`() {
         fun frame(id: String, v: Int) = hex(WalkPlaySettings.writeReports(WalkPlaySettings.row(trn, id), v).single())
-        // walkplay-plan.md: 01 11 01 t (t 1..5), 01 1D 01 t (0 Class-H, 1 Class-AB), 01 19 01 m-1 (m 1..3), 01 02 02 80 e (e int8)
+        // walkplay-plan.md: 01 11 01 t (t 1..5), 01 1D 01 t (0 Class-H, 1 Class-AB), 01 19 01 m (m 0 Low, 1 High), 01 16 04 c 00 a 00 (balance), 01 02 02 80 e (e int8)
         for (i in 0..4) assertEquals(hex(report("4b 01 11 01 0${i + 1}")), frame("dac-filter", i))
         assertEquals(hex(report("4b 01 1d 01 00")), frame("work-mode", 0)); assertEquals(hex(report("4b 01 1d 01 01")), frame("work-mode", 1))
-        for (m in 0..2) assertEquals(hex(report("4b 01 19 01 0$m")), frame("gain-mode", m))
+        for (m in 0..1) assertEquals(hex(report("4b 01 19 01 0$m")), frame("gain-mode", m))
+        // the balance is two reports, channel 1 first: left 15 (-15), right 15 (+15), the centre (not the vendor's `01 16 04 00 01 00 00` pair, which left channel 1 at 15 on the unit)
+        fun balance(v: Int) = WalkPlaySettings.writeReports(WalkPlaySettings.row(trn, "balance"), v).map(::hex)
+        assertEquals(listOf(hex(report("4b 01 16 04 01 00 f1 00")), hex(report("4b 01 16 04 00 00 00 00"))), balance(-15))
+        assertEquals(listOf(hex(report("4b 01 16 04 01 00 00 00")), hex(report("4b 01 16 04 00 00 f1 00"))), balance(15))
+        assertEquals(listOf(hex(report("4b 01 16 04 01 00 00 00")), hex(report("4b 01 16 04 00 00 00 00"))), balance(0))
+        assertEquals(listOf(hex(report("4b 01 16 04 01 00 fa 00")), hex(report("4b 01 16 04 00 00 00 00"))), balance(-6))
+        assertEquals(listOf(hex(report("4b 01 16 04 01 00 00 00")), hex(report("4b 01 16 04 00 00 ff 00"))), balance(1))
         // the mic is a write nowhere: no row has a write command, so no frame comes out of it for any DAC
         for (p in listOf(micro, echo)) for (v in listOf(-15, 0, 15)) assertFailsWith<IllegalArgumentException>("${p.id} mic $v") { WalkPlaySettings.writeReports(WalkPlaySettings.row(p, "mic"), v) }
         assertEquals(hex(report("4b 01 01 00")), hex(WalkPlaySettings.saveReport()))
-        for ((id, v) in listOf("dac-filter" to 5, "dac-filter" to -1, "work-mode" to 2, "gain-mode" to 3))
+        for ((id, v) in listOf("dac-filter" to 5, "dac-filter" to -1, "work-mode" to 2, "gain-mode" to 2, "balance" to 16, "balance" to -16))
             assertFailsWith<IllegalArgumentException>("$id $v") { WalkPlaySettings.writeReports(WalkPlaySettings.row(trn, id), v) }
         for (v in listOf(16, -16)) assertFailsWith<IllegalArgumentException>("mic $v") { WalkPlaySettings.writeReports(WalkPlaySettings.row(micro, "mic"), v) }
-        assertFailsWith<IllegalArgumentException> { WalkPlaySettings.writeReports(WalkPlaySettings.row(trn, "balance"), 0) }
         assertFailsWith<IllegalArgumentException> { WalkPlaySettings.writeReports(WalkPlaySettings.row(trn, "mic"), 0) }          // the TRN ignores it: no frame
         // every frame the table builds passes the guard on the TRN
         for (s in WalkPlaySettings.of(trn).filter { it.writeCommand != null }) {
-            val range = if (s.options.isNotEmpty()) s.options.indices else s.min..s.max
-            for (v in range) assertNull(refusal(WalkPlaySettings.writeReports(s, v).single().let { it.copyOfRange(1, it.size) }, trn), "${s.id} $v")
+            val range = if (s.options.isNotEmpty()) s.options.indices else if (s.kind == SettingKind.BALANCE) -s.max..s.max else s.min..s.max
+            for (v in range) for (f in WalkPlaySettings.writeReports(s, v)) assertNull(refusal(f.copyOfRange(1, f.size), trn), "${s.id} $v")
         }
     }
 
@@ -323,12 +337,17 @@ class WalkPlayExtrasTest {
         assertEquals(0, decode("dac-filter", "4b 80 11 01 01")); assertEquals(4, decode("dac-filter", "4b 80 11 01 05"))
         assertNull(decode("dac-filter", "4b 80 11 01 00")); assertNull(decode("dac-filter", "4b 80 11 01 06"))
         assertEquals(1, decode("work-mode", "4b 80 1d 01 01")); assertNull(decode("work-mode", "4b 80 1d 01 02"))
-        assertEquals(2, decode("gain-mode", "4b 80 19 01 02")); assertNull(decode("gain-mode", "4b 80 19 01 03"))
+        assertEquals(0, decode("gain-mode", "4b 80 19 01 00")); assertEquals(1, decode("gain-mode", "4b 80 19 01 01")); assertNull(decode("gain-mode", "4b 80 19 01 02"))   // 0 Low, 1 High
         assertEquals(0, decode("mic", "4b 80 02 02 00"))                  // the Micro's CAP reply: most likely mic 0
         assertEquals(-15, decode("mic", "4b 80 02 02 00 f1")); assertEquals(15, decode("mic", "4b 80 02 02 00 0f"))
-        // the balance: r != 0 is attenuation 256 - r; channel 1 minus channel 0
+        // the balance: r != 0 is attenuation 256 - r, outside 0..15 is null; channel 0 (left) minus channel 1 (right), so the right channel attenuated reads negative (sound to the left)
         val c0 = report("4b 80 16 02 00 00 00"); val c1 = report("4b 80 16 02 01 00 fa")
-        assertEquals(6, WalkPlaySettings.balanceValue(c0, c1)); assertEquals(0, WalkPlaySettings.balanceChannel(c0)); assertEquals(1, WalkPlaySettings.balanceChannel(c1))
+        assertEquals(-6, WalkPlaySettings.balanceValue(c0, c1)); assertEquals(0, WalkPlaySettings.balanceChannel(c0)); assertEquals(1, WalkPlaySettings.balanceChannel(c1))
+        assertEquals(6, WalkPlaySettings.balanceValue(report("4b 80 16 02 00 00 fa"), report("4b 80 16 02 01 00 00")))
+        assertEquals(0, WalkPlaySettings.balanceValue(c0, report("4b 80 16 02 01 00 00"))); assertEquals(-15, WalkPlaySettings.balanceValue(c0, report("4b 80 16 02 01 00 f1")))
+        assertEquals(3, WalkPlaySettings.balanceValue(report("4b 80 16 02 00 00 f9"), report("4b 80 16 02 01 00 fc")))               // both attenuated: their difference
+        assertEquals(6, decode("balance", "4b 80 16 02 01 00 fa")); assertNull(decode("balance", "4b 80 16 02 01 00 ef")); assertNull(decode("balance", "4b 80 16 02 01 00 01"))   // 17 and 255 steps
+        assertNull(WalkPlaySettings.balanceValue(c0, report("4b 80 16 02 01 00 ef")))
         // a reply is only a full read report of the row's command (a write echo or a short report is not)
         val filter = rows.getValue("dac-filter")
         assertTrue(WalkPlaySettings.isReply(filter, report("4b 80 11 01 02")))
@@ -341,9 +360,9 @@ class WalkPlayExtrasTest {
     // ---- the session: settings read and write ---------------------------------------------------------------------------------------------------------------
 
     @Test fun `readSettings asks each row the plan's way, and a silent DAC is a null value, never an error`() {
-        val dac = Dac(trn).also { it.filter = 3; it.work = 1; it.gain = 2; it.mic = -4; it.balanceR1 = 250 }
+        val dac = Dac(trn).also { it.filter = 3; it.work = 1; it.gain = 1; it.mic = -4; it.balanceR1 = 250 }   // channel 1 attenuated by 6: balance -6
         val got = WalkPlaySession(trn, dac).readSettings().associate { it.id to it.value }
-        assertEquals(mapOf("dac-filter" to 3, "work-mode" to 1, "gain-mode" to 2, "balance" to 6, "mic" to -4), got)
+        assertEquals(mapOf("dac-filter" to 3, "work-mode" to 1, "gain-mode" to 1, "balance" to -6, "mic" to -4), got)
         assertTrue(dac.writes().isEmpty())
         // the Micro answers none of the TRN's rows: three tries each, then null, and its mic is still read
         val quiet = Dac(micro).also { it.silent += listOf(0x11, 0x1D, 0x19, 0x16); it.mic = 2 }
@@ -365,6 +384,16 @@ class WalkPlayExtrasTest {
         WalkPlaySession(trn, saved).writeSetting("dac-filter", 2, explicitHold = true, save = true)
         assertEquals(listOf(hex(report("4b 01 11 01 03")), hex(report("4b 01 01 00"))), saved.writes())
         assertEquals(2, saved.filter)
+        // the balance is two reports, channel 1 first, and reads back as their difference
+        val bal = Dac(trn).also { it.balanceR1 = 250 }
+        val br = WalkPlaySession(trn, bal).writeSetting("balance", 5, explicitHold = true)
+        assertTrue(br.verified, br.reason); assertEquals(5, br.readback)
+        assertEquals(listOf(hex(report("4b 01 16 04 01 00 00 00")), hex(report("4b 01 16 04 00 00 fb 00"))), bal.writes())
+        assertEquals(listOf(0, 251), listOf(bal.balanceR1, bal.balanceR0))
+        // the gain mode: Low and High, one frame
+        val gdac = Dac(trn)
+        val gr = WalkPlaySession(trn, gdac).writeSetting("gain-mode", 1, explicitHold = true)
+        assertTrue(gr.verified, gr.reason); assertEquals(listOf(hex(report("4b 01 19 01 01"))), gdac.writes()); assertEquals(1, gdac.gain)
         // the TRN ignores the mic write: the row is read only there and no frame goes out
         val noMic = Dac(trn)
         assertFailsWith<IllegalArgumentException> { WalkPlaySession(trn, noMic).writeSetting("mic", 3, explicitHold = true) }
@@ -381,14 +410,16 @@ class WalkPlayExtrasTest {
         val dac = Dac(trn).also { it.ignored += WalkPlaySettings.CMD_WORK_MODE }
         val r = WalkPlaySession(trn, dac).writeSetting("work-mode", 1, explicitHold = true)
         assertFalse(r.verified); assertEquals("the DAC reads 0, wrote 1", r.reason)
-        // refused before the first frame: no HOLD TO SEND, a row the DAC lacks, the read only balance, a value outside the row
+        // refused before the first frame: no HOLD TO SEND, a row the DAC lacks, a balance or a gain mode outside the row
         val none = Dac(micro)
         val s = WalkPlaySession(micro, none)
         assertFailsWith<IllegalArgumentException> { s.writeSetting("mic", 1, explicitHold = false) }
         assertFailsWith<IllegalArgumentException> { s.writeSetting("dac-filter", 1, explicitHold = true) }
         assertFailsWith<IllegalArgumentException> { s.writeSetting("mic", 16, explicitHold = true) }
-        assertFailsWith<IllegalArgumentException> { WalkPlaySession(trn, Dac(trn)).writeSetting("balance", 0, explicitHold = true) }
-        assertTrue(none.events.isEmpty())
+        val tdac = Dac(trn)
+        for (v in listOf(16, -16)) assertFailsWith<IllegalArgumentException>("balance $v") { WalkPlaySession(trn, tdac).writeSetting("balance", v, explicitHold = true) }
+        assertFailsWith<IllegalArgumentException> { WalkPlaySession(trn, tdac).writeSetting("gain-mode", 2, explicitHold = true) }
+        assertTrue(none.events.isEmpty()); assertTrue(tdac.events.isEmpty())
     }
 
     // ---- the factory reset --------------------------------------------------------------------------------------------------------------------------------------
@@ -479,10 +510,10 @@ class WalkPlayExtrasTest {
     }
 
     @Test fun `the backup is plain text that reads back exactly, and anything else is refused with the line`() {
-        val dac = Dac(trn).also { it.filter = 3; it.work = 1; it.gain = 2; it.mic = -4; it.balanceR1 = 250; it.silent += 0x19 }
+        val dac = Dac(trn).also { it.filter = 3; it.work = 1; it.gain = 1; it.mic = -4; it.balanceR1 = 250; it.silent += 0x19 }
         val backup = WalkPlaySession(trn, dac).captureForReset(true, 1_234L)
         assertEquals(10, backup.bands.size)
-        assertEquals(mapOf("dac-filter" to 3, "work-mode" to 1, "balance" to 6, "mic" to -4), backup.settings)
+        assertEquals(mapOf("dac-filter" to 3, "work-mode" to 1, "balance" to -6, "mic" to -4), backup.settings)
         assertEquals(listOf("gain-mode"), backup.unreadSettings)
         assertEquals(backup, WalkPlayResetBackup.parse(backup.toText()))
         assertTrue(backup.problems(trn).isEmpty())
@@ -495,7 +526,7 @@ class WalkPlayExtrasTest {
     }
 
     @Test fun `reset, read after, compare and restore bring the TRN back to what it held, bands 9 and 10 included`() {
-        val dac = Dac(trn, slot = 0).also { it.filter = 3; it.work = 1; it.gain = 2; it.mic = -4; it.balanceR1 = 250 }
+        val dac = Dac(trn, slot = 0).also { it.filter = 3; it.work = 1; it.gain = 1; it.mic = -4; it.balanceR1 = 250 }
         val s = WalkPlaySession(trn, dac)
         // a real EQ on the DAC first: three bands and the preamp, and bands 9 and 10 with a peak the reset's eight frames do not cover
         s.write(profile(eq().bands + listOf(
@@ -513,18 +544,20 @@ class WalkPlayExtrasTest {
         val changes = flow.compared(afterReset)
         assertTrue(changes.any { it.startsWith("band 1:") } && changes.any { it.startsWith("preamp:") }, changes.toString())
         assertEquals(0, afterReset.preampDb)
-        assertEquals(0, dac.filter); assertEquals(0, dac.mic)                         // the fake's reset cleared the settings
+        assertEquals(0, dac.filter); assertEquals(0, dac.mic); assertEquals(0, dac.balanceR1)   // the fake's reset cleared the settings
         // the vendor wrote bands 0-7 only: 9 and 10 are what they were (the bench must read them after a reset)
         assertEquals(taken.bands.drop(8), afterReset.bands.drop(8))
         val restore = s.restoreAfterReset(taken)
         flow.restored()
         assertTrue(restore.ok, restore.lines.toString())
         assertTrue(restore.lines.any { it.contains("restored") })
-        assertTrue(restore.lines.any { it.contains("read only") })                     // the balance is a line, never written
+        assertTrue(restore.lines.contains("BALANCE: restored") && restore.lines.contains("GAIN: restored"), restore.lines.toString())   // written back like the filter and the work mode
+        assertTrue(restore.lines.any { it.contains("read only") })                     // the mic is a line, never written
         val now = s.read()
         assertEquals(before.bands.map { it.registers }, now.bands.map { it.registers })
         assertEquals(before.preampDb, now.preampDb)
-        assertEquals(listOf(3, 1, 2, 0), listOf(dac.filter, dac.work, dac.gain, dac.mic))    // the TRN mic is read only: the reset left 0 and the restore does not write it
+        assertEquals(listOf(3, 1, 1, 0), listOf(dac.filter, dac.work, dac.gain, dac.mic))    // the TRN mic is read only: the reset left 0 and the restore does not write it
+        assertEquals(listOf(0, 250), listOf(dac.balanceR0, dac.balanceR1))                   // balance -6: channel 1 attenuated by 6 again
         assertEquals(10, now.bands.size)
     }
 
@@ -582,21 +615,21 @@ class WalkPlayExtrasTest {
         assertTrue(tr.lines.any { it.startsWith("FILTER: NOT restored") }, tr.lines.toString())
     }
 
-    @Test fun `the app's restore passes the rows it offers, so the gain mode is a line and never written back while the other settings are`() {
+    @Test fun `the app's restore passes the rows it offers, so the gain mode and the balance are written back like the other settings and the mic is a line`() {
         Proven.asChannel(BuildChannel.PERF) {
-            val dac = Dac(trn, slot = 0).also { it.filter = 3; it.work = 1; it.gain = 2; it.mic = -4 }
+            val dac = Dac(trn, slot = 0).also { it.filter = 3; it.work = 1; it.gain = 1; it.mic = -4; it.balanceR1 = 250 }
             val s = WalkPlaySession(trn, dac)
             val flow = WalkPlayResetFlow(trn)
             val taken = s.captureForReset(true, 5L)
             flow.begin(taken)
             s.factoryReset(flow.confirm(true)); flow.sent()
             flow.compared(s.captureForReset(true, 5L))
-            val gainAfterReset = dac.gain
             val r = s.restoreAfterReset(taken, WalkPlaySettings.offered(trn))
             assertTrue(r.ok, r.lines.toString())
-            assertTrue(r.lines.any { it.startsWith("GAIN: read only") }, r.lines.toString())
-            assertEquals(gainAfterReset, dac.gain)                                         // the gain mode was not written back
-            assertEquals(listOf(3, 1, 0), listOf(dac.filter, dac.work, dac.mic))          // the TRN mic is read only: not written back
+            assertTrue(r.lines.contains("GAIN: restored") && r.lines.contains("BALANCE: restored"), r.lines.toString())
+            assertTrue(r.lines.any { it.startsWith("MIC GAIN: read only") }, r.lines.toString())
+            assertEquals(listOf(3, 1, 1, 0), listOf(dac.filter, dac.work, dac.gain, dac.mic))   // the TRN mic is read only: not written back
+            assertEquals(listOf(0, 250), listOf(dac.balanceR0, dac.balanceR1))
         }
     }
 }

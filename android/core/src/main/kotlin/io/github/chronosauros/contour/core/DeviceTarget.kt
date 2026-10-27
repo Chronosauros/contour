@@ -62,8 +62,8 @@ data class DeviceTarget private constructor(
     /** The WalkPlay profile of this target (Micro, Max, TRN, Echo-A), or null for a FiiO, a Dawn Pro 2 and an Allegro Mini. */
     val walkplayProfile: WalkPlayProfile? get() = echo ?: walkplay?.let { WalkPlayProfiles.of(it) }
     /**
-     * What the DAC Settings page shows for this device; empty = no such page. A WalkPlay target shows [WalkPlaySettings.offered] (nothing in a release: its rows are
-     * unproven), a FiiO its list, a 1.6 family its [FamilySettings] rows.
+     * What the DAC Settings page shows for this device; empty = no such page. A WalkPlay target shows [WalkPlaySettings.offered] (in a release the TRN's four
+     * proven rows), a FiiO its list, a 1.6 family its [FamilySettings] rows.
      */
     val settings: List<DacSetting> get() = walkplayProfile?.let { WalkPlaySettings.offered(it) } ?: fiio?.settings ?: FamilySettings.of(this)
     /** Header reads of the DAC Settings page (sample rate, firmware), read with the settings; and the values the review preview shows (the hardware's). */

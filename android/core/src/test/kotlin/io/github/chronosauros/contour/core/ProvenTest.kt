@@ -137,23 +137,25 @@ class ProvenTest {
         }
     }
 
-    @Test fun `no WalkPlay settings row is released (the TRN DAC filter waits for a vendor capture), and in a review build the DAC filter writes while the gain mode, the balance and the mics are read only`() {
+    @Test fun `the four TRN DAC Filter tab rows are released and the mics are not, so the Micro and the Echo-A have no page in a release`() {
         val trn = WalkPlayProfiles.trn
+        val tabRows = listOf("dac-filter", "work-mode", "gain-mode", "balance")
         release {
-            for (p in WalkPlayProfiles.all) assertEquals(emptyList(), WalkPlaySettings.offered(p).map { it.id }, p.id)
-            assertTrue(DeviceTarget.TRN.settings.isEmpty()); assertTrue(WalkPlaySettings.row(trn, "dac-filter").let { !it.writeVerified && !it.writeEnabled })   // the read stays in the row, the write is off
+            assertEquals(tabRows, WalkPlaySettings.offered(trn).map { it.id })
+            for (p in listOf(WalkPlayProfiles.micro, WalkPlayProfiles.echoA, WalkPlayProfiles.max)) assertEquals(emptyList(), WalkPlaySettings.offered(p).map { it.id }, p.id)
+            assertEquals(WalkPlaySettings.offered(trn), DeviceTarget.TRN.settings)
+            assertTrue(DeviceTarget.TRN.settings.all { it.writeVerified && it.writeEnabled })
+            assertTrue(WalkPlaySettings.of(trn).single { it.id == "mic" }.let { !it.writeVerified && !it.writeEnabled })   // the mic stays read only: hidden here
             assertTrue(DeviceTarget.MICRO.settings.isEmpty() && DeviceTarget.ECHO_A.settings.isEmpty() && DeviceTarget.MAX.settings.isEmpty())
         }
         review {
-            assertEquals(listOf("dac-filter", "work-mode", "gain-mode", "balance", "mic"), WalkPlaySettings.offered(trn).map { it.id })
+            assertEquals(tabRows + "mic", WalkPlaySettings.offered(trn).map { it.id })
             assertEquals(listOf("mic"), WalkPlaySettings.offered(WalkPlayProfiles.micro).map { it.id })
             assertEquals(listOf("mic"), WalkPlaySettings.offered(WalkPlayProfiles.echoA).map { it.id })
             assertEquals(emptyList(), WalkPlaySettings.offered(WalkPlayProfiles.max))
             assertEquals(WalkPlaySettings.offered(trn), DeviceTarget.TRN.settings)
-            assertTrue(DeviceTarget.TRN.settings.single { it.id == "dac-filter" }.writeEnabled)
             val byId = DeviceTarget.TRN.settings.associateBy { it.id }
-            assertTrue(byId.getValue("dac-filter").writeEnabled && byId.getValue("work-mode").writeEnabled)
-            assertFalse(byId.getValue("gain-mode").writeEnabled); assertFalse(byId.getValue("balance").writeEnabled)
+            for (id in tabRows) assertTrue(byId.getValue(id).writeEnabled, id)
             // the TRN ignores the mic write (runs/2026-10-21-trn-black-pearl-01 and -02 T14): the row is read only in every build
             assertFalse(byId.getValue("mic").writeEnabled); assertEquals(null, byId.getValue("mic").writeCommand)
             // the Micro and the Echo-A take the mic write for some values only (RUN-MIC2, RUN-EA4 and the phone runs): the row is shown and offers no write, review build included
@@ -161,8 +163,8 @@ class ProvenTest {
                 val mic = t.settings.single()
                 assertEquals("mic", mic.id); assertEquals(null, mic.writeCommand); assertFalse(mic.writeEnabled, t.caps.name); assertFalse(mic.copy(writeVerified = true).writeEnabled, t.caps.name)
             }
-            // the session's own row keeps its write frame: the bench writes the gain mode with --low-volume
-            assertEquals(WalkPlaySettings.GAIN_MODE, WalkPlaySettings.row(trn, "gain-mode").id); assertTrue(WalkPlaySettings.row(trn, "gain-mode").writeCommand != null)
+            // the gain mode is writable in every build: offered() no longer strips its write
+            assertEquals(WalkPlaySettings.GAIN_MODE, byId.getValue("gain-mode").id); assertTrue(byId.getValue("gain-mode").writeCommand != null)
         }
     }
 

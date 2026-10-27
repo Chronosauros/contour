@@ -1,0 +1,7 @@
+TRN Black Pearl gets a DAC page, with the settings TRN's own WalkPlay tool offers for it:
+- FILTER: FAST-LL, FAST-PC, SLOW-LL, SLOW-PC or NON-OS
+- OUTPUT: CLASS H or CLASS AB
+- GAIN: LOW or HIGH
+- BALANCE: up to 15 steps to either side
+Each change is read back from the DAC and stays after unplugging.
+TRN's WalkPlay web tool sets the preamp to 0 dB every time it connects, so after using it, send your profile from Contour again.

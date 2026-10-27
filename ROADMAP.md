@@ -24,7 +24,8 @@ notes, and the devices and ideas for later; nothing new is enabled until it is c
 - Supported since Contour 1.5.2, tested on the developer's own hardware (PC and Pixel, 19.10.2026): read on connect, 10 bands, PEAK, LOW SHELF and HIGH SHELF as native filters, +-10 dB, preamp -30..0 dB; every send is read back and stays after unplugging, preamp included. A/B off.
 - Protocol: WalkPlay HID, report ID `0x4B`, USB `3302:43E8` matched exactly (product string "TE-C"). The write sequence follows FreeDSP-Studio (MIT); details in `research/protocol/PROTOCOL.md`. The Black Pearl enumerates on USB only with headphones plugged into it.
 - 1.6.0: the EQ is measured on a test rig; shelves play the register Q divided by the square root of 2, so Contour writes Q x 1.41.
-- Not yet: LOW PASS and HIGH PASS (stored by the firmware, codes 4 and 5, proven on the registers, but not offered), the DAC filter, settings, hardware volume and reset.
+- DAC page since Contour 1.6.4: FILTER (FAST-LL, FAST-PC, SLOW-LL, SLOW-PC, NON-OS), OUTPUT (CLASS H, CLASS AB), GAIN (LOW, HIGH) and BALANCE (15 steps each side) - the controls TRN's WalkPlay tool shows for the Black Pearl, with its frames (captured 27.10.2026), each read back and kept after unplugging. The mic gain is not offered: the DAC ignores the write.
+- Not yet: LOW PASS and HIGH PASS (stored by the firmware, codes 4 and 5, proven on the registers, but not offered), hardware volume and reset.
 
 ## High pass, low pass, band pass, all pass
 - Done in 1.6.0: HIGH PASS, LOW PASS, BAND PASS and ALL PASS on the FiiO KA15, FiiO K13 R2R, SnowSky Melody and Tiny A (FiiO type bytes PK 0, LS 1, HS 2, BP 3, LP 4, HP 5, AP 6, captured from FiiO's web app on 14.10.2026); LOW PASS and HIGH PASS on the CrinEar Protocol Micro, Moondrop Dawn Pro 2 and Echo-A. Contour keeps the gain of a pass filter at 0 dB and refuses to import one that the DAC holds with a gain. Evidence table: research/filter-support-2026-10-14/FINDINGS.md.

@@ -55,7 +55,6 @@ object WalkPlayGuard {
                 }
                 WalkPlaySettings.CMD_DAC_FILTER, WalkPlaySettings.CMD_GAIN_MODE, WalkPlaySettings.CMD_WORK_MODE, WalkPlaySettings.CMD_BALANCE ->
                     if (!trn) return "0x%02x is not a setting of ${profile.name} (WalkPlay shows it for SchemeNo16 only)".format(cmd)
-                    else if (cmd == WalkPlaySettings.CMD_BALANCE) return "01 16 (balance) is not written: its unit and step are unknown"
                 WalkPlaySettings.CMD_MIC -> if (profile.protocol == DeviceProtocol.MAX) return "01 02 (mic) is not a setting of ${profile.name}"
             }
         } else if (op == WalkPlay.READ && cmd in CB1300D_READS) return "0x%02x is a CB1300D read: never sent".format(cmd)

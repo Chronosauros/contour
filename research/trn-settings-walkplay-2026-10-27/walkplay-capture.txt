@@ -1,0 +1,59 @@
+# WalkPlay web (peq.szwalkplay.com) WebHID capture, TRN Black Pearl (TE-C 3302:43E8, fw 0.6), Mac Studio Chrome, 27.10.2026
+# Hook on HIDDevice.prototype.sendReport + inputreport listener. Report id 0x4B, payload after the id, trailing zeros trimmed.
+# ms  dir  id  payload
+0	OPEN	0	TE-C
+784	TX	4b	01 03 02            (connect: vendor writes preamp offset 0)
+784	TX	4b	80 0c
+822	RX	4b	80 0c 02 30 2e 36   ("0.6")
+985	TX	4b	80 09
+1014	RX	4b	80 09 00 30 2e 36
+1186	TX	4b	80 02
+1206	RX	4b	80 02 02            (mic 0)
+1587	TX	4b	80 11
+1606	RX	4b	80 11 02 01         (filter 1 = FAST-LL, UI shows FAST-LL)
+1788	TX	4b	80 1d
+1814	RX	4b	80 1d 02 01         (work mode 1 = Class-AB, UI shows Class-AB)
+1989	TX	4b	80 19
+2022	RX	4b	80 19 02 01         (gain 1 = High, UI shows High)
+2191	TX	4b	80 16 02
+2191	TX	4b	80 16 02 01
+2214	RX	4b	80 16 02            (ch0 att 0)
+2230	RX	4b	80 16 02 01         (ch1 att 0)
+# DAC filter cards
+30447	TX	4b	01 11 01 03     SLOW-LL
+32516	TX	4b	01 11 01 05     NON OS
+34587	TX	4b	01 11 01 01     FAST-LL
+# DAC working mode / output gain mode
+62998	TX	4b	01 1d 01        Class-H (t=0)
+65070	TX	4b	01 1d 01 01     Class-AB
+67139	TX	4b	01 19 01        Low (m=0)
+69207	TX	4b	01 19 01 01     High
+# Sound channel balance slider (no number shown in the UI)
+98474	TX	4b	01 16 04 01 00 ff   slightly left (l=1)
+98474	TX	4b	01 16 04
+100863	TX	4b	01 16 04 01 00 f1   fully left (l=15)
+100863	TX	4b	01 16 04
+116748	TX	4b	01 16 04 01         fully right: first frame
+116748	TX	4b	01 16 04 00 00 f1   fully right (r=15)
+118718	TX	4b	01 16 04 00 01      centre
+118718	TX	4b	01 16 04
+# Test state set for persistence check
+	TX	4b	01 11 01 04     SLOW-PC
+	TX	4b	01 19 01        Low
+	TX	4b	01 16 04 01 00 f1   fully left
+	TX	4b	01 16 04
+# No 01 01 00 (flash save) after any settings write; no reply to writes.
+
+# Owner listening, test state (balance slider fully L = 01 16 04 01 00 f1): RIGHT ear quieter -> channel 1 = RIGHT, channel 0 = LEFT.
+# Owner unplugged / replugged the Black Pearl (headphones stayed in). Page auto-connected; own read frames sent afterwards:
+TX 80 11            RX 80 11 00 04          SLOW-PC kept
+TX 80 1d            RX 80 1d 00 01          Class-AB kept
+TX 80 19            RX 80 19                Low (0) kept
+TX 80 16 02 00 00   RX 80 16 02             ch0 0
+TX 80 16 02 01 00   RX 80 16 02 01 00 f1    ch1 15 kept
+# -> all four rows persist without 01 01 00. Reply byte d[2] is 00 here, 02 in the first session (ignored by the decoders).
+# Restore through the vendor UI: FAST-LL (01 11 01 01), High (01 19 01 01), slider to centre (01 16 04 00 01 00 00 + 01 16 04 00 00 00 00)
+TX 80 16 02 01 00   RX 80 16 02 01 00 f1    !! the vendor's centre pair did NOT clear channel 1 (still 15)
+# Explicit zeros clear both:
+TX 01 16 04 01 00 00 00 ; TX 01 16 04 00 00 00 00 ; read -> ch0 0, ch1 0.
+# Unit left at FAST-LL, Class-AB, High, balance 0/0. Note: the vendor page writes 01 03 02 00 00 (preamp 0) on every connect.
