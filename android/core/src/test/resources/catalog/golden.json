@@ -480,7 +480,7 @@
                             "preampDb": 1.0
                         },
                         "issues": [
-                            "Preamp 1 dB outside -30..0 dB register range"
+                            "Preamp 1 dB outside -30..0 dB range"
                         ],
                         "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - adjust preamp",
@@ -492,14 +492,14 @@
                             "autoRefusal": null,
                             "explicit": {
                                 "fits": false,
-                                "refusal": "Preamp 1 dB outside -30..0 dB register range",
+                                "refusal": "Preamp 1 dB outside -30..0 dB range",
                                 "fitImported": 1.0
                             }
                         },
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Preamp 1 dB outside -30..0 dB register range"
+                                "Preamp 1 dB outside -30..0 dB range"
                             ]
                         }
                     },
@@ -512,7 +512,7 @@
                             "preampDb": -31.0
                         },
                         "issues": [
-                            "Preamp -31 dB outside -30..0 dB register range"
+                            "Preamp -31 dB outside -30..0 dB range"
                         ],
                         "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - adjust preamp",
@@ -524,14 +524,14 @@
                             "autoRefusal": null,
                             "explicit": {
                                 "fits": false,
-                                "refusal": "Preamp -31 dB outside -30..0 dB register range",
+                                "refusal": "Preamp -31 dB outside -30..0 dB range",
                                 "fitImported": -31.0
                             }
                         },
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Preamp -31 dB outside -30..0 dB register range"
+                                "Preamp -31 dB outside -30..0 dB range"
                             ]
                         }
                     },
@@ -2100,7 +2100,7 @@
                             "preampDb": -2.5
                         },
                         "issues": [
-                            "Preamp -2.5 dB needs device preamp 1.5 dB (HIGH SHELF adjustment +4 dB), outside -30..0 dB register range"
+                            "Preamp -2.5 dB needs device preamp 1.5 dB (HIGH SHELF adjustment +4 dB), outside -30..0 dB range"
                         ],
                         "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - adjust preamp",
@@ -2112,14 +2112,14 @@
                             "autoRefusal": null,
                             "explicit": {
                                 "fits": false,
-                                "refusal": "Preamp -2.5 dB needs device preamp 1.5 dB (HIGH SHELF adjustment +4 dB), outside -30..0 dB register range",
+                                "refusal": "Preamp -2.5 dB needs device preamp 1.5 dB (HIGH SHELF adjustment +4 dB), outside -30..0 dB range",
                                 "fitImported": -2.5
                             }
                         },
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Preamp -2.5 dB needs device preamp 1.5 dB (HIGH SHELF adjustment +4 dB), outside -30..0 dB register range"
+                                "Preamp -2.5 dB needs device preamp 1.5 dB (HIGH SHELF adjustment +4 dB), outside -30..0 dB range"
                             ]
                         }
                     },
@@ -27446,7 +27446,7 @@
                         "preampDb": 1.0
                     },
                     "issues": [
-                        "Preamp 1 dB outside -30..0 dB register range"
+                        "Preamp 1 dB outside -30..0 dB range"
                     ],
                     "blockLabel": "PREAMP OUT OF RANGE",
                     "headline": "INVALID EQ - adjust preamp",
@@ -27463,7 +27463,7 @@
                         "preampDb": -31.0
                     },
                     "issues": [
-                        "Preamp -31 dB outside -30..0 dB register range"
+                        "Preamp -31 dB outside -30..0 dB range"
                     ],
                     "blockLabel": "PREAMP OUT OF RANGE",
                     "headline": "INVALID EQ - adjust preamp",
@@ -27925,7 +27925,7 @@
                         "preampDb": -2.5
                     },
                     "issues": [
-                        "Preamp -2.5 dB needs device preamp 1.5 dB (HIGH SHELF adjustment +4 dB), outside -30..0 dB register range"
+                        "Preamp -2.5 dB needs device preamp 1.5 dB (HIGH SHELF adjustment +4 dB), outside -30..0 dB range"
                     ],
                     "blockLabel": "PREAMP OUT OF RANGE",
                     "headline": "INVALID EQ - adjust preamp",
@@ -28200,7 +28200,7 @@
                         "preampDb": 1.0
                     },
                     "issues": [
-                        "Preamp 1 dB outside -30..0 dB register range"
+                        "Preamp 1 dB outside -30..0 dB range"
                     ],
                     "blockLabel": "PREAMP OUT OF RANGE",
                     "headline": "INVALID EQ - adjust preamp",
@@ -28209,7 +28209,7 @@
                     "plan": {
                         "status": "rejected",
                         "issues": [
-                            "Preamp 1 dB outside -30..0 dB register range"
+                            "Preamp 1 dB outside -30..0 dB range"
                         ]
                     }
                 },
@@ -28222,7 +28222,7 @@
                         "preampDb": -31.0
                     },
                     "issues": [
-                        "Preamp -31 dB outside -30..0 dB register range"
+                        "Preamp -31 dB outside -30..0 dB range"
                     ],
                     "blockLabel": "PREAMP OUT OF RANGE",
                     "headline": "INVALID EQ - adjust preamp",
@@ -28231,7 +28231,7 @@
                     "plan": {
                         "status": "rejected",
                         "issues": [
-                            "Preamp -31 dB outside -30..0 dB register range"
+                            "Preamp -31 dB outside -30..0 dB range"
                         ]
                     }
                 },
@@ -28966,7 +28966,7 @@
                         "preampDb": -2.5
                     },
                     "issues": [
-                        "Preamp -2.5 dB needs device preamp 1.5 dB (HIGH SHELF adjustment +4 dB), outside -30..0 dB register range"
+                        "Preamp -2.5 dB needs device preamp 1.5 dB (HIGH SHELF adjustment +4 dB), outside -30..0 dB range"
                     ],
                     "blockLabel": "PREAMP OUT OF RANGE",
                     "headline": "INVALID EQ - adjust preamp",
@@ -28975,7 +28975,7 @@
                     "plan": {
                         "status": "rejected",
                         "issues": [
-                            "Preamp -2.5 dB needs device preamp 1.5 dB (HIGH SHELF adjustment +4 dB), outside -30..0 dB register range"
+                            "Preamp -2.5 dB needs device preamp 1.5 dB (HIGH SHELF adjustment +4 dB), outside -30..0 dB range"
                         ]
                     }
                 },

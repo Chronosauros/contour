@@ -205,8 +205,8 @@ object ProtocolMicro {
         val hs = highShelfGainSum(bands)
         val head = "Preamp ${dbText(preampDb) { !preampFits(bands, it, maxDb) }} dB"
         val device = { d: Double -> !deviceFits(d, maxDb) }
-        return if (hs == 0.0) "$head outside $PREAMP_MIN_DB..$maxDb dB register range"
-        else "$head needs device preamp ${dbText(preampDb + hs, device)} dB (HIGH SHELF adjustment ${if (hs > 0) "+" else ""}${dbText(hs)} dB), outside $PREAMP_MIN_DB..$maxDb dB register range"
+        return if (hs == 0.0) "$head outside $PREAMP_MIN_DB..$maxDb dB range"
+        else "$head needs device preamp ${dbText(preampDb + hs, device)} dB (HIGH SHELF adjustment ${if (hs > 0) "+" else ""}${dbText(hs)} dB), outside $PREAMP_MIN_DB..$maxDb dB range"
     }
 
     /**

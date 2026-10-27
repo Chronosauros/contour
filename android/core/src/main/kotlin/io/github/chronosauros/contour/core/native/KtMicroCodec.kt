@@ -1,8 +1,10 @@
 package io.github.chronosauros.contour.core.native
 
 import io.github.chronosauros.contour.core.Band
+import io.github.chronosauros.contour.core.BuildChannel
 import io.github.chronosauros.contour.core.FilterType
 import io.github.chronosauros.contour.core.Profile
+import io.github.chronosauros.contour.core.Proven
 import io.github.chronosauros.contour.core.devices.GeneratedDevices
 import kotlin.math.floor
 
@@ -25,7 +27,7 @@ object KtMicroCodec {
     const val CHANNEL_FLAGS_REGISTER = 0x01
     /** The vendor tool's Global Gain (the analog DAC gain): read by the EQ session, written only by [compileGlobalGain]; its layout is not proven on hardware. */
     const val GLOBAL_GAIN_REGISTER = GeneratedDevices.KIWI_EARS_ALLEGRO_MINI_GLOBAL_GAIN_REGISTER
-    const val UNKNOWN_GAIN_WRITE_BLOCKER = "KT send blocked: channel layout is unknown (no valid 0x01 reply), and 0x66 does not prove zero digital DAC gain on every possible channel."
+    val UNKNOWN_GAIN_WRITE_BLOCKER: String get() = if (Proven.channel == BuildChannel.PERF) "KT send blocked: channel layout is unknown (no valid 0x01 reply), and 0x66 does not prove zero digital DAC gain on every possible channel." else "Can't send: Contour can't tell how this DAC's channels are set up."
     /** The vendor's clear-flash command ([KtMicroReset.COMMAND]); built by [compileClear] only. */
     private const val CLEAR = KtMicroReset.COMMAND
     /** The only filter the vendor tool offers for this chip (native type 0); 3 and 4 are shelves another tool may have stored. */

@@ -1,12 +1,14 @@
 package io.github.chronosauros.contour.core.native
 
 import io.github.chronosauros.contour.core.Band
+import io.github.chronosauros.contour.core.BuildChannel
 import io.github.chronosauros.contour.core.DacImport
 import io.github.chronosauros.contour.core.DevicePlan
 import io.github.chronosauros.contour.core.DeviceTarget
 import io.github.chronosauros.contour.core.FilterType
 import io.github.chronosauros.contour.core.ImportedEq
 import io.github.chronosauros.contour.core.Profile
+import io.github.chronosauros.contour.core.Proven
 import io.github.chronosauros.contour.core.ProtocolMicro
 import io.github.chronosauros.contour.core.WalkPlay
 import io.github.chronosauros.contour.core.isPass
@@ -44,7 +46,7 @@ sealed interface FamilyState {
         override val importable: Boolean get() = onWritableBank
         /** Said before a send while the DAC is on another index; null when it is on one of Contour's banks. */
         val bankNotice: String? get() = if (onWritableBank) null
-            else "The DAC is on EQ index ${snapshot.activeIndex}, one of its own presets. Switch the DAC to its PEQ mode (EQ index ${model.writableIndexes.sorted().joinToString(" or ")}): HOLD TO SEND writes the active bank, as Moondrop Hub does."
+            else "The DAC is on EQ index ${snapshot.activeIndex}, one of its own presets. Switch the DAC to its PEQ mode (EQ index ${model.writableIndexes.sorted().joinToString(" or ")}): HOLD TO SEND writes the EQ the DAC is on."
 
         private fun planned(profile: Profile) = MoondropCodec.planFor(model, profile.bands, profile.effectivePreampDb())
         override fun holds(profile: Profile): Boolean = runCatching {
@@ -184,7 +186,7 @@ private fun sameSound(e: KtMicroCodec.RawBand, a: KtMicroCodec.RawBand): Boolean
 /** The 1.6 families' entry points the app and the tests share. */
 object FamilyDevices {
     /** What HOLD TO SEND says on a read-only DAC. */
-    const val READ_ONLY_LABEL = "READ ONLY - NOT VERIFIED"
+    val READ_ONLY_LABEL: String get() = if (Proven.channel == BuildChannel.PERF) "READ ONLY - NOT VERIFIED" else "READ ONLY"
 
     /** The Moondrop Echo-A, read through [WalkPlaySession] with the Micro SchemeNo11 profile: the version, slot, every band and the preamp. No session object
      * leaves here; the write (only when [WalkPlayProfiles.ECHO_A_HARDWARE_VERIFIED] is true) is the app's own session in `DacClient.writeProfile`. */

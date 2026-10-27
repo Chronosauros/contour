@@ -19,6 +19,7 @@ enum class BuildChannel { RELEASE, PERF }
  *
  * The app sets [channel] once, first thing in `Application.onCreate`, from its build type ([channelFor]); everything else (the bench, the tests) is a release.
  * A feature that is on only because the build is a review build keeps its "not verified on hardware" wording: the gate decides whether it runs, not what it is called.
+ * A release never shows that wording (owner 27.10.2026): it offers what is proven and stays silent about the rest.
  */
 object Proven {
     @Volatile

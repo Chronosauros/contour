@@ -26,6 +26,8 @@ import androidx.compose.ui.unit.Density
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.Lifecycle
 import io.github.chronosauros.contour.core.ApoText
+import io.github.chronosauros.contour.core.BuildChannel
+import io.github.chronosauros.contour.core.Proven
 import io.github.chronosauros.contour.model.AppModel
 import io.github.chronosauros.contour.model.Backup
 import io.github.chronosauros.contour.model.DacEditor
@@ -110,6 +112,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // First of all: what the build may do depends on the channel, and the core reads it as it runs.
+        applyChannelExtra(intent)
         // Backup failure blocks loading and all writes; retry loading retries the copy first.
         val appContext = applicationContext
         model = processModel ?: AppModel(ProfileStore(filesDir), persistenceScope) {
@@ -154,11 +158,16 @@ class MainActivity : ComponentActivity() {
      * `--es probe <label>` (the DAC probe: reads only, see [runProbe]),
      * `--es dac tinya|melody|ka15|off` (the DAC Settings page for that DAC's list and the values its hardware showed, while no attached DAC has
      * a list - controls move locally, nothing touches USB - or back to the real DAC),
+     * `--es simulate micro|max|trn|ka15|k13|melody|tinya|dawn|allegro|echo|off` (the app behaves as if that DAC were attached and connected: read, send, slots, settings and resets run
+     * on a simulated DAC, nothing touches USB; `off` = the real bus; see [DeviceController.simulate]),
+     * `--es channel release|review` (what a release build gates and says, or what a review build runs: [Proven.channel]; applied first, best as a cold start, `am start -S`),
      * `--es writetest <id> [--ei to <v>]` (the DAC write self-test, see [runWriteTest]: onNewIntent only).
      * No other mutating or exporting intent extras: this activity is exported for USB attachment.
      */
     private fun applyReviewExtras(i: Intent?, first: Boolean) {
         if (i == null || !reviewBuild || model.loadError) return
+        // before "simulate": whether a DAC may write, and what its screens say, depends on the channel
+        applyChannelExtra(i)
         // `--es emulate 320x1.3`: a narrow / zoomed phone (width in dp, font scale); `--es emulate off` = the real screen
         i.getStringExtra("emulate")?.let { e ->
             val parts = e.split("x")
@@ -168,6 +177,8 @@ class MainActivity : ComponentActivity() {
             "light" -> forcedDark = false
             "dark" -> forcedDark = true
         }
+        // before "dac" and "screen": the DAC pages exist only while a DAC (the simulated one included) is connected
+        i.getStringExtra("simulate")?.let { device.simulate(it.takeIf { n -> n != "off" }) }
         // before "screen": the DAC page exists only while the preview (or a DAC with settings) is there
         when (i.getStringExtra("dac")) {
             "tinya" -> device.dacPreview = io.github.chronosauros.contour.core.DeviceTarget.TINY_A
@@ -196,6 +207,19 @@ class MainActivity : ComponentActivity() {
         }
         (page ?: sheetPage)?.let { if (first) initialPage = it else model.pageRequest = it }
         if (sheet != null) sheetRequest = sheet
+    }
+
+    /**
+     * `--es channel release|review` (perf and debug builds only): sets [Proven.channel] for this process, so the screens show what a release build gates and says (release) or what a
+     * review build runs (review). The core reads it live, but a screen that has already been drawn keeps what it drew until something redraws it: the reliable way is a cold start
+     * (`am start -S ... --es channel release`). It stays for the process; the next cold start is the build's own channel again.
+     */
+    private fun applyChannelExtra(i: Intent?) {
+        if (i == null || !reviewBuild) return
+        when (i.getStringExtra("channel")) {
+            "release" -> Proven.channel = BuildChannel.RELEASE
+            "review" -> Proven.channel = BuildChannel.PERF
+        }
     }
 
     override fun onNewIntent(intent: Intent) {

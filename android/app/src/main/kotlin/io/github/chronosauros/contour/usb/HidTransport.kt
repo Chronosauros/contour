@@ -10,7 +10,6 @@ import android.os.SystemClock
 import io.github.chronosauros.contour.core.DeviceTarget
 import io.github.chronosauros.contour.core.WalkPlay
 import io.github.chronosauros.contour.core.native.NativeHidReports
-import java.io.Closeable
 import java.io.IOException
 
 /**
@@ -28,7 +27,7 @@ class HidTransport private constructor(
     private val nativeReports: NativeHidReports.Shape? = null,
     private val nativeReportId: Int? = null,
     private val sessionGuard: () -> Unit = {},
-) : Closeable {
+) : HidIo {
 
     companion object {
         const val REPLY_TIMEOUT_MS = 200
@@ -156,11 +155,11 @@ class HidTransport private constructor(
         nativeReports?.let { s -> nativeReportId?.let { id -> s.rawSizes[NativeHidReports.Key(id, NativeHidReports.Kind.INPUT)] } } ?: 0))
 
     /** Opened through its HID report descriptor (FiiO, native Moondrop, KT Micro and the read-only Echo-A): the report sizes are proven. */
-    val isNative: Boolean get() = nativeReports != null
-    fun nativePayloadSize(id: Int, kind: NativeHidReports.Kind): Int = requireNotNull(nativeReports).payloadSize(id, kind)
-    fun checkSession() = sessionGuard()
+    override val isNative: Boolean get() = nativeReports != null
+    override fun nativePayloadSize(id: Int, kind: NativeHidReports.Kind): Int = requireNotNull(nativeReports).payloadSize(id, kind)
+    override fun checkSession() = sessionGuard()
 
-    fun send(report: ByteArray) {
+    override fun send(report: ByteArray) {
         UsbLog.tx(report)
         val n = if (epOut != null) {
             connection.bulkTransfer(epOut, report, report.size, WRITE_TIMEOUT_MS)
@@ -172,7 +171,7 @@ class HidTransport private constructor(
     }
 
     /** One input report, or null after [timeoutMs]. */
-    fun receive(timeoutMs: Int): ByteArray? {
+    override fun receive(timeoutMs: Int): ByteArray? {
         val n = connection.bulkTransfer(epIn, inBuf, inBuf.size, timeoutMs.coerceAtLeast(1))
         if (n <= 0) return null
         val r = inBuf.copyOf(n)
@@ -191,7 +190,7 @@ class HidTransport private constructor(
     /** WalkPlay report (64 bytes with the report ID): the reply the family session asked for. Lock-step request: the input queue that built up is
      * dropped, the report goes out once, and the first reply [matches] accepts within 200 ms is returned. A silent DAC throws the message the native
      * ports throw ("Native request timed out ..."): the session (WalkPlaySession) asks again, up to 3 attempts. */
-    fun requestOnce(report: ByteArray, matches: (ByteArray) -> Boolean): ByteArray {
+    override fun requestOnce(report: ByteArray, matches: (ByteArray) -> Boolean): ByteArray {
         drain()
         send(report)
         val deadline = SystemClock.elapsedRealtime() + REPLY_TIMEOUT_MS
@@ -207,7 +206,7 @@ class HidTransport private constructor(
     }
 
     /** Native (KA15): one logical payload, padded to the descriptor's report size behind the report ID. */
-    fun sendNative(id: Int, kind: NativeHidReports.Kind, payload: ByteArray) {
+    override fun sendNative(id: Int, kind: NativeHidReports.Kind, payload: ByteArray) {
         checkSession()
         require(kind == NativeHidReports.Kind.OUTPUT && id == nativeReportId)
         val wire = requireNotNull(nativeReports).wire(id, kind, payload)
@@ -220,7 +219,7 @@ class HidTransport private constructor(
 
     /** Native request: one outstanding query; stale queued input is dropped first. The reply is the payload
      * after the report ID. A timeout throws "Native request timed out" (NativeSession retries only reads). */
-    fun requestNative(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean): ByteArray {
+    override fun requestNative(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean): ByteArray {
         drain()
         sendNative(id, NativeHidReports.Kind.OUTPUT, payload)
         val deadline = SystemClock.elapsedRealtime() + REPLY_TIMEOUT_MS

@@ -309,7 +309,8 @@ class WalkPlaySessionTest {
         assertEquals(refusal, t.issues(eq()))
         assertEquals(refusal, FamilyDevices.stateIssues(t, state))
         assertEquals(refusal, FamilyDevices.stateIssues(t, null))
-        assertEquals("READ ONLY - NOT VERIFIED", FamilyDevices.READ_ONLY_LABEL)
+        assertEquals("READ ONLY", FamilyDevices.READ_ONLY_LABEL) // a release names no gate
+        assertEquals("READ ONLY - NOT VERIFIED", Proven.asChannel(BuildChannel.PERF) { FamilyDevices.READ_ONLY_LABEL })
         assertTrue(t.settings.isEmpty())
     }
 

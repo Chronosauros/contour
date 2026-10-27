@@ -178,7 +178,7 @@ data class DeviceTarget private constructor(
         val f = fiio ?: return familyIssues(profile)
         return runCatching {
             require(f.codecBlockers.isEmpty()) { f.codecBlockers.joinToString("; ") }
-            require(f.userSlots.isNotEmpty()) { "No proven writable user slot" }
+            require(f.userSlots.isNotEmpty()) { if (Proven.channel == BuildChannel.PERF) "No proven writable user slot" else "This DAC has no slot Contour can write to." }
             require(profile.bands.size <= caps.bands) { "${profile.bands.size} bands; ${caps.name} accepts ${caps.bands}; no truncation" }
             // Every concrete problem is listed (each field of each band, then the preamp): the first one is what HOLD TO SEND shows.
             val found = mutableListOf<String>()
@@ -240,7 +240,8 @@ data class DeviceTarget private constructor(
         val KT_NAME: String = GeneratedDevices.KIWI_EARS_ALLEGRO_MINI.name
         /** 1.6: the Dawn Pro 2 offers PEAK; its pass filters (LP, HP) where [MoondropCatalog.passFiltersOn] and its shelves (LS, HS) where [MoondropCatalog.shelvesOn] (proven or a review build). */
         val MOONDROP_TYPES: Set<FilterType> get() = MoondropCatalog.OFFERED_TYPES
-        const val READ_ONLY_ISSUE = "%s is read only: not verified on hardware, Contour sends nothing to it"
+        /** Why a read-only DAC is not written: a review build names the gate, a release only says it is read only. */
+        val READ_ONLY_ISSUE: String get() = if (Proven.channel == BuildChannel.PERF) "%s is read only: not verified on hardware, Contour sends nothing to it" else "%s is read only in Contour"
         /** A number in an issue text: whole values without decimals ("0", "25000"), others to one place. */
         private fun num(x: Double): String =
             if (x.isFinite() && x == Math.rint(x) && Math.abs(x) < 1e9) x.toLong().toString() else "%.1f".format(java.util.Locale.ROOT, x)

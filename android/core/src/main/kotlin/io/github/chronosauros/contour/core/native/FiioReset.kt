@@ -1,5 +1,6 @@
 package io.github.chronosauros.contour.core.native
 
+import io.github.chronosauros.contour.core.BuildChannel
 import io.github.chronosauros.contour.core.Proven
 
 /**
@@ -81,7 +82,9 @@ object FiioReset {
             val y = a.snapshot.copy(activeSlot = 0)
             if (x != y) {
                 val registers = x.bands.zip(y.bands).count { (p, q) -> p != q } + kotlin.math.abs(x.bands.size - y.bands.size)
-                out += "$label EQ: ${x.count} filters, preamp ${x.preampTenths / 10.0} dB -> ${y.count} filters, preamp ${y.preampTenths / 10.0} dB ($registers filter registers differ)"
+                // the count of registers that differ is for the maintainer: a review build says it, a release does not
+                val detail = if (Proven.channel == BuildChannel.PERF) " ($registers filter registers differ)" else ""
+                out += "$label EQ: ${x.count} filters, preamp ${x.preampTenths / 10.0} dB -> ${y.count} filters, preamp ${y.preampTenths / 10.0} dB$detail"
             }
         }
         for (id in (before.settings.keys + after.settings.keys).toSortedSet()) {

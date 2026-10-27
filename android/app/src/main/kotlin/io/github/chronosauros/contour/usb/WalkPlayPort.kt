@@ -1,6 +1,5 @@
 package io.github.chronosauros.contour.usb
 
-import android.hardware.usb.UsbDevice
 import android.os.SystemClock
 import io.github.chronosauros.contour.core.WalkPlay
 import io.github.chronosauros.contour.core.native.NativeHidReports
@@ -14,11 +13,11 @@ import io.github.chronosauros.contour.core.native.NativePort
  * The session owns the frames, the pauses and the attempts of a request; this port sends once, drops the stale input first and waits 200 ms.
  */
 internal class WalkPlayPort(
-    private val t: HidTransport,
-    device: UsbDevice,
+    private val t: HidIo,
+    device: DacHandle,
     private val tick: () -> Unit = {},
 ) : NativePort {
-    override val deviceKey = "${device.deviceName}:${device.deviceId}:${device.vendorId}:${device.productId}"
+    override val deviceKey = device.key
     /** When the first report of a write went out and when the last one (and its pause) was done; 0 = none yet. */
     var firstSendMs = 0L
         private set

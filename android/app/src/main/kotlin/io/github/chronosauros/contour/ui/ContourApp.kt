@@ -1,5 +1,7 @@
 package io.github.chronosauros.contour.ui
 
+import io.github.chronosauros.contour.core.BuildChannel
+import io.github.chronosauros.contour.core.Proven
 import android.content.Context
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
@@ -266,7 +268,7 @@ fun ContourApp(
                 override fun delete(p: Profile) {
                     model.delete(p.id)
                 }
-                override fun service() { sender.leaveAb { service = true } }
+                override fun service() { if (Proven.channel == BuildChannel.PERF) sender.leaveAb { service = true } } // the service screen is a review tool: a release has no long-press
                 override fun licences() { sender.leaveAb { licences = true } }
             }
         }
@@ -276,7 +278,7 @@ fun ContourApp(
                 override fun value(param: Param) { sender.leaveAb { sheet = Sheet.Value(param) } }
                 override fun band(index: Int) { sender.leaveAb { sheet = Sheet.BandActions(index) } }
                 override fun sendDetails() { sheet = Sheet.SendFailure(sender.failure) }
-                override fun service() { sender.leaveAb { service = true } }
+                override fun service() { if (Proven.channel == BuildChannel.PERF) sender.leaveAb { service = true } } // the service screen is a review tool: a release has no long-press
             }
         }
 

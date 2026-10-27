@@ -14,7 +14,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.core.content.ContextCompat
+import io.github.chronosauros.contour.core.BuildChannel
 import io.github.chronosauros.contour.core.DeviceTarget
+import io.github.chronosauros.contour.core.Proven
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.core.WalkPlay
 import io.github.chronosauros.contour.core.native.DacSetting
@@ -90,6 +92,43 @@ sealed interface ResetUi {
 class DeviceController(private val context: Context, private val scope: CoroutineScope) {
     private val manager = context.getSystemService(UsbManager::class.java)
     val client = DacClient(manager, { d -> sessionGuard(d) }, { d -> UsbAudioKeepAlive.start(context, d) })
+
+    /**
+     * Review hook only (`--es simulate <dac>`, [DacSimulation]): the DAC the app behaves as if it were attached; null = the real bus. While it is set [findDac] never looks at the USB
+     * host, every operation runs on the simulated DAC's own connection ([DacHandle.simulated]) and the phone's slot records are kept apart ([recordScope]). Never set in a release build.
+     */
+    private var simulated: DacHandle? = null
+    private val recordScope: String get() = if (simulated != null) "sim:" else ""
+
+    /** The system's USB permission for a USB DAC; a simulated one has none to ask for. */
+    private fun permitted(d: DacHandle): Boolean = d.usb?.let { manager.hasPermission(it) } ?: true
+
+    /**
+     * Review hook only (`--es simulate <dac>`, MainActivity): connects the simulated DAC [name] ([DacSimulation.open]; null or an unknown name = back to the real bus) as if it had just
+     * been plugged in: nothing read, written or switched on the DAC before carries over, then it is read like any attached DAC. Its registers, slots and settings stay in memory for the
+     * process, so a read after a send shows what the send wrote.
+     */
+    fun simulate(name: String?) {
+        val next = name?.let(DacSimulation::open)
+        if (name != null && next == null) return UsbLog.line("simulate: no simulated DAC \"$name\"")
+        // the same DAC again (MainActivity applies its extras more than once on a cold start): nothing to reconnect
+        if (next?.key == simulated?.key) return
+        simulated = next
+        UsbLog.line(if (next != null) "simulate: ${next.target.caps.name} (no USB)" else "simulate: off")
+        dismissInterruptedSend()
+        connectionEpoch++
+        snapshot = null
+        lastWrite = null
+        error = null
+        abBypassed = false
+        abReference = null
+        selectedSlot = null
+        openPending = true
+        lastProtocol = null
+        dropDacWork()
+        refresh(read = true)
+        rereadSoon()
+    }
 
     /** The DAC found on the bus (MICRO when none). MAX for the Protocol Max, KA15 for the FiiO KA15. */
     var protocol by mutableStateOf(DeviceTarget.MICRO)
@@ -210,7 +249,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                 while ((busy || scanning || following || connecting || openPending) && waits++ < 400) delay(25)
                 if (epoch != connectionEpoch || busy || scanning || following || openPending) return@launch
                 val d = findDac() ?: return@launch
-                if (!manager.hasPermission(d)) return@launch
+                if (!permitted(d)) return@launch
                 busy = true
                 try {
                     val r = client.readSettings(d)
@@ -250,7 +289,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                 while ((busy || scanning || following || connecting || openPending) && waits++ < 400) delay(25)
                 if (epoch != connectionEpoch || busy || scanning || following || connecting || openPending) return@launch
                 val d = findDac() ?: return@launch
-                if (!manager.hasPermission(d)) return@launch
+                if (!permitted(d)) return@launch
                 busy = true
                 try {
                     outcome = if (walkplay) client.writeWalkPlaySetting(d, id, value) else client.writeSetting(d, id, value)
@@ -280,7 +319,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     private fun writeFamilySetting(id: String, value: Int, onDone: (SettingWriteOutcome?) -> Unit) {
         val allegro = protocol.ktMicro != null
         val dawn = protocol.moondrop != null
-        val op: (suspend (UsbDevice) -> WriteResult)? = when {
+        val op: (suspend (DacHandle) -> WriteResult)? = when {
             allegro && id == FamilySettings.EQ_SWITCH -> { d -> client.writeEqSwitch(d, value == 1) }
             allegro && id == FamilySettings.GLOBAL_GAIN -> { d -> client.writeAllegroGlobalGain(d, value) }
             dawn && id == FamilySettings.GLOBAL_GAIN -> { d -> client.writeDawnGain(d, MoondropCodec.GainRegister.GLOBAL, value / 10.0) }
@@ -296,7 +335,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                 while ((busy || scanning || following || connecting || openPending) && waits++ < 400) delay(25)
                 if (epoch != connectionEpoch || busy || scanning || following || connecting || openPending) return@launch
                 val d = findDac() ?: return@launch
-                if (!manager.hasPermission(d)) return@launch
+                if (!permitted(d)) return@launch
                 busy = true
                 var written: WriteResult? = null
                 try {
@@ -357,7 +396,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         writeTestJob = scope.launch {
             val d = findDac()
             if (d == null) return@launch sink("WRITETEST $safe no DAC attached")
-            if (!manager.hasPermission(d)) return@launch sink("WRITETEST $safe no USB permission for the DAC")
+            if (!permitted(d)) return@launch sink("WRITETEST $safe no USB permission for the DAC")
             var waits = 0
             while ((busy || scanning || following || connecting || openPending) && waits++ < 400) delay(25)
             if (busy || scanning || following || connecting || openPending) return@launch sink("WRITETEST $safe busy: Contour is still working on the DAC")
@@ -389,11 +428,12 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         val safe = ProbePlan.safeLabel(label)
         val file = runCatching { java.io.File(context.getExternalFilesDir(null), "probe").also { it.mkdirs() }.resolve("$safe.txt") }.getOrNull()
         val sink: (String) -> Unit = { line -> UsbLog.line(line); runCatching { file?.appendText(line + '\u000A') } }
+        if (simulated != null) return sink("PROBE $safe skipped: a simulated DAC has no USB to read")
         if (probeJob?.isActive == true) return sink("PROBE $safe busy: a probe is already running")
         probeJob = scope.launch {
             val d = findDac()
             if (d == null) return@launch sink("PROBE $safe no DAC attached")
-            if (!manager.hasPermission(d)) return@launch sink("PROBE $safe no USB permission for the DAC")
+            if (!permitted(d)) return@launch sink("PROBE $safe no USB permission for the DAC")
             var waits = 0
             while ((busy || scanning || following || connecting || openPending) && waits++ < 400) delay(25)
             if (busy || scanning || following || connecting || openPending) return@launch sink("PROBE $safe busy: Contour is still working on the DAC")
@@ -475,7 +515,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     var slotRecords by mutableStateOf<Map<Int, SlotRecord>>(emptyMap())
         private set
     private val recordPrefs = context.getSharedPreferences("slot_records", Context.MODE_PRIVATE)
-    private fun recordKey(slot: Int) = "${protocol.caps.name}:$slot"
+    private fun recordKey(slot: Int) = "$recordScope${protocol.caps.name}:$slot"
     private fun encode(r: FiioSnapshot) = "${r.preampTenths}|" + r.bands.sortedBy { it.index }
         .joinToString(";") { "${it.frequencyHz},${it.gainTenths},${it.qHundredths},${it.typeCode}" }
     private fun decode(f: FiioConfig, slot: Int, text: String): FiioSnapshot? = runCatching {
@@ -538,7 +578,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
      * ([SlotContent.fingerprint]) at that moment. The link is used only while the slot still reads the same (the FiiO app or the
      * DAC's buttons may have changed it) and the profile still exists. Without a slot picker the slot is the DAC's own.
      */
-    private fun linkKey(slot: Int) = "link:${protocol.caps.name}:$slot"
+    private fun linkKey(slot: Int) = "link:$recordScope${protocol.caps.name}:$slot"
     fun linkOf(slot: Int): Pair<String, String>? = recordPrefs.getString(linkKey(slot), null)
         ?.split('\n', limit = 2)?.takeIf { it.size == 2 }?.let { it[0] to it[1] }
     fun setLink(slot: Int, profileId: String, fingerprint: String) { recordPrefs.edit().putString(linkKey(slot), "$profileId\n$fingerprint").apply() }
@@ -622,11 +662,12 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     }
 
     /** KA15 operations: throws once the attachment the operation started on is gone (detach, other DAC). */
-    private fun sessionGuard(d: UsbDevice): () -> Unit {
+    private fun sessionGuard(d: DacHandle): () -> Unit {
         val epoch = connectionEpoch
-        val id = d.deviceId
+        val id = d.usb?.deviceId
         return {
-            if (epoch != connectionEpoch || manager.deviceList.values.none { it.deviceId == id } || !manager.hasPermission(d))
+            // a simulated DAC is never unplugged: only a new connection ends its session
+            if (epoch != connectionEpoch || (id != null && manager.deviceList.values.none { it.deviceId == id }) || !permitted(d))
                 throw IOException("DAC SESSION CHANGED; reconnect and retry")
         }
     }
@@ -654,6 +695,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
 
     private val receiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
+            if (simulated != null) return // review builds: a simulated DAC is on, the real bus is left alone
             when (intent.action) {
                 ACTION_USB_PERMISSION -> {
                     val granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false)
@@ -699,7 +741,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             repeat(REREAD_ATTEMPTS) { n ->
                 delay(if (n == 0) REREAD_FIRST_MS else REREAD_GAP_MS)
                 val d = findDac() ?: return@launch // gone again: the next attach asks again
-                if (!manager.hasPermission(d) || abBypassed) return@launch // the permission result asks
+                if (!permitted(d) || abBypassed) return@launch // the permission result asks
                 var waited = 0
                 while ((busy || scanning) && waited < REREAD_BUSY_MAX_MS) { delay(200); waited += 200 }
                 if (snapshot != null) { if (interruptedSend != null) interruptedReadAgain = true; return@launch }
@@ -731,12 +773,12 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         client.shutdown()
     }
 
-    private fun findDac(): UsbDevice? = manager.deviceList.values.firstOrNull { DeviceIdentity.target(it) != null }
+    private fun findDac(): DacHandle? = simulated ?: manager.deviceList.values.firstNotNullOfOrNull { DacHandle.of(it) }
 
     /** Recomputes the link; when connected and [read], reads the DAC (read-only). */
     fun refresh(read: Boolean) {
         val d = findDac()
-        val found = d?.let { DeviceIdentity.target(it) }
+        val found = d?.target
         if (found != null && lastProtocol != null && found != lastProtocol) {
             // Another DAC model (Micro <-> Max <-> KA15): nothing read, written or switched on the old one carries over.
             UsbLog.line("DAC changed: ${lastProtocol?.caps?.name} -> ${found.caps.name}")
@@ -756,7 +798,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         loadRecords()
         link = when {
             d == null -> Link.NO_DAC
-            !manager.hasPermission(d) -> Link.NEEDS_PERMISSION
+            !permitted(d) -> Link.NEEDS_PERMISSION
             else -> Link.CONNECTED
         }
         if (link != Link.CONNECTED) {
@@ -784,10 +826,11 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     /** The system permission dialog (TAP TO CONNECT). */
     fun requestPermission() {
         val d = findDac() ?: return refresh(false)
-        if (manager.hasPermission(d)) return refresh(true)
+        val usbDevice = d.usb
+        if (usbDevice == null || manager.hasPermission(usbDevice)) return refresh(true)
         val intent = Intent(ACTION_USB_PERMISSION).setPackage(context.packageName)
         val flags = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
-        manager.requestPermission(d, PendingIntent.getBroadcast(context, 0, intent, flags))
+        manager.requestPermission(usbDevice, PendingIntent.getBroadcast(context, 0, intent, flags))
     }
 
     /**
@@ -851,7 +894,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         scanning = false
     }
 
-    private fun startScan(d: UsbDevice) {
+    private fun startScan(d: DacHandle) {
         val f = protocol.fiio ?: return
         if (!slotPicker) return
         val state = snapshot?.nativeState as? NativeState.Fiio ?: return
@@ -897,7 +940,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     }
 
     /** The scan has read every slot: select the slot the DAC played at the start, and mark it as playing. */
-    private suspend fun finishScan(d: UsbDevice, f: FiioConfig, connectRaw: FiioSnapshot, start: Int?, lastRead: Int?) {
+    private suspend fun finishScan(d: DacHandle, f: FiioConfig, connectRaw: FiioSnapshot, start: Int?, lastRead: Int?) {
         val slots = f.userSlots.sorted()
         val end = start ?: run {
             // SnowSky, number unknown: the scanned slot whose registers equal the connect read (the first one: they sound the same).
@@ -978,7 +1021,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             while ((busy || scanning) && waits++ < 400) { if (scanning) scanJob?.join() else delay(25) }
             if (epoch != connectionEpoch || busy) return
             val d = findDac() ?: run { link = Link.NO_DAC; snapshot = null; return }
-            if (!manager.hasPermission(d)) { link = Link.NEEDS_PERMISSION; snapshot = null; return }
+            if (!permitted(d)) { link = Link.NEEDS_PERMISSION; snapshot = null; return }
             busy = true
             held = true
             while (epoch == connectionEpoch) {
@@ -1005,7 +1048,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             if (epoch == connectionEpoch) {
                 snapshot = null
                 dacSlot = null
-                error = "switch failed: ${e.message}"
+                error = "switch failed: ${FailureText.of(e.message ?: e.javaClass.simpleName)}"
             }
         } finally {
             if (held) busy = false
@@ -1016,7 +1059,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     }
 
     /** Brings the DAC to USER [target]: a known slot is switched to (and read once if that is not confirmed), an unknown one is read. */
-    private suspend fun serve(d: UsbDevice, target: Int, onRead: ((DacSnapshot) -> Unit)?, epoch: Long): Kind {
+    private suspend fun serve(d: DacHandle, target: Int, onRead: ((DacSnapshot) -> Unit)?, epoch: Long): Kind {
         val known = slotRecords[target] != null && snapshot?.nativeState is NativeState.Fiio
         if (known) {
             val confirmed = try { client.selectSlot(d, target) } catch (e: Exception) {
@@ -1074,7 +1117,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             abBypassed = false; abReference = null; snapshot = null; link = Link.NO_DAC
             return SendOutcome(false, "NO DAC")
         }
-        if (!manager.hasPermission(d)) { link = Link.NEEDS_PERMISSION; return forgetAb("NO PERMISSION") }
+        if (!permitted(d)) { link = Link.NEEDS_PERMISSION; return forgetAb("NO PERMISSION") }
         if (busy) return forgetAb("DAC BUSY")
         if (bypass) {
             // B is entered only when A can be put back: the restoring sequence is encoded (and so checked) first.
@@ -1101,7 +1144,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         } catch (e: Exception) {
             UsbLog.line("A/B failed: ${e.message}")
             if (epoch != connectionEpoch) SendOutcome(false, "DAC DETACHED")
-            else forgetAb(e.message ?: e.javaClass.simpleName)
+            else forgetAb(FailureText.of(e.message ?: e.javaClass.simpleName))
         } finally {
             busy = false
         }
@@ -1115,9 +1158,9 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         return SendOutcome(false, reason)
     }
 
-    private suspend fun sendWith(what: String, op: suspend (UsbDevice) -> WriteResult): SendOutcome {
+    private suspend fun sendWith(what: String, op: suspend (DacHandle) -> WriteResult): SendOutcome {
         val d = findDac() ?: run { link = Link.NO_DAC; snapshot = null; return SendOutcome(false, "NO DAC") }
-        if (!manager.hasPermission(d)) {
+        if (!permitted(d)) {
             link = Link.NEEDS_PERMISSION
             snapshot = null
             return SendOutcome(false, "NO PERMISSION")
@@ -1151,15 +1194,16 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             snapshot = if (back.target.experimental && !r.verified) null else back
             publishFamilySettings()
             // A verified write can still carry a note (KA15: the slot name did not read back).
-            error = if (r.verified) r.mismatches.firstOrNull() else null
+            error = if (r.verified) FailureText.note(r.mismatches.firstOrNull()) else null
             if (r.verified) dismissInterruptedSend()
-            if (r.verified) SendOutcome(true, null) else SendOutcome(false, "READ-BACK MISMATCH: ${r.mismatches.firstOrNull() ?: ""}")
+            if (r.verified) SendOutcome(true, null) else SendOutcome(false, FailureText.readBack(r.mismatches.firstOrNull()))
         } catch (e: Exception) {
             UsbLog.line("$what failed: ${e.message}")
             snapshot = null // a partial write or failed read cannot establish what the DAC holds
-            error = e.message
-            markInterrupted(e.message ?: e.javaClass.simpleName)
-            SendOutcome(false, e.message ?: e.javaClass.simpleName)
+            val shown = FailureText.of(e.message ?: e.javaClass.simpleName)
+            error = if (Proven.channel == BuildChannel.PERF) e.message else shown
+            markInterrupted(shown)
+            SendOutcome(false, shown)
         } finally {
             if (held) busy = false
         }
@@ -1191,7 +1235,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         if (p.result.isCompleted || !p.ready() || s.familyState !is FamilyState.Allegro) return
         val mismatches = p.save.verify(s)
         UsbLog.line("save: read back after ${if (p.detached) "reconnect" else "no reconnect"}: ${if (mismatches.isEmpty()) "VERIFIED" else mismatches.joinToString("; ")}")
-        p.result.complete(Verdict(if (mismatches.isEmpty()) null else "READ-BACK MISMATCH: ${mismatches.first()}", mismatches, s))
+        p.result.complete(Verdict(if (mismatches.isEmpty()) null else FailureText.readBack(mismatches.first()), mismatches, s))
     }
 
     private suspend fun awaitSave(save: PendingSave): Verdict {
@@ -1282,14 +1326,14 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         val back = requireNotNull(r.readBack) { "The service write has no read-back" }
         if (back.target.experimental && !r.verified) {
             snapshot = null
-            throw java.io.IOException("READ-BACK MISMATCH: ${r.mismatches.firstOrNull()}")
+            throw java.io.IOException(FailureText.readBack(r.mismatches.firstOrNull()))
         }
         snapshot = back
     }
 
-    private fun launchOp(what: String, keepSnapshot: Boolean = false, op: suspend (UsbDevice) -> Unit) {
+    private fun launchOp(what: String, keepSnapshot: Boolean = false, op: suspend (DacHandle) -> Unit) {
         val d = findDac() ?: run { link = Link.NO_DAC; snapshot = null; return }
-        if (!manager.hasPermission(d)) { link = Link.NEEDS_PERMISSION; snapshot = null; return }
+        if (!permitted(d)) { link = Link.NEEDS_PERMISSION; snapshot = null; return }
         if (busy || scanning) return // the background scan owns the DAC until it ends or a send stops it
         busy = true
         val epoch = connectionEpoch
@@ -1302,7 +1346,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             } catch (e: Exception) {
                 UsbLog.line("$what failed: ${e.message}")
                 if (!keepSnapshot || epoch != connectionEpoch) snapshot = null
-                error = "$what failed: ${e.message}"
+                error = "$what failed: ${FailureText.of(e.message ?: e.javaClass.simpleName)}"
             } finally {
                 busy = false
             }
@@ -1382,13 +1426,13 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     }
 
     /** The DAC on the bus with the system's permission, polled; after the reset it may take a while, and the system may ask for a tap again. Null = it did not come back. */
-    private suspend fun awaitDacBack(timeoutMs: Long): UsbDevice? {
+    private suspend fun awaitDacBack(timeoutMs: Long): DacHandle? {
         val end = SystemClock.elapsedRealtime() + timeoutMs
         var asked = false
         while (SystemClock.elapsedRealtime() < end) {
             val d = findDac()
             if (d != null) {
-                if (manager.hasPermission(d)) return d
+                if (permitted(d)) return d
                 if (!asked) { asked = true; requestPermission() }
             }
             delay(500)
@@ -1403,7 +1447,15 @@ class DeviceController(private val context: Context, private val scope: Coroutin
      * There is no time limit: the wait lasts while the reset sheet is open (the owner replugged after 4 min in the Melody phone run of 25.10.2026, which a 3 min limit had already ended);
      * [stopWaitingForReplug] ends it. Null = the owner stopped waiting, or the DAC did not come back on the bus after the replug.
      */
-    private suspend fun awaitReplug(): UsbDevice? {
+    private suspend fun awaitReplug(): DacHandle? {
+        // Review builds: a simulated DAC is "unplugged and plugged back in" by itself after a moment, so the reset runs to its result.
+        if (simulated != null) {
+            replugWaitOpen = true
+            try { delay(SIM_REPLUG_MS) } finally { replugWaitOpen = false }
+            resetReplugged = true
+            UsbLog.line("reset: the simulated DAC was unplugged and plugged back in")
+            return findDac()
+        }
         replugWaitOpen = true
         try {
             var sawMissing = false
@@ -1471,7 +1523,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             try {
                 if (!takeDacForReset()) throw IOException("Contour is still working on the DAC. Nothing was sent.")
                 val d = findDac() ?: throw IOException("NO DAC. Nothing was sent.")
-                if (!manager.hasPermission(d)) throw IOException("NO PERMISSION. Nothing was sent.")
+                if (!permitted(d)) throw IOException("NO PERMISSION. Nothing was sent.")
                 busy = true
                 held = true
                 val taken = client.captureForReset(d, System.currentTimeMillis())
@@ -1505,7 +1557,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                         delay(2000)
                     }
                 }
-                val read = after ?: throw IOException("The DAC could not be read after the reset (${lastError ?: "it did not come back"}).")
+                val read = after ?: throw IOException(if (Proven.channel == BuildChannel.PERF) "The DAC could not be read after the reset (${lastError ?: "it did not come back"})." else "The DAC could not be read after the reset. Unplug it, plug it back in and read it again.")
                 val changes = flow.compared(read, { id -> target.settings.firstOrNull { s -> s.id == id }?.label ?: id },
                     { id, v -> resetValueText(target.settings.firstOrNull { s -> s.id == id }, v) })
                 UsbLog.line("reset: ${changes.size} change(s) against the copy")
@@ -1514,7 +1566,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                 if (e is CancellationException) throw e
                 UsbLog.line("reset failed: ${e.message}")
                 val sent = sentOut()
-                resetUi = ResetUi.Failed(e.message ?: e.javaClass.simpleName, sent, sent && flow.backup != null, resetFile?.name)
+                resetUi = ResetUi.Failed(FailureText.of(e.message ?: e.javaClass.simpleName), sent, sent && flow.backup != null, resetFile?.name)
             } finally {
                 if (held) busy = false
             }
@@ -1541,7 +1593,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             try {
                 if (!takeDacForReset()) throw IOException("Contour is still working on the DAC. Nothing was sent.")
                 val d = findDac() ?: throw IOException("NO DAC. Nothing was sent.")
-                if (!manager.hasPermission(d)) throw IOException("NO PERMISSION. Nothing was sent.")
+                if (!permitted(d)) throw IOException("NO PERMISSION. Nothing was sent.")
                 busy = true
                 held = true
                 val taken = client.captureWalkPlayForReset(d, System.currentTimeMillis())
@@ -1569,7 +1621,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                         delay(2000)
                     }
                 }
-                val read = after ?: throw IOException("The DAC could not be read after the reset (${lastError ?: "it did not come back"}).")
+                val read = after ?: throw IOException(if (Proven.channel == BuildChannel.PERF) "The DAC could not be read after the reset (${lastError ?: "it did not come back"})." else "The DAC could not be read after the reset. Unplug it, plug it back in and read it again.")
                 val rows = WalkPlaySettings.of(profile)
                 val changes = flow.compared(read, { id -> rows.firstOrNull { s -> s.id == id }?.label ?: id },
                     { id, v -> resetValueText(rows.firstOrNull { s -> s.id == id }, v) })
@@ -1579,7 +1631,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                 if (e is CancellationException) throw e
                 UsbLog.line("reset failed: ${e.message}")
                 val sent = sentOut()
-                resetUi = ResetUi.Failed(e.message ?: e.javaClass.simpleName, sent, sent && flow.backup != null, resetFile?.name)
+                resetUi = ResetUi.Failed(FailureText.of(e.message ?: e.javaClass.simpleName), sent, sent && flow.backup != null, resetFile?.name)
             } finally {
                 if (held) busy = false
             }
@@ -1610,7 +1662,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 UsbLog.line("restore failed: ${e.message}")
-                resetUi = ResetUi.Failed(e.message ?: e.javaClass.simpleName, true, true, file)
+                resetUi = ResetUi.Failed(FailureText.of(e.message ?: e.javaClass.simpleName), true, true, file)
             } finally {
                 if (held) busy = false
             }
@@ -1657,7 +1709,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             } catch (e: Exception) {
                 if (e is CancellationException) throw e
                 UsbLog.line("restore failed: ${e.message}")
-                resetUi = ResetUi.Failed(e.message ?: e.javaClass.simpleName, true, true, file)
+                resetUi = ResetUi.Failed(FailureText.of(e.message ?: e.javaClass.simpleName), true, true, file)
             } finally {
                 if (held) busy = false
             }
@@ -1667,7 +1719,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
 
     companion object {
         /** The start of the reason of a send that ended at SAVE and could not be proven in time ([awaitSave]): the DAC may hold the EQ, it was not read back. */
-        const val NOT_VERIFIED = "NOT VERIFIED"
+        const val NOT_VERIFIED = "NOT CONFIRMED"
         private const val RESET_STEP_COPY = "READING THE DAC AND SAVING A COPY"
         private const val RESET_STEP_SEND = "SENDING THE RESET"
         private const val RESET_STEP_WAIT = "WAITING FOR THE DAC TO COME BACK"
@@ -1676,6 +1728,8 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         private const val RESET_BACK_MS = 60_000L
         /** How long SAVING TO DAC stays after a transfer ends, so the fill is seen to reach the end. */
         private const val SETTLE_MS = 250L
+        /** A simulated DAC (`--es simulate`) takes this long to be "plugged back in" after a FiiO reset. */
+        private const val SIM_REPLUG_MS = 2_500L
         /** An Allegro write ended at SAVE: how long the DAC has to come back and be read, how often a read is tried, and when a read counts as proof although the DAC was never seen leaving. */
         private const val VERIFY_TIMEOUT_MS = 45_000L
         /** How long the system's USB permission dialog after SAVE may stay open before the wait gives up (it does not count against [VERIFY_TIMEOUT_MS]). */

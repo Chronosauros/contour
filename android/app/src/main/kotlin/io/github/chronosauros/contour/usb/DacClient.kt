@@ -3,8 +3,10 @@ package io.github.chronosauros.contour.usb
 import android.hardware.usb.UsbDevice
 import android.hardware.usb.UsbManager
 import android.os.SystemClock
+import io.github.chronosauros.contour.core.BuildChannel
 import io.github.chronosauros.contour.core.DacImport
 import io.github.chronosauros.contour.core.DevicePlan
+import io.github.chronosauros.contour.core.Proven
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.core.DeviceProtocol
 import io.github.chronosauros.contour.core.DeviceTarget
@@ -64,11 +66,16 @@ data class DacSnapshot(
     val shownPreamp: Double? get() = if (familyState != null) familyState.preampDb else if (nativeState != null) nativeState.preamp else preampDb?.toDouble()
     fun matches(profile: Profile): Boolean = familyState?.matches(profile) ?: nativeState?.matches(profile)
         ?: requireNotNull(protocol).matches(profile, bands.map { it.registers }, requireNotNull(preampDb))
-    fun importExact(): DacImport = familyState?.let { s -> runCatching<DacImport> { DacImport.Ready(s.importExact()) }
+    /** What the DAC holds as an EQ Contour can open. A state it cannot open exactly names the reason only in a review build; a release says it in one plain sentence. */
+    fun importExact(): DacImport = importRaw().let { r ->
+        if (r is DacImport.Rejected && Proven.channel != BuildChannel.PERF) DacImport.Rejected(listOf(NOT_EXACT)) else r
+    }
+    private fun importRaw(): DacImport = familyState?.let { s -> runCatching<DacImport> { DacImport.Ready(s.importExact()) }
         .getOrElse { DacImport.Rejected(listOf(it.message ?: "The DAC state cannot be imported exactly")) } }
         ?: nativeState?.let { s -> runCatching<DacImport> { DacImport.Ready(s.importExact()) }
         .getOrElse { DacImport.Rejected(listOf(it.message ?: "Native state cannot be imported exactly")) } }
         ?: requireNotNull(protocol).importExact(bands, requireNotNull(preampDb))
+    private companion object { const val NOT_EXACT = "This EQ on the DAC uses filters Contour can't edit exactly, so it is only shown." }
 }
 
 /**
@@ -98,20 +105,23 @@ class PendingSave(val verify: (DacSnapshot) -> List<String>)
  * [guardFor] (KA15) throws once the DAC session the operation started on has ended; [audioKeepAlive] keeps the
  * KA15's USB audio stream running for the whole HID session (it answers HID only while audio streams).
  */
-class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevice) -> (() -> Unit) = { {} },
+class DacClient(private val manager: UsbManager, private val guardFor: (DacHandle) -> (() -> Unit) = { {} },
     private val audioKeepAlive: (UsbDevice) -> AutoCloseable? = { null }) {
     private val executor = Executors.newSingleThreadExecutor { Thread(it, "contour-usb") }
     private val usb = executor.asCoroutineDispatcher()
 
     fun shutdown() = executor.shutdown()
 
-    private suspend fun <T> withDevice(device: UsbDevice, block: (HidTransport) -> T): T = hidLock.withLock {
-        val fiio = target(device).fiio ?: return@withLock withContext(usb) { HidTransport.open(manager, device).use(block) }
+    private suspend fun <T> withDevice(device: DacHandle, block: (HidIo) -> T): T = hidLock.withLock {
+        // Review builds only (`--es simulate`): a simulated DAC has no USB; nothing below it runs for it.
+        device.simulated?.let { open -> return@withLock withContext(usb) { open(guardFor(device)).use(block) } }
+        val dev = requireNotNull(device.usb)
+        val fiio = target(device).fiio ?: return@withLock withContext(usb) { HidTransport.open(manager, dev).use(block) }
         val guard = guardFor(device)
         withContext(usb) {
             guard()
-            val stream = if (fiio.needsAudioStream) audioKeepAlive(device) else null
-            try { HidTransport.open(manager, device, guard).use(block).also { guard() } } finally { stream?.close() }
+            val stream = if (fiio.needsAudioStream) audioKeepAlive(dev) else null
+            try { HidTransport.open(manager, dev, guard).use(block).also { guard() } } finally { stream?.close() }
         }
     }
 
@@ -121,19 +131,19 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
         val hidLock = Mutex()
     }
 
-    private fun target(device: UsbDevice): DeviceTarget = DeviceIdentity.target(device) ?: throw IOException("Unsupported DAC")
+    private fun target(device: DacHandle): DeviceTarget = device.target
 
-    private fun protocol(device: UsbDevice): DeviceProtocol =
+    private fun protocol(device: DacHandle): DeviceProtocol =
         target(device).walkplay ?: throw IOException("WalkPlay-only operation unavailable on ${target(device).caps.name}")
 
-    private fun nativeSession(device: UsbDevice, t: HidTransport, target: DeviceTarget) = NativeSession(target, object : NativePort {
+    private fun nativeSession(device: DacHandle, t: HidIo, target: DeviceTarget) = NativeSession(target, object : NativePort {
         /** SnowSky Melody and Tiny A: their own bounded request boundary with input cleanup (see FiioMelodyExchange). */
-        private val melody = if (FiioMelodyExchange.appliesTo(target.fiio)) FiioMelodyExchange(
+        private val melody = if (device.simulated == null && FiioMelodyExchange.appliesTo(target.fiio)) FiioMelodyExchange(
             t.nativePayloadSize(requireNotNull(target.fiio).reportId, NativeHidReports.Kind.INPUT),
             { t.checkSession() }, { SystemClock.elapsedRealtime() },
             { id, payload -> t.sendNative(id, NativeHidReports.Kind.OUTPUT, payload) }, { t.receive(it) },
             FiioMelodyExchange.name(requireNotNull(target.fiio))) else null
-        override val deviceKey = "${device.deviceName}:${device.deviceId}:${device.vendorId}:${device.productId}"
+        override val deviceKey = device.key
         override fun guard() = t.checkSession()
         override fun pause(ms: Long) { t.checkSession(); Thread.sleep(ms); t.checkSession() }
         override fun send(id: Int, kind: NativeHidReports.Kind, payload: ByteArray) = t.sendNative(id, kind, payload)
@@ -144,7 +154,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
     private fun nativeSnapshot(target: DeviceTarget, state: NativeState, ms: Long) =
         DacSnapshot("native", state.slot, emptyList(), null, ms, protocol = null, nativeState = state, target = target)
 
-    suspend fun readDevice(device: UsbDevice): DacSnapshot = withDevice(device) { t ->
+    suspend fun readDevice(device: DacHandle): DacSnapshot = withDevice(device) { t ->
         val target = target(device)
         if (target.walkplay != null) readWalkPlay(device, t, target) else if (target.fiio == null) readFamily(device, t, target) else {
             val start = SystemClock.elapsedRealtime()
@@ -160,7 +170,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
      * today; a WalkPlay reader (report 0x4B) and a standard USB Audio Class reader would join here, and the caller never needs to know which.
      * Every TX and RX goes to the USB log with the setting id.
      */
-    suspend fun readSettings(device: UsbDevice): List<SettingReading> = withDevice(device) { t ->
+    suspend fun readSettings(device: DacHandle): List<SettingReading> = withDevice(device) { t ->
         val target = target(device)
         require(target.settings.isNotEmpty()) { "${target.caps.name} has no settings list" }
         val start = SystemClock.elapsedRealtime()
@@ -181,7 +191,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
      * Sets one setting of a FiiO/SnowSky DAC and reads it back ([NativeSession.writeSetting]): the SET, its echo, the model's gap, the same command
      * read. The caller (the controller) lets it through only for a setting with writeVerified. KA15: inside the audio keep-alive of [withDevice].
      */
-    suspend fun writeSetting(device: UsbDevice, id: String, value: Int): SettingWriteOutcome = withDevice(device) { t ->
+    suspend fun writeSetting(device: DacHandle, id: String, value: Int): SettingWriteOutcome = withDevice(device) { t ->
         val target = target(device)
         if (target.fiio == null || target.settings.isEmpty()) throw IOException("No settings writer for ${target.caps.name}")
         nativeSession(device, t, target).writeSetting(id, value, UsbLog::line).also { t.checkSession() }
@@ -192,7 +202,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
      * lets it through only for a row the gate opened ([DacSetting.writeEnabled]); it is checked here again, so a row that is read only for the app (the gain mode, the balance)
      * or that no release has proven cannot reach a frame. The vendor's flash save (`01 01 00`) follows a mic write only, as in its tool.
      */
-    suspend fun writeWalkPlaySetting(device: UsbDevice, id: String, value: Int): SettingWriteOutcome = withDevice(device) { t ->
+    suspend fun writeWalkPlaySetting(device: DacHandle, id: String, value: Int): SettingWriteOutcome = withDevice(device) { t ->
         val target = target(device)
         val profile = target.walkplayProfile ?: throw IOException("No WalkPlay settings writer for ${target.caps.name}")
         val row = target.settings.firstOrNull { it.id == id }?.takeIf { it.writeEnabled } ?: throw IOException("${target.caps.name}: \"$id\" is not written by the app")
@@ -211,7 +221,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
      * Allegro Mini: the EQ switch (register 0x24) and SAVE, the bands untouched ([KtMicroSession.writeSwitch]). The DAC leaves the USB bus after SAVE, so the
      * result is pending: the controller verifies it with the first read after the DAC is back. Nothing else of the Allegro is ever written from here.
      */
-    suspend fun writeEqSwitch(device: UsbDevice, on: Boolean): WriteResult = withDevice(device) { t ->
+    suspend fun writeEqSwitch(device: DacHandle, on: Boolean): WriteResult = withDevice(device) { t ->
         val target = target(device)
         val model = target.ktMicro ?: throw IOException("No EQ switch writer for ${target.caps.name}")
         val start = SystemClock.elapsedRealtime()
@@ -226,7 +236,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
      * the USB bus after SAVE, so the result is pending: the first read after it is back (0x3B is part of that read) must show the written step. The row that calls this
      * stays off ([io.github.chronosauros.contour.core.native.DacSetting.writeVerified] false) until the PC bench has proven the frame on the unit.
      */
-    suspend fun writeAllegroGlobalGain(device: UsbDevice, step: Int): WriteResult = withDevice(device) { t ->
+    suspend fun writeAllegroGlobalGain(device: DacHandle, step: Int): WriteResult = withDevice(device) { t ->
         val target = target(device)
         val model = target.ktMicro ?: throw IOException("No Global Gain writer for ${target.caps.name}")
         val start = SystemClock.elapsedRealtime()
@@ -241,7 +251,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
      * read back in the same session with the same index and bands. Not saved to flash ([MoondropSession.writeGain] `persist` false, as the manufacturer's own apply flow
      * passes it); whether a gain survives a power cycle is for the bench to prove. The row that calls this stays off until the PC bench has proven the frame.
      */
-    suspend fun writeDawnGain(device: UsbDevice, register: MoondropCodec.GainRegister, db: Double): WriteResult = withDevice(device) { t ->
+    suspend fun writeDawnGain(device: DacHandle, register: MoondropCodec.GainRegister, db: Double): WriteResult = withDevice(device) { t ->
         val target = target(device)
         val model = target.moondrop ?: throw IOException("No gain writer for ${target.caps.name}")
         val start = SystemClock.elapsedRealtime()
@@ -258,7 +268,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
     // ---- factory reset (SnowSky Melody and Tiny A, FiiO KA15): the three calls of the controller's flow ---------------------------------------------------------------
 
     /** Every USER slot (name and registers) and every readable setting, read only ([NativeSession.captureForReset]): the backup before the reset, and the read after it. */
-    suspend fun captureForReset(device: UsbDevice, takenAtMs: Long): FiioResetBackup = withDevice(device) { t ->
+    suspend fun captureForReset(device: DacHandle, takenAtMs: Long): FiioResetBackup = withDevice(device) { t ->
         val target = target(device)
         if (!FiioReset.inApp(target.fiio)) throw IOException("${target.caps.name} has no factory reset")
         UsbLog.line("reset: reading ${target.caps.name} (USER slots, names, settings)")
@@ -269,7 +279,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
      * Sends the reset frame (`aa 0a 00 SEQ 21 01 00 CRC ee`, from [ticket] only) and nothing else. The DAC may restart: no answer, a late answer, or a session
      * that ends after the frame went out are [FiioResetSent] notes, never an error; a failure before the frame went out is thrown.
      */
-    suspend fun factoryReset(device: UsbDevice, ticket: FiioResetTicket): FiioResetSent {
+    suspend fun factoryReset(device: DacHandle, ticket: FiioResetTicket): FiioResetSent {
         var sent: FiioResetSent? = null
         try {
             withDevice(device) { t ->
@@ -287,7 +297,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
     }
 
     /** Writes [backup] back ([NativeSession.restoreAfterReset]): the slots, names, settings and the slot the DAC was on, one line each. */
-    suspend fun restoreAfterReset(device: UsbDevice, backup: FiioResetBackup): FiioRestoreResult = withDevice(device) { t ->
+    suspend fun restoreAfterReset(device: DacHandle, backup: FiioResetBackup): FiioRestoreResult = withDevice(device) { t ->
         val target = target(device)
         if (!FiioReset.inApp(target.fiio)) throw IOException("${target.caps.name} has no factory reset")
         UsbLog.line("reset: writing the saved copy back to ${target.caps.name}")
@@ -300,7 +310,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
         target.walkplayProfile?.takeIf { WalkPlayReset.enabled(it) } ?: throw IOException("${target.caps.name} has no factory reset")
 
     /** Every band, the preamp, the slot byte and every readable setting, read only ([WalkPlaySession.captureForReset]): the backup before the reset, and the read after it. */
-    suspend fun captureWalkPlayForReset(device: UsbDevice, takenAtMs: Long): WalkPlayResetBackup = withDevice(device) { t ->
+    suspend fun captureWalkPlayForReset(device: DacHandle, takenAtMs: Long): WalkPlayResetBackup = withDevice(device) { t ->
         val target = target(device)
         val profile = resettable(target)
         UsbLog.line("reset: reading ${target.caps.name} (bands, preamp, settings)")
@@ -311,7 +321,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
      * Sends the reset sequence ([WalkPlayReset.sequence], from [ticket] only). The DAC may restart: a session that ends after the first frame is a [WalkPlayResetSent] note,
      * never an error; a failure before the first frame is thrown.
      */
-    suspend fun walkPlayFactoryReset(device: UsbDevice, ticket: WalkPlayResetTicket): WalkPlayResetSent {
+    suspend fun walkPlayFactoryReset(device: DacHandle, ticket: WalkPlayResetTicket): WalkPlayResetSent {
         var sent: WalkPlayResetSent? = null
         try {
             withDevice(device) { t ->
@@ -328,7 +338,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
     }
 
     /** Writes [backup] back ([WalkPlaySession.restoreAfterReset]): bands and preamp through the ordinary write, then the settings the app writes (the gain mode and the balance are read only here). */
-    suspend fun restoreWalkPlayAfterReset(device: UsbDevice, backup: WalkPlayResetBackup): WalkPlayRestoreResult = withDevice(device) { t ->
+    suspend fun restoreWalkPlayAfterReset(device: DacHandle, backup: WalkPlayResetBackup): WalkPlayRestoreResult = withDevice(device) { t ->
         val target = target(device)
         val profile = resettable(target)
         UsbLog.line("reset: writing the saved copy back to ${target.caps.name}")
@@ -339,7 +349,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
      * Dawn Pro 2: back to the EQ index [index] the DAC was on before Contour's send switched it to Contour's bank. An explicit user action; the index is saved
      * (`01 01 00`) so the DAC is on it after a power cycle too. Returns the index one read confirms; the caller compares it with [index].
      */
-    suspend fun returnToIndex(device: UsbDevice, index: Int): Int = withDevice(device) { t ->
+    suspend fun returnToIndex(device: DacHandle, index: Int): Int = withDevice(device) { t ->
         val target = target(device)
         val model = target.moondrop ?: throw IOException("No EQ index on ${target.caps.name}")
         UsbLog.line("switch: ${target.caps.name} back to EQ index $index")
@@ -347,7 +357,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
     }
 
     /** The write self-test (review builds, [NativeSession.writeTest]): every TX and RX and the result line go to [sink]. */
-    suspend fun writeTest(device: UsbDevice, id: String, to: Int?, sink: (String) -> Unit): WriteTestResult = withDevice(device) { t ->
+    suspend fun writeTest(device: DacHandle, id: String, to: Int?, sink: (String) -> Unit): WriteTestResult = withDevice(device) { t ->
         val target = target(device)
         if (target.fiio == null || target.settings.isEmpty()) throw IOException("No settings writer for ${target.caps.name}")
         nativeSession(device, t, target).writeTest(id, to, sink).also { t.checkSession() }
@@ -359,10 +369,11 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
      * requests) on a connection that claims nothing. If another app holds the HID interface the probe says `busy` and skips layers 1 and 2: it
      * never forces. Writes nothing; a no-reply or a refused request is a result, not a failure.
      */
-    suspend fun probe(device: UsbDevice, label: String, sink: (String) -> Unit) {
+    suspend fun probe(device: DacHandle, label: String, sink: (String) -> Unit) {
         val target = target(device)
+        val usbDevice = requireNotNull(device.usb) { "A simulated DAC has no USB descriptors to probe" }
         val report = ProbeReport(label, target.caps.name, sink) { SystemClock.elapsedRealtime() }
-        report.note("info", "vid %04x pid %04x ${if (target.fiio != null) "FiiO" else if (target.walkplay != null) "WalkPlay" else "1.6 family"}".format(device.vendorId, device.productId))
+        report.note("info", "vid %04x pid %04x ${if (target.fiio != null) "FiiO" else if (target.walkplay != null) "WalkPlay" else "1.6 family"}".format(usbDevice.vendorId, usbDevice.productId))
         val fiio = target.fiio
         val gap = fiio?.let { ProbePlan.fiioGapMs(it) }
         if (fiio != null && gap == null) report.note("fiio", "skipped: FiiO Control drives ${fiio.productName} with a different protocol (24-bit command IDs)")
@@ -376,12 +387,12 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
             val busy = e.message.orEmpty().let { "claimInterface" in it || "No unambiguous" in it || "openDevice failed" in it || "no HID interface" in it }
             report.stopped(if (busy) "${ProbePlan.deviceToken(target.caps.name)} hid busy: ${e.message}" else "${ProbePlan.deviceToken(target.caps.name)} hid err ${e.message}")
         }
-        hidLock.withLock { withContext(usb) { UacProbe.run(manager, device, report) } }
+        hidLock.withLock { withContext(usb) { UacProbe.run(manager, usbDevice, report) } }
         report.done()
     }
 
     /** Layer 2: WalkPlay read requests, one at a time, 100 ms apart; a DAC that does not know the command stays silent. The frames and the asking are the session's. */
-    private fun probeWalkPlay(device: UsbDevice, t: HidTransport, target: DeviceTarget, report: ProbeReport) {
+    private fun probeWalkPlay(device: DacHandle, t: HidIo, target: DeviceTarget, report: ProbeReport) {
         val layer = "walkplay"
         val session = walkPlaySession(device, t, target).first
         ProbePlan.WALKPLAY_COMMANDS.forEachIndexed { i, cmd ->
@@ -396,7 +407,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
     }
 
     /** A slot Contour already knows: the DAC switches to USER [slot] (nothing is saved) and one query confirms it; returns the slot confirmed. No band is read. */
-    suspend fun selectSlot(device: UsbDevice, slot: Int): Int = withDevice(device) { t ->
+    suspend fun selectSlot(device: DacHandle, slot: Int): Int = withDevice(device) { t ->
         val start = SystemClock.elapsedRealtime()
         val confirmed = nativeSession(device, t, target(device)).selectSlot(slot, explicitUserAction = true); t.checkSession()
         UsbLog.line("switch: slot $slot confirmed $confirmed, ${SystemClock.elapsedRealtime() - start} ms")
@@ -404,7 +415,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
     }
 
     /** A FiiO USER slot Contour has not seen, and the background scan: the DAC switches to USER [slot] (nothing is saved) and that slot is read. */
-    suspend fun readSlot(device: UsbDevice, slot: Int): DacSnapshot = withDevice(device) { t ->
+    suspend fun readSlot(device: DacHandle, slot: Int): DacSnapshot = withDevice(device) { t ->
         val target = target(device)
         val start = SystemClock.elapsedRealtime()
         UsbLog.line("native read: switch to slot $slot")
@@ -414,13 +425,13 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
     }
 
     /** KA15: renames one USER slot and returns the name read back; the EQ on the DAC is untouched. */
-    suspend fun renameSlot(device: UsbDevice, slot: Int, name: String): String = withDevice(device) { t ->
+    suspend fun renameSlot(device: DacHandle, slot: Int, name: String): String = withDevice(device) { t ->
         UsbLog.line("native rename: slot $slot -> $name")
         nativeSession(device, t, target(device)).renameSlot(slot, name, explicitUserAction = true).also { t.checkSession() }
     }
 
     /** A/B: only the supplied bands + TEMP_WRITE, on the existing USB thread, through the WalkPlay session. No read-back wait. */
-    suspend fun writeTemporaryBands(device: UsbDevice, bands: List<WalkPlay.BandWrite>, slot: Int) = withDevice(device) { t ->
+    suspend fun writeTemporaryBands(device: DacHandle, bands: List<WalkPlay.BandWrite>, slot: Int) = withDevice(device) { t ->
         val t0 = SystemClock.elapsedRealtime()
         UsbLog.line("A/B RAM: ${bands.size} changed bands, slot $slot, preamp kept")
         walkPlaySession(device, t, target(device)).first.writeTemporary(bands, slot, explicitHold = true)
@@ -430,7 +441,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
     /** Profile -> device plan -> write -> read back and compare. Throws with the issues when it does not fit.
      * [targetSlot]: KA15 only, the USER slot to write (null = USER1). [onProgress]: 0..1, the frames completed out of those
      * planned (select, every band, preamp, save, the read-back), called on the USB thread. */
-    suspend fun writeProfile(device: UsbDevice, profile: Profile, targetSlot: Int? = null, onProgress: ((Float) -> Unit)? = null): WriteResult {
+    suspend fun writeProfile(device: DacHandle, profile: Profile, targetSlot: Int? = null, onProgress: ((Float) -> Unit)? = null): WriteResult {
         val target = target(device)
         // A 1.6 family DAC is read only until its write is proven or the build is a review build (DeviceTarget.readOnly, Proven): this is the guard, and nothing below it builds a frame for a read-only DAC.
         if (target.readOnly) throw IOException(DeviceTarget.READ_ONLY_ISSUE.format(target.caps.name))
@@ -461,7 +472,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
         DacSnapshot((state as? FamilyState.EchoA)?.snapshot?.firmware ?: "native", state.slot, emptyList(), null, ms, protocol = null, target = target, familyState = state)
 
     /** One read of a 1.6 family DAC by its :core session. The Echo-A is read through [FamilyDevices.readEchoA]; its write is [writeEcho] and only reachable once the flag is set. */
-    private fun readFamily(device: UsbDevice, t: HidTransport, target: DeviceTarget): DacSnapshot {
+    private fun readFamily(device: DacHandle, t: HidIo, target: DeviceTarget): DacSnapshot {
         val port = WalkPlayPort(t, device)
         val start = SystemClock.elapsedRealtime()
         val dawn = target.moondrop
@@ -482,7 +493,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
      * bands, the gains, the save) and verifies by reading the bands back, whatever index the unit reports. The result carries the index the DAC was found on only when the write
      * moved it (a unit that ignores the switch stays where it is), so the app offers to return to it only then.
      */
-    private suspend fun writeDawn(device: UsbDevice, profile: Profile, target: DeviceTarget, model: MoondropCatalog.Model,
+    private suspend fun writeDawn(device: DacHandle, profile: Profile, target: DeviceTarget, model: MoondropCatalog.Model,
                                   onProgress: ((Float) -> Unit)?): WriteResult {
         target.issues(profile).takeIf { it.isNotEmpty() }?.let { throw IOException(it.joinToString("; ")) }
         val planned = MoondropCodec.planFor(model, profile.bands, profile.effectivePreampDb())
@@ -507,7 +518,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
      * Echo-A (only reached when [WalkPlayProfiles.ECHO_A_HARDWARE_VERIFIED] is true or in a review build): the Protocol Micro's write sequence (bands, preamp, TEMP_WRITE, commit) planned with the
      * Echo-A's own limits, then read back and compared register for register, as a Micro write is.
      */
-    private suspend fun writeEcho(device: UsbDevice, profile: Profile, target: DeviceTarget, echo: WalkPlayProfile, onProgress: ((Float) -> Unit)?): WriteResult {
+    private suspend fun writeEcho(device: DacHandle, profile: Profile, target: DeviceTarget, echo: WalkPlayProfile, onProgress: ((Float) -> Unit)?): WriteResult {
         target.issues(profile).takeIf { it.isNotEmpty() }?.let { throw IOException(it.joinToString("; ")) }
         return withDevice(device) { t ->
             val start = SystemClock.elapsedRealtime()
@@ -529,7 +540,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
     }
 
     /** Allegro Mini: the bands and SAVE, register 0x24 (the EQ switch) untouched: the switch on the DAC page is the only way to change it. The DAC leaves the bus, so the result is pending (see [savePending]). The Allegro has no preamp: only 0 dB reaches the codec. */
-    private suspend fun writeAllegro(device: UsbDevice, profile: Profile, target: DeviceTarget, model: KtMicroCatalog.Model,
+    private suspend fun writeAllegro(device: DacHandle, profile: Profile, target: DeviceTarget, model: KtMicroCatalog.Model,
                                      onProgress: ((Float) -> Unit)?): WriteResult {
         target.issues(profile).takeIf { it.isNotEmpty() }?.let { throw IOException(it.joinToString("; ")) }
         return withDevice(device) { t ->
@@ -555,13 +566,13 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
     }
 
     /** Micro: factory flat on all 8 slots, preamp 0. Max: neutral flat PK on all 10 slots, preamp 0. TRN: its factory flat on all 10 slots, preamp 0. */
-    suspend fun restoreFlat(device: UsbDevice): WriteResult = writePlan(device, protocol(device).flatPlan())
+    suspend fun restoreFlat(device: DacHandle): WriteResult = writePlan(device, protocol(device).flatPlan())
 
     /**
      * The state just read with band 1's gain register 0.5 dB lower, like research/protocol/write_test.py
      * step 1 (devicepeq mode). Refuses when band 1 is already at the -10 dB limit.
      */
-    suspend fun sendTestBand1(device: UsbDevice): WriteResult = withDevice(device) { t ->
+    suspend fun sendTestBand1(device: DacHandle): WriteResult = withDevice(device) { t ->
         require(protocol(device) == DeviceProtocol.MICRO) { "Test write is Micro-only" }
         val (session, port) = walkPlaySession(device, t, target(device))
         val now = session.read()
@@ -574,7 +585,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
         walkPlayWrite(session, port, DevicePlan.Ready(writes, now.preampDb), DeviceProtocol.MICRO)
     }
 
-    private suspend fun writePlan(device: UsbDevice, plan: DevicePlan.Ready, onProgress: ((Float) -> Unit)? = null): WriteResult = withDevice(device) { t ->
+    private suspend fun writePlan(device: DacHandle, plan: DevicePlan.Ready, onProgress: ((Float) -> Unit)? = null): WriteResult = withDevice(device) { t ->
         val p = protocol(device)
         // Frames planned: the read before (Max: the whole state; Micro: version and slot), every report of the write sequence, the read-back.
         var steps: Steps? = null
@@ -590,7 +601,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
     }
 
     /** The WalkPlay session of [target] (Micro, Max, TRN) on [t]; [tick] hears every frame (the progress of a send). */
-    private fun walkPlaySession(device: UsbDevice, t: HidTransport, target: DeviceTarget, tick: () -> Unit = {}): Pair<WalkPlaySession, WalkPlayPort> {
+    private fun walkPlaySession(device: DacHandle, t: HidIo, target: DeviceTarget, tick: () -> Unit = {}): Pair<WalkPlaySession, WalkPlayPort> {
         val port = WalkPlayPort(t, device, tick)
         return WalkPlaySession(requireNotNull(target.walkplayProfile), port) to port
     }
@@ -598,7 +609,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (UsbDevic
     private fun snapshotOf(p: DeviceProtocol, s: WalkPlaySnapshot, ms: Long) = DacSnapshot(s.firmware, s.slot, s.bands, s.preampDb, ms, p)
 
     /** MICRO: exactly the 1.2.2 predicates and parsers (DeviceProtocol delegates). MAX, TRN: strict, all 10 slots; TRN asks a missing band once more. */
-    private fun readWalkPlay(device: UsbDevice, t: HidTransport, target: DeviceTarget): DacSnapshot {
+    private fun readWalkPlay(device: DacHandle, t: HidIo, target: DeviceTarget): DacSnapshot {
         val p = requireNotNull(target.walkplay)
         val t0 = SystemClock.elapsedRealtime()
         val s = walkPlaySession(device, t, target).first.read()

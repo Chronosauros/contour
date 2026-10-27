@@ -181,7 +181,9 @@ class FiioResetTest {
         )
         val lines = FiioReset.diff(config, before, after, labelOf = { it.uppercase() }, valueOf = { id, v -> if (id == "balance") "B$v" else "$v" })
         assertTrue("USER1 name: MEGA5EST -> USER1" in lines, lines.toString())
-        assertTrue(lines.any { it.startsWith("USER1 EQ: 10 filters, preamp -2.0 dB -> 10 filters, preamp 7.0 dB (") }, lines.toString())
+        assertTrue("USER1 EQ: 10 filters, preamp -2.0 dB -> 10 filters, preamp 7.0 dB" in lines, lines.toString()) // a release says no more than that
+        val review = Proven.asChannel(BuildChannel.PERF) { FiioReset.diff(config, before, after) }
+        assertTrue(review.any { it.startsWith("USER1 EQ: 10 filters, preamp -2.0 dB -> 10 filters, preamp 7.0 dB (") && it.endsWith("filter registers differ)") }, review.toString())
         assertTrue("USER3 name: DUSK -> USER3" in lines, lines.toString())
         assertTrue(lines.none { it.startsWith("USER2") }, lines.toString())
         assertTrue("VOLUME: 48 -> 60" in lines && "BALANCE: B-2 -> B0" in lines && "MIC: 1 -> 0" in lines, lines.toString())

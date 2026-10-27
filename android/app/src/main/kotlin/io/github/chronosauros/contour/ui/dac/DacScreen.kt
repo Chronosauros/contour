@@ -47,6 +47,8 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import io.github.chronosauros.contour.core.BuildChannel
+import io.github.chronosauros.contour.core.Proven
 import io.github.chronosauros.contour.core.native.DacSetting
 import io.github.chronosauros.contour.core.native.SettingKind
 import io.github.chronosauros.contour.core.native.SettingWriteOutcome
@@ -90,6 +92,9 @@ fun DacScreen(device: DeviceController, top: Dp, bottom: Dp, onNotSent: (String)
     val settings = target.settings
     val name = target.caps.name
     val preview = device.dacIsPreview
+    // a review build names the gate ("not verified"); a release only says the setting is read only (owner 27.10.2026: no gating wording in stable)
+    val review = Proven.channel == BuildChannel.PERF
+    val blocked = { label: String -> if (review) "Not sent - $label is not verified on $name yet" else "Not sent - $label is read only in Contour" }
     val c = pal
     // Preview only: what the user moved, starting from the values this DAC showed on hardware (plus the header ids "rate" and "fw").
     val local = remember(preview, target) {
@@ -186,14 +191,15 @@ fun DacScreen(device: DeviceController, top: Dp, bottom: Dp, onNotSent: (String)
                     onMove = { v -> if (preview) local[s.id] = v else pending[s.id] = v },
                     onCommit = { v -> if (!preview) { if (v == device.settingValues[s.id]?.value) pending.remove(s.id) else send(s, v) } },
                     onPick = { v -> if (preview) local[s.id] = v else send(s, v) },
-                    onBlocked = { onNotSent("Not sent - ${s.label} is not verified on $name yet") },
+                    onBlocked = { onNotSent(blocked(s.label)) },
                     onOpen = { choosing = s.id },
                     modifier = Modifier.padding(top = if (section != null) 0.dp else groupGap),
                 )
             }
             // SnowSky Melody and Tiny A, FiiO KA15 and the WalkPlay Micro, Echo-A and TRN: the factory reset. Dimmed (a tap only says why) until the reset is proven (FiioReset.VERIFIED,
             // WalkPlayReset.VERIFIED) or the build is a review build, which opens it and still says NOT VERIFIED; the sheet (ContourApp) runs the flow.
-            if (device.resetOffered) ResetRow(
+            // A release shows the row only once the reset is proven.
+            if (device.resetOffered && (review || device.resetEnabled)) ResetRow(
                 enabled = device.resetEnabled && device.link == Link.CONNECTED,
                 verified = device.resetEnabled,
                 proven = device.resetProven,
@@ -211,7 +217,7 @@ fun DacScreen(device: DeviceController, top: Dp, bottom: Dp, onNotSent: (String)
                 onPick = { i ->
                     if (preview) local[s.id] = i
                     else if (s.writeEnabled && device.link == Link.CONNECTED) { if (i != current) send(s, i) }
-                    else if (i != current) onNotSent("Not sent - ${s.label} is not verified on $name yet")
+                    else if (i != current) onNotSent(blocked(s.label))
                 },
                 onDone = { choosing = null },
             )

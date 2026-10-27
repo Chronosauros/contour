@@ -133,7 +133,8 @@ class NativeFamilyTest {
         assertTrue(r.pending)
         assertFalse(r.verified)
         assertNull(r.readback)
-        assertTrue(r.reason!!.contains("reconnects"))
+        assertTrue(r.reason!!.contains("restarts")) // a release says it plainly
+        assertTrue(Proven.asChannel(BuildChannel.PERF) { KtMicroSession(allegro, FakeKt(LogPort(resource("allegro-mini-read-232520.log"), 0x4B, null, "k"))).write(eq, explicitHold = true).reason!!.contains("reconnects") }) // a review build keeps the technical wording
         val tx = dac.events.filter { it.startsWith("tx:") }.map { it.removePrefix("tx:") }
         // 14 reads (13 + the flags), then 0x24 = 3 (EQ on), the five bands (gain/freq, Q/type), SAVE
         assertEquals(14, tx.count { it.split(" ")[4] == "52" })

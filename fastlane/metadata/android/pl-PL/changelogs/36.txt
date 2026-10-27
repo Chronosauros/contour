@@ -1,0 +1,5 @@
+Aplikacja nie pokazuje już komunikatów technicznych przeznaczonych do testów:
+- zniknęła notka pod suwakami EQ na Moondrop Dawn Pro 2 i innych DAC-ach (półki i filtry pass na Dawn działają od 1.6.0)
+- zniknął ukryty ekran serwisowy
+- okno błędu wysyłki nie pokazuje już logu USB
+- surowe komunikaty USB zastąpiły zwykłe zdania

@@ -1,0 +1,5 @@
+The app no longer shows technical messages that were meant for testing:
+- the note under the EQ sliders on the Moondrop Dawn Pro 2 and other DACs is gone (shelves and pass filters on the Dawn have worked since 1.6.0)
+- the hidden service screen is gone
+- the send error window no longer shows a USB log
+- raw USB error text is replaced by plain sentences

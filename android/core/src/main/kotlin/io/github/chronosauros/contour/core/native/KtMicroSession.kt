@@ -1,6 +1,8 @@
 package io.github.chronosauros.contour.core.native
 
+import io.github.chronosauros.contour.core.BuildChannel
 import io.github.chronosauros.contour.core.Profile
+import io.github.chronosauros.contour.core.Proven
 
 /**
  * Reads and writes a KT Micro DAC (Kiwi Ears Allegro Mini) through a [NativePort]: the session the app would run, with the
@@ -201,6 +203,6 @@ class KtMicroSession(val model: KtMicroCatalog.Model, private val port: NativePo
             } else io.send(f.reportId, f.payload)
             io.pause(f.delayAfterMs.toLong())
         }
-        return WriteOutcome(false, true, "Save sent; the DAC reconnects: read it again after it is back and compare (not verified)", null)
+        return WriteOutcome(false, true, if (Proven.channel == BuildChannel.PERF) "Save sent; the DAC reconnects: read it again after it is back and compare (not verified)" else "Saved. The DAC restarts - Contour reads it again when it is back.", null)
     }
 }

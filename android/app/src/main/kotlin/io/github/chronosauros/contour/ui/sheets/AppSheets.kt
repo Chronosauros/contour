@@ -62,6 +62,8 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.chronosauros.contour.core.ApoText
+import io.github.chronosauros.contour.core.BuildChannel
+import io.github.chronosauros.contour.core.Proven
 import io.github.chronosauros.contour.core.DacImport
 import io.github.chronosauros.contour.core.ImportedEq
 import io.github.chronosauros.contour.core.native.FiioReset
@@ -271,7 +273,7 @@ fun NewProfileSheet(model: AppModel, device: DeviceController, editor: DacEditor
             "FROM DAC",
             when (dacImport) {
                 is DacImport.Ready -> dacImport.warning?.let { "WARNING: $it" }
-                    ?: "Re-encodes to the DAC's registers; exact original coefficients are not guaranteed"
+                    ?: "Copies the EQ the DAC holds now. Small rounding is possible."
                 is DacImport.Rejected -> dacImport.issues.joinToString("; ")
                 null -> "Connect the DAC first"
             },
@@ -373,7 +375,7 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
             Param.FREQ -> "20 - 20 000 Hz"
             Param.GAIN -> "%.1f - +%.1f dB".format(java.util.Locale.ROOT, caps.gainMinDb, caps.gainMaxDb)
             Param.Q -> "0.10 - 10.00"
-            Param.PREAMP -> if (model.protocol.usesWalkPlayRules) "curve preamp, device %.0f - %s%.0f dB".format(java.util.Locale.ROOT, model.protocol.preampMin, if (model.protocol.preampMax > 0) "+" else "", model.protocol.preampMax)
+            Param.PREAMP -> if (model.protocol.usesWalkPlayRules) "%.0f - %s%.0f dB, whole dB".format(java.util.Locale.ROOT, model.protocol.preampMin, if (model.protocol.preampMax > 0) "+" else "", model.protocol.preampMax)
                 else "%.1f - +%.1f dB, step %s".format(java.util.Locale.ROOT, model.protocol.preampMin, model.protocol.preampMax, if (model.protocol.preampStep == 1.0) "1" else "0.1")
         }
         OutlinedTextField(
@@ -432,18 +434,22 @@ fun ChoiceSheet(title: String, options: List<String>, current: Int?, onPick: (In
 /** FAILED - HOLD TO RETRY, quick tap: the reason and the last USB log lines. */
 @Composable
 fun SendFailureSheet(reason: String?, onDone: () -> Unit) {
+    // the last USB log lines are for the maintainer: a review build shows them, a release shows the title and the reason
+    val review = Proven.channel == BuildChannel.PERF
     val lines = remember { UsbLog.lines.value.takeLast(12) }
     SheetFrame(onDone) {
         SheetTitle("SEND FAILED")
         Text(reason ?: "Unknown reason", style = MaterialTheme.typography.bodyLarge)
-        Spacer(Modifier.height(4.dp))
-        Text(
-            lines.joinToString("\n").ifEmpty { "(no log lines)" },
-            fontFamily = FontFamily.Monospace,
-            fontSize = 10.sp,
-            lineHeight = 12.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        if (review) {
+            Spacer(Modifier.height(4.dp))
+            Text(
+                lines.joinToString("\n").ifEmpty { "(no log lines)" },
+                fontFamily = FontFamily.Monospace,
+                fontSize = 10.sp,
+                lineHeight = 12.sp,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
     }
 }
 
@@ -463,10 +469,11 @@ fun FactoryResetSheet(device: DeviceController) {
             ResetUi.Confirm -> {
                 SheetTitle("FACTORY RESET")
                 val walkplay = device.resetIsWalkPlay
+                val review = Proven.channel == BuildChannel.PERF
                 Text(if (walkplay) WalkPlayReset.ERASE_NOTE else FiioReset.ERASE_NOTE, style = MaterialTheme.typography.bodyLarge)
                 Text(
-                    (if (walkplay) "Keep the DAC plugged in until Contour says the reset is done. The reset sequence comes from the manufacturer's web tool, not from a capture of this DAC."
-                    else "Keep the DAC plugged in until Contour asks you to unplug it and plug it back in after the reset. The reset command comes from FiiO's own app, not from a capture of this DAC.") +
+                    (if (walkplay) "Keep the DAC plugged in until Contour says the reset is done." + (if (review) " The reset sequence comes from the manufacturer's web tool, not from a capture of this DAC." else "")
+                    else "Keep the DAC plugged in until Contour asks you to unplug it and plug it back in after the reset." + (if (review) " The reset command comes from FiiO's own app, not from a capture of this DAC." else "")) +
                         (if (device.resetProven) "" else " This reset is not verified on hardware yet."),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,

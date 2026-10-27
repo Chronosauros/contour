@@ -573,7 +573,7 @@ class ProtocolParityTest {
         assertEquals(true, micro.preampFits(hs396, -33.96)); assertEquals(false, micro.preampFits(hs396, -34.0))
         assertEquals(-30, register(micro, hs396, -33.96))
         // refusal texts
-        val microText = "Preamp -34.1 dB needs device preamp -30.1 dB (HIGH SHELF adjustment +4 dB), outside -30..0 dB register range"
+        val microText = "Preamp -34.1 dB needs device preamp -30.1 dB (HIGH SHELF adjustment +4 dB), outside -30..0 dB range"
         assertEquals(listOf(microText), (micro.plan(hsUp, -34.1) as DevicePlan.Rejected).issues)
         assertEquals(microText, micro.preampRefusal(hsUp, -34.1))
         assertEquals("Preamp -30.04 dB outside -30..0 dB policy", max.preampRefusal(flat, -30.04))

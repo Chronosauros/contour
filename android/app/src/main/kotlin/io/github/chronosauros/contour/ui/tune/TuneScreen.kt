@@ -80,7 +80,9 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import io.github.chronosauros.contour.core.BandStripPlan
+import io.github.chronosauros.contour.core.BuildChannel
 import io.github.chronosauros.contour.core.FilterType
+import io.github.chronosauros.contour.core.Proven
 import io.github.chronosauros.contour.core.isPass
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.model.AppModel
@@ -104,6 +106,7 @@ import io.github.chronosauros.contour.usb.DeviceController
 import io.github.chronosauros.contour.usb.Link
 import io.github.chronosauros.contour.core.native.FamilyState
 import io.github.chronosauros.contour.core.native.FiioCodec
+import io.github.chronosauros.contour.core.native.MoondropCatalog
 import io.github.chronosauros.contour.core.native.NativeState
 
 /** What Tune asks of the app shell. */
@@ -271,7 +274,7 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
         // Micro/Max too: a band that does not fit the DAC's filter format, or an AUTO preamp below its floor, says why.
         if (device.link == Link.CONNECTED) {
             // KA15, K13 R2R, Melody and Tiny A: read, write and persistence confirmed on hardware (FiioConfig.hardwareVerified)
-            if (device.protocol.fiio != null && !device.hardwareVerified) Text("Native beta recipe: not hardware tested. Readback verifies registers, not audio/persistence.", color = pal.textDim, style = Type.small)
+            if (Proven.channel == BuildChannel.PERF && device.protocol.fiio != null && !device.hardwareVerified) Text("Native beta recipe: not hardware tested. Readback verifies registers, not audio/persistence.", color = pal.textDim, style = Type.small)
             FamilyNotes(device)
             if (!device.protocol.readOnly) device.sendIssues(p).firstOrNull()?.let { Text("SEND BLOCKED: $it (saved values unchanged)", color = pal.textDim, style = Type.small) }
             if (device.protocol.native) device.error?.let { Text(it, color = pal.textDim, style = Type.small) }
@@ -311,21 +314,26 @@ private fun TuneFoot(model: AppModel, p: Profile, device: DeviceController, send
 }
 
 /**
- * The notes of the Contour 1.6 families (Moondrop Dawn Pro 2, Kiwi Ears Allegro Mini, Moondrop Echo-A) under the controls: what is not verified yet, what a send
- * does to the DAC, and - the Dawn only - the one explicit way back to the EQ index it was on. The numbers come from the DAC's :core catalog.
+ * The notes of the Contour 1.6 families (Moondrop Dawn Pro 2, Kiwi Ears Allegro Mini, Moondrop Echo-A) under the controls: what a send does to the DAC and - the Dawn
+ * only - the one explicit way back to the EQ index it was on. What is not verified on hardware is said in a review build only: a release offers what is proven and says
+ * nothing about the gate (owner 27.10.2026: "nie powinno być nigdy takich napisów w aplikacji, która jest w stable wersji").
  */
 @Composable
 private fun FamilyNotes(device: DeviceController) {
     val target = device.protocol
     if (!target.isFamily) return
     val dim = pal.textDim
-    val bands = target.caps.bands
+    val review = Proven.channel == BuildChannel.PERF
     when {
-        target.readOnly -> Text("READ ONLY - NOT VERIFIED ON HARDWARE. Contour reads ${target.caps.name} and sends nothing to it.", color = dim, style = Type.small)
-        // A writable Echo-A: sent like the Protocol Micro, read back after each send. "Not verified" only while a review build runs it ahead of its flag.
-        target.echo != null -> Text((if (target.echo?.hardwareVerified == true) "" else "Not verified on hardware yet. ") + "$bands bands: PEAK, LOW SHELF, HIGH SHELF, LOW PASS and HIGH PASS. Each send is read back and compared.", color = dim, style = Type.small)
+        target.readOnly -> if (review) Text("READ ONLY - NOT VERIFIED ON HARDWARE. Contour reads ${target.caps.name} and sends nothing to it.", color = dim, style = Type.small)
+        target.echo != null -> if (review && target.echo?.hardwareVerified != true) Text("Not verified on hardware yet.", color = dim, style = Type.small)
         target.moondrop != null -> {
-            Text("$bands PEAK bands; LOW SHELF, HIGH SHELF, LOW PASS and HIGH PASS stay off until measured.", color = dim, style = Type.small)
+            // the held types come from the flags, not from the offered set: a review build offers them all
+            val held = listOfNotNull(
+                "LOW SHELF, HIGH SHELF".takeUnless { MoondropCatalog.SHELVES_VERIFIED },
+                "LOW PASS, HIGH PASS".takeUnless { MoondropCatalog.PASS_FILTERS_VERIFIED },
+            )
+            if (review && held.isNotEmpty()) Text("Not verified on hardware yet: ${held.joinToString(", ")}.", color = dim, style = Type.small)
             (device.snapshot?.familyState as? FamilyState.Dawn)?.bankNotice?.let { Text(it, color = dim, style = Type.small) }
             device.returnIndex?.let { index ->
                 Text("Sent to EQ index ${target.moondrop?.writableIndex}. The DAC was on EQ index $index.", color = dim, style = Type.small)
@@ -333,7 +341,8 @@ private fun FamilyNotes(device: DeviceController) {
             }
         }
         // Allegro Mini: verified on the phone 25.10.2026. The DSP designs its filters for 24 kHz and plays them at the stream rate, so Contour writes for a 48 kHz stream (owner decision 25.10.2026).
-        else -> Text("$bands PEAK bands, no preamp. Contour assumes this DAC plays at 48 kHz; at 44.1 kHz every band sounds about 8 % lower. After SAVE the DAC reconnects; the send counts only after Contour has read it back.",
+        else -> Text(if (review) "${target.caps.bands} PEAK bands, no preamp. Contour assumes this DAC plays at 48 kHz; at 44.1 kHz every band sounds about 8 % lower. After SAVE the DAC reconnects; the send counts only after Contour has read it back."
+            else "Contour tunes this DAC for 48 kHz; at 44.1 kHz every band sounds about 8 % lower.",
             color = dim, style = Type.small)
     }
     if (device.verifyingSave) Text("Saved. Waiting for the DAC to reconnect, then reading it back.", color = dim, style = Type.small)

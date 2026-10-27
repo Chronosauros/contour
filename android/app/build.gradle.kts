@@ -24,8 +24,8 @@ android {
         minSdk = 28
         targetSdk = 36
         // v0.2 (versionCode 2) is on the Pixel; `install -r` refuses a lower code, and keeps the data only on update.
-        versionCode = 35
-        versionName = "1.6.2" // literal: F-Droid reads it for update checks
+        versionCode = 36
+        versionName = "1.6.3" // literal: F-Droid reads it for update checks
     }
 
     signingConfigs {
@@ -67,6 +67,13 @@ android {
             manifestPlaceholders["betaLabel"] = "Contour Beta"
             matchingFallbacks += "release"
         }
+    }
+
+    // The simulated DAC of the review builds (`--es simulate`, MainActivity) is src/perf/kotlin: perf compiles it as its own source set and debug is given the same folder. Release and beta
+    // compile a stub of the same object (src/release/kotlin) that simulates nothing, so no simulator code is in a shipped APK.
+    sourceSets {
+        getByName("debug").kotlin.srcDir("src/perf/kotlin")
+        getByName("beta").kotlin.srcDir("src/release/kotlin")
     }
 
     // No AGP dependency-info block in the APK signature (it is encrypted for Google Play only; F-Droid rejects it).

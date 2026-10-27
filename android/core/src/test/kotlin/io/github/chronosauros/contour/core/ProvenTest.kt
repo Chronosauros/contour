@@ -44,10 +44,10 @@ class ProvenTest {
         val unproven = WalkPlayProfiles.echoA.copy(hardwareVerified = false)
         release {
             assertTrue(DeviceTarget.forEcho(unproven).readOnly); assertFalse(unproven.writeOn)
-            assertTrue(DeviceTarget.forEcho(unproven).issues(profile(pk)).single().contains("read only: not verified on hardware"))
+            assertTrue(DeviceTarget.forEcho(unproven).issues(profile(pk)).single().endsWith("is read only in Contour")) // a release names no gate
             assertTrue(WalkPlayProfiles.echoA.writeOn)
         }
-        review { assertTrue(unproven.writeOn) }
+        review { assertTrue(unproven.writeOn); assertTrue(DeviceTarget.READ_ONLY_ISSUE.contains("not verified on hardware")) }
     }
 
     @Test fun `the Micro's pass filters and positive preamp follow their own flags and the channel`() {

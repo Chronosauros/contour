@@ -1,6 +1,7 @@
 package io.github.chronosauros.contour.core.native
 
 import io.github.chronosauros.contour.core.DeviceProtocol
+import io.github.chronosauros.contour.core.BuildChannel
 import io.github.chronosauros.contour.core.Proven
 import io.github.chronosauros.contour.core.WalkPlay
 
@@ -55,7 +56,8 @@ object WalkPlayReset {
     /** The DAC may restart after the sequence: how long a session waits before it asks anything. */
     const val SETTLE_MS = 3000L
 
-    val ERASE_NOTE = "A factory reset puts the EQ back to the manufacturer's flat bands and 0 dB, and may erase more (two of its steps are not understood). " +
+    val ERASE_NOTE: String get() = "A factory reset puts the EQ back to the manufacturer's flat bands and 0 dB, and may erase more" +
+        (if (Proven.channel == BuildChannel.PERF) " (two of its steps are not understood). " else ". ") +
         "Contour saves a copy of all bands, the preamp and every setting it can read first and offers to write them back afterwards."
 
     /** The eight "PURE" band frames the vendor sends, as a Contour band write sends them (without the end byte, which is 0 anyway). */
@@ -90,7 +92,7 @@ object WalkPlayReset {
         for (b in before.bands.sortedBy { it.index }) {
             val r = a[b.index]
             if (r == null) { out += "band ${b.index + 1}: not read after the reset"; continue }
-            if (r != b) out += "band ${b.index + 1}: ${bandText(b)} -> ${bandText(r)}"
+            if (r != b) out += if (Proven.channel == BuildChannel.PERF) "band ${b.index + 1}: ${bandText(b)} -> ${bandText(r)}" else "band ${b.index + 1}: changed"
         }
         if (before.preampDb != after.preampDb) out += "preamp: ${before.preampDb} dB -> ${after.preampDb} dB"
         if (before.slot != after.slot) out += "slot byte: ${before.slot} -> ${after.slot}"
