@@ -3,6 +3,8 @@ build/
 .gradle/
 .kotlin/
 *.apk
+# Chinese edition download served by contoureq.app (overwritten at every release)
+!docs/dl/contour-cn.apk
 *.aab
 
 # IDE and machine-local files

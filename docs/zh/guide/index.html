@@ -1,0 +1,454 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Contour 使用指南</title>
+<meta name="description" content="如何使用 Contour：适用于 CrinEar Protocol、飞傲（FiiO）、雪漫天（SnowSky）、TRN、水月雨（Moondrop）和 Kiwi Ears USB 解码耳放（小尾巴）的 EQ（均衡器）管理应用。一部 6 分钟的视频，附完整文字说明。">
+<link rel="canonical" href="https://contoureq.app/zh/guide/">
+<link rel="alternate" hreflang="en" href="https://contoureq.app/guide/">
+<link rel="alternate" hreflang="zh-CN" href="https://contoureq.app/zh/guide/">
+<link rel="alternate" hreflang="x-default" href="https://contoureq.app/guide/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://contoureq.app/zh/guide/">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:title" content="Contour 使用指南">
+<meta property="og:description" content="如何使用 Contour：适用于 CrinEar Protocol、飞傲（FiiO）、雪漫天（SnowSky）、TRN、水月雨（Moondrop）和 Kiwi Ears USB 解码耳放（小尾巴）的 EQ（均衡器）管理应用。一部 6 分钟的视频，附完整文字说明。">
+<meta property="og:image" content="https://contoureq.app/media/guide-poster.jpg">
+<meta property="og:site_name" content="Contour">
+<meta property="og:image:width" content="1920">
+<meta property="og:image:height" content="1080">
+<meta property="og:image:alt" content="Contour 使用指南视频封面：Contour 应用的配置库（LIBRARY）界面，标题为“What Contour does”">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Contour 使用指南">
+<meta name="twitter:description" content="如何使用 Contour：适用于 CrinEar Protocol、飞傲（FiiO）、雪漫天（SnowSky）、TRN、水月雨（Moondrop）和 Kiwi Ears USB 解码耳放（小尾巴）的 EQ（均衡器）管理应用。一部 6 分钟的视频，附完整文字说明。">
+<meta name="theme-color" content="#EFECE8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171615" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" type="image/png" href="/images/icon-512.png">
+<link rel="apple-touch-icon" href="/images/icon-512.png">
+<link rel="stylesheet" href="/shared/soundblooms.css">
+<script defer src="/shared/soundblooms.js"></script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "VideoObject",
+  "name": "Contour 使用指南",
+  "description": "如何使用 Contour：适用于 CrinEar Protocol、飞傲（FiiO）、雪漫天（SnowSky）、TRN、水月雨（Moondrop）和 Kiwi Ears USB 解码耳放（小尾巴）的 EQ（均衡器）管理应用。一部 6 分钟的视频，附完整文字说明。",
+  "thumbnailUrl": "https://contoureq.app/media/guide-poster.jpg",
+  "uploadDate": "2026-10-02",
+  "duration": "PT6M21S",
+  "contentUrl": "https://contoureq.app/media/guide.mp4",
+  "hasPart": [
+    {"@type": "Clip", "name": "Contour 能做什么", "startOffset": 0, "endOffset": 26, "url": "https://contoureq.app/zh/guide/#what-contour-does"},
+    {"@type": "Clip", "name": "连接", "startOffset": 26, "endOffset": 57, "url": "https://contoureq.app/zh/guide/#connecting"},
+    {"@type": "Clip", "name": "写入配置", "startOffset": 57, "endOffset": 89, "url": "https://contoureq.app/zh/guide/#sending"},
+    {"@type": "Clip", "name": "新建配置", "startOffset": 89, "endOffset": 114, "url": "https://contoureq.app/zh/guide/#new-profile"},
+    {"@type": "Clip", "name": "滤波类型和滑块", "startOffset": 114, "endOffset": 143, "url": "https://contoureq.app/zh/guide/#filters"},
+    {"@type": "Clip", "name": "名称和图标", "startOffset": 143, "endOffset": 167, "url": "https://contoureq.app/zh/guide/#name-and-icon"},
+    {"@type": "Clip", "name": "频段详解", "startOffset": 167, "endOffset": 196, "url": "https://contoureq.app/zh/guide/#bands"},
+    {"@type": "Clip", "name": "精确数值和前置增益", "startOffset": 196, "endOffset": 226, "url": "https://contoureq.app/zh/guide/#exact-values"},
+    {"@type": "Clip", "name": "对比、撤销、回退", "startOffset": 226, "endOffset": 306, "url": "https://contoureq.app/zh/guide/#compare-undo"},
+    {"@type": "Clip", "name": "整理、分享、导入", "startOffset": 306, "endOffset": 327, "url": "https://contoureq.app/zh/guide/#organise"},
+    {"@type": "Clip", "name": "参数范围与故障排查", "startOffset": 327, "endOffset": 365, "url": "https://contoureq.app/zh/guide/#limits"},
+    {"@type": "Clip", "name": "接下来", "startOffset": 365, "endOffset": 381, "url": "https://contoureq.app/zh/guide/#next"}
+  ]
+}
+</script>
+<style>
+/*
+  Look = the install page (same tokens, font, column, hero and footer), which follows the Contour app
+  (android/.../ui/Theme.kt). 1 dp = 1 CSS px. Colors: only Palette roles (light here, dark under prefers-color-scheme).
+  Shadows: CARD r10 y3 a.42 -> 0 3px 12.5px | RAISED r6 y2 a.55 -> 0 2px 8px.
+*/
+@font-face{
+  font-family:"Google Sans Flex";
+  src:url("/shared/fonts/google-sans-flex-latin.woff") format("woff");
+  font-weight:400 700; font-style:normal; font-display:swap;
+}
+:root{
+  --bg:#EFECE8; --surface:#FAF8F5; --surface2:#E7E3DE;
+  --text:#1D1B19; --text-dim:#6E6963; --text-mute:#9A948D;
+  --accent:#F07A3A; --on-accent:#2B1A10;
+  --sunken:#E6E2DD; --shadow:#2B2118;
+  --k-card:12.6%; --k-high:16.5%;
+  --led-on:#46D17A;
+
+  --lift-card:0 3px 12.5px color-mix(in srgb, var(--shadow) var(--k-card), transparent);
+  --lift-raised:0 2px 8px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+  --lift-raised-held:0 0.6px 3.8px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+
+  --font:"Google Sans Flex","Google Sans","Google Sans Text","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC","Noto Sans CJK SC","Source Han Sans SC",system-ui,sans-serif;
+  --r-card:20px;
+  --r-chip:14px;
+  --r-option:12px;
+  --r-tag:8px;
+  --gap:8px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#171615; --surface:#242220; --surface2:#2E2B29;
+    --text:#F3F0EC; --text-dim:#A39E98; --text-mute:#77726C;
+    --accent:#F07A3A; --on-accent:#2B1A10;
+    --sunken:#121110; --shadow:#000000;
+    --k-card:42%; --k-high:55%;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-padding-top:16px}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:16px;line-height:1.5;font-weight:400;overflow-x:hidden;font-optical-sizing:auto}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px}
+a{color:var(--text);text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:3px;overflow-wrap:anywhere}
+h1,h2,h3{margin:0}
+p{margin:0 0 .75em}
+strong{font-weight:600}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+/* top line */
+.top{display:flex;gap:20px;padding:20px 6px 0;font-size:15px}
+.top{align-items:baseline}
+.top .lockup{display:flex;align-items:baseline;gap:8px;white-space:nowrap}
+.top .by{--by-fs:15px;--by-word:var(--text-dim);--by-ink:var(--text-dim)}
+/* top bar on narrow phones: wrap to a second row instead of squeezing, never break a word; below 390 px closer links at 16 px */
+.top{flex-wrap:wrap;row-gap:4px}
+.top a{white-space:nowrap}
+@media (max-width:389px){.top{column-gap:12px}.top > a{font-size:16px}}
+
+/* hero */
+.hero{padding:24px 0 8px}
+.hero img.icon{width:88px;height:88px;border-radius:var(--r-card);display:block;margin-bottom:20px;box-shadow:var(--lift-card)}
+.hero h1{font-size:38px;font-weight:700;letter-spacing:-.01em;line-height:1.1;text-transform:uppercase}
+.hero .lede{color:var(--text-dim);margin:12px 0 18px;max-width:34em;font-size:17px}
+.ver{display:inline-flex;align-items:center;gap:10px;background:var(--surface);color:var(--text-dim);border-radius:999px;box-shadow:var(--lift-card);padding:10px 14px 10px 16px;margin:0 0 24px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-feature-settings:"tnum";line-height:1.3}
+.ver .dot{order:2;width:8px;height:8px;border-radius:50%;background:var(--led-on);flex:none}
+
+/* film */
+.film{margin:0}
+#guide-video{display:block;width:100%;aspect-ratio:16/9;height:auto;background:var(--sunken);border-radius:var(--r-card);box-shadow:var(--lift-card);scroll-margin-top:16px}
+.film-note{color:var(--text-dim);font-size:15px;margin:14px 6px 0}
+#short-video{display:block;width:min(100%,420px);aspect-ratio:4/5;height:auto;margin:10px 0 0;background:var(--sunken);border-radius:var(--r-card);box-shadow:var(--lift-card)}
+
+/* chapter list: library rows - surface, radius 20, CARD lift; the time is a chip */
+nav.chapters{margin:32px 0 0}
+nav.chapters > h2{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);padding:0 6px;margin-bottom:12px}
+nav.chapters ol{list-style:none;margin:0;padding:0;display:grid;gap:var(--gap)}
+nav.chapters a{display:flex;align-items:center;gap:14px;min-height:52px;padding:8px 18px 8px 10px;background:var(--surface);border-radius:var(--r-card);box-shadow:var(--lift-card);text-decoration:none;font-size:17px;font-weight:600;letter-spacing:-.01em;line-height:1.3}
+nav.chapters a .t{flex:none}
+nav.chapters a[aria-current="true"] .t{background:var(--accent);color:var(--on-accent)}
+
+/* time chip = the band chip: surface2, radius 14, RAISED */
+.t{display:inline-flex;align-items:center;justify-content:center;min-width:60px;min-height:36px;padding:4px 12px;border-radius:var(--r-chip);background:var(--surface2);color:var(--text);box-shadow:var(--lift-raised);font-size:15px;font-weight:600;font-feature-settings:"tnum";letter-spacing:0;line-height:1.2;text-decoration:none;-webkit-tap-highlight-color:transparent;transition:box-shadow .12s}
+.t:active{box-shadow:var(--lift-raised-held)}
+
+/* chapter text */
+section.plain{margin:32px 0;scroll-margin-top:16px}
+section.plain > h2{display:flex;align-items:center;gap:12px;flex-wrap:wrap;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);padding:0 6px;margin-bottom:12px}
+section.plain > h2 .t{letter-spacing:0;text-transform:none}
+.body{background:var(--surface);border-radius:var(--r-card);box-shadow:var(--lift-card);padding:18px 22px 10px 20px}
+.body > :last-child{margin-bottom:.75em}
+.body ul{margin:0 0 .75em;padding-left:1.2em}
+.body li{margin:6px 0}
+.body li::marker{color:var(--text-mute)}
+.muted{color:var(--text-dim);font-size:15px;margin:0 6px 12px}
+.body .muted{margin:0 0 .75em}
+
+/* limits table (same look as the tables on the devices page) */
+.tw{overflow-x:auto;margin:6px 0 10px;max-width:100%}
+table{border-collapse:collapse;width:100%;font-size:15px}
+th,td{text-align:left;vertical-align:top;padding:9px 10px 9px 0;border-bottom:1px solid var(--surface2)}
+th{color:var(--text-dim);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap}
+td:last-child,th:last-child{padding-right:0}
+@media (max-width:520px){
+  table{font-size:13px}
+  th,td{padding-right:5px}
+  th{font-size:10px;letter-spacing:.04em;white-space:normal}
+}
+
+/* footer */
+footer{padding:8px 6px 48px;color:var(--text-dim);font-size:14px}
+footer ul{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:6px}
+footer p{margin:0 0 8px}
+footer .footer-icons{margin:0 0 8px -11px}
+footer .footer-icons a{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;opacity:.75}
+footer .footer-icons a:hover{opacity:1}
+footer .links{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 14px}
+
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+@media print{
+  :root{--bg:#EFECE8;--surface:#FAF8F5;--surface2:#E7E3DE;--text:#1D1B19;--text-dim:#6E6963;--text-mute:#9A948D;--sunken:#E6E2DD;--accent:#F07A3A}
+  body{background:var(--surface);color:var(--text)}
+  *{box-shadow:none!important}
+  #guide-video,#short-video,.film-note,nav.chapters{display:none!important}
+}
+
+/* zh: Chinese line-height; no positive letter-spacing on Chinese text; table headers do not break inside a word */
+body{line-height:1.7}
+.ver,nav.chapters > h2,section.plain > h2,th{letter-spacing:0}
+th{word-break:keep-all}
+</style>
+<script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
+<script defer src="/_vercel/insights/script.js"></script>
+</head>
+<body>
+<div class="wrap">
+
+<p class="top"><span class="lockup"><a href="/zh/">Contour</a><a class="by" href="https://soundblooms.com/" rel="noopener" target="_blank" aria-label="Soundblooms 出品"><span class="by-word" aria-hidden="true">by</span><span class="sb-mark" aria-hidden="true">sound<span class="sb-face"><i class="sb-band"></i><span class="sb-eyes" data-eyes="calm"><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i></span></span>blooms</span></a></span> <a href="/zh/install/">安装</a> <a class="lang-switch" href="/guide/" hreflang="en" lang="en">English</a></p>
+
+<header class="hero">
+  <img class="icon" src="/images/icon-512.png" width="88" height="88" alt="Contour 应用图标">
+  <h1>Contour 使用指南</h1>
+  <p class="lede">一部视频介绍整个应用，按章节划分（视频为英文，界面为英文版）。拍视频时，USER 存储位、DAC 页（DAC page）和现在支持的大多数 USB 解码耳放（小尾巴）都还没有；下方文字已更新至 1.6 版。</p>
+  <p class="ver"><span class="dot" aria-hidden="true"></span><span>基于 1.2.2 版拍摄，时长 6 分 21 秒</span></p>
+</header>
+
+<div class="film">
+  <video id="guide-video" controls playsinline preload="metadata" poster="/media/guide-poster.jpg" aria-label="Contour 使用指南视频，6 分 21 秒，英文旁白"><source src="/media/guide.mp4" type="video/mp4"></video>
+  <p class="film-note">时间不多？这段视频用一分半钟带你看完整个应用。</p>
+  <video id="short-video" controls playsinline preload="none" poster="/media/film-poster.jpg" aria-label="Contour 演示视频，1 分 30 秒"><source src="/media/film.mp4" type="video/mp4"></video>
+</div>
+
+<nav class="chapters" aria-label="章节">
+  <h2>章节</h2>
+  <ol>
+    <li><a href="#what-contour-does" data-t="0"><span class="t">0:00</span><span>Contour 能做什么</span></a></li>
+    <li><a href="#connecting" data-t="26"><span class="t">0:26</span><span>连接</span></a></li>
+    <li><a href="#sending" data-t="57"><span class="t">0:57</span><span>写入配置</span></a></li>
+    <li><a href="#new-profile" data-t="89"><span class="t">1:29</span><span>新建配置</span></a></li>
+    <li><a href="#filters" data-t="114"><span class="t">1:54</span><span>滤波类型和滑块</span></a></li>
+    <li><a href="#name-and-icon" data-t="143"><span class="t">2:23</span><span>名称和图标</span></a></li>
+    <li><a href="#bands" data-t="167"><span class="t">2:47</span><span>频段详解</span></a></li>
+    <li><a href="#exact-values" data-t="196"><span class="t">3:16</span><span>精确数值和前置增益</span></a></li>
+    <li><a href="#compare-undo" data-t="226"><span class="t">3:46</span><span>对比、撤销、回退</span></a></li>
+    <li><a href="#organise" data-t="306"><span class="t">5:06</span><span>整理、分享、导入</span></a></li>
+    <li><a href="#limits" data-t="327"><span class="t">5:27</span><span>参数范围与故障排查</span></a></li>
+    <li><a href="#next" data-t="365"><span class="t">6:05</span><span>接下来</span></a></li>
+  </ol>
+</nav>
+
+<section class="plain" id="what-contour-does">
+  <h2><a class="t" href="#what-contour-does" data-t="0">0:00</a><span>Contour 能做什么</span></h2>
+  <div class="body">
+    <p>Contour 是一款 EQ（均衡器）管理应用，适用于 CrinEar Protocol Micro 和 Max、飞傲（FiiO）KA15 和 K13 R2R、雪漫天（SnowSky）Melody 和 Tiny A、TRN Black Pearl、水月雨（Moondrop）Dawn Pro 2 和 Echo-A，以及 Kiwi Ears Allegro Mini。EQ 保存在解码器内部，所以无论插到哪台设备上、用哪个应用播放，这份 EQ 都会生效。</p>
+    <p>视频中使用的是 Protocol Micro，它有 8 个频段；各款解码器的频段和滤波器见下方<a href="#limits">参数范围与故障排查</a>。</p>
+    <p>Contour 在 Android 手机上修改这份 EQ，无需账号，也无需联网。首次安装自带三个 EQ 配置，可以作为起点：低频增强（BASS BOOST）、柔和人声（SOFTER VOCALS）和高频增强（TREBLE BOOST）。</p>
+  </div>
+</section>
+
+<section class="plain" id="connecting">
+  <h2><a class="t" href="#connecting" data-t="26">0:26</a><span>连接</span></h2>
+  <div class="body">
+    <p>插上解码器。TRN Black Pearl 需要先插好耳机。配置库（LIBRARY）右上角的状态标签会显示连接状态：</p>
+    <ul>
+      <li><strong>未检测到 DAC</strong>（NO DAC）：没有插入解码器。点按它可以重新检测。</li>
+      <li><strong>点击连接</strong>（TAP TO CONNECT）：已检测到解码器，但 Android 还没有允许访问。点按它，然后选择允许。</li>
+      <li><strong>已连接</strong>（CONNECTED），带绿点：可以开始使用了。</li>
+    </ul>
+    <p>提示：Android 询问是否打开 Contour 时，勾选“始终”，下次插上就会自动连接。</p>
+  </div>
+</section>
+
+<section class="plain" id="sending">
+  <h2><a class="t" href="#sending" data-t="57">0:57</a><span>写入配置</span></h2>
+  <div class="body">
+    <p>点按一个配置，在 EQ 页面打开它。“按住写入”（HOLD TO SEND）是唯一会写入解码器的按钮。按住它直到按钮填满；轻点不会有任何反应。Contour 会写入每个频段和前置增益，逐项回读校验，全部一致才让解码器保存下来。</p>
+    <p>“已写入 DAC”（ON DAC）表示这个配置现在保存在解码器内部。拔下解码器，到哪里都能用。配置库里也会给它标上“已写入 DAC”，所以你随时知道解码器里存的是哪个配置。</p>
+    <p><strong>飞傲 KA15。</strong>KA15 有三个用户存储位。在“按住写入”上方那一行选择 USER1、USER2 或 USER3；这一行会显示每个存储位当前的名称。Contour 把配置写入所选存储位，并用配置名为存储位命名（最多 7 个字符，可以是字母或数字）。长按存储位可以重命名，不会改动其中的 EQ。读取或写入期间，Contour 会向 KA15 播放一段无声音频流，因为 KA15 只在有音频流输入时才会响应；你的音乐会照常播放。</p>
+    <p><strong>飞傲 K13 R2R。</strong>K13 R2R 有十个用户存储位。在“按住写入”上方那一行选择 1 至 10 号存储位（选中的存储位会在编号下方显示 USER）；Contour 把配置写入该存储位，并将其设为当前生效的存储位。存储位保留各自的 USER 名称。K13 始终使用十个频段，频段较少的配置会用平直频段补满。一次写入大约需要五秒，因为 K13 每次写入后都需要短暂停顿，设置才能在关机后保留。K13 自身的 BYPASS（旁路）模式或自带预设，请在 K13 本机上切换。</p>
+    <p><strong>雪漫天 Melody 和 Tiny A。</strong>两者都有三个用户存储位。在“按住写入”上方那一行选择 USER1、USER2 或 USER3；Contour 把配置写入该存储位，校验后将其设为当前生效的存储位。它们始终使用十个频段，频段较少的配置会用平直频段补满。</p>
+    <p><strong>水月雨 Dawn Pro 2。</strong>它有 8 个频段和一个自定义 EQ，也就是水月雨应用（Moondrop Hub）使用的那个；Contour 把配置写入解码器当前启用的参数均衡（PEQ）组，回读校验，并且从不覆盖解码器自带的预设。自定义 EQ 需要在解码器上打开：据水月雨介绍，每次插上后它都处于关闭状态，同时按住两个音量键 2 秒即可开关。</p>
+    <p><strong>水月雨 Echo-A。</strong>它有 8 个频段，滤波器有峰值（PEAK）、低架（LOW SHELF）、低通（LOW PASS）和高通（HIGH PASS）。高架（HIGH SHELF）由一个低架滤波器加前置增益组合而成，所以它的增益只能取整数 dB，Contour 也可能为此降低前置增益（例如从 -6 降到 -9 dB）。</p>
+    <p><strong>Kiwi Ears Allegro Mini。</strong>它有 5 个频段，只支持峰值，没有前置增益。频段更多、含其他滤波类型或设有前置增益的配置，需要先修改才能写入；“按住写入”下方的红色提示会说明需要改什么。每次写入后，Allegro Mini 会从 USB 断开大约一秒，然后自动重新连接。这款解码器按 24 kHz 的音频流来计算滤波器，因此 Contour 假定使用常见的 48 kHz 音频流，写入按此换算后的频率。</p>
+    <p><strong>USER 存储位。</strong>在带 USER 存储位的解码器上，点按一个存储位，解码器就会切换到它，并显示其中的 EQ。如果这份 EQ 已经在你的配置库里，Contour 会打开对应的配置；如果没有，就把它添加为新配置。插上解码器后，Contour 会读取每个 USER 存储位，再切回原来正在使用的那个。在你按住“按住写入”之前，解码器上的任何内容都不会改变。</p>
+  </div>
+</section>
+
+<section class="plain" id="new-profile">
+  <h2><a class="t" href="#new-profile" data-t="89">1:29</a><span>新建配置</span></h2>
+  <div class="body">
+    <p>要新建配置，点按带加号的空白卡片。“平直”（FLAT）会给你一个位于 1 kHz 的平直频段。</p>
+    <p>白色曲线表示 EQ 对声音的作用。每个带编号的圆点就是一个频段：左右拖动调整频率，上下拖动调整增益。长按空白处，就会在那个位置添加一个频段。</p>
+  </div>
+</section>
+
+<section class="plain" id="filters">
+  <h2><a class="t" href="#filters" data-t="114">1:54</a><span>滤波类型和滑块</span></h2>
+  <div class="body">
+    <p>在曲线图下方选择滤波类型：峰值作用于所设频率附近，低架作用于该频率以下，高架作用于该频率以上。部分解码器还有高通（切除该频率以下）和低通（切除该频率以上），飞傲和雪漫天的解码器另有带通（BAND PASS）和全通（ALL PASS）。Contour 只显示你的解码器支持的类型。</p>
+    <p>频率（FREQ）、增益（GAIN）和 Q 三个滑块从当前位置开始移动，所以手指一碰，数值不会跳变。慢慢拖动可以微调，抬起手指后数值保持不变。</p>
+    <p>前置增益（PREAMP）设为“自动”（AUTO）时，Contour 会把前置增益降低到刚好让提升的频段不削波。所有改动都会随时保存。</p>
+  </div>
+</section>
+
+<section class="plain" id="name-and-icon">
+  <h2><a class="t" href="#name-and-icon" data-t="143">2:23</a><span>名称和图标</span></h2>
+  <div class="body">
+    <p>长按卡片可以编辑名称和说明，也可以选择图标。一个好习惯：每副耳机或入耳式耳机（IEM）各建一个配置，并以耳机的名字命名。然后打开配置，用“按住写入”写入解码器。</p>
+  </div>
+</section>
+
+<section class="plain" id="bands">
+  <h2><a class="t" href="#bands" data-t="167">2:47</a><span>频段详解</span></h2>
+  <div class="body">
+    <p>在 EQ 和配置库之间也可以直接滑动切换。</p>
+    <p>点按圆点或频段标签即可选中该频段。双击圆点，增益归零（0 dB）。双指捏合可以让选中的频段变窄或变宽，这就是它的 Q 值。</p>
+    <p>+ 标签用于添加频段，最多可加到解码器支持的数量（视频中的 Protocol Micro 为八个）。再点一次已选中的标签，可以“停用”（BYPASS）该频段、“启用”（ENABLE）它，或“删除”（DELETE）它；被停用的频段显示为空心标签。+ 旁边的减号（-）标签会删除选中的频段。撤销即可找回。</p>
+  </div>
+</section>
+
+<section class="plain" id="exact-values">
+  <h2><a class="t" href="#exact-values" data-t="196">3:16</a><span>精确数值和前置增益</span></h2>
+  <div class="body">
+    <p>在频率滑块上快速一划，就能扫过整个频率范围。需要精确数值时，点按数字直接输入。</p>
+    <p>前置增益可在“自动”和“手动”（MANUAL）之间切换。在手动模式下，可以拖动或输入数值，范围是解码器的前置增益范围（见<a href="#limits">参数范围与故障排查</a>）；在只支持整数 dB 的解码器上，它按整数 dB 调整，所以你看到的数值就是解码器里保存的数值。写入后声音变小，是前置增益在为提升的频段留出余量。</p>
+    <p>写入解码器的每个数值都会向音量更小的方向取整，绝不会变得更响。如果自动模式需要的前置增益低于解码器的最低值，或者某个频段无法按你的设置精确保存（比如在 Protocol Max 上用高架大幅提升高音），“按住写入”会被锁定，并用一行红色提示说明原因。减小提升幅度后再写入即可。</p>
+  </div>
+</section>
+
+<section class="plain" id="compare-undo">
+  <h2><a class="t" href="#compare-undo" data-t="226">3:46</a><span>对比、撤销、回退</span></h2>
+  <div class="body">
+    <p><strong>对比。</strong>配置处于“已写入 DAC”状态时可以使用 A/B。点按它，EQ 曲线关闭但前置增益保留，这样你能在相同音量下听出差别。再点一次 A/B，EQ 就恢复了。A/B 不会向解码器保存任何内容。A/B 目前仅支持 Protocol Micro，其他解码器暂不支持。</p>
+    <p><strong>撤销。</strong>配置名称旁的两个箭头就像电脑上的 Ctrl+Z：撤销会退回你上一次的改动，无论改的是什么；重做则再前进一步。一次触摸算一步，不管拖动了多远。每个配置最多保留 100 步，关闭应用后依然保留。</p>
+    <p><strong>清空。</strong>“清空 EQ”（CLEAR EQ）只留下一个平直频段。这和其他改动一样，撤销即可立刻恢复。</p>
+    <p><strong>已保存版本。</strong>每个配置都保留一个“已保存”（SAVED）版本，配置库中的卡片显示的就是它。EQ 页面编辑的是工作副本，所以“清空 EQ”不会清空卡片。“按住写入”会保存配置。向右滑动卡片，可以“保存”（SAVE）当前内容，或“恢复”（RESTORE）到上一次保存的版本；向右完全滑到底即保存。视频里显示的仍是 LAST SENT（上次写入），也就是被它取代的旧按钮。</p>
+  </div>
+</section>
+
+<section class="plain" id="organise">
+  <h2><a class="t" href="#organise" data-t="306">5:06</a><span>整理、分享、导入</span></h2>
+  <div class="body">
+    <p>做实验之前，先复制一份会很方便：长按卡片，点按“创建副本”（DUPLICATE）。</p>
+    <p>向左滑动卡片，可以“归档”（ARCHIVE）或“删除”。两种操作都会提供五秒的“撤销”（UNDO）。</p>
+  </div>
+</section>
+
+<section class="plain" id="library-more">
+  <h2>配置库中的更多功能</h2>
+  <p class="muted">视频中暂未介绍。</p>
+  <div class="body">
+    <p>已归档的配置放在配置库底部一个折叠的分区里。展开后，滑动卡片即可“取消归档”（UNARCHIVE）。</p>
+    <p>长按卡片，点按“分享”（SHARE），配置会以 Equalizer APO 格式的纯文本发送出去。旁边的“保存为 .txt”（SAVE .TXT）会把同样的文本保存为文件，squig.link 和 graph.hangout.audio 都可以导入。也有用户把它导入了拓品（Topping）DX1ii 的网页界面，包括峰值滤波器、搁架滤波器和前置增益。记得在别处留一份备份：配置只保存在你的手机上。</p>
+    <p>点按 + 卡片，选择“粘贴”（PASTE），可以读取同样的格式，内容可以来自 AutoEQ、Squiglink 或 EQ by Ear 的导出。旁边的“打开文件”（OPEN FILE）读取 .txt 文件；在 .txt 文件的“打开方式”和“分享”菜单里也能找到 Contour。增益为 0 dB 的空滤波器会被跳过。写入前请先检查曲线。</p>
+    <p>点按 + 卡片，选择“从 DAC 导入”（FROM DAC），会把解码器当前保存的内容存为一个新配置。</p>
+    <p>向左滑动 + 卡片会出现“全部保存”（SAVE ALL）：把每个配置按当前状态保存，不会向解码器写入任何内容。操作前会先确认，而且无法撤销。</p>
+  </div>
+</section>
+
+<section class="plain" id="service">
+  <h2>关于</h2>
+  <p class="muted">视频中暂未介绍。</p>
+  <div class="body">
+    <p>配置库底部的“关于 · 隐私 · 开源许可”（ABOUT &amp; LICENCES）显示版本号和开源许可。</p>
+  </div>
+</section>
+
+<section class="plain" id="dac-page">
+  <h2>DAC 页与恢复出厂设置</h2>
+  <p class="muted">视频中暂未介绍。</p>
+  <div class="body">
+    <p>自带设置项的解码器，会在 EQ 和配置库旁边多出第三个页面：DAC 页。它只显示你的解码器具备的选项，顶部显示采样率和固件版本：飞傲 KA15 有音量（VOLUME）、音量档位（VOLUME STEPS）、声道平衡（BALANCE）、数字滤波器（FILTER）、输出模式（OUTPUT）、DRE、亮度（BRIGHTNESS）、息屏时间（SCREEN OFF）、屏幕旋转（ROTATION）和语言（LANGUAGE）；雪漫天 Melody 有音量、音量档位、声道平衡、数字滤波器、增益、输出模式、DRE、线控麦克风（IN-LINE MIC）、指示灯（LIGHT）和按键（BUTTONS）；雪漫天 Tiny A 有音量、音量档位、声道平衡、线控麦克风和指示灯。这些解码器上会显示 USB 音频（USB AUDIO，即 UAC），但不能在 Contour 里更改。</p>
+    <p>TRN Black Pearl 的 DAC 页有数字滤波器（FAST-LL、FAST-PC、SLOW-LL、SLOW-PC 或 NON-OS）、输出模式（H 类或 AB 类，即 CLASS H 或 CLASS AB）、增益（低或高，即 LOW 或 HIGH）和声道平衡（左右各最多 15 级），也就是 TRN 官方 WalkPlay 工具为它提供的设置项。每项更改都会从解码器回读校验，拔下后依然保留。TRN 的 WalkPlay 网页工具每次连接时都会把前置增益设为 0 dB，所以如果你用过它，之后请再从 Contour 写入一次配置。</p>
+    <p>水月雨 Dawn Pro 2 的 DAC 页显示 EQ 序号（EQ INDEX）、全局增益（GLOBAL GAIN）和前置增益（PRE GAIN），仅供查看。Kiwi Ears Allegro Mini 的 DAC 页有 EQ 开关（关或开，即 OFF 或 ON）和全局增益（-18 至 +3 dB，分级调节）；“按住写入”不会改变这个开关的状态。</p>
+    <p>飞傲 KA15 和雪漫天 Melody 的 DAC 页底部有“恢复出厂设置”（FACTORY RESET）。“备份并恢复出厂”（SAVE A COPY AND RESET）会先读取你的 USER 存储位、它们的名称和各项设置，保存在手机上，然后重置解码器，并显示有哪些变化。“写回备份”（WRITE THE SAVED COPY BACK）会把存储位和设置恢复回去。重置后，请拔下解码器再重新插上；在 Melody 上，Contour 会一直等你重新插上，没有时间限制，点按“停止等待”（STOP WAITING）即可结束。Tiny A 没有重置按钮，因为它会忽略这条命令。</p>
+  </div>
+</section>
+
+<section class="plain" id="limits">
+  <h2><a class="t" href="#limits" data-t="327">5:27</a><span>参数范围与故障排查</span></h2>
+  <div class="body">
+    <p>Contour 不会让你超出解码器的参数限制，所以你看到的就是它实际播放的效果。除非表中另有说明，所有解码器的 Q 值范围都是 0.1 至 10，频率范围都是 20 Hz 至 20 kHz。</p>
+    <div class="tw"><table>
+<thead><tr><th>解码器</th><th>频段</th><th>滤波器</th><th>增益（dB）</th><th>前置增益（dB）</th></tr></thead><tbody>
+<tr><td>CrinEar Protocol Micro</td><td>8</td><td>PK、LS、HS（镜像）、LP、HP</td><td>-10&nbsp;至&nbsp;+10</td><td>-30&nbsp;至&nbsp;0，整数&nbsp;dB</td></tr>
+<tr><td>CrinEar Protocol Max</td><td>10</td><td>PK、LS、HS</td><td>-10&nbsp;至&nbsp;+10</td><td>-30&nbsp;至&nbsp;0，整数&nbsp;dB</td></tr>
+<tr><td>飞傲 KA15</td><td>10</td><td>PK、LS、HS、LP、HP、BP、AP；搁架滤波器 Q 值最高 7.07</td><td>-12&nbsp;至&nbsp;+12</td><td>-24&nbsp;至&nbsp;0，整数&nbsp;dB</td></tr>
+<tr><td>飞傲 K13 R2R</td><td>10</td><td>PK、LS、HS、LP、HP、BP、AP</td><td>-24&nbsp;至&nbsp;+12</td><td>-24&nbsp;至&nbsp;+12</td></tr>
+<tr><td>雪漫天 Melody</td><td>10</td><td>PK、LS、HS、LP、HP、BP、AP</td><td>-12&nbsp;至&nbsp;+12</td><td>-12&nbsp;至&nbsp;+12，整数&nbsp;dB</td></tr>
+<tr><td>雪漫天 Tiny A</td><td>10</td><td>PK、LS、HS、LP、HP、BP、AP</td><td>-12&nbsp;至&nbsp;+12</td><td>-12&nbsp;至&nbsp;+12，整数&nbsp;dB</td></tr>
+<tr><td>TRN Black Pearl</td><td>10</td><td>PK、LS、HS</td><td>-10&nbsp;至&nbsp;+10</td><td>-30&nbsp;至&nbsp;0，整数&nbsp;dB</td></tr>
+<tr><td>水月雨 Dawn Pro 2</td><td>8</td><td>PK、LS、HS、LP、HP</td><td>-18&nbsp;至&nbsp;+12</td><td>-128&nbsp;至&nbsp;0</td></tr>
+<tr><td>水月雨 Echo-A</td><td>8</td><td>PK、LS、HS（镜像）、LP、HP</td><td>-10&nbsp;至&nbsp;+10</td><td>-30&nbsp;至&nbsp;0，整数&nbsp;dB</td></tr>
+<tr><td>Kiwi Ears Allegro Mini</td><td>5</td><td>仅 PK；40 Hz 至 20 kHz</td><td>-12&nbsp;至&nbsp;+12</td><td>无</td></tr>
+</tbody></table></div>
+    <p class="muted">PK 峰值，LS / HS 低架 / 高架，LP / HP 低通 / 高通，BP 带通，AP 全通。</p>
+    <p>Micro 和 Echo-A 没有真正的高架滤波器，所以 Contour 会写入镜像的低架滤波器加前置增益，得到同样的曲线。Max、KA15、K13 R2R、Melody、Tiny A、Black Pearl 和 Dawn Pro 2 原生支持搁架滤波器，无需镜像。如果 KA15 在保存后不再响应，请拔下再重新插上。</p>
+    <ul>
+      <li><strong>一直显示“未检测到 DAC”？</strong>不要用转接头或扩展坞，直接重新插上解码器。TRN Black Pearl 只有插着耳机时才会被识别。</li>
+      <li><strong>写入失败？</strong>再按住一次按钮。通常是解码器松动了。</li>
+      <li><strong>“粘贴”是灰色的？</strong>剪贴板里没有 Contour 能识别的 EQ。请重新复制文本。</li>
+    </ul>
+    <p>安装方法和常见问题，请见<a href="/zh/install/">安装页面</a>。</p>
+  </div>
+</section>
+
+<section class="plain" id="next">
+  <h2><a class="t" href="#next" data-t="365">6:05</a><span>接下来</span></h2>
+  <div class="body">
+    <p>其他解码器可能会陆续加入，前提是有人在实际设备上测试确认。Contour 是开源项目：代码在 <a href="https://github.com/Chronosauros/contour">GitHub</a> 上，问题和错误报告请提交到 <a href="https://github.com/Chronosauros/contour/issues">GitHub Issues</a>。</p>
+  </div>
+</section>
+
+<footer>
+  <p class="links"><a href="/zh/">首页</a> <a href="/zh/install/">安装</a> <a href="https://github.com/Chronosauros/contour">源代码</a></p>
+  <ul>
+    <li><a href="https://soundblooms.com/" rel="noopener" target="_blank">Soundblooms</a>：我所有作品的大本营。</li>
+    <li>源代码：<a href="https://github.com/Chronosauros/contour">github.com/Chronosauros/contour</a></li>
+    <li>许可证：Apache 2.0</li>
+    <li>隐私：<a href="/zh/privacy/">隐私政策</a>。应用没有联网权限，没有统计分析，也没有账号；本网站会统计匿名访问量，不使用 Cookie。</li>
+  </ul>
+  <p class="footer-icons"><a href="https://github.com/Chronosauros" rel="noopener" target="_blank" aria-label="GitHub 主页" title="GitHub"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a><a href="https://www.reddit.com/user/T6_8K/" rel="noopener" target="_blank" aria-label="Reddit 主页" title="Reddit"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 0C5.373 0 0 5.373 0 12c0 3.314 1.343 6.314 3.515 8.485l-2.286 2.286C.775 23.225 1.097 24 1.738 24H12c6.627 0 12-5.373 12-12S18.627 0 12 0Zm4.388 3.199c1.104 0 1.999.895 1.999 1.999 0 1.105-.895 2-1.999 2-.946 0-1.739-.657-1.947-1.539v.002c-1.147.162-2.032 1.15-2.032 2.341v.007c1.776.067 3.4.567 4.686 1.363.473-.363 1.064-.58 1.707-.58 1.547 0 2.802 1.254 2.802 2.802 0 1.117-.655 2.081-1.601 2.531-.088 3.256-3.637 5.876-7.997 5.876-4.361 0-7.905-2.617-7.998-5.87-.954-.447-1.614-1.415-1.614-2.538 0-1.548 1.255-2.802 2.803-2.802.645 0 1.239.218 1.712.585 1.275-.79 2.881-1.291 4.64-1.365v-.01c0-1.663 1.263-3.034 2.88-3.207.188-.911.993-1.595 1.959-1.595Zm-8.085 8.376c-.784 0-1.459.78-1.506 1.797-.047 1.016.64 1.429 1.426 1.429.786 0 1.371-.369 1.418-1.385.047-1.017-.553-1.841-1.338-1.841Zm7.406 0c-.786 0-1.385.824-1.338 1.841.047 1.017.634 1.385 1.418 1.385.785 0 1.473-.413 1.426-1.429-.046-1.017-.721-1.797-1.506-1.797Zm-3.703 4.013c-.974 0-1.907.048-2.77.135-.147.015-.241.168-.183.305.483 1.154 1.622 1.964 2.953 1.964 1.33 0 2.47-.81 2.953-1.964.057-.137-.037-.29-.184-.305-.863-.087-1.795-.135-2.769-.135Z"/></svg></a><a href="https://discord.gg/msgvnUG7js" rel="noopener" target="_blank" aria-label="Discord 服务器" title="Discord"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg></a><a href="https://x.com/soundblooms" rel="noopener" target="_blank" aria-label="X（原推特）主页" title="X（原推特）"><svg viewBox="-2 -2 28 28" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z"/></svg></a></p>
+  <p>Contour 是非官方项目，与 CrinEar、飞傲、雪漫天、TRN、水月雨和 Kiwi Ears 均无隶属关系，也未获得其认可。产品名称归各自所有者所有。</p>
+  <p>由 Chronosaur 制作</p>
+</footer>
+
+</div>
+<script>
+(function(){
+  "use strict";
+  var video = document.getElementById("guide-video");
+  if (!video) return;
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---- chapter starts, from the chapter list ---- */
+  var links = Array.prototype.slice.call(document.querySelectorAll("nav.chapters a[data-t]"));
+  var starts = links.map(function(a){ return Number(a.getAttribute("data-t")); });
+
+  /* ---- seek, play, scroll to the film ---- */
+  function seek(t){
+    var go = function(){
+      try { video.currentTime = t; } catch(e){}
+      try { var p = video.play(); if (p && p.catch) p.catch(function(){}); } catch(e){}
+    };
+    if (video.readyState >= 1) go();
+    else {
+      video.addEventListener("loadedmetadata", go, { once: true });
+      try { video.load(); } catch(e){}
+    }
+    video.scrollIntoView({ block: "start", behavior: reduce ? "auto" : "smooth" });
+  }
+  document.addEventListener("click", function(e){
+    if (e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    var a = e.target.closest && e.target.closest("a[data-t]");
+    if (!a) return;
+    e.preventDefault();
+    seek(Number(a.getAttribute("data-t")));
+  });
+
+  /* ---- mark the chapter that is playing ---- */
+  var current = -1;
+  function mark(){
+    var t = video.currentTime, idx = 0, i;
+    for (i = 0; i < starts.length; i++) { if (starts[i] <= t + 0.05) idx = i; }
+    if (idx === current) return;
+    current = idx;
+    links.forEach(function(a, n){
+      if (n === idx) a.setAttribute("aria-current", "true");
+      else a.removeAttribute("aria-current");
+    });
+  }
+  video.addEventListener("timeupdate", function(){ if (!video.paused || video.currentTime > 0) mark(); });
+  video.addEventListener("seeked", function(){ if (video.currentTime > 0) mark(); });
+})();
+</script>
+</body>
+</html>

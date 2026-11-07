@@ -6,6 +6,9 @@
 <title>Contour EQ: CrinEar Protocol, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears</title>
 <meta name="description" content="Free, open-source Android EQ manager for USB DACs: send profiles from your phone to CrinEar Protocol, FiiO, SnowSky, TRN, Moondrop and Kiwi Ears dongles.">
 <link rel="canonical" href="https://contoureq.app/">
+<link rel="alternate" hreflang="en" href="https://contoureq.app/">
+<link rel="alternate" hreflang="zh-CN" href="https://contoureq.app/zh/">
+<link rel="alternate" hreflang="x-default" href="https://contoureq.app/">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://contoureq.app/">
 <meta property="og:title" content="Contour EQ: CrinEar Protocol, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears">
@@ -125,6 +128,10 @@ h2.mega{margin-bottom:.36em}
 .top nav{white-space:nowrap}
 @media (max-width:560px){.top .lockup{flex-direction:column;align-items:flex-start;gap:0}.top .brand{line-height:1.15}.top .by{--by-fs:14px}}
 @media (max-width:359px){.top nav a{font-size:15px;padding:0 2px}.top .by{--by-fs:12px}}
+/* top bar on narrow phones (below 390 px only, wider screens unchanged): closer links at 16 px, and if they still do not fit, the nav wraps to a second row instead of overflowing; no word ever breaks */
+.top a{white-space:nowrap}
+@media (max-width:389px){.top,.top nav{flex-wrap:wrap;row-gap:4px}.top{height:auto;min-height:64px}.top nav{column-gap:2px}.top nav a{font-size:16px;padding:0 2px}}
+@media (max-width:359px){.top{padding-top:8px}}
 
 /* the phone: a flat bezel around the clip, black on orange and orange on black (the box keeps the old hand-art proportions so the layout stays put) */
 .dev{position:relative;aspect-ratio:2048/2426;width:100%}
@@ -268,7 +275,7 @@ footer a{margin-right:14px}
 
 <header class="top">
   <span class="lockup"><a class="brand" href="#top" aria-label="Contour, top of the page">Contour</a><a class="by" href="https://soundblooms.com/" rel="noopener" target="_blank" aria-label="by Soundblooms"><span class="by-word" aria-hidden="true">by</span><span class="sb-mark" aria-hidden="true">sound<span class="sb-face"><i class="sb-band"></i><span class="sb-eyes" data-eyes="calm"><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i></span></span>blooms</span></a></span>
-  <nav aria-label="Pages"><a href="guide/">Guide</a><a href="devices/">Devices</a><a href="#install">Install</a></nav>
+  <nav aria-label="Pages"><a href="guide/">Guide</a><a href="devices/">Devices</a><a href="#install">Install</a><a class="lang-switch" href="/zh/" hreflang="zh-CN" lang="zh-CN">中文</a></nav>
 </header>
 
 <main id="top">

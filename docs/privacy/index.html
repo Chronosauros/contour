@@ -6,6 +6,9 @@
 <title>Privacy policy - Contour</title>
 <meta name="description" content="Contour is an offline Android app that collects no personal data and sends nothing anywhere. This website counts anonymous visits, without cookies.">
 <link rel="canonical" href="https://contoureq.app/privacy/">
+<link rel="alternate" hreflang="en" href="https://contoureq.app/privacy/">
+<link rel="alternate" hreflang="zh-CN" href="https://contoureq.app/zh/privacy/">
+<link rel="alternate" hreflang="x-default" href="https://contoureq.app/privacy/">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://contoureq.app/privacy/">
 <meta property="og:title" content="Privacy policy - Contour">
@@ -74,6 +77,10 @@ code{font-family:inherit;font-feature-settings:"tnum";background:var(--sunken);p
 .top{align-items:baseline}
 .top .lockup{display:flex;align-items:baseline;gap:8px;white-space:nowrap}
 .top .by{--by-fs:15px;--by-word:var(--text-dim);--by-ink:var(--text-dim)}
+/* top bar on narrow phones: wrap to a second row instead of squeezing, never break a word; below 390 px closer links at 16 px */
+.top{flex-wrap:wrap;row-gap:4px}
+.top a{white-space:nowrap}
+@media (max-width:389px){.top{column-gap:12px}.top > a{font-size:16px}}
 
 /* hero */
 .hero{padding:24px 0 8px}
@@ -110,7 +117,7 @@ footer .links{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 14px}
 <body>
 <div class="wrap">
 
-<p class="top"><span class="lockup"><a href="../">Contour</a><a class="by" href="https://soundblooms.com/" rel="noopener" target="_blank" aria-label="by Soundblooms"><span class="by-word" aria-hidden="true">by</span><span class="sb-mark" aria-hidden="true">sound<span class="sb-face"><i class="sb-band"></i><span class="sb-eyes" data-eyes="calm"><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i></span></span>blooms</span></a></span> <a href="../install/">Install</a></p>
+<p class="top"><span class="lockup"><a href="../">Contour</a><a class="by" href="https://soundblooms.com/" rel="noopener" target="_blank" aria-label="by Soundblooms"><span class="by-word" aria-hidden="true">by</span><span class="sb-mark" aria-hidden="true">sound<span class="sb-face"><i class="sb-band"></i><span class="sb-eyes" data-eyes="calm"><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i></span></span>blooms</span></a></span> <a href="../install/">Install</a> <a class="lang-switch" href="/zh/privacy/" hreflang="zh-CN" lang="zh-CN">中文</a></p>
 
 <header class="hero">
   <img class="icon" src="../images/icon-512.png" width="88" height="88" alt="Contour app icon">

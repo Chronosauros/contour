@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Contour 隐私政策</title>
+<meta name="description" content="Contour 是一款离线 Android 应用，不收集任何个人数据，也不向任何地方发送任何内容。本网站统计匿名访问，不使用 Cookie。">
+<link rel="canonical" href="https://contoureq.app/zh/privacy/">
+<link rel="alternate" hreflang="en" href="https://contoureq.app/privacy/">
+<link rel="alternate" hreflang="zh-CN" href="https://contoureq.app/zh/privacy/">
+<link rel="alternate" hreflang="x-default" href="https://contoureq.app/privacy/">
+<meta property="og:type" content="website">
+<meta property="og:locale" content="zh_CN">
+<meta property="og:url" content="https://contoureq.app/zh/privacy/">
+<meta property="og:title" content="Contour 隐私政策">
+<meta property="og:description" content="Contour 是一款离线 Android 应用，不收集任何个人数据，也不向任何地方发送任何内容。本网站统计匿名访问，不使用 Cookie。">
+<meta property="og:image" content="https://contoureq.app/images/icon-512.png">
+<meta property="og:site_name" content="Contour">
+<meta property="og:image:width" content="512">
+<meta property="og:image:height" content="512">
+<meta property="og:image:alt" content="Contour 应用图标：深色背景上的一条白色 EQ 曲线，峰值处有一个橙色圆点">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Contour 隐私政策">
+<meta name="twitter:description" content="Contour 是一款离线 Android 应用，不收集任何个人数据，也不向任何地方发送任何内容。本网站统计匿名访问，不使用 Cookie。">
+<meta name="theme-color" content="#EFECE8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171615" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" type="image/png" href="/images/icon-512.png">
+<link rel="apple-touch-icon" href="/images/icon-512.png">
+<link rel="stylesheet" href="/shared/soundblooms.css">
+<script defer src="/shared/soundblooms.js"></script>
+<style>
+/*
+  Look = the guide page (same tokens, font, column, top line, hero and footer), which follows the Contour app
+  (android/.../ui/Theme.kt). 1 dp = 1 CSS px. Colors: only Palette roles (light here, dark under prefers-color-scheme).
+  Shadows: CARD r10 y3 a.42 -> 0 3px 12.5px.
+*/
+@font-face{
+  font-family:"Google Sans Flex";
+  src:url("/shared/fonts/google-sans-flex-latin.woff") format("woff");
+  font-weight:400 700; font-style:normal; font-display:swap;
+}
+:root{
+  --bg:#EFECE8; --surface:#FAF8F5; --surface2:#E7E3DE;
+  --text:#1D1B19; --text-dim:#6E6963; --text-mute:#9A948D;
+  --accent:#F07A3A; --on-accent:#2B1A10;
+  --sunken:#E6E2DD; --shadow:#2B2118;
+  --k-card:12.6%;
+
+  --lift-card:0 3px 12.5px color-mix(in srgb, var(--shadow) var(--k-card), transparent);
+
+  --font:"Google Sans Flex","Google Sans","Google Sans Text","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC","Noto Sans CJK SC","Source Han Sans SC",system-ui,sans-serif;
+  --r-card:20px;
+  --r-tag:8px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#171615; --surface:#242220; --surface2:#2E2B29;
+    --text:#F3F0EC; --text-dim:#A39E98; --text-mute:#77726C;
+    --accent:#F07A3A; --on-accent:#2B1A10;
+    --sunken:#121110; --shadow:#000000;
+    --k-card:42%;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-padding-top:16px}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:16px;line-height:1.5;font-weight:400;overflow-x:hidden;font-optical-sizing:auto}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px}
+a{color:var(--text);text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:3px;overflow-wrap:anywhere}
+h1,h2,h3{margin:0}
+p{margin:0 0 .75em}
+strong{font-weight:600}
+code{font-family:inherit;font-feature-settings:"tnum";background:var(--sunken);padding:.05em .4em;border-radius:var(--r-tag);overflow-wrap:anywhere;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+/* top line */
+.top{display:flex;gap:20px;padding:20px 6px 0;font-size:15px}
+.top{align-items:baseline}
+.top .lockup{display:flex;align-items:baseline;gap:8px;white-space:nowrap}
+.top .by{--by-fs:15px;--by-word:var(--text-dim);--by-ink:var(--text-dim)}
+/* top bar on narrow phones: wrap to a second row instead of squeezing, never break a word; below 390 px closer links at 16 px */
+.top{flex-wrap:wrap;row-gap:4px}
+.top a{white-space:nowrap}
+@media (max-width:389px){.top{column-gap:12px}.top > a{font-size:16px}}
+
+/* hero */
+.hero{padding:24px 0 8px}
+.hero img.icon{width:88px;height:88px;border-radius:var(--r-card);display:block;margin-bottom:20px;box-shadow:var(--lift-card)}
+.hero h1{font-size:38px;font-weight:700;letter-spacing:-.01em;line-height:1.1;text-transform:uppercase}
+.hero .lede{color:var(--text-dim);margin:12px 0 18px;max-width:34em;font-size:17px}
+
+/* policy text */
+section.plain{margin:24px 0 32px}
+.body{background:var(--surface);border-radius:var(--r-card);box-shadow:var(--lift-card);padding:18px 22px 10px 20px}
+.body > :last-child{margin-bottom:.75em}
+.body ul{margin:0 0 .75em;padding-left:1.2em}
+.body li{margin:6px 0}
+.body li::marker{color:var(--text-mute)}
+
+/* footer */
+footer{padding:8px 6px 48px;color:var(--text-dim);font-size:14px}
+footer ul{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:6px}
+footer p{margin:0 0 8px}
+footer .footer-icons{margin:0 0 8px -11px}
+footer .footer-icons a{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;opacity:.75}
+footer .footer-icons a:hover{opacity:1}
+footer .links{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 14px}
+
+@media print{
+  :root{--bg:#EFECE8;--surface:#FAF8F5;--surface2:#E7E3DE;--text:#1D1B19;--text-dim:#6E6963;--text-mute:#9A948D;--sunken:#E6E2DD;--accent:#F07A3A}
+  body{background:var(--surface);color:var(--text)}
+  *{box-shadow:none!important}
+}
+
+/* zh: Chinese text needs more line-height (glossary: about 1.7) */
+body{line-height:1.7}
+</style>
+<script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
+<script defer src="/_vercel/insights/script.js"></script>
+</head>
+<body>
+<div class="wrap">
+
+<p class="top"><span class="lockup"><a href="/zh/">Contour</a><a class="by" href="https://soundblooms.com/" rel="noopener" target="_blank" aria-label="Soundblooms 出品"><span class="by-word" aria-hidden="true">by</span><span class="sb-mark" aria-hidden="true">sound<span class="sb-face"><i class="sb-band"></i><span class="sb-eyes" data-eyes="calm"><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i></span></span>blooms</span></a></span> <a href="/zh/install/">安装</a> <a class="lang-switch" href="/privacy/" hreflang="en" lang="en">English</a></p>
+
+<header class="hero">
+  <img class="icon" src="/images/icon-512.png" width="88" height="88" alt="Contour 应用图标">
+  <h1>隐私政策</h1>
+  <p class="lede">最后更新：2026 年 10 月 26 日</p>
+</header>
+
+<section class="plain">
+  <div class="body">
+    <p>Contour 是一款离线 Android 应用。它不收集任何个人数据，也不向任何地方发送任何内容。</p>
+    <ul>
+      <li><strong>不联网。</strong>本应用不申请联网权限，因此无法通过网络发送或接收数据。</li>
+      <li><strong>没有统计分析、广告、崩溃报告或账号。</strong>以上各项均未内置在应用中。</li>
+      <li><strong>你的配置留在手机上。</strong>EQ（均衡器）配置和设置保存在应用的私有存储空间中。应用数据不包含在 Android 云备份和设备间数据迁移中。Contour 还会在其外部存储空间的应用专属文件目录中，于 <code>Android/<wbr>data/<wbr>&lt;package&gt;/<wbr>files/<wbr>backup/</code> 下为配置库文件创建本地副本（包括一份 v1 之前的副本，以及可选的核对用转储文件，即 dump）。这些副本不是云备份，也不能代替导出配置；只要应用还装在手机上，通过连接的电脑就能读取它们。本政策不会删除已有的副本。卸载应用通常会删除应用专属数据，包括这些本地副本。</li>
+      <li><strong>USB。</strong>本应用只与你插上的、受支持的 USB 解码耳放（小尾巴）通信，而且只在你通过 Android 的 USB 权限对话框允许访问之后。它会读取解码器的 EQ 设置，并在你要求时写入新的设置。</li>
+      <li><strong>解码器恢复出厂设置。</strong>在恢复出厂设置之前，Contour 会把解码器的 USER 存储位、这些存储位的名称以及解码器的设置保存为一个文本文件，存放在应用的私有存储空间中，以便之后将它们写回。卸载应用会删除这份副本。</li>
+      <li><strong>剪贴板。</strong>当你打开新建配置面板时，应用会读取手机上的剪贴板，以便提供粘贴 EQ 配置的选项；如果你在面板打开期间插上另一个解码器，应用会再次读取剪贴板。任何内容都不会离开手机。</li>
+      <li><strong>分享。</strong>如果你对某个配置使用“分享”（SHARE），Android 的分享面板会把配置文本发送到你选择的应用。</li>
+      <li><strong>文件。</strong>“保存为 .txt”（SAVE .TXT）会把配置写入你在 Android 文件对话框中选择的文件和位置。当你用 Contour 打开 .txt 文件，或把 .txt 文件分享给 Contour 时，它只读取该文件，向你显示读取到的内容，并在你确认后导入；新建配置面板中的“打开文件”（OPEN FILE）会读取你选择的文件。本应用没有存储权限。</li>
+      <li><strong>权限。</strong>振动，用于触感反馈。对解码器的访问权限在 Android 的 USB 对话框中授予（见上文“USB”）。除此之外没有其他权限。</li>
+      <li><strong>本网站。</strong>contoureq.app 使用 Vercel Web Analytics 统计匿名访问，不使用 Cookie。根据 Vercel 的说明，访客仅通过由请求生成的哈希值来识别，该哈希值会在 24 小时后被丢弃，且统计数据不会与任何个人或 IP 地址相关联。</li>
+    </ul>
+    <p>如有疑问，请在 <a href="https://github.com/Chronosauros/contour/issues">https://github.com/Chronosauros/contour/issues</a> 提交 issue。</p>
+    <p>本页为英文隐私政策的中文译文，如有出入，以<a href="/privacy/" hreflang="en">英文版本</a>为准。</p>
+  </div>
+</section>
+
+<footer>
+  <p class="links"><a href="/zh/">首页</a> <a href="/zh/install/">安装</a> <a href="/zh/guide/">使用指南</a> <a href="https://github.com/Chronosauros/contour">源代码</a></p>
+  <ul>
+    <li><a href="https://soundblooms.com/" rel="noopener" target="_blank">Soundblooms</a>：我所有作品的大本营。</li>
+    <li>源代码：<a href="https://github.com/Chronosauros/contour">github.com/Chronosauros/contour</a></li>
+    <li>许可证：Apache 2.0</li>
+    <li>隐私：<a href="/zh/privacy/">隐私政策</a>。应用没有联网权限，没有统计分析，也没有账号；本网站只统计匿名访问量，不使用 Cookie。</li>
+  </ul>
+  <p class="footer-icons"><a href="https://github.com/Chronosauros" rel="noopener" target="_blank" aria-label="GitHub 主页" title="GitHub"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a><a href="https://www.reddit.com/user/T6_8K/" rel="noopener" target="_blank" aria-label="Reddit 主页" title="Reddit"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 0C5.373 0 0 5.373 0 12c0 3.314 1.343 6.314 3.515 8.485l-2.286 2.286C.775 23.225 1.097 24 1.738 24H12c6.627 0 12-5.373 12-12S18.627 0 12 0Zm4.388 3.199c1.104 0 1.999.895 1.999 1.999 0 1.105-.895 2-1.999 2-.946 0-1.739-.657-1.947-1.539v.002c-1.147.162-2.032 1.15-2.032 2.341v.007c1.776.067 3.4.567 4.686 1.363.473-.363 1.064-.58 1.707-.58 1.547 0 2.802 1.254 2.802 2.802 0 1.117-.655 2.081-1.601 2.531-.088 3.256-3.637 5.876-7.997 5.876-4.361 0-7.905-2.617-7.998-5.87-.954-.447-1.614-1.415-1.614-2.538 0-1.548 1.255-2.802 2.803-2.802.645 0 1.239.218 1.712.585 1.275-.79 2.881-1.291 4.64-1.365v-.01c0-1.663 1.263-3.034 2.88-3.207.188-.911.993-1.595 1.959-1.595Zm-8.085 8.376c-.784 0-1.459.78-1.506 1.797-.047 1.016.64 1.429 1.426 1.429.786 0 1.371-.369 1.418-1.385.047-1.017-.553-1.841-1.338-1.841Zm7.406 0c-.786 0-1.385.824-1.338 1.841.047 1.017.634 1.385 1.418 1.385.785 0 1.473-.413 1.426-1.429-.046-1.017-.721-1.797-1.506-1.797Zm-3.703 4.013c-.974 0-1.907.048-2.77.135-.147.015-.241.168-.183.305.483 1.154 1.622 1.964 2.953 1.964 1.33 0 2.47-.81 2.953-1.964.057-.137-.037-.29-.184-.305-.863-.087-1.795-.135-2.769-.135Z"/></svg></a><a href="https://discord.gg/msgvnUG7js" rel="noopener" target="_blank" aria-label="Discord 服务器" title="Discord"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg></a><a href="https://x.com/soundblooms" rel="noopener" target="_blank" aria-label="X（原推特）主页" title="X"><svg viewBox="-2 -2 28 28" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z"/></svg></a></p>
+  <p>Contour 是非官方项目，与 CrinEar、飞傲（FiiO）、雪漫天（SnowSky）、TRN、水月雨（Moondrop）和 Kiwi Ears 均无隶属关系，也未获得其认可。产品名称归各自所有者所有。</p>
+  <p>由 Chronosaur 制作</p>
+</footer>
+
+</div>
+</body>
+</html>
