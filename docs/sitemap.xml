@@ -4,6 +4,18 @@
   <url><loc>https://contoureq.app/install/</loc></url>
   <url><loc>https://contoureq.app/guide/</loc></url>
   <url><loc>https://contoureq.app/devices/</loc></url>
+  <!-- device-pages:start -->
+  <url><loc>https://contoureq.app/devices/crinear-protocol-micro/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://contoureq.app/devices/crinear-protocol-max/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://contoureq.app/devices/fiio-ka15/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://contoureq.app/devices/fiio-k13-r2r/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://contoureq.app/devices/snowsky-melody/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://contoureq.app/devices/snowsky-tiny-a/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://contoureq.app/devices/trn-black-pearl/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://contoureq.app/devices/moondrop-dawn-pro-2/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://contoureq.app/devices/moondrop-echo-a/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://contoureq.app/devices/kiwi-ears-allegro-mini/</loc><lastmod>2026-11-09</lastmod></url>
+  <!-- device-pages:end -->
   <url><loc>https://contoureq.app/privacy/</loc></url>
   <url><loc>https://contoureq.app/zh/</loc></url>
   <url><loc>https://contoureq.app/zh/install/</loc></url>

@@ -7,6 +7,12 @@ DAC in, pick one and send it. Plug in, send, unplug - that is the whole routine.
 
 **Website: [contoureq.app](https://contoureq.app/)** - a 1.5-minute demo film, the full guide film and the install page.
 
+<!-- facts:start -->
+**Contour 1.6.5, released 9 Nov 2026.** Supported DACs, each with its own page: [CrinEar Protocol Micro](https://contoureq.app/devices/crinear-protocol-micro/), [CrinEar Protocol Max](https://contoureq.app/devices/crinear-protocol-max/), [FiiO KA15](https://contoureq.app/devices/fiio-ka15/), [FiiO K13 R2R](https://contoureq.app/devices/fiio-k13-r2r/), [SnowSky Melody](https://contoureq.app/devices/snowsky-melody/), [SnowSky Tiny A](https://contoureq.app/devices/snowsky-tiny-a/), [TRN Black Pearl](https://contoureq.app/devices/trn-black-pearl/), [Moondrop Dawn Pro 2](https://contoureq.app/devices/moondrop-dawn-pro-2/), [Moondrop Echo-A](https://contoureq.app/devices/moondrop-echo-a/) and [Kiwi Ears Allegro Mini](https://contoureq.app/devices/kiwi-ears-allegro-mini/).
+
+The EQ is written into the DAC itself: it stays there after unplugging and works in every app and on every device you plug the DAC into. Contour does not update firmware. An EQ app on the phone, such as Wavelet or Poweramp, is a different thing: it changes the sound on that phone only.
+<!-- facts:end -->
+
 <p align="center">
   <img src="docs/images/eq-1.3.2.png" width="300" alt="EQ page on a FiiO KA15: a PEAK at 3 kHz, AUTO preamp, USER1-3 slot names, ON DAC">
   &nbsp;&nbsp;
@@ -180,8 +186,8 @@ Contour: the DAC (firmware 1.2.0) ignores the command.
 **Plug your headphones into the Black Pearl first:** without headphones it does not show up on USB at all, so
 Contour shows NO DAC. PEAK, LOW SHELF and HIGH SHELF are native filters. Every send is read back and stays in the
 DAC after unplugging, preamp included. Since 1.6.0 shelves play as set (Q written x 1.41). Since 1.6.4 the DAC
-page has the settings TRN's own WalkPlay tool offers for the Black Pearl: FILTER, OUTPUT, GAIN and BALANCE. Each
-change is read back and stays after unplugging. TRN's WalkPlay web tool sets the preamp to 0 dB every time it
+page has the settings the WalkPlay web tool offers for the Black Pearl: FILTER, OUTPUT, GAIN and BALANCE. Each
+change is read back and stays after unplugging. The WalkPlay web tool sets the preamp to 0 dB every time it
 connects, so after using it, send your profile from Contour again. LOW PASS, HIGH PASS, hardware volume and reset
 are not supported yet.
 </details>

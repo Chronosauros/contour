@@ -1,0 +1,82 @@
+[
+  {
+    "id": "crinear-protocol-micro",
+    "name": "CrinEar Protocol Micro",
+    "url": "https://contoureq.app/devices/crinear-protocol-micro/",
+    "soundbloomsSlug": "crinear-protocol-micro",
+    "since": "1.0",
+    "dongle": true
+  },
+  {
+    "id": "crinear-protocol-max",
+    "name": "CrinEar Protocol Max",
+    "url": "https://contoureq.app/devices/crinear-protocol-max/",
+    "soundbloomsSlug": "crinear-protocol-max",
+    "since": "1.3.0",
+    "dongle": true
+  },
+  {
+    "id": "fiio-ka15",
+    "name": "FiiO KA15",
+    "url": "https://contoureq.app/devices/fiio-ka15/",
+    "soundbloomsSlug": "fiio-ka15",
+    "since": "1.3.2",
+    "dongle": true
+  },
+  {
+    "id": "fiio-k13-r2r",
+    "name": "FiiO K13 R2R",
+    "url": "https://contoureq.app/devices/fiio-k13-r2r/",
+    "soundbloomsSlug": "fiio-k13-r2r",
+    "since": "1.4.1",
+    "dongle": false
+  },
+  {
+    "id": "snowsky-melody",
+    "name": "SnowSky Melody",
+    "url": "https://contoureq.app/devices/snowsky-melody/",
+    "soundbloomsSlug": "snowsky-melody",
+    "since": "1.5.0",
+    "dongle": true
+  },
+  {
+    "id": "snowsky-tiny-a",
+    "name": "SnowSky Tiny A",
+    "url": "https://contoureq.app/devices/snowsky-tiny-a/",
+    "soundbloomsSlug": "snowsky-tiny-a",
+    "since": "1.5.0",
+    "dongle": true
+  },
+  {
+    "id": "trn-black-pearl",
+    "name": "TRN Black Pearl",
+    "url": "https://contoureq.app/devices/trn-black-pearl/",
+    "soundbloomsSlug": "trn-black-pearl",
+    "since": "1.5.2",
+    "dongle": true
+  },
+  {
+    "id": "moondrop-dawn-pro-2",
+    "name": "Moondrop Dawn Pro 2",
+    "url": "https://contoureq.app/devices/moondrop-dawn-pro-2/",
+    "soundbloomsSlug": "moondrop-dawn-pro-2",
+    "since": "1.6.0",
+    "dongle": true
+  },
+  {
+    "id": "moondrop-echo-a",
+    "name": "Moondrop Echo-A",
+    "url": "https://contoureq.app/devices/moondrop-echo-a/",
+    "soundbloomsSlug": "moondrop-echo-a",
+    "since": "1.6.0",
+    "dongle": true
+  },
+  {
+    "id": "kiwi-ears-allegro-mini",
+    "name": "Kiwi Ears Allegro Mini",
+    "url": "https://contoureq.app/devices/kiwi-ears-allegro-mini/",
+    "soundbloomsSlug": "kiwi-ears-allegro-mini",
+    "since": "1.6.0",
+    "dongle": true
+  }
+]

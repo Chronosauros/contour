@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Kiwi Ears Allegro Mini EQ app for Android - Contour EQ</title>
+<meta name="description" content="Free, open-source Android app that reads and writes the Kiwi Ears Allegro Mini's 5-band EQ, plus the EQ switch and GLOBAL GAIN. Tested on hardware.">
+<link rel="canonical" href="https://contoureq.app/devices/kiwi-ears-allegro-mini/">
+<link rel="alternate" hreflang="en" href="https://contoureq.app/devices/kiwi-ears-allegro-mini/">
+<link rel="alternate" hreflang="x-default" href="https://contoureq.app/devices/kiwi-ears-allegro-mini/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://contoureq.app/devices/kiwi-ears-allegro-mini/">
+<meta property="og:title" content="Kiwi Ears Allegro Mini EQ app for Android - Contour EQ">
+<meta property="og:description" content="Free, open-source Android app that reads and writes the Kiwi Ears Allegro Mini's 5-band EQ, plus the EQ switch and GLOBAL GAIN. Tested on hardware.">
+<meta property="og:image" content="https://contoureq.app/images/icon-512.png">
+<meta name="twitter:card" content="summary">
+<meta name="theme-color" content="#EFECE8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171615" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" type="image/png" href="/images/icon-512.png">
+<link rel="apple-touch-icon" href="/images/icon-512.png">
+<link rel="stylesheet" href="/shared/soundblooms.css">
+<script defer src="/shared/soundblooms.js"></script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://contoureq.app/devices/kiwi-ears-allegro-mini/#webpage",
+      "url": "https://contoureq.app/devices/kiwi-ears-allegro-mini/",
+      "name": "Kiwi Ears Allegro Mini EQ app for Android - Contour EQ",
+      "description": "Free, open-source Android app that reads and writes the Kiwi Ears Allegro Mini's 5-band EQ, plus the EQ switch and GLOBAL GAIN. Tested on hardware.",
+      "inLanguage": "en",
+      "isPartOf": {
+        "@id": "https://contoureq.app/#website"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Contour",
+          "item": "https://contoureq.app/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Supported devices",
+          "item": "https://contoureq.app/devices/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "Kiwi Ears Allegro Mini",
+          "item": "https://contoureq.app/devices/kiwi-ears-allegro-mini/"
+        }
+      ]
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://contoureq.app/#app",
+      "name": "Contour",
+      "url": "https://contoureq.app/",
+      "description": "Free, open-source Android EQ manager for USB DACs: send profiles from your phone to CrinEar Protocol, FiiO, SnowSky, TRN, Moondrop and Kiwi Ears dongles.",
+      "operatingSystem": "Android",
+      "applicationCategory": "MultimediaApplication",
+      "softwareVersion": "1.6.5",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "isAccessibleForFree": true,
+      "downloadUrl": "https://contoureq.app/install/",
+      "image": "https://contoureq.app/images/icon-512.png",
+      "license": "https://www.apache.org/licenses/LICENSE-2.0",
+      "author": {
+        "@type": "Person",
+        "name": "Chronosaur",
+        "url": "https://github.com/Chronosauros"
+      },
+      "sameAs": [
+        "https://github.com/Chronosauros/contour"
+      ]
+    }
+  ]
+}
+</script>
+<style>
+/*
+  Look = /devices/ and the guide (same tokens, font, column, hero and footer), which follow the Contour app
+  (android/.../ui/Theme.kt). 1 dp = 1 CSS px. Colors: only Palette roles (light here, dark under prefers-color-scheme).
+  Generated per device by gen_device_pages.py from this template.
+*/
+@font-face{
+  font-family:"Google Sans Flex";
+  src:url("/shared/fonts/google-sans-flex-latin.woff") format("woff");
+  font-weight:400 700; font-style:normal; font-display:swap;
+}
+:root{
+  --bg:#EFECE8; --surface:#FAF8F5; --surface2:#E7E3DE;
+  --text:#1D1B19; --text-dim:#6E6963; --text-mute:#9A948D;
+  --accent:#F07A3A; --on-accent:#2B1A10;
+  --sunken:#E6E2DD; --shadow:#2B2118;
+  --k-card:12.6%; --k-high:16.5%;
+  --led-on:#46D17A;
+
+  --lift-card:0 3px 12.5px color-mix(in srgb, var(--shadow) var(--k-card), transparent);
+  --lift-raised:0 2px 8px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+  --lift-hero:0 5px 17px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+  --lift-hero-held:0 1.5px 7.4px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+  --lift-raised-held:0 0.6px 3.8px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+  --sink:inset 0 2px 7px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+
+  --font:"Google Sans Flex","Google Sans","Google Sans Text",system-ui,sans-serif;
+  --r-card:20px;
+  --r-row:16px;
+  --r-btn:24px;
+  --r-chip:14px;
+  --r-option:12px;
+  --r-tag:8px;
+  --gap:8px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#171615; --surface:#242220; --surface2:#2E2B29;
+    --text:#F3F0EC; --text-dim:#A39E98; --text-mute:#77726C;
+    --accent:#F07A3A; --on-accent:#2B1A10;
+    --sunken:#121110; --shadow:#000000;
+    --k-card:42%; --k-high:55%;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:16px}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{transition:none!important}}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:16px;line-height:1.5;font-weight:400;overflow-x:hidden;font-optical-sizing:auto}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px}
+a{color:var(--text);text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:3px;overflow-wrap:anywhere}
+h1,h2,h3{margin:0}
+p{margin:0 0 .75em}
+strong{font-weight:600}
+code{font-family:inherit;font-feature-settings:"tnum";background:var(--sunken);padding:.05em .4em;border-radius:var(--r-tag);white-space:pre-wrap;overflow-wrap:anywhere;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.mk{color:var(--text-dim);font-size:13px}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+.top{display:flex;gap:20px;padding:20px 6px 0;font-size:15px}
+.top{align-items:baseline}
+.top .lockup{display:flex;align-items:baseline;gap:8px;white-space:nowrap}
+.top .by{--by-fs:15px;--by-word:var(--text-dim);--by-ink:var(--text-dim)}
+/* top bar on narrow phones: wrap to a second row instead of squeezing, never break a word; below 390 px closer links at 16 px */
+.top{flex-wrap:wrap;row-gap:4px}
+.top a{white-space:nowrap}
+@media (max-width:389px){.top{column-gap:12px}.top > a{font-size:16px}}
+
+/* hero */
+.hero{padding:24px 0 8px}
+.hero img.icon{width:88px;height:88px;border-radius:var(--r-card);display:block;margin-bottom:20px;box-shadow:var(--lift-card)}
+.hero h1{font-size:38px;font-weight:700;letter-spacing:-.01em;line-height:1.1;text-transform:uppercase}
+.hero .lede{color:var(--text-dim);margin:12px 0 18px;max-width:34em;font-size:17px}
+.ver{display:inline-flex;align-items:center;gap:10px;background:var(--surface);color:var(--text-dim);border-radius:999px;box-shadow:var(--lift-card);padding:10px 14px 10px 16px;margin:0 0 24px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-feature-settings:"tnum";line-height:1.3}
+.ver .dot{order:2;width:8px;height:8px;border-radius:50%;background:var(--led-on);flex:none}
+.cta{display:flex;flex-wrap:wrap;gap:var(--gap)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:58px;padding:12px 22px;border-radius:var(--r-btn);border:0;font:inherit;font-size:17px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;line-height:1.2;text-align:center;text-decoration:none;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:box-shadow .12s}
+.btn-primary{background:var(--accent);color:var(--on-accent);box-shadow:var(--lift-hero)}
+.btn-tonal{background:var(--surface2);color:var(--text);box-shadow:var(--lift-raised)}
+.btn-primary:active{box-shadow:var(--lift-hero-held)}
+.btn-tonal:active{box-shadow:var(--lift-raised-held)}
+.cta .btn{flex:1 1 220px}
+
+/* sections */
+section.plain{margin:32px 0}
+section.plain > h2{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);padding:0 6px;margin-bottom:12px}
+.note{color:var(--text-dim);font-size:15px;margin:16px 6px 0}
+ul.plain-list{margin:0 0 .75em;padding-left:1.2em}
+ul.plain-list li{margin:6px 0}
+ul.plain-list li::marker{color:var(--text-mute)}
+
+/* facts = one raised card, a two-column table (label | value); stacked on narrow screens */
+.facts-card{background:var(--surface);border-radius:var(--r-card);box-shadow:var(--lift-card);padding:6px 20px}
+table.facts{border-collapse:collapse;width:100%;font-size:15px}
+table.facts th,table.facts td{text-align:left;vertical-align:top;padding:12px 0;border-bottom:1px solid var(--surface2)}
+table.facts tr:last-child th,table.facts tr:last-child td{border-bottom:0}
+table.facts th{width:34%;padding-right:16px;color:var(--text-dim);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;line-height:1.7}
+table.facts td{overflow-wrap:anywhere;font-feature-settings:"tnum"}
+
+/* question and answer: plain visible text */
+.qa{margin:0 0 20px}
+.qa h3{font-size:18px;font-weight:700;letter-spacing:-.015em;line-height:1.3;margin:0 0 4px}
+.qa p{margin:0;color:var(--text-dim)}
+ol.plain-list{margin:0 0 .75em;padding-left:1.4em}
+ol.plain-list li{margin:8px 0}
+ol.plain-list li::marker{color:var(--text-mute);font-weight:600}
+.more{margin:6px 0 0}
+.links-block p{margin:0 0 .75em}
+.links-block h2{margin-top:28px}
+
+footer{padding:8px 6px 48px;color:var(--text-dim);font-size:14px}
+footer ul{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:6px}
+footer p{margin:0 0 8px}
+footer .footer-icons{margin:0 0 8px -11px}
+footer .footer-icons a{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;opacity:.75}
+footer .footer-icons a:hover{opacity:1}
+footer .links{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 14px}
+
+@media (max-width:480px){
+  .hero h1{font-size:32px}
+  .facts-card{padding:4px 16px}
+  table.facts,table.facts tbody,table.facts tr,table.facts th,table.facts td{display:block;width:100%}
+  table.facts tr{padding:10px 0;border-bottom:1px solid var(--surface2)}
+  table.facts tr:last-child{border-bottom:0}
+  table.facts th,table.facts td{padding:0;border-bottom:0}
+  table.facts th{margin-bottom:2px}
+}
+@media print{
+  :root{--bg:#EFECE8;--surface:#FAF8F5;--surface2:#E7E3DE;--text:#1D1B19;--text-dim:#6E6963;--text-mute:#9A948D;--sunken:#E6E2DD;--accent:#F07A3A}
+  html{scroll-behavior:auto}
+  body{background:var(--surface);color:var(--text)}
+  *{box-shadow:none!important}
+  .cta{display:none!important}
+}
+</style>
+<script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
+<script defer src="/_vercel/insights/script.js"></script>
+</head>
+<body>
+<div class="wrap">
+
+<p class="top"><span class="lockup"><a href="/">Contour</a><a class="by" href="https://soundblooms.com/" rel="noopener" target="_blank" aria-label="by Soundblooms"><span class="by-word" aria-hidden="true">by</span><span class="sb-mark" aria-hidden="true">sound<span class="sb-face"><i class="sb-band"></i><span class="sb-eyes" data-eyes="calm"><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i></span></span>blooms</span></a></span> <a href="/guide/">Guide</a> <a href="/devices/">Devices</a> <a href="/install/">Install</a> <a class="lang-switch" href="/zh/devices/" hreflang="zh-CN" lang="zh-CN">中文</a></p>
+
+<header class="hero">
+  <img class="icon" src="/images/icon-512.png" width="88" height="88" alt="Contour app icon">
+  <h1>Kiwi Ears Allegro Mini EQ app for Android</h1>
+  <p class="lede">Contour EQ is a free, open-source Android app that reads and writes the parametric EQ stored inside the Kiwi Ears Allegro Mini. The EQ is written into the dongle itself, so it works in every app, with no system equaliser.</p>
+  <p class="ver"><span class="dot" aria-hidden="true"></span><span>Stable 1.6.5</span></p>
+  <div class="cta">
+    <a class="btn btn-primary" href="/install/">Install Contour</a>
+  </div>
+</header>
+
+<section class="plain" id="facts">
+  <h2>What Contour does on the Allegro Mini</h2>
+  <div class="facts-card">
+    <table class="facts">
+      <tbody>
+        <tr><th scope="row">Supported since</th><td>Contour 1.6.0</td></tr>
+        <tr><th scope="row">USB ID (VID:PID)</th><td>31B2:0111</td></tr>
+        <tr><th scope="row">Chip / protocol</th><td>KT Micro</td></tr>
+        <tr><th scope="row">EQ</th><td>Read and write; every send is read back from the DAC</td></tr>
+        <tr><th scope="row">Bands</th><td>5</td></tr>
+        <tr><th scope="row">Filter types</th><td>PEAK</td></tr>
+        <tr><th scope="row">Gain</th><td>-12 to +12 dB</td></tr>
+        <tr><th scope="row">Q</th><td>0.1 to 10</td></tr>
+        <tr><th scope="row">Frequency</th><td>40 Hz to 20 kHz</td></tr>
+        <tr><th scope="row">Preamp</th><td>none</td></tr>
+        <tr><th scope="row">Where the EQ is kept</th><td>In the DAC's memory. Contour saves it after each send, and the Allegro Mini then drops off USB for about a second.</td></tr>
+        <tr><th scope="row">DAC page</th><td>Since 1.6.0: the EQ switch (OFF / ON) and GLOBAL GAIN from -18 to +3 dB in 1.5 dB steps. Each change is read back and stays after unplugging. HOLD TO SEND leaves the switch where it is.</td></tr>
+        <tr><th scope="row">Tested</th><td>By the developer on hardware and on a test rig, October 2026, USB device version (bcdDevice) 0x0001.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="plain" id="not-done">
+  <h2>What Contour does not do on the Allegro Mini</h2>
+  <ul class="plain-list">
+    <li>Firmware updates.</li>
+    <li>LOW SHELF and HIGH SHELF filters. Kiwi Ears' own tool offers PEAK only, and so does Contour.</li>
+    <li>A preamp. The Allegro Mini has none, so a profile with a preamp has to be changed before it can be sent.</li>
+    <li>Resetting the DAC.</li>
+  </ul>
+</section>
+
+<section class="plain" id="vendor-app">
+  <h2>Contour EQ and Kiwi Ears' web tool</h2>
+  <p>Kiwi Ears' own tool for the Allegro Mini is a web tool. It can reset the DAC (CLEAR), which Contour does not do. For the EQ, Contour offers what Kiwi's tool offers: 5 PEAK bands. Contour's DAC page has GLOBAL GAIN in the same steps as Kiwi's tool. Contour runs on the Android phone the dongle is plugged into, keeps your profiles in a library on the phone and needs no internet or account.</p>
+</section>
+
+<section class="plain" id="steps">
+  <h2>Using Contour with the Allegro Mini</h2>
+  <ol class="plain-list">
+    <li>Keep the profile to 5 PEAK bands with no preamp. A profile with more bands, other filter types or a preamp can't be sent until you change it; the red line under HOLD TO SEND says what to change.</li>
+    <li>Send it with HOLD TO SEND. After each send the Allegro Mini drops off USB for about a second and comes back on its own; Contour waits for it.</li>
+    <li>Play at 48 kHz, the usual USB rate on Android. The DAC works out its filters as if the stream ran at 24 kHz, so Contour writes each frequency converted for a 48 kHz stream; a player that forces 44.1 kHz shifts every band about 8% down.</li>
+  </ol>
+  <p class="more">Everything else works the same on every DAC: <a href="/guide/">How to use Contour</a>.</p>
+</section>
+
+<section class="plain" id="questions">
+  <h2>Questions about the Allegro Mini</h2>
+  <div class="qa">
+    <h3>Is there an EQ app for the Kiwi Ears Allegro Mini on Android?</h3>
+    <p>Yes. Contour EQ reads and writes the Allegro Mini's 5-band EQ from an Android phone, and its DAC page sets the EQ switch and GLOBAL GAIN. It is free and open source (Apache 2.0). Kiwi Ears' own tool for this DAC is a web tool.</p>
+  </div>
+  <div class="qa">
+    <h3>Do I need a driver or root?</h3>
+    <p>No. Android supports USB audio dongles out of the box, and Contour talks to the Allegro Mini over USB after you allow it in Android's permission prompt. No root, no extra driver.</p>
+  </div>
+</section>
+
+<section class="plain links-block" id="other-devices">
+  <p><a href="https://soundblooms.com/dacs/kiwi-ears-allegro-mini" rel="noopener" target="_blank">Allegro Mini specs and prices on soundblooms.com</a></p>
+  <h2>Other DACs Contour supports</h2>
+  <ul class="plain-list">
+    <li><a href="/devices/crinear-protocol-micro/">CrinEar Protocol Micro</a></li>
+    <li><a href="/devices/crinear-protocol-max/">CrinEar Protocol Max</a></li>
+    <li><a href="/devices/fiio-ka15/">FiiO KA15</a></li>
+    <li><a href="/devices/fiio-k13-r2r/">FiiO K13 R2R</a></li>
+    <li><a href="/devices/snowsky-melody/">SnowSky Melody</a></li>
+    <li><a href="/devices/snowsky-tiny-a/">SnowSky Tiny A</a></li>
+    <li><a href="/devices/trn-black-pearl/">TRN Black Pearl</a></li>
+    <li><a href="/devices/moondrop-dawn-pro-2/">Moondrop Dawn Pro 2</a></li>
+    <li><a href="/devices/moondrop-echo-a/">Moondrop Echo-A</a></li>
+  </ul>
+  <p><a href="/devices/">All supported devices</a></p>
+</section>
+
+<footer>
+  <p class="links"><a href="/">Home</a> <a href="/install/">Install</a> <a href="/guide/">Guide</a> <a href="https://github.com/Chronosauros/contour">Source code</a></p>
+  <ul>
+    <li><a href="https://soundblooms.com/" rel="noopener" target="_blank">Soundblooms</a> - the home of everything I make.</li>
+    <li>Source code: <a href="https://github.com/Chronosauros/contour">github.com/Chronosauros/contour</a></li>
+    <li>Licence: Apache 2.0</li>
+    <li>Privacy: <a href="/privacy/">Privacy policy</a> - the app has no internet permission, no analytics, no accounts; this website counts anonymous visits, without cookies</li>
+  </ul>
+  <p class="footer-icons"><a href="https://github.com/Chronosauros" rel="noopener" target="_blank" aria-label="GitHub profile" title="GitHub"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a><a href="https://www.reddit.com/user/T6_8K/" rel="noopener" target="_blank" aria-label="Reddit profile" title="Reddit"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 0C5.373 0 0 5.373 0 12c0 3.314 1.343 6.314 3.515 8.485l-2.286 2.286C.775 23.225 1.097 24 1.738 24H12c6.627 0 12-5.373 12-12S18.627 0 12 0Zm4.388 3.199c1.104 0 1.999.895 1.999 1.999 0 1.105-.895 2-1.999 2-.946 0-1.739-.657-1.947-1.539v.002c-1.147.162-2.032 1.15-2.032 2.341v.007c1.776.067 3.4.567 4.686 1.363.473-.363 1.064-.58 1.707-.58 1.547 0 2.802 1.254 2.802 2.802 0 1.117-.655 2.081-1.601 2.531-.088 3.256-3.637 5.876-7.997 5.876-4.361 0-7.905-2.617-7.998-5.87-.954-.447-1.614-1.415-1.614-2.538 0-1.548 1.255-2.802 2.803-2.802.645 0 1.239.218 1.712.585 1.275-.79 2.881-1.291 4.64-1.365v-.01c0-1.663 1.263-3.034 2.88-3.207.188-.911.993-1.595 1.959-1.595Zm-8.085 8.376c-.784 0-1.459.78-1.506 1.797-.047 1.016.64 1.429 1.426 1.429.786 0 1.371-.369 1.418-1.385.047-1.017-.553-1.841-1.338-1.841Zm7.406 0c-.786 0-1.385.824-1.338 1.841.047 1.017.634 1.385 1.418 1.385.785 0 1.473-.413 1.426-1.429-.046-1.017-.721-1.797-1.506-1.797Zm-3.703 4.013c-.974 0-1.907.048-2.77.135-.147.015-.241.168-.183.305.483 1.154 1.622 1.964 2.953 1.964 1.33 0 2.47-.81 2.953-1.964.057-.137-.037-.29-.184-.305-.863-.087-1.795-.135-2.769-.135Z"/></svg></a><a href="https://discord.gg/msgvnUG7js" rel="noopener" target="_blank" aria-label="Discord server" title="Discord"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg></a><a href="https://x.com/soundblooms" rel="noopener" target="_blank" aria-label="X profile" title="X"><svg viewBox="-2 -2 28 28" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z"/></svg></a></p>
+  <p>Contour is an unofficial project, not affiliated with or endorsed by CrinEar or any other brand listed here. Product names belong to their owners.</p>
+  <p>Made by Chronosaur</p>
+</footer>
+
+</div>
+</body>
+</html>
