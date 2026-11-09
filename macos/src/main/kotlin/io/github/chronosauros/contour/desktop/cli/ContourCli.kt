@@ -55,7 +55,7 @@ object ContourCli {
     private fun printHelp() {
         println(
             """
-            Contour for macOS v1.6.4
+            Contour for macOS v1.6.5
             Ported to macOS by: nu11p0t4t0
             Original by: Chronosauros | devicePEQ (0BSD)
 

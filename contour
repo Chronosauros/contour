@@ -2,11 +2,11 @@
 set -e
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BIN="$DIR/android/desktop/build/install/desktop/bin/desktop"
+BIN="$DIR/macos/build/install/macos/bin/macos"
 
 if [ ! -f "$BIN" ]; then
-    echo "Building Contour desktop binary..."
-    (cd "$DIR/android" && ./gradlew -q :desktop:installDist)
+    echo "Building Contour macOS binary..."
+    (cd "$DIR/android" && ./gradlew -q :macos:installDist)
 fi
 
 exec "$BIN" "$@"

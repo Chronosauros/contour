@@ -300,9 +300,9 @@ cd android
 (copy `toolchain.env.example`). The release APK is unsigned unless you pass your own key, see
 `android/app/build.gradle.kts`.
 
-### Desktop (macOS)
+### macOS
 
-Run the desktop application directly:
+Run the macOS application directly:
 
 ```
 ./contour             # launches the Compose desktop GUI
@@ -313,8 +313,8 @@ Or run via Gradle:
 
 ```
 cd android
-./gradlew :desktop:run
-./gradlew :desktop:test
+./gradlew :macos:run
+./gradlew :macos:test
 ```
 
 To package a standalone macOS `.app` and DMG (requires `jpackage` from JDK 21+):
@@ -326,7 +326,7 @@ To package a standalone macOS `.app` and DMG (requires `jpackage` from JDK 21+):
 Code layout:
 - `android/core` - pure Kotlin/JVM: profile model, DSP, text codecs, the WalkPlay (Protocol Micro, Protocol Max, TRN Black Pearl, Moondrop Echo-A), FiiO (KA15, K13 R2R, SnowSky Melody and Tiny A), Moondrop (Dawn Pro 2) and KT Micro (Kiwi Ears Allegro Mini) device protocols, and the device catalog generated from the records in `devices/`;
 - `android/app` - the Android Jetpack Compose app, USB HID transport, storage;
-- `android/desktop` - the macOS Compose Multiplatform desktop app, native USB HID transport (hid4java/IOKit), CLI and GUI;
+- `macos` - the macOS Compose Multiplatform desktop app, native USB HID transport (hid4java/IOKit), CLI and GUI;
 - `research/protocol` - protocol notes, Python reference tools and the device captures the parity test
   checks against.
 

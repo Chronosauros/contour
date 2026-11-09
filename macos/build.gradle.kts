@@ -5,7 +5,7 @@ plugins {
     application
 }
 
-providers.gradleProperty("contour.buildRoot").orNull?.let { layout.buildDirectory.set(file("$it/desktop")) }
+providers.gradleProperty("contour.buildRoot").orNull?.let { layout.buildDirectory.set(file("$it/macos")) }
 
 java {
     sourceCompatibility = JavaVersion.VERSION_17
@@ -56,9 +56,9 @@ tasks.register<Exec>("packageMacApp") {
         "jpackage",
         "--type", "app-image",
         "--name", "Contour",
-        "--app-version", "1.6.4",
-        "--input", "${layout.buildDirectory.get()}/install/desktop/lib",
-        "--main-jar", "desktop.jar",
+        "--app-version", "1.6.5",
+        "--input", "${layout.buildDirectory.get()}/install/macos/lib",
+        "--main-jar", "macos.jar",
         "--main-class", "io.github.chronosauros.contour.desktop.MainKt",
         "--icon", "docs/images/Contour.icns",
         "--dest", "dist/mac",
@@ -73,7 +73,7 @@ tasks.register<Exec>("packageMacDmg") {
         "jpackage",
         "--type", "dmg",
         "--name", "Contour",
-        "--app-version", "1.6.4",
+        "--app-version", "1.6.5",
         "--app-image", "dist/mac/Contour.app",
         "--dest", "dist/mac"
     )

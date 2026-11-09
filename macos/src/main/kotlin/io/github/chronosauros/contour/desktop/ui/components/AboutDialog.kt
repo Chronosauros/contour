@@ -48,7 +48,7 @@ fun AboutDialog(
                     color = ContourColors.TextPrimary
                 )
                 Text(
-                    text = "v1.6.4",
+                    text = "v1.6.5",
                     fontSize = 12.sp,
                     color = ContourColors.NeonPurple,
                     fontWeight = FontWeight.Bold
