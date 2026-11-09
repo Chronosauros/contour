@@ -219,7 +219,7 @@ Contour is unofficial and not affiliated with CrinEar, FiiO, SnowSky, TRN, Moond
 Moondrop and KT Micro DACs are possible later (see `ROADMAP.md`); they are not enabled until someone confirms one
 on real hardware.
 
-Needs Android 9 or newer and a phone with USB host (USB OTG) support.
+Needs Android 9 or newer with USB host (USB OTG) support, or macOS 12+ on desktop (Apple Silicon / Intel).
 
 ## At a glance
 
@@ -277,6 +277,8 @@ risk (see the warranty disclaimer in `LICENSE`).
   [Add Contour to Obtainium](https://contoureq.app/install/#obtainium).
 - **APK**: download `contour-<version>.apk` from the [latest release](../../releases/latest) and open it on
   your phone (Android asks you to allow installs from that source).
+- **macOS**: run `./contour` from the repository root, or package a standalone `.app` and `.dmg` using
+  `./package-macos.sh` (outputs to `dist/mac/`).
 
 Every official build is signed by the same key: package `io.github.chronosauros.contour`, certificate
 SHA-256 `C8:C8:CA:EA:76:16:28:ED:9D:50:5F:F0:73:42:EE:5E:A0:D4:66:A4:AD:71:8D:0D:B0:77:42:2B:A3:F7:E6:01`
@@ -298,9 +300,33 @@ cd android
 (copy `toolchain.env.example`). The release APK is unsigned unless you pass your own key, see
 `android/app/build.gradle.kts`.
 
+### Desktop (macOS)
+
+Run the desktop application directly:
+
+```
+./contour             # launches the Compose desktop GUI
+./contour cli --help  # launches the desktop CLI
+```
+
+Or run via Gradle:
+
+```
+cd android
+./gradlew :desktop:run
+./gradlew :desktop:test
+```
+
+To package a standalone macOS `.app` and DMG (requires `jpackage` from JDK 21+):
+
+```
+./package-macos.sh
+```
+
 Code layout:
 - `android/core` - pure Kotlin/JVM: profile model, DSP, text codecs, the WalkPlay (Protocol Micro, Protocol Max, TRN Black Pearl, Moondrop Echo-A), FiiO (KA15, K13 R2R, SnowSky Melody and Tiny A), Moondrop (Dawn Pro 2) and KT Micro (Kiwi Ears Allegro Mini) device protocols, and the device catalog generated from the records in `devices/`;
-- `android/app` - the Jetpack Compose app, USB HID transport, storage;
+- `android/app` - the Android Jetpack Compose app, USB HID transport, storage;
+- `android/desktop` - the macOS Compose Multiplatform desktop app, native USB HID transport (hid4java/IOKit), CLI and GUI;
 - `research/protocol` - protocol notes, Python reference tools and the device captures the parity test
   checks against.
 
