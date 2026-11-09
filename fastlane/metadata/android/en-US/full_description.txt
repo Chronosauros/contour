@@ -1,39 +1,50 @@
-<p>The easiest way to manage your dongle.</p>
-<p>Pick one of your profiles. Just hold to send. It's done: Contour writes the EQ into your USB DAC and reads it back to check it. The EQ then runs in the DAC itself, so it works in every app - no system equalizer, nothing running in the background.</p>
-<p><b>THUMB SIZED CONTROLS</b></p>
+<p>Contour is a free, open-source app for the parametric EQ stored inside your USB DAC. Keep your EQ profiles on your phone, plug the DAC in, pick a profile and hold to send. Contour writes the EQ into the DAC and reads it back to check every value.</p>
+<p>The EQ stays in the dongle. It is written into the DAC itself, so it works in every app, not just one. On the DACs where Contour has confirmed it, the EQ stays after you unplug and plays on every device you plug the DAC into: another phone, a laptop, a PC or an iPhone. Each DAC's page says what was confirmed. No system equalizer, nothing running in the background.</p>
+<p><b>Supported DACs</b></p>
+<p>Every one of them was tested on real hardware before Contour enabled it.</p>
 <ul>
-<li>Drag bands on the response graph, or add one with +.</li>
-<li>Fine-tune frequency, gain and Q with sliders.</li>
-<li>Leave the preamp on AUTO or set it by hand in MANUAL.</li>
-<li>PEAK on every DAC, plus LOW SHELF, HIGH SHELF, HIGH PASS, LOW PASS and more where your DAC has them.</li>
-</ul>
-<p><b>SAVE AND MANAGE YOUR EQ LIBRARY</b></p>
-<ul>
-<li>One profile per pair of earphones or headphones, or per mood.</li>
-<li>Every profile keeps a saved version: SAVE your changes or RESTORE the saved one.</li>
-<li>ARCHIVE the profiles you don't use, DELETE the ones you don't need.</li>
-<li>Import an AutoEQ, squig.link or Equalizer APO parametric profile, or read the EQ that is on the DAC now.</li>
-</ul>
-<p><b>MADE FOR YOUR DONGLE</b></p>
-<p>Contour only shows what's possible, so you don't have to wonder. On DACs with USER slots, pick the slot before you send.</p>
-<ul>
-<li>CrinEar Protocol Micro and Protocol Max</li>
-<li>FiiO KA15 and K13 R2R</li>
-<li>SnowSky Melody and Tiny A</li>
+<li>CrinEar Protocol Micro</li>
+<li>CrinEar Protocol Max</li>
+<li>FiiO KA15</li>
+<li>FiiO K13 R2R</li>
+<li>SnowSky Melody</li>
+<li>SnowSky Tiny A</li>
 <li>TRN Black Pearl</li>
-<li>Moondrop Dawn Pro 2 and Echo-A</li>
+<li>Moondrop Dawn Pro 2</li>
+<li>Moondrop Echo-A</li>
 <li>Kiwi Ears Allegro Mini</li>
 </ul>
-<p><b>CONTROL EVERYTHING FROM ONE APP</b></p>
-<p>On DACs that have them, a DAC page shows volume, balance, filter, output and more.</p>
-<p><b>PRIVATE BY DESIGN</b></p>
-<p>No account, no ads, no analytics. The app has no internet access and talks only to the DAC you plug in. Your profiles are stored on your phone and leave it only when you share or save them yourself.</p>
-<p><b>GOOD TO KNOW</b></p>
+<p><b>Made for your DAC</b></p>
+<p>Contour only shows what your DAC can do: its bands, filter types and gain range. On the FiiO KA15, SnowSky Melody and SnowSky Tiny A you pick USER1, USER2 or USER3 before you send, on the FiiO K13 R2R one of ten USER slots.</p>
+<p><b>Tune on the go</b></p>
+<ul>
+<li>Drag bands on the response graph, or add one with +.</li>
+<li>Fine-tune frequency, gain and Q with sliders, or tap a number to type it.</li>
+<li>Leave the preamp on AUTO or set it by hand in MANUAL.</li>
+<li>PEAK on every DAC, plus LOW SHELF, HIGH SHELF, LOW PASS, HIGH PASS, BAND PASS and ALL PASS where your DAC has them.</li>
+<li>Undo and redo, up to 100 steps per profile.</li>
+</ul>
+<p><b>Your EQ library</b></p>
+<ul>
+<li>One profile per pair of IEMs or headphones, or per mood.</li>
+<li>Every profile keeps a saved version: save your changes or restore the saved one.</li>
+<li>Archive the profiles you don't use, delete the ones you don't need.</li>
+<li>Import a parametric profile from AutoEQ, squig.link or Equalizer APO (clipboard or .txt file), or read the EQ that is on the DAC now.</li>
+<li>Share a profile as Equalizer APO text or save it as a .txt file.</li>
+<li>Three profiles to start from: BASS BOOST, SOFTER VOCALS and TREBLE BOOST.</li>
+</ul>
+<p><b>DAC settings in the same app</b></p>
+<p>On the FiiO KA15, SnowSky Melody, SnowSky Tiny A, TRN Black Pearl, Moondrop Dawn Pro 2 and Kiwi Ears Allegro Mini, a DAC page shows the settings that DAC has, such as volume, balance, filter or output. Factory reset on the KA15 and Melody saves a copy of your slots and settings on the phone first.</p>
+<p><b>Private by design</b></p>
+<p>No account, no ads, no analytics. The app has no internet access and talks only to the DAC you plug in. Your profiles stay on your phone and leave it only when you share or save them yourself.</p>
+<p><b>Good to know</b></p>
 <ul>
 <li>Needs Android 9 or newer and a phone with USB host (OTG) support.</li>
-<li>Contour writes to the DAC only when you ask it to.</li>
+<li>Contour writes to the DAC only when you hold HOLD TO SEND or change a setting on the DAC page.</li>
+<li>Contour does not update firmware.</li>
 <li>Moondrop Dawn Pro 2: its custom EQ has to be switched on. According to Moondrop it is off after every plug-in; holding both volume buttons for 2 seconds toggles it.</li>
-<li>The TRN Black Pearl shows up on USB only with headphones plugged into it.</li>
+<li>TRN Black Pearl: plug your headphones in first. Without them it does not show up on USB.</li>
 </ul>
+<p>Every supported DAC has its own page with its limits and notes: contoureq.app/devices</p>
 <p>Contour is free and open source (Apache-2.0) and part of Soundblooms, a small audio label by Chronosaur.</p>
 <p>Unofficial. Not affiliated with or endorsed by CrinEar, FiiO, SnowSky, TRN, Moondrop or Kiwi Ears. AutoEQ, squig.link and Equalizer APO are named only as profile formats Contour can read.</p>

@@ -1,14 +1,50 @@
-<p>Menedżer parametrycznego korektora (equalizera, PEQ) dla przetworników USB: CrinEar Protocol Micro i Max, FiiO KA15 i K13 R2R, SnowSky Melody i Tiny A, TRN Black Pearl, Moondrop Dawn Pro 2 i Echo-A oraz Kiwi Ears Allegro Mini. Trzymasz profile EQ w telefonie, wpinasz dongle, wybierasz profil i wysyłasz. Wpinasz, wysyłasz, wypinasz - i tyle.</p>
-<p>Wszystkie dziesięć przetworników ma korektor parametryczny wbudowany w sam przetwornik. Zapisane w nim EQ działa w każdej aplikacji i na każdym urządzeniu, do którego go podłączysz - bez korektora systemowego i bez aplikacji działającej w tle. Dla dongli Protocol oficjalne narzędzie to strona w przeglądarce na komputer; Contour przenosi je na telefon.</p>
+<p>Contour to darmowa aplikacja open source do parametrycznego korektora (EQ, PEQ) zapisanego w przetworniku USB. Trzymasz profile EQ w telefonie, wpinasz przetwornik, wybierasz profil i przytrzymujesz, żeby wysłać. Contour zapisuje EQ w przetworniku i odczytuje go z powrotem, żeby sprawdzić każdą wartość.</p>
+<p>EQ zostaje w donglu. Jest zapisany w samym przetworniku, więc działa w każdej aplikacji, nie tylko w jednej. W przetwornikach, w których Contour to potwierdził, zostaje po odłączeniu i gra na każdym urządzeniu, do którego podłączysz przetwornik: w innym telefonie, laptopie, komputerze czy iPhonie. Strona każdego przetwornika mówi, co zostało potwierdzone. Bez korektora systemowego i bez aplikacji działającej w tle.</p>
+<p><b>Obsługiwane przetworniki</b></p>
+<p>Każdy z nich został sprawdzony na prawdziwym sprzęcie, zanim Contour zaczął go obsługiwać.</p>
 <ul>
-<li><b>Profile EQ zostają w telefonie</b> - jeden na parę słuchawek (dokanałowych lub nausznych) albo na nastrój.</li>
-<li><b>Wysłanie zajmuje kilka sekund</b> - przytrzymaj HOLD TO SEND; Contour zapisuje profil w przetworniku, odczytuje go z powrotem, sprawdza każdą wartość i zapisuje w pamięci dongla.</li>
-<li><b>Każdy profil ma zapisaną wersję</b> - HOLD TO SEND ją zapisuje; przesuń kartę w Library w prawo, żeby zapisać albo przywrócić wersję, a CLEAR EQ nigdy nie czyści karty.</li>
-<li><b>Strojenie w drodze</b> - przeciągaj pasma na wykresie, dostrajaj suwakami, wklej lub otwórz profil parametryczny AutoEQ, squig.link lub Equalizer APO (schowek albo plik .txt) albo odczytaj aktualne EQ z dongla. Profil można udostępnić jako tekst Equalizer APO albo zapisać jako plik .txt.</li>
-<li><b>Typy filtrów tam, gdzie przetwornik je ma</b> - PEAK, LOW SHELF i HIGH SHELF, a do tego HIGH PASS i LOW PASS w większości przetworników oraz BAND PASS i ALL PASS w FiiO i SnowSky.</li>
-<li><b>Ustawienia samego przetwornika</b> - w DAC-ach, które je mają (FiiO KA15, SnowSky Melody i Tiny A, TRN Black Pearl, Moondrop Dawn Pro 2, Kiwi Ears Allegro Mini), strona DAC pokazuje głośność, balans, filtr, wyjście i resztę. FACTORY RESET w KA15 i Melody najpierw zapisuje kopię slotów i ustawień, a potem proponuje jej przywrócenie.</li>
-<li><b>Przykłady na start</b> - BASS BOOST, SOFTER VOCALS i TREBLE BOOST.</li>
+<li>CrinEar Protocol Micro</li>
+<li>CrinEar Protocol Max</li>
+<li>FiiO KA15</li>
+<li>FiiO K13 R2R</li>
+<li>SnowSky Melody</li>
+<li>SnowSky Tiny A</li>
+<li>TRN Black Pearl</li>
+<li>Moondrop Dawn Pro 2</li>
+<li>Moondrop Echo-A</li>
+<li>Kiwi Ears Allegro Mini</li>
 </ul>
-<p>Contour jest darmowy i open source (Apache-2.0). Nie przetwarza dźwięku, nie potrzebuje internetu, nie ma kont, reklam ani śledzenia. Rozmawia tylko z donglem. Wymaga Androida 9+ i obsługi USB host (OTG).</p>
-<p>Każdy przetwornik z listy poza Protocol Max jest przetestowany na sprzęcie autora; Protocol Max przetestował użytkownik ze społeczności na prawdziwym urządzeniu. Pasma: Protocol Micro, Echo-A i Dawn Pro 2 mają 8, Allegro Mini 5, pozostałe 10. FiiO KA15, SnowSky Melody i Tiny A mają po trzy sloty USER, FiiO K13 R2R dziesięć. Do TRN Black Pearl najpierw wepnij słuchawki: bez nich nie pojawia się na USB.</p>
-<p>Aplikacja nieoficjalna, niezwiązana z CrinEar, FiiO, SnowSky, TRN, Moondrop ani Kiwi Ears. Zapisuje do dongla tylko po wyraźnej akcji i tylko udokumentowanymi poleceniami; używasz jej na własne ryzyko.</p>
+<p><b>Dopasowany do przetwornika</b></p>
+<p>Contour pokazuje tylko to, co potrafi Twój przetwornik: jego pasma, typy filtrów i zakres wzmocnienia. W FiiO KA15, SnowSky Melody i SnowSky Tiny A przed wysłaniem wybierasz slot USER1, USER2 albo USER3, a w FiiO K13 R2R jeden z dziesięciu slotów USER.</p>
+<p><b>Strojenie w drodze</b></p>
+<ul>
+<li>Przeciągaj pasma na wykresie albo dodaj nowe przyciskiem +.</li>
+<li>Dostrajaj częstotliwość, wzmocnienie i Q suwakami albo stuknij liczbę, żeby ją wpisać.</li>
+<li>Zostaw preamp na AUTO albo ustaw go ręcznie w MANUAL.</li>
+<li>PEAK w każdym przetworniku, a do tego LOW SHELF, HIGH SHELF, LOW PASS, HIGH PASS, BAND PASS i ALL PASS tam, gdzie przetwornik je ma.</li>
+<li>Cofanie i ponawianie, do 100 kroków na profil.</li>
+</ul>
+<p><b>Biblioteka profili</b></p>
+<ul>
+<li>Jeden profil na parę słuchawek dokanałowych albo nausznych, albo na nastrój.</li>
+<li>Każdy profil ma zapisaną wersję: zapisz zmiany albo przywróć zapisaną.</li>
+<li>Archiwizuj profile, których nie używasz, i usuwaj te, których nie potrzebujesz.</li>
+<li>Wklej albo otwórz profil parametryczny AutoEQ, squig.link lub Equalizer APO (schowek albo plik .txt) albo odczytaj EQ, które jest teraz w przetworniku.</li>
+<li>Udostępnij profil jako tekst Equalizer APO albo zapisz go jako plik .txt.</li>
+<li>Trzy profile na start: BASS BOOST, SOFTER VOCALS i TREBLE BOOST.</li>
+</ul>
+<p><b>Ustawienia przetwornika w tej samej aplikacji</b></p>
+<p>W FiiO KA15, SnowSky Melody, SnowSky Tiny A, TRN Black Pearl, Moondrop Dawn Pro 2 i Kiwi Ears Allegro Mini strona DAC pokazuje ustawienia, które ma dany przetwornik, na przykład głośność, balans, filtr czy wyjście. Przywracanie ustawień fabrycznych w KA15 i Melody najpierw zapisuje w telefonie kopię slotów i ustawień.</p>
+<p><b>Prywatność</b></p>
+<p>Bez konta, bez reklam, bez analityki. Aplikacja nie ma dostępu do internetu i rozmawia tylko z przetwornikiem, który podłączysz. Profile zostają w telefonie i wychodzą z niego tylko wtedy, gdy sam je udostępnisz albo zapiszesz.</p>
+<p><b>Dobrze wiedzieć</b></p>
+<ul>
+<li>Wymaga Androida 9 lub nowszego i telefonu z obsługą USB host (OTG).</li>
+<li>Contour zapisuje do przetwornika tylko wtedy, gdy przytrzymasz HOLD TO SEND albo zmienisz ustawienie na stronie DAC.</li>
+<li>Contour nie aktualizuje oprogramowania przetwornika.</li>
+<li>Moondrop Dawn Pro 2: własny EQ musi być włączony. Według Moondrop po każdym podłączeniu jest wyłączony; przełącza go przytrzymanie obu przycisków głośności przez 2 sekundy.</li>
+<li>TRN Black Pearl: najpierw podłącz słuchawki. Bez nich przetwornik nie pojawia się na USB.</li>
+</ul>
+<p>Każdy obsługiwany przetwornik ma swoją stronę z limitami i uwagami (po angielsku): contoureq.app/devices</p>
+<p>Contour jest darmowy i open source (Apache-2.0) i należy do Soundblooms, małej marki audio, którą prowadzi Chronosaur.</p>
+<p>Aplikacja nieoficjalna, niezwiązana z CrinEar, FiiO, SnowSky, TRN, Moondrop ani Kiwi Ears. Zapisuje do przetwornika tylko po wyraźnej akcji; używasz jej na własne ryzyko. AutoEQ, squig.link i Equalizer APO są wymienione tylko jako formaty profili, które Contour potrafi odczytać.</p>
