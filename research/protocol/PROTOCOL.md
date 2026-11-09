@@ -162,7 +162,10 @@ Hardware facts: `research/black-pearl-pc-2026-10-19/FINDINGS.md` (written and re
   Pass filters are NOT offered for the TRN in 1.6.0 (they stay out until they are proven on the unit); a read still accepts codes 1 to 5 so a state written by the TRN's tool does not stop a send.
 - Persistence: unplug and replug with the headphones kept in: the whole state came back identical, **the preamp
   (-12 dB) included**, after `01 04 00`. Not tested: whether the preamp also persists without `01 04 00`.
-- Read: VERSION, bulk slot, ten band requests, preamp, as the Max. A stored band is checked against the register format
+- Read: VERSION, bulk slot, ten band requests, preamp, as the Max. The preamp reply is read as the int8 at d[4], like devicePEQ and
+  FreeDSP-Studio; the two bytes before it are not checked on the TRN (the Max keeps `02 00`). Firmware 0.6 answers `80 03 02 00 g`;
+  a tester's unit on **firmware 0.5** answered `80 03 02 32 01` (09.11.2026, adb log), and until 1.6.5 the 0x32 stopped every read and
+  every send with "Invalid preamp header". Why that byte was 0x32 (another tool's write or the firmware) is not known. A stored band is checked against the register format
   (frequency 1..48000, gain +/-60 dB), not the +/-10 dB caps; disabled or erased slots (freq or Q 0, type 0 or 0xFF) are
   no read failure. FROM DAC loads an out-of-cap band with its real value and a warning (sending it back stays blocked).
   A band that did not come back is asked for once more, alone, after draining the input (on 19.10.2026 a stale reply

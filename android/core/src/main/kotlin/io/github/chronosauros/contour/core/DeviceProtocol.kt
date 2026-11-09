@@ -292,7 +292,11 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
     fun parsePreamp(buf: ByteArray): Int {
         if (this == MICRO) return WalkPlay.parsePreamp(buf)
         require(isReply(buf, WalkPlay.CMD_GLOBAL_GAIN)) { "Invalid preamp reply" }
-        require(buf[3].toInt() == 2 && buf[4].toInt() == 0) { "Invalid preamp header" }
+        // TRN: the preamp is the int8 at d[4], read the way devicePEQ and FreeDSP-Studio read it, and the two bytes before it are
+        // not checked. A tester's Black Pearl on firmware 0.5 (09.11.2026) answered `80 03 02 32 01`, and with the 0x32 every
+        // read and every send stopped at "Invalid preamp header". The TRN fills that position with stale bytes in its settings
+        // replies too (research/trn-settings-walkplay-2026-10-27/FINDINGS.md). The Max keeps the strict header (no unit to test).
+        if (this != TRN) require(buf[3].toInt() == 2 && buf[4].toInt() == 0) { "Invalid preamp header" }
         return WalkPlay.parsePreamp(buf)
     }
 

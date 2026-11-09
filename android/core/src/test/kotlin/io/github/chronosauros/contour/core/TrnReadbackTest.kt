@@ -224,6 +224,42 @@ class TrnReadbackTest {
     }
 
     @Test
+    fun `a firmware 0_5 preamp reply with a stray byte before the gain reads, and a send over it verifies`() {
+        // RX of a tester's Black Pearl on firmware 0.5, 09.11.2026 (adb logcat): 4b 80 03 02 32 01. Before 1.6.5 the 0x32 ended
+        // every read and every send with "Invalid preamp header", so the DAC page stayed empty and HOLD TO SEND was interrupted.
+        val fw05 = report("4b 80 03 02 32 01")
+        assertEquals(1, trn.parsePreamp(fw05))
+        assertEquals(-4, trn.parsePreamp(report("4b 80 03 00 32 fc"))) // the length byte is not checked either
+        val dac = capturedDac()
+        val before = read(dac, fw05)
+        assertEquals(1, before.preampDb)
+        // +1 dB is outside the TRN preamp policy: FROM DAC says so, the read itself does not fail
+        assertEquals(DacImport.Rejected(listOf("DAC preamp outside supported policy")), trn.importExact(before.bands, before.preampDb))
+
+        // a send writes 01 03 02 00 g over it and verifies, also from a DAC that keeps answering with the stray byte
+        val bands = before.bands.take(8).map { b ->
+            val r = b.registers
+            Band("b${r.index}", FilterType.PEAK, r.freq.toDouble(), r.gain256 / 256.0, r.q256 / 256.0)
+        }.mapIndexed { i, b -> if (i == 7) b.copy(gainDb = trn.caps.gainMinDb) else b }
+        val plan = trn.plan(bands, -4.0) as DevicePlan.Ready
+        val sent = trn.writeSequence(plan, before.slot).map { it.report }
+        sent.filter { it[1].toInt() == WalkPlay.WRITE && it[2].toInt() == WalkPlay.CMD_PEQ }
+            .forEach { w -> dac[w[5].toInt()] = w.copyOf().also { it[1] = WalkPlay.READ.toByte(); it[3] = 0 } }
+        val preampWrite = sent.single { it[1].toInt() == WalkPlay.WRITE && it[2].toInt() == WalkPlay.CMD_GLOBAL_GAIN }
+        assertEquals(listOf(0x02, 0x00, 0xfc), (3..5).map { preampWrite[it].toInt() and 0xFF })
+        for (stray in listOf(0x00, 0x32)) {
+            val after = read(dac, preampWrite.copyOf().also { it[1] = WalkPlay.READ.toByte(); it[4] = stray.toByte() })
+            assertEquals(-4, after.preampDb)
+            assertEquals(emptyList(), mismatches(plan, after, before.slot))
+        }
+
+        // still no preamp reply: a write-direction report, another command's reply; the Max keeps its strict header
+        assertFailsWith<IllegalArgumentException> { trn.parsePreamp(report("4b 01 03 02 00 fc")) }
+        assertFailsWith<IllegalArgumentException> { trn.parsePreamp(report("4b 80 19 02 00 01")) }
+        assertEquals("Invalid preamp header", assertFailsWith<IllegalArgumentException> { DeviceProtocol.MAX.parsePreamp(fw05) }.message)
+    }
+
+    @Test
     fun `from the captured state an in-range profile is written, read back and verified`() {
         val dac = capturedDac()
         val before = read(dac, synthPreamp)
