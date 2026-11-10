@@ -42,6 +42,8 @@ import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -124,6 +126,16 @@ private val ROW_H = Grid.ROW
 private val COMPACT_H = ROW_H - Grid.INSET * 2
 private val ROW_SHAPE = RoundedCornerShape(Radii.L)
 private val GRAPH_MIN = 200.dp
+private val BAND_PARAMS = listOf(Param.FREQ, Param.GAIN, Param.Q)
+
+/**
+ * What the band strip shows of a profile: how many bands it has and which are enabled. It is equal on every step of a FREQ / GAIN / Q drag, so the strip
+ * (a cell per band, laid out from the row width) is skipped then instead of being composed again with each new copy of the profile.
+ */
+@Immutable
+private data class BandFlags(val enabled: List<Boolean>) {
+    val size: Int get() = enabled.size
+}
 
 /** Tune: the current profile - graph, bands, the selected band's values, preamp, HOLD TO SEND. */
 @Composable
@@ -151,6 +163,8 @@ fun TuneScreen(model: AppModel, device: DeviceController, sender: Sender, editor
                 }
             }
         }
+    // The model outlives this page: a touch whose last finger never came up here (the page left composition under it) is closed when the page goes.
+    DisposableEffect(model) { onDispose { model.endGesture() } }
     if (p == null) {
         Column(
             gestures.padding(top = top, bottom = bottomPad).padding(horizontal = SIDE),
@@ -235,16 +249,23 @@ internal fun playsOnDac(device: DeviceController, sender: Sender, p: Profile?): 
 private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, sender: Sender, editor: DacEditor, actions: TuneActions, bandsEnabled: Boolean) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(GAP)) {
         Column(Modifier.alpha(if (sender.bypassed) 0.4f else 1f), verticalArrangement = Arrangement.spacedBy(GAP)) {
-            BandStrip(model, p, actions, bandsEnabled)
+            BandStrip(model, BandFlags(p.bands.map { it.enabled }), actions, bandsEnabled)
             val i = model.selectedBand
             val b = p.bands.getOrNull(i)
             if (b != null) {
                 TypeRow(model, b.type, bandsEnabled)
-                for (param in listOf(Param.FREQ, Param.GAIN, Param.Q)) {
-                    ParamRow(param, param.of(b), enabled = bandsEnabled, scale = param.scaleFor(model.protocol.caps)!!, onTap = { actions.value(param) },
-                        locked = b.type.isPass && param == Param.GAIN) { v ->
+                // One scale object per DAC range: a DAC with its own range gets a new Scale from every scaleFor call, and a row given a new object is
+                // never skipped (all three rows were recomposed on each step of a drag instead of the one being dragged).
+                val caps = model.protocol.caps
+                val scales = remember(caps) { BAND_PARAMS.map { it.scaleFor(caps)!! } }
+                // ids, not this pass's profile and band objects: a callback that holds those is a new one on every step of a drag, and its row is never skipped
+                val profileId = p.id
+                val bandId = b.id
+                BAND_PARAMS.forEachIndexed { k, param ->
+                    ParamRow(param, param.of(b), enabled = bandsEnabled, scale = scales[k], onTap = { actions.value(param) },
+                        locked = b.type.isPass && param == Param.GAIN, bandId = bandId) { v ->
                         if (!sender.bypassed && !sender.abBusy)
-                            model.transformBandIfCurrent(p.id, i, b.id) { current -> param.set(current, v) }
+                            model.transformBandIfCurrent(profileId, i, bandId) { current -> param.set(current, v) }
                     }
                 }
             }
@@ -597,18 +618,18 @@ private fun GraphNotice(model: AppModel, modifier: Modifier) {
  * like its ring on the graph.
  */
 @Composable
-private fun BandStrip(model: AppModel, p: Profile, actions: TuneActions, enabled: Boolean) {
+private fun BandStrip(model: AppModel, bands: BandFlags, actions: TuneActions, enabled: Boolean) {
     val c = pal
     val haptics = LocalHaptics.current
     val well = RoundedCornerShape(Radii.L)
-    val showPlus = p.bands.size < model.maxBands
+    val showPlus = bands.size < model.maxBands
     // "-" is muted while it is the only band and while sending or A/B is busy (when "+" is dead too)
-    val canDelete = enabled && p.bands.size > 1
+    val canDelete = enabled && bands.size > 1
     BoxWithConstraints(Modifier.fillMaxWidth().height(ROW_H)) {
-        val plan = BandStripPlan.plan(maxWidth.value.toDouble(), p.bands.size, showPlus)
+        val plan = BandStripPlan.plan(maxWidth.value.toDouble(), bands.size, showPlus)
         val numbers = plan.numbersDp.dp
         Row(Modifier.fillMaxSize().clip(well).background(c.track).sink(well)) {
-            BandNumbers(model, p, actions, enabled, plan.cellDp.dp, plan.scroll, numbers, Modifier.width(numbers))
+            BandNumbers(model, bands, actions, enabled, plan.cellDp.dp, plan.scroll, numbers, Modifier.width(numbers))
             if (showPlus) PmCell(Icons.Rounded.Add, "add band", enabled, "chip_add") { haptics.tap(); model.addBand() }
             PmCell(Icons.Rounded.Remove, "delete selected band", canDelete, "chip_remove") { haptics.tap(); model.deleteBand(model.selectedBand) }
         }
@@ -621,14 +642,14 @@ private fun BandStrip(model: AppModel, p: Profile, actions: TuneActions, enabled
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun BandNumbers(model: AppModel, p: Profile, actions: TuneActions, enabled: Boolean, cellW: Dp, scrolls: Boolean, view: Dp, modifier: Modifier) {
+private fun BandNumbers(model: AppModel, bands: BandFlags, actions: TuneActions, enabled: Boolean, cellW: Dp, scrolls: Boolean, view: Dp, modifier: Modifier) {
     val c = pal
     val haptics = LocalHaptics.current
     val density = LocalDensity.current
     val pill = RoundedCornerShape(Radii.M)
     val scroll = rememberScrollState()
     // the selected band stays in view with the inset on both sides: a band just added at the end, or one picked on the graph
-    LaunchedEffect(model.selectedBand, p.bands.size, cellW, scrolls, view) {
+    LaunchedEffect(model.selectedBand, bands.size, cellW, scrolls, view) {
         if (!scrolls) return@LaunchedEffect
         val start = with(density) { (cellW * model.selectedBand).toPx() }
         val end = with(density) { (Grid.INSET * 2 + cellW * (model.selectedBand + 1)).toPx() }
@@ -637,7 +658,7 @@ private fun BandNumbers(model: AppModel, p: Profile, actions: TuneActions, enabl
         else if (end > scroll.value + width) scroll.animateScrollTo(ceil(end - width).toInt())
     }
     val at by animateFloatAsState(model.selectedBand.toFloat(), label = "band")
-    val selEnabled = p.bands.getOrNull(model.selectedBand)?.enabled == true
+    val selEnabled = bands.enabled.getOrNull(model.selectedBand) == true
     Box(
         modifier
             .fillMaxHeight()
@@ -654,14 +675,14 @@ private fun BandNumbers(model: AppModel, p: Profile, actions: TuneActions, enabl
                 .background(c.accent, pill),
         )
         Row(Modifier.fillMaxHeight()) {
-            p.bands.forEachIndexed { i, b ->
+            bands.enabled.forEachIndexed { i, on ->
                 val sel = i == model.selectedBand
                 Box(
                     Modifier
                         .width(cellW)
                         .fillMaxHeight()
                         .clip(pill)
-                        .let { if (b.enabled) it else it.border(2.dp, if (sel) c.accent else c.textMute, pill) }
+                        .let { if (on) it else it.border(2.dp, if (sel) c.accent else c.textMute, pill) }
                         .combinedClickable(
                             enabled = enabled,
                             // a first tap selects; a tap on the band that is already selected opens its sheet
@@ -674,7 +695,7 @@ private fun BandNumbers(model: AppModel, p: Profile, actions: TuneActions, enabl
                     Text(
                         "${i + 1}",
                         style = Type.chip,
-                        color = if (b.enabled) (if (sel) c.onAccent else c.text) else (if (sel) c.accent else c.textMute),
+                        color = if (on) (if (sel) c.onAccent else c.text) else (if (sel) c.accent else c.textMute),
                         maxLines = 1,
                     )
                 }
@@ -716,6 +737,8 @@ private fun TypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
     val pill = RoundedCornerShape(Radii.M)
     val idx = types.indexOfFirst { it.first == type }.coerceAtLeast(0)
     val at by animateFloatAsState(idx.toFloat(), label = "type")
+    // a band of a type this DAC does not offer (made for another DAC) has no cell here: no pill, as on the icon bar - it sat under PEAK and said the band was one
+    val offered = types.any { it.first == type }
     BoxWithConstraints(
         Modifier
             .fillMaxWidth()
@@ -726,7 +749,7 @@ private fun TypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
             .padding(Grid.INSET),
     ) {
         val w = maxWidth / types.size
-        Box(
+        if (offered) Box(
             Modifier
                 .offset(x = w * at)
                 .width(w)
@@ -883,7 +906,7 @@ internal val VALUE_W = 108.dp
 
 /** One value row: the label over the value (tap = type it), and the slider as tall as the card allows. */
 @Composable
-private fun ParamRow(param: Param, value: Double, enabled: Boolean, scale: io.github.chronosauros.contour.ui.kit.Scale, onTap: () -> Unit, locked: Boolean = false, onChange: (Double) -> Unit) {
+private fun ParamRow(param: Param, value: Double, enabled: Boolean, scale: io.github.chronosauros.contour.ui.kit.Scale, onTap: () -> Unit, locked: Boolean = false, bandId: String? = null, onChange: (Double) -> Unit) {
     val c = pal
     val live = enabled && !locked // a locked row (GAIN of a pass filter) is dimmed, not draggable, not tappable
     Row(
@@ -907,7 +930,7 @@ private fun ParamRow(param: Param, value: Double, enabled: Boolean, scale: io.gi
         ) {
             StackedValue(param.label, param.number(value), param.unit, c.text)
         }
-        RelSlider(param, value, onChange, Modifier.weight(1f).fillMaxHeight().padding(Grid.INSET), enabled = live, scale = scale)
+        RelSlider(param, value, onChange, Modifier.weight(1f).fillMaxHeight().padding(Grid.INSET), enabled = live, scale = scale, owner = bandId)
     }
 }
 

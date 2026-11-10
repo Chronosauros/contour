@@ -58,8 +58,6 @@ sealed interface DacImport {
 internal fun dbText(x: Double, stillRefused: (Double) -> Boolean = { true }): String {
     if (!x.isFinite()) return x.toString()
     if (kotlin.math.abs(x) >= 1e9) return java.math.BigDecimal.valueOf(x).toPlainString()
-    if (kotlin.math.abs(x) >= 1e9) return java.math.BigDecimal.valueOf(x).toPlainString()
-    if (kotlin.math.abs(x) >= 1e9) return java.math.BigDecimal.valueOf(x).toPlainString()
     val r = Math.round(x * 10000) / 10000.0
     if (!stillRefused(r)) return java.math.BigDecimal.valueOf(x).stripTrailingZeros().toPlainString()
     return if (r == Math.rint(r)) r.toLong().toString() else r.toString()

@@ -20,11 +20,15 @@
         android:enableOnBackInvokedCallback="true"
         android:theme="@android:style/Theme.Material.NoActionBar">
 
+        <!-- One MainActivity (singleTask): "Open with Contour" and a share start the Activity inside the caller's task, and a second instance beside the one in
+             Contour's own task meant two DAC controllers on one USB device and page requests taken by the hidden instance (no slide to EQ after an import).
+             The configuration changes listed are handled in place (the UI is all Compose): a recreated Activity makes a new DAC controller, which reads the
+             DAC and visits its slots again - a split screen, a fold or a keyboard-class USB device did that. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTop"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode">
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

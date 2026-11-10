@@ -17,11 +17,30 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** Library badges follow the saved curve, not Tune's working copy. A read belongs only to the active destination. */
+/**
+ * One profile's answer to "does the DAC hold its SAVED version": good while the SAVED version is the same object ([AppModel.savedEqKey]) and nothing else of the
+ * profile that a device plan could read (its texts, the archive flag) has changed. Only [Profile.updatedAt] is left out: it moves with every edit of the working copy.
+ */
+internal class SavedMatch(private val eq: Any, private val p: Profile, val on: Boolean) {
+    fun stands(eq: Any, p: Profile): Boolean = this.eq === eq && (this.p === p ||
+        (this.p.name == p.name && this.p.subtitle == p.subtitle && this.p.icon == p.icon && this.p.archived == p.archived))
+}
+
+/**
+ * Library badges follow the saved curve, not Tune's working copy. A read belongs only to the active destination. [cache] (by profile id, for this one
+ * [snapshot]) keeps each profile's answer: without it every profile of the library was planned for the DAC again on each step of a drag on EQ.
+ */
 internal fun savedOnDacIds(model: AppModel, snapshot: DacSnapshot?, connected: Boolean,
-    destinationActive: Boolean, pendingId: String?): Set<String> {
+    destinationActive: Boolean, pendingId: String?, cache: MutableMap<String, SavedMatch>? = null): Set<String> {
     if (!connected || !destinationActive || snapshot == null) return emptySet()
-    return model.profiles.filter { it.id != pendingId && snapshot.matches(model.savedProfile(it)) }.map { it.id }.toSet()
+    return model.profiles.filter { p ->
+        if (p.id == pendingId) return@filter false
+        if (cache == null) return@filter snapshot.matches(model.savedProfile(p))
+        val eq = model.savedEqKey(p)
+        val kept = cache[p.id]
+        if (kept != null && kept.stands(eq, p)) kept.on
+        else snapshot.matches(model.savedProfile(p)).also { cache[p.id] = SavedMatch(eq, p, it) }
+    }.map { it.id }.toSet()
 }
 
 /**
@@ -75,8 +94,15 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
     }
 
     /** Library "ON DAC" badges: the profiles whose SAVED curve the DAC holds (only for the active destination). */
+    private val savedCache = HashMap<String, SavedMatch>()
+    private var savedSnapshot: Any? = null
     val savedOnDacIds: Set<String> by derivedStateOf {
-        savedOnDacIds(model, device.snapshot, device.link == Link.CONNECTED, device.destinationActive, null)
+        val s = device.snapshot
+        if (savedSnapshot !== s) {
+            savedCache.clear()
+            savedSnapshot = s
+        }
+        savedOnDacIds(model, s, device.link == Link.CONNECTED, device.destinationActive, null, savedCache)
     }
 
     private var abJob by mutableStateOf<Job?>(null)

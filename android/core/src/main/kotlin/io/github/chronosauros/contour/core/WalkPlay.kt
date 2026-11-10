@@ -100,12 +100,21 @@ object WalkPlay {
         isReply(buf, CMD_PEQ) && buf.size >= 37 && u8(buf, 5) == index
 
     /** VERSION reply: ASCII at d[3..5], e.g. "0.2". */
-    fun parseVersion(buf: ByteArray): String = String(buf.copyOfRange(4, 7), Charsets.US_ASCII).trimEnd('\u0000')
+    fun parseVersion(buf: ByteArray): String {
+        require(buf.size >= 7) { "version reply too short: ${buf.size}" }
+        return String(buf.copyOfRange(4, 7), Charsets.US_ASCII).trimEnd('\u0000')
+    }
 
-    fun parseSlot(buf: ByteArray): Int = u8(buf, 36)
+    fun parseSlot(buf: ByteArray): Int {
+        require(buf.size >= 37) { "slot reply too short: ${buf.size}" }
+        return u8(buf, 36)
+    }
 
     /** Global gain reply: int8 dB at d[4]. */
-    fun parsePreamp(buf: ByteArray): Int = buf[5].toInt()
+    fun parsePreamp(buf: ByteArray): Int {
+        require(buf.size >= 6) { "preamp reply too short: ${buf.size}" }
+        return buf[5].toInt()
+    }
 
     /** Raw registers of one band, as the device stores them. [gain256] is signed. */
     data class Registers(val index: Int, val freq: Int, val q256: Int, val gain256: Int, val typeCode: Int)

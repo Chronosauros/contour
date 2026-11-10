@@ -89,8 +89,7 @@ internal fun ratioLerp(a: Float, b: Float, s: Float): Float = a * (b / a).pow(s)
  * adjustable), easing gently into 1.25 at a normal 0.6 dp/ms (-10 to +10 dB in about 160 dp) and 1.5 at a quick
  * 1.2 dp/ms. Replaces 26.09's fill-relative gain (0.1 - 2.2 of the track over 0.25 - 1.8 dp/ms).
  */
-internal class BandDrag(private val param: Param, initial: Double) {
-    private val scale = param.scale!!
+internal class BandDrag(private val param: Param, initial: Double, private val scale: Scale = param.scale!!) {
     private var raw = initial
     private var speed = 0f
 
@@ -137,9 +136,13 @@ internal class BandDrag(private val param: Param, initial: Double) {
  * at the minimum the fill is a square nub. Quantized; haptic ticks at the scale marks, a strong one at the
  * param's home value, a reject tick when pushed past an end. Lifting the finger off a value keeps that value
  * ([LiftGuard]). Horizontal drags inside it never reach the pager.
+ *
+ * [scale] is the connected DAC's range: the drag stops at its ends and ticks at its marks (1.6.5 dragged on the default scale whatever the DAC, so GAIN
+ * stopped at +-10 dB on a DAC that takes -24..+12, and a value beyond +-10 jumped to it at the first touch). [owner] names what the value belongs to
+ * (the band): when it changes under a finger - another finger picked another band - the drag in progress ends instead of writing into the new one.
  */
 @Composable
-fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, scale: Scale = param.scale!!) {
+fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, scale: Scale = param.scale!!, owner: Any? = null) {
     val haptics = LocalHaptics.current
     val pagerLock = LocalPagerLock.current
     val p = pal
@@ -162,15 +165,15 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
                 }
             }
             .then(if (enabled) Modifier.holdsPager(pagerLock) else Modifier)
-            .pointerInput(param, enabled, scale.min, scale.max) {
+            .pointerInput(param, enabled, scale.min, scale.max, owner) {
                 if (!enabled) return@pointerInput
                 val guard = LiftGuard<Double>(density, param.name)
-                var drag = BandDrag(param, v.value)
+                var drag = BandDrag(param, v.value, scale)
                 var atEnd = false
                 var ticked = 0.0 // the value the haptics last spoke for
                 detectHorizontalDragWithEnds(
                     onStart = { down ->
-                        drag = BandDrag(param, v.value)
+                        drag = BandDrag(param, v.value, scale)
                         atEnd = false
                         ticked = v.value
                         guard.start(down.uptimeMillis, down.position, v.value)
@@ -188,7 +191,7 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
                     if (next != v.value) change.value(next)
                     guard.move(ch.uptimeMillis, ch.position, next)
                     if (next != ticked && !guard.settling(ch.uptimeMillis)) {
-                        val k = param.crossing(ticked, next)
+                        val k = scale.crossing(ticked, next)
                         if (k > 0) haptics.crossing(k)
                         ticked = next
                     }

@@ -223,13 +223,17 @@ data class DeviceTarget private constructor(
             if (!b.q.isFinite() || b.q !in qRange)
                 found += "Band $n: ${if (caps.qScale(b.type) != 1.0) "shelf " else ""}Q %.2f outside %.2f-%.2f".format(java.util.Locale.ROOT, b.q, qRange.start, qRange.endInclusive)
         }
-        if (hasPreamp) {
-            val gain = profile.effectivePreampDb()
-            if (!(gain.isFinite() && gain in preampMin..preampMax)) found += "Pregain %.1f outside %.1f..%.1f dB".format(java.util.Locale.ROOT, gain, preampMin, preampMax)
+        // AUTO is computed from the curve, and a band with no real response (a strong, steep shelf inside the DAC's own ranges) has no curve: that is a reason
+        // to name, like the same band with a manual preamp, never an exception for the page that asks while it draws (1.6.5 threw it from here).
+        val gain = if (!hasPreamp && moondrop == null) null else runCatching { profile.effectivePreampDb() }.getOrElse { e ->
+            if (found.isNotEmpty()) return found
+            return moondrop?.let { MoondropCodec.planFor(it, profile.bands, null).issues }.orEmpty().ifEmpty { listOf(e.message ?: "Unrepresentable EQ") }
         }
+        if (hasPreamp && gain != null && !(gain.isFinite() && gain in preampMin..preampMax))
+            found += "Pregain %.1f outside %.1f..%.1f dB".format(java.util.Locale.ROOT, gain, preampMin, preampMax)
         if (found.isNotEmpty()) return found
         return when {
-            moondrop != null -> MoondropCodec.planFor(moondrop, profile.bands, profile.effectivePreampDb()).issues
+            moondrop != null -> MoondropCodec.planFor(moondrop, profile.bands, gain).issues
             else -> KtMicroCodec.issues(requireNotNull(ktMicro), profile.copy(preampDb = 0.0))
         }
     }

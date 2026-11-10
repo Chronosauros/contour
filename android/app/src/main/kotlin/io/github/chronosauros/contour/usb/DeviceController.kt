@@ -563,15 +563,24 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     fun holds(slot: Int, profile: Profile): Boolean {
         val f = protocol.fiio ?: return false
         if (!slotPicker || slot !in f.userSlots) return false
-        val c = FiioCodec(f)
         slotRecords[slot]?.let { r ->
-            return runCatching {
-                c.matches(c.planOnExplicitSend(profile.copy(bands = c.padToDeviceCount(profile.bands), preampDb = profile.effectivePreampDb()), slot, true).expected, r.raw)
-            }.getOrDefault(false)
+            // The EQ page asks this for every USER slot on each step of a drag (ten on the K13 R2R). The registers a profile compiles to are the same for
+            // every slot but for the slot number in them ([FiioCodec.planOnExplicitSend]), so the profile is compiled once and the number put in per slot:
+            // a full send plan per slot per step was the largest cost of a drag on these DACs.
+            val k = compiledForHolds?.takeIf { it.profile === profile && it.config === f } ?: FiioCodec(f).let { c ->
+                CompiledForHolds(profile, f, c, runCatching {
+                    c.planOnExplicitSend(profile.copy(bands = c.padToDeviceCount(profile.bands), preampDb = profile.effectivePreampDb()), f.userSlots.min(), true).expected
+                }.getOrNull())
+            }.also { compiledForHolds = it }
+            val expected = k.expected ?: return false
+            return runCatching { k.codec.matches(expected.copy(activeSlot = slot), r.raw) }.getOrDefault(false)
         }
         val name = slotName(slot) ?: return false
         return if (slotNames) name == FiioCodec.slotName(profile.name, f.nameLength) else name == profile.name
     }
+    /** What [holds] compiled last: for this profile object on this DAC model, the registers of a send to the first USER slot (null = the profile does not compile). */
+    private class CompiledForHolds(val profile: Profile, val config: FiioConfig, val codec: FiioCodec, val expected: FiioSnapshot?)
+    private var compiledForHolds: CompiledForHolds? = null
 
     /**
      * Per DAC model and slot: the library profile last opened from, or verified-sent to, that slot, with the slot's registers

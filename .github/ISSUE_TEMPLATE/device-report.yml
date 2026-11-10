@@ -40,6 +40,7 @@ body:
     attributes:
       label: App
       options:
+        - Contour 1.6.6
         - Contour 1.6.5
         - Contour 1.6.4
         - Contour 1.6.3

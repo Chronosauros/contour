@@ -352,6 +352,12 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     /** The complete EQ drawn by a Library card, including its saved preamp for DAC matching. */
     fun savedProfile(p: Profile): Profile = history[p.id]?.sent?.let { p.copy(bands = it.bands, preampDb = it.preampDb) } ?: p
 
+    /**
+     * The EQ behind [savedProfile] as one object: the SAVED version, or [p] itself while it has none. It is the same object for as long as that EQ stands
+     * (an edit of the working copy does not replace it), so an answer that depends on the saved EQ alone can be kept between edits.
+     */
+    fun savedEqKey(p: Profile): Any = history[p.id]?.sent ?: p
+
     fun undo() {
         val p = current ?: return
         val h = history[p.id] ?: return
@@ -668,7 +674,9 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
             selectedBand = 0
             clampSelection()
         }
-        scheduleState()
+        // At once, not after the usual 400 ms: until state.json is written without the tombstone, a process that dies leaves the id listed as deleted with
+        // its file still there, and the next start deletes the profile the user has just brought back.
+        saveStateNow()
     }
 
     /** The file goes only after state.json with its tombstone is safely replaced. */

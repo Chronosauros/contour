@@ -1,0 +1,6 @@
+# Baseline profile: Contour's own code is compiled ahead of time from the first start after an install or an update
+# (Google Play applies it at install; an APK installed by hand gets it through androidx.profileinstaller, which the
+# Compose libraries already bring in). Without it only the libraries' rules were in the APK and the app's screens ran
+# interpreted until the system had gathered its own profile, again after every update. The app is small: all of it is listed.
+HSPLio/github/chronosauros/contour/**->**(**)**
+Lio/github/chronosauros/contour/**;

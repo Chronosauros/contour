@@ -198,10 +198,12 @@ fun ContourApp(
         LaunchedEffect(pager) {
             snapshotFlow { logicalPage(pager.targetPage) }.collect { if (it == Page.LIBRARY) sender.leaveAb() }
         }
-        // Also covers model/review-hook changes that did not originate in a Tune control.
-        LaunchedEffect(model.current) {
-            val p = model.current
-            if (p == null || !sender.canAb(p)) sender.leaveAb()
+        // Also covers model/review-hook changes that did not originate in a Tune control. Collected, not read here: the current profile changes on every
+        // step of a drag, and a read in this scope would recompose the whole shell (pager, both pages' parameters, the page bar) each time.
+        LaunchedEffect(model, sender) {
+            snapshotFlow { model.current }.collect { p ->
+                if (p == null || !sender.canAb(p)) sender.leaveAb()
+            }
         }
 
         fun undoable(text: String, onUndo: () -> Unit, onGone: () -> Unit) {

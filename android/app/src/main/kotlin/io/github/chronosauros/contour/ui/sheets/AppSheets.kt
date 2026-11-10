@@ -51,6 +51,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
@@ -127,13 +128,15 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit, onSaveTxt: (profi
     val p = model.byId(id) ?: return onDone()
     val context = LocalContext.current
     var name by remember(id) { mutableStateOf(p.name) }
+    // what an emptied field falls back to: the name the sheet opened with, not the last letter left on the way to empty ("Bass" cleared ended as "B")
+    val openedName = remember(id) { p.name }
     var sub by remember(id) { mutableStateOf(p.subtitle) }
     val sharePreamp = runCatching { p.effectivePreampDb() }.getOrNull()
     SheetFrame(onDone) {
         SheetTitle("EDIT PROFILE")
         OutlinedTextField(
             value = name,
-            onValueChange = { name = it.take(AppModel.NAME_MAX); model.rename(id, name) },
+            onValueChange = { name = it.take(AppModel.NAME_MAX); model.rename(id, name.ifBlank { openedName }) },
             label = { Text("NAME") },
             singleLine = true,
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
@@ -234,15 +237,24 @@ fun NewProfileSheet(model: AppModel, device: DeviceController, editor: DacEditor
             }
         }
     }
-    LaunchedEffect(model.protocol) {
+    fun readClipboard() {
         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val text = runCatching { cm.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString() }.getOrNull()
         clip = Importer.parse(text)?.let { Importer.fit(it, model.protocol) }
     }
+    LaunchedEffect(model.protocol) { readClipboard() }
     val snapshot = device.snapshot
     val dacImport = if (device.link == Link.CONNECTED && snapshot != null)
         snapshot.importExact() else null
     SheetFrame(onDone) {
+        // Read again when the sheet's window has the focus back: open the sheet, see nothing to paste, copy the text in the browser, return - PASTE stayed
+        // dead until the sheet was closed and opened again. (The system gives the clipboard only to the focused window, so the read waits for the focus.)
+        val focused = LocalWindowInfo.current.isWindowFocused
+        var away by remember { mutableStateOf(false) }
+        LaunchedEffect(focused) {
+            if (!focused) away = true
+            else if (away) { away = false; readClipboard() }
+        }
         SheetTitle("NEW PROFILE")
         Option("FLAT", "One flat band at 1 kHz - drag it or add more", true, "new_empty") {
             model.create(listOf(model.flatBand()), null)
@@ -355,8 +367,10 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
             }
             return@commit
         }
-        // The field shows a Q with two decimals; Done on that text must not round a stored 0.707 to 0.71.
-        if (param == Param.Q && band != null && text.text == opening.third) {
+        // The field shows the value rounded (a Q with two decimals, a gain with one, a frequency in whole Hz); Done on that text, untouched, keeps the stored
+        // value: a Q of 0.707 is not rounded to 0.71, a gain read from a DAC (-2.30078125) is not rewritten as -2.3 with an UNDO step and an EDITED card, and
+        // a value kept from an import outside this DAC's range is not pulled into it.
+        if (band != null && text.text == opening.third) {
             onDone()
             return@commit
         }
@@ -412,11 +426,21 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
 /** Long-press on a band chip: BYPASS / ENABLE and DELETE. */
 @Composable
 fun BandSheet(model: AppModel, index: Int, onDone: () -> Unit) {
-    val b = model.current?.bands?.getOrNull(index) ?: return onDone()
+    val p = model.current ?: return onDone()
+    val b = p.bands.getOrNull(index) ?: return onDone()
+    // The band the sheet was opened for. A DAC read can put another profile on the page while the sheet is open (ValueSheet guards the same case): then the
+    // buttons close the sheet and change nothing, instead of acting on band n of that other profile.
+    val opened = remember { p.id to b.id }
+    fun act(change: () -> Unit) {
+        val live = model.current
+        if (live?.id == opened.first && live.bands.getOrNull(index)?.id == opened.second) change()
+        onDone()
+    }
     SheetFrame(onDone) {
         SheetTitle("BAND ${index + 1}")
-        AppButton(if (b.enabled) "BYPASS" else "ENABLE", { model.toggleBypass(index); onDone() }, Modifier.fillMaxWidth().testTag("band_bypass"))
-        AppButton("DELETE", { model.deleteBand(index); onDone() }, Modifier.fillMaxWidth().testTag("band_delete"))
+        AppButton(if (b.enabled) "BYPASS" else "ENABLE", { act { model.toggleBypass(index) } }, Modifier.fillMaxWidth().testTag("band_bypass"))
+        // the only band stays, as with the "-" of the band row (a profile without a band has no rows to edit)
+        AppButton("DELETE", { act { model.deleteBand(index) } }, Modifier.fillMaxWidth().testTag("band_delete"), enabled = p.bands.size > 1)
     }
 }
 

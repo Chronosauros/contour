@@ -232,6 +232,21 @@ fun LibraryScreen(
                 Spacer(Modifier.height(4.dp))
             }
             items(active, key = { it.id }) { p ->
+                // The action lists are kept while the row's profile is the same: with new lists on every pass no row could be skipped, and every edit on EQ
+                // (each step of a drag changes the list of profiles) recomposed every row of the Library behind it.
+                val rowActions = remember(p, actions) {
+                    listOf(
+                        RowAction("ARCHIVE", "archive", Icons.Outlined.Archive) { actions.archive(p) },
+                        RowAction("DELETE", "delete", Icons.Outlined.Delete) { actions.delete(p) },
+                    )
+                }
+                // owner 13.10.2026: SAVE first and on the full swipe, the mirror of ARCHIVE on the other side
+                val leftActions = remember(p, actions) {
+                    listOf(
+                        RowAction("SAVE", "overwrite_sent", Icons.Outlined.Save, "Save profile") { actions.overwriteSent(p) },
+                        RowAction("RESTORE", "restore_sent", Icons.Outlined.Restore, "Restore profile to its saved version") { actions.restoreSent(p) },
+                    )
+                }
                 SwipeRow(
                     p = p,
                     current = p.id == model.currentId,
@@ -243,15 +258,8 @@ fun LibraryScreen(
                     onTap = { sender.leaveAb { model.choose(p.id) } },
                     onLongPress = { actions.edit(p.id) },
                     fullAction = { actions.archive(p) },
-                    rowActions = listOf(
-                        RowAction("ARCHIVE", "archive", Icons.Outlined.Archive) { actions.archive(p) },
-                        RowAction("DELETE", "delete", Icons.Outlined.Delete) { actions.delete(p) },
-                    ),
-                    // owner 13.10.2026: SAVE first and on the full swipe, the mirror of ARCHIVE on the other side
-                    leftActions = listOf(
-                        RowAction("SAVE", "overwrite_sent", Icons.Outlined.Save, "Save profile") { actions.overwriteSent(p) },
-                        RowAction("RESTORE", "restore_sent", Icons.Outlined.Restore, "Restore profile to its saved version") { actions.restoreSent(p) },
-                    ),
+                    rowActions = rowActions,
+                    leftActions = leftActions,
                     leftFull = { actions.overwriteSent(p) },
                     coords = rowCoords,
                     nudge = if (p.id == hintId) nudge else 0,
@@ -264,6 +272,7 @@ fun LibraryScreen(
                 )
             }
             item(key = "empty-slot") {
+                val rowActions = remember(actions) { listOf(RowAction("SAVE ALL", "sync", Icons.Rounded.Sync, run = actions::syncAll)) }
                 SwipeRow(
                     p = null,
                     current = false,
@@ -273,7 +282,7 @@ fun LibraryScreen(
                     onTap = { openId = null; actions.newProfile() },
                     onLongPress = {},
                     fullAction = actions::syncAll,
-                    rowActions = listOf(RowAction("SAVE ALL", "sync", Icons.Rounded.Sync, run = actions::syncAll)),
+                    rowActions = rowActions,
                     coords = rowCoords,
                 )
             }
@@ -298,6 +307,12 @@ fun LibraryScreen(
                 }
                 if (archiveOpen) {
                     items(archived, key = { it.id }) { p ->
+                        val rowActions = remember(p, actions) {
+                            listOf(
+                                RowAction("UNARCHIVE", "restore", Icons.Outlined.Unarchive) { actions.restore(p) },
+                                RowAction("DELETE", "delete", Icons.Outlined.Delete) { actions.delete(p) },
+                            )
+                        }
                         SwipeRow(
                             p = p,
                             current = p.id == model.currentId,
@@ -309,10 +324,7 @@ fun LibraryScreen(
                             onTap = { sender.leaveAb { model.choose(p.id) } },
                             onLongPress = { actions.edit(p.id) },
                             fullAction = { actions.restore(p) },
-                            rowActions = listOf(
-                                RowAction("UNARCHIVE", "restore", Icons.Outlined.Unarchive) { actions.restore(p) },
-                                RowAction("DELETE", "delete", Icons.Outlined.Delete) { actions.delete(p) },
-                            ),
+                            rowActions = rowActions,
                             coords = rowCoords,
                             dim = true,
                             onSwipe = {

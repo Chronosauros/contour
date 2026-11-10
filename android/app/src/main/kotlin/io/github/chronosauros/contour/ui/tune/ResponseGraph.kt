@@ -68,6 +68,10 @@ private val NODE_RADIUS = 12.dp
 private val GRAPH_SHAPE = RoundedCornerShape(Radii.L)
 private val GRID_F = doubleArrayOf(20.0, 50.0, 100.0, 200.0, 500.0, 1000.0, 2000.0, 5000.0, 10_000.0, 20_000.0)
 private val LABEL_F = listOf(100.0 to "100", 1000.0 to "1K", 10_000.0 to "10K")
+/** Texts the graph keeps laid out between frames: the axis labels (3 + one per 6 dB line) and the node numbers of the largest profile, with room to spare. */
+private const val TEXT_CACHE = 64
+private val NODE_NUMBERS = Array(TEXT_CACHE) { "${it + 1}" }
+private fun nodeNumber(i: Int): String = NODE_NUMBERS.getOrNull(i) ?: "${i + 1}"
 /** The horizontal grid: every 6 dB inside the plot's range. */
 private fun gridDb(lo: Double, hi: Double): List<Double> = generateSequence(Math.ceil(lo / 6.0) * 6.0) { it + 6.0 }.takeWhile { it <= hi + 1e-9 }.toList()
 
@@ -83,7 +87,9 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
     val haptics = LocalHaptics.current
     val pagerLock = LocalPagerLock.current
     val nodePaint = remember { android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG) }
-    val measurer = rememberTextMeasurer()
+    // Every frame of a drag draws the same texts (the axis labels and a number per node): the cache must hold them all, or each one is laid out again
+    // on every frame (the default of 8 entries is fewer than a 2-band profile needs).
+    val measurer = rememberTextMeasurer(cacheSize = TEXT_CACHE)
     val curve = remember { DoubleArray(Dsp.DISPLAY_POINTS) }
     val path = remember { Path() }
     val prof = rememberUpdatedState(profile)
@@ -91,6 +97,8 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
     val caps = model.protocol.caps
     val capsNow = rememberUpdatedState(caps)
     val (gainLo, gainHi) = PlotMap.range(caps)
+    val gridLines = remember(gainLo, gainHi) { gridDb(gainLo, gainHi) }
+    val gridLabels = remember(gridLines) { gridLines.filter { it != 0.0 }.map { g -> g to (if (g > 0) "+${g.toInt()}" else "${g.toInt()}") } }
     val selected = model.selectedBand
     val labelStyle = Type.graph.copy(color = c.textMute)
     val numberStyle = Type.node
@@ -112,10 +120,15 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                 val nodeGuard = LiftGuard<Pair<Double, Double>>(density, "NODE")
                 val pinchGuard = LiftGuard<Double>(density, "PINCH")
                 awaitEachGesture {
-                    val (lo, hi) = PlotMap.range(capsNow.value)
-                    val map = PlotMap(size.width.toFloat(), size.height.toFloat(), pad, lo, hi)
                     val down = awaitFirstDown(requireUnconsumed = false)
                     down.consume()
+                    // The plot as it is when the finger comes down. Taken before the wait, it was the plot of the moment the previous touch ended: after the graph
+                    // changed height (the slot row appears with a DAC) or range (another DAC), the first touch then looked for the nodes where they used to be.
+                    val (lo, hi) = PlotMap.range(capsNow.value)
+                    val map = PlotMap(size.width.toFloat(), size.height.toFloat(), pad, lo, hi)
+                    // the DAC's own ranges for a dragged node, as on the sliders
+                    val freqScale = Param.FREQ.scaleFor(capsNow.value)!!
+                    val gainScale = Param.GAIN.scaleFor(capsNow.value)!!
                     val bands0 = prof.value.bands
                     val hit = bands0.indices.minByOrNull { i ->
                         hypot(map.x(bands0[i].freqHz) - down.position.x, map.y(bands0[i].gainDb) - down.position.y)
@@ -233,8 +246,8 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                             1 -> {
                                 val b = prof.value.bands.getOrNull(hit!!) ?: continue
                                 val pos = ch.position + grab
-                                val f = Scale.FREQ.quantize(map.f(pos.x))
-                                val g = Param.GAIN.scaleFor(capsNow.value)!!.quantize(map.g(pos.y))
+                                val f = freqScale.quantize(map.f(pos.x))
+                                val g = gainScale.quantize(map.g(pos.y))
                                 if (f != b.freqHz || g != b.gainDb) model.setBand(hit, b.copy(freqHz = f, gainDb = g))
                                 nodeGuard.move(ch.uptimeMillis, ch.position, f to g)
                                 if ((f to g) != ticked && !nodeGuard.settling(ch.uptimeMillis)) {
@@ -254,15 +267,15 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
             val x = map.x(f)
             drawLine(c.grid, Offset(x, 0f), Offset(x, size.height), 1.dp.toPx())
         }
-        for (g in gridDb(gainLo, gainHi)) {
+        for (g in gridLines) {
             val y = map.y(g)
             drawLine(if (g == 0.0) c.track else c.grid, Offset(0f, y), Offset(size.width, y), if (g == 0.0) 1.5.dp.toPx() else 1.dp.toPx())
         }
         for ((f, s) in LABEL_F) {
             drawText(measurer, s, Offset(map.x(f) + 4.dp.toPx(), size.height - pad - 12.dp.toPx()), labelStyle)
         }
-        for (g in gridDb(gainLo, gainHi).filter { it != 0.0 }) {
-            drawText(measurer, if (g > 0) "+${g.toInt()}" else "${g.toInt()}", Offset(pad - 6.dp.toPx(), map.y(g) - 17.dp.toPx()), labelStyle)
+        for ((g, s) in gridLabels) {
+            drawText(measurer, s, Offset(pad - 6.dp.toPx(), map.y(g) - 17.dp.toPx()), labelStyle)
         }
 
         val bands: List<Band> = profile.bands
@@ -297,8 +310,9 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                 drawCircle(c.surface.copy(alpha = ghostAlpha), r, o)
                 drawCircle(fill, r - 1.dp.toPx(), o, style = Stroke(2.dp.toPx()))
             }
-            val t = measurer.measure("${i + 1}", numberStyle.copy(color = (if (!b.enabled) fill else if (sel) c.onAccent else c.bg).copy(alpha = ghostAlpha)))
-            drawText(t, topLeft = Offset(o.x - t.size.width / 2f, o.y - t.size.height / 2f))
+            // one layout per number, whatever its colour: the colour is given when it is drawn
+            val t = measurer.measure(nodeNumber(i), numberStyle)
+            drawText(t, color = (if (!b.enabled) fill else if (sel) c.onAccent else c.bg).copy(alpha = ghostAlpha), topLeft = Offset(o.x - t.size.width / 2f, o.y - t.size.height / 2f))
         }
         if (bypassed) drawLine(c.text, Offset(pad, map.y(0.0)), Offset(size.width - pad, map.y(0.0)), 2.5.dp.toPx(), cap = StrokeCap.Round)
     }

@@ -95,7 +95,7 @@ object Dsp {
             }
         }
         val result = Biquad(b0 / a0, b1 / a0, b2 / a0, a1 / a0, a2 / a0)
-        require(listOf(result.b0, result.b1, result.b2, result.a1, result.a2).all { it.isFinite() }) {
+        require(result.b0.isFinite() && result.b1.isFinite() && result.b2.isFinite() && result.a1.isFinite() && result.a2.isFinite()) {
             "Band has no finite response"
         }
         return result
@@ -159,9 +159,21 @@ object Preamp {
     fun auto(bands: List<Band>): Int {
         val active = bands.filter { it.enabled }
         if (active.isEmpty()) return 0
+        answers.firstOrNull { it.bands == active }?.let { return it.db }
         val centres = Dsp.FreqGrid(DoubleArray(active.size) { active[it].freqHz })
         val max = maxOf(Dsp.responseDb(active, SCAN_GRID).max(), Dsp.responseDb(active, centres).max())
         require(max.isFinite()) { "AUTO preamp needs a finite response" }
-        return if (max > 0) -kotlin.math.ceil(max - 1e-6).toInt() else 0
+        val db = if (max > 0) -kotlin.math.ceil(max - 1e-6).toInt() else 0
+        answers = (listOf(Answer(active, db)) + answers).take(KEPT)
+        return db
     }
+
+    /**
+     * The last few questions and their answers. One step of an edit asks for the same bands many times - the preamp row, the send checks, the match against what
+     * the DAC holds, once more per USER slot - and each answer is a scan of 1 024 points per band. Only answers are kept: an EQ with no finite response throws
+     * every time. The list is replaced whole, so the UI thread and the DAC thread can both ask (a lost update only costs one scan).
+     */
+    private class Answer(val bands: List<Band>, val db: Int)
+    private const val KEPT = 4
+    @Volatile private var answers: List<Answer> = emptyList()
 }

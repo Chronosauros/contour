@@ -262,6 +262,9 @@ class MainActivity : ComponentActivity() {
      */
     private fun readIncoming(i: Intent?) {
         if (i?.action != Intent.ACTION_VIEW && i?.action != Intent.ACTION_SEND) return
+        // Reopened from Recents, a task that began with "Open with Contour" or a share is started with that same intent again: the file was answered
+        // the first time, and asking again made a second copy of the profile (or CANNOT IMPORT once the read grant was gone).
+        if (i.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
         val resolver = contentResolver
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) { ImportFile.fromIntent(resolver, i) }
