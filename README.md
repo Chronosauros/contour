@@ -74,7 +74,7 @@ the Allegro Mini starts at 40 Hz. The pass filters on the Micro, KA15, K13, Melo
 | DAC | USB ID | Chip / protocol | Where the EQ goes | DAC page | Tested |
 |---|---|---|---|---|---|
 | CrinEar Protocol Micro | `3302:C20F` | WalkPlay | DAC memory | - | developer + test rig |
-| CrinEar Protocol Max | `3302:43CC` | WalkPlay | DAC memory | - | Reddit community member |
+| CrinEar Protocol Max | `3302:43CC` | WalkPlay | DAC memory | - | developer + test rig |
 | FiiO KA15 | `2972:0104` | FiiO | USER1 to USER3, named by Contour | yes, with factory reset | developer |
 | FiiO K13 R2R | `2972:0120` | FiiO | USER1 to USER10 | - | developer + test rig |
 | SnowSky Melody | `2972:0126` | FiiO | USER1 to USER3 | yes, with factory reset | developer + test rig |
@@ -136,8 +136,8 @@ has no access to.
 <details>
 <summary><b>CrinEar Protocol Max</b></summary>
 
-PEAK, LOW SHELF and HIGH SHELF are native filters, computed and sent by the app. Tested by a Reddit community
-member on a real Protocol Max (8 bands, peak and shelf filters, no crashes). Large HIGH SHELF boosts at lower
+PEAK, LOW SHELF and HIGH SHELF are native filters, computed and sent by the app, on 10 bands. Tested by the
+developer on a real Protocol Max and on a test rig (November 2026, firmware 1.4). Large HIGH SHELF boosts at lower
 frequencies don't fit the Max's filter format; since 1.4.0 Contour refuses them with a message instead of sending
 them.
 </details>

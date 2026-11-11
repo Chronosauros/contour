@@ -166,13 +166,18 @@ a.rep:active{box-shadow:var(--lift-raised-held)}
 .vt .dot{width:7px;height:7px;border-radius:50%;background:var(--led-on);flex:none}
 .hide{display:none!important}
 
-footer{padding:8px 6px 48px;color:var(--text-dim);font-size:14px}
-footer ul{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:6px}
-footer p{margin:0 0 8px}
-footer .footer-icons{margin:0 0 8px -11px}
-footer .footer-icons a{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;opacity:.75}
-footer .footer-icons a:hover{opacity:1}
-footer .links{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 14px}
+footer.fv{display:block;padding:clamp(56px,9vw,88px) 6px 72px;color:var(--text-dim);font-size:14px;line-height:1.5}
+footer.fv p{margin:0}
+.fv a{color:var(--text);text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:4px}
+.fv-sentence{max-width:21em;color:var(--text);font-size:clamp(25px,6.6vw,34px);font-weight:600;letter-spacing:-.02em;line-height:1.3;text-wrap:balance}
+.fv-sentence a{text-decoration-thickness:3px;text-underline-offset:6px;padding:.22em 0}
+@media (min-width:1000px){.fv-sentence{font-size:40px;max-width:23em}}
+.fv-quiet{margin-top:clamp(56px,9vw,96px)}
+.fv-legal{display:flex;flex-wrap:wrap;gap:0 22px;font-size:13px}
+.fv-legal > *{display:inline-flex;align-items:center;gap:.3em;min-height:44px}
+.fv .fv-legal a{color:var(--text-dim);text-decoration-thickness:1px;text-underline-offset:3px;text-decoration-color:color-mix(in srgb,var(--accent) 65%,transparent)}
+@media (max-width:480px){.fv-legal{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}}
+.fv-note{max-width:46em;margin-top:2px;font-size:12.5px;line-height:1.5;color:var(--text-dim)}
 
 @media (max-width:480px){.hero h1{font-size:32px}.grp-body{padding:2px 16px 20px 16px}}
 @media print{
@@ -184,6 +189,171 @@ footer .links{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 14px}
   details.grp::details-content{content-visibility:visible;display:block}
   details.grp > summary{pointer-events:none}
 }
+/* the designed table of /devices/ (owner-approved variant A, 11.11.2026): wide column, table of rows, help block */
+.wrap{max-width:1380px}
+
+.dv{
+  --dv-ink:color-mix(in srgb, var(--accent) 68%, var(--text));
+  --dv-off:color-mix(in srgb, var(--text) 15%, transparent);
+  --dv-hair:color-mix(in srgb, var(--text) 11%, transparent);
+  --dv-sec:color-mix(in srgb, var(--text) 72%, var(--sunken));
+  --dv-cols:minmax(0,1.25fr) 172px 236px 132px minmax(0,2fr);
+  --dv-gap:20px;
+  --dv-px:18px;
+}
+@media (prefers-color-scheme: dark){
+  .dv{--dv-ink:var(--accent);--dv-off:color-mix(in srgb, var(--text) 17%, transparent);--dv-hair:color-mix(in srgb, var(--text) 10%, transparent)}
+}
+.dv .dv-defs{position:absolute;width:0;height:0;overflow:hidden}
+
+/* header: compact, icon beside the title */
+.dv .dv-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:20px;align-items:center;padding:20px 0 22px}
+.dv .dv-icon{display:block;width:64px;height:64px;border-radius:16px;box-shadow:var(--lift-card)}
+.dv .dv-head h1{font-size:34px;font-weight:700;letter-spacing:-.01em;line-height:1.1;text-transform:uppercase}
+.dv .dv-lede{color:var(--text-dim);margin:6px 0 0;max-width:46em;font-size:16px;line-height:1.45}
+.dv .dv-side{display:flex;align-items:center;gap:16px}
+.dv .dv-side .ver{margin:0;white-space:nowrap}
+.dv .dv-side .btn{flex:none;min-height:52px;padding:10px 24px}
+
+/* list */
+.dv .dv-label{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);padding:0 6px;margin:0 0 10px}
+.dv .dv-well{background:var(--sunken);border-radius:var(--r-card);box-shadow:var(--sink);padding:6px 8px 8px}
+.dv .dv-table,.dv .dv-table thead,.dv .dv-table tbody{display:block;width:100%;border:0}
+.dv .dv-table :where(tr){display:grid;grid-template-columns:var(--dv-cols);column-gap:var(--dv-gap);align-items:center;position:relative;padding:0 var(--dv-px)}
+.dv :where(th,td){display:block;min-width:0;padding:0;border:0;text-align:left;vertical-align:baseline;font-size:inherit;font-weight:inherit;letter-spacing:normal;text-transform:none;white-space:normal;color:inherit}
+
+.dv .dv-hr{align-items:start;padding-top:14px;padding-bottom:12px;border-bottom:1px solid var(--dv-hair);border-radius:0}
+.dv .dv-hr th{color:var(--dv-sec);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;white-space:normal;line-height:1.3}
+.dv .dv-h-filt{display:flex;flex-direction:column;gap:6px}
+.dv .dv-leg{display:grid;grid-template-columns:repeat(7,28px);column-gap:4px;font-size:10px;font-weight:600;letter-spacing:.04em;color:var(--dv-sec)}
+.dv .dv-leg abbr{text-decoration:none;text-align:center;cursor:default}
+
+.dv .dv-row{min-height:68px;padding-top:12px;padding-bottom:12px;border-radius:var(--r-row);transition:box-shadow .14s,background-color .14s}
+.dv .dv-row::before{content:"";position:absolute;left:var(--dv-px);right:var(--dv-px);bottom:0;height:1px;background:var(--dv-hair);pointer-events:none}
+.dv .dv-row:last-child::before{display:none}
+.dv .dv-row:hover,.dv .dv-row:focus-within{background:var(--surface);box-shadow:var(--lift-raised);z-index:2}
+.dv .dv-row:hover::before,.dv .dv-row:focus-within::before,.dv .dv-row:has(+ .dv-row:hover)::before,.dv .dv-row:has(+ .dv-row:focus-within)::before{opacity:0}
+.dv .dv-row:has(.dv-link:focus-visible){outline:3px solid var(--accent);outline-offset:-3px}
+.dv .dv-row{cursor:pointer}
+/* a row without a page to open (the Chinese page: the device pages are English only): no lift, no pointer */
+.dv .dv-row.dv-static,.dv .dv-row.dv-static:hover{cursor:default;background:none;box-shadow:none}
+.dv .dv-row.dv-static:hover::before,.dv .dv-row:has(+ .dv-row.dv-static:hover)::before{opacity:1}
+.dv .dv-row.dv-static:hover .dv-tag,.dv .dv-row.dv-static:hover .dv-ro{background:var(--surface)}
+
+.dv .dv-link{display:block;color:inherit;text-decoration:none}
+.dv .dv-link:focus-visible{outline:none}
+.dv a.dv-link::after{content:"";position:absolute;inset:0;border-radius:var(--r-row)}
+.dv .dv-brand{display:block;font-size:13px;line-height:1.3;color:var(--dv-sec)}
+.dv .dv-model{display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px;font-size:18px;font-weight:650;letter-spacing:-.01em;line-height:1.3}
+.dv .dv-tag{display:inline-block;background:var(--surface);color:var(--dv-sec);border-radius:var(--r-tag);padding:2px 7px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;line-height:1.3;white-space:nowrap}
+.dv .dv-row:hover .dv-tag,.dv .dv-row:focus-within .dv-tag{background:var(--surface2)}
+
+.dv .dv-bands{display:flex;align-items:center;gap:12px}
+.dv .dv-bars{display:flex;align-items:center;gap:3px}
+.dv .dv-bars i{display:block;width:4px;height:20px;border-radius:2px;background:var(--dv-off)}
+.dv .dv-bars i.on{background:var(--dv-ink)}
+.dv .dv-n{font-size:17px;font-weight:600;font-feature-settings:"tnum";min-width:1.3em}
+.dv .dv-w{display:none}
+
+.dv .dv-filt{display:flex;align-items:center;gap:4px;position:relative;z-index:1}
+.dv .dv-g{display:block;flex:none;width:28px;height:20px;fill:none;stroke:var(--dv-off);stroke-width:1.9px;stroke-linecap:round;stroke-linejoin:round}
+.dv .dv-g.on{stroke:var(--dv-ink)}
+.dv .dv-g *{vector-effect:non-scaling-stroke}
+.dv .dv-g .dv-ph{stroke-dasharray:2 2.6;opacity:.55}
+
+.dv .dv-mem{font-size:15px;font-weight:500}
+.dv .dv-set{position:relative;z-index:1;font-size:15px;line-height:1.4;color:var(--dv-sec)}
+.dv .dv-set.empty{color:var(--text-mute)}
+.dv .dv-pre{display:none}
+.dv .dv-more{color:var(--dv-sec);opacity:.85;white-space:nowrap}
+.dv .dv-ro{display:inline-block;background:var(--surface);color:var(--dv-sec);border-radius:var(--r-tag);padding:1px 7px;margin-left:4px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;line-height:1.4;white-space:nowrap;vertical-align:1px}
+.dv .dv-row:hover .dv-ro,.dv .dv-row:focus-within .dv-ro{background:var(--surface2)}
+
+/* quiet lines under the table */
+.dv .dv-soon{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 0;margin:16px 6px 0;color:var(--text-dim);font-size:14.5px}
+.dv .dv-soon-l{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-right:16px}
+.dv .dv-soon > span:not(.dv-soon-l){padding:0 14px}
+.dv .dv-soon > span:nth-child(2){padding-left:0}
+.dv .dv-soon > span:not(.dv-soon-l):not(:last-child){border-right:1px solid var(--dv-hair)}
+.dv .dv-fiio{margin:8px 6px 0;color:var(--text-dim);font-size:14.5px}
+
+/* help-add */
+.dv .dv-help{margin:40px 0 24px;background:var(--surface);border-radius:var(--r-card);box-shadow:var(--lift-card);padding:26px 28px 24px}
+.dv .dv-help h2{font-size:22px;font-weight:700;letter-spacing:-.015em;line-height:1.2;text-transform:uppercase}
+.dv .dv-help-line{margin:6px 0 18px;color:var(--text-dim);font-size:16px}
+.dv .dv-ways{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.dv .dv-ways li{background:var(--sunken);box-shadow:var(--sink);border-radius:var(--r-row);padding:16px 20px 18px;font-size:15.5px;line-height:1.5}
+.dv .dv-ways li{--dv-ic-bg:var(--sunken)}
+.dv .dv-ways li strong{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700;letter-spacing:-.01em;margin-bottom:4px}
+/* small mark beside the tile title (owner pick, variant 1 of 11.11.2026): decorative, text colour, the parcel with an accent dongle */
+.dv .dv-ic{display:block;flex:none;width:24px;height:24px;color:var(--text);opacity:.88;fill:currentColor;stroke:none}
+.dv .dv-ic.parcel{fill:none;stroke-width:1.7px}
+.dv .dv-ways li a{display:inline}
+.dv .dv-help-end{margin:16px 2px 0;color:var(--text-dim);font-size:15px}
+
+.dv .dv-find{margin:0 0 24px}
+
+/* middle widths: settings move under the name */
+@media (max-width:1179px){
+  .dv{--dv-cols:minmax(0,1fr) 170px 236px 104px}
+  .dv .dv-h-set{display:none}
+  .dv .dv-set{grid-column:1 / -1;font-size:14px;margin-top:2px}
+  .dv .dv-set.empty{display:none}
+  .dv .dv-pre{display:inline}
+  .dv .dv-row{min-height:0}
+  .dv .dv-head h1{font-size:30px}
+}
+@media (max-width:959px){
+  .dv{--dv-cols:minmax(0,1fr) 52px 236px 100px}
+  .dv .dv-bars{display:none}
+  .dv .dv-head{grid-template-columns:auto minmax(0,1fr)}
+  .dv .dv-side{grid-column:1 / -1;margin-top:14px}
+  .dv .dv-ways{grid-template-columns:1fr}
+}
+
+/* phone: two-line blocks, no settings column */
+@media (max-width:719px){
+  .dv{--dv-cols:74px auto minmax(0,1fr);--dv-gap:10px;--dv-px:12px}
+  .dv .dv-head{grid-template-columns:auto minmax(0,1fr);column-gap:14px;padding:16px 0 18px}
+  .dv .dv-icon{width:52px;height:52px;border-radius:14px}
+  .dv .dv-head h1{font-size:26px}
+  .dv .dv-title{display:contents}
+  .dv .dv-lede{grid-column:1 / -1;margin-top:12px;font-size:16px}
+  .dv .dv-side{margin-top:14px;gap:12px;flex-wrap:wrap}
+  .dv .dv-side .btn{flex:1 1 220px;white-space:nowrap}
+  .dv .dv-well{padding:4px}
+  .dv .dv-table :where(tr){grid-template-areas:"name name name" "bands filt mem";row-gap:7px}
+  .dv .dv-hr{grid-template-areas:"bands filt mem";row-gap:0;padding-top:10px;padding-bottom:10px}
+  .dv .dv-h-name,.dv .dv-h-set,.dv .dv-set{display:none}
+  .dv .dv-h-bands{grid-area:bands}
+  .dv .dv-h-filt{grid-area:filt}
+  .dv .dv-h-mem{grid-area:mem;text-align:right}
+  .dv .dv-hr th{font-size:11px;letter-spacing:.06em}
+  .dv .dv-name{grid-area:name}
+  .dv .dv-bands{grid-area:bands;gap:.3em}
+  .dv .dv-filt{grid-area:filt;gap:2px}
+  .dv .dv-mem{grid-area:mem;text-align:right;font-size:14.5px}
+  .dv .dv-n{font-size:14.5px;min-width:0}
+  .dv .dv-w{display:inline;font-size:14.5px;font-weight:600;white-space:nowrap}
+  .dv .dv-g{width:21px;height:15px}
+  .dv .dv-leg{grid-template-columns:repeat(7,21px);column-gap:2px;font-size:9px;letter-spacing:.02em}
+  .dv .dv-h-filt{gap:0}
+  .dv .dv-hl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .dv .dv-row{padding-top:16px;padding-bottom:16px;min-height:0}
+  .dv .dv-model{font-size:18px}
+  .dv .dv-soon{margin-top:14px}
+  .dv .dv-soon-l{width:100%;margin-bottom:2px}
+  .dv .dv-soon > span:not(.dv-soon-l){display:block;width:100%;padding:0;border:0!important}
+  .dv .dv-help{padding:20px 16px 18px;margin-top:32px}
+  .dv .dv-help h2{font-size:20px}
+  .dv .dv-ways li{padding:14px 16px 16px}
+}
+@media (max-width:359px){
+  .dv{--dv-cols:56px auto minmax(0,1fr)}
+  .dv .dv-g{width:19px}
+  .dv .dv-leg{grid-template-columns:repeat(7,19px)}
+}
+
 /* zh-CN (gen_site.py --lang zh): CJK system fonts after the site font, no CJK web font; Chinese line-height; no letter-spacing on Chinese text */
 :root{--font:"Google Sans Flex","Google Sans","Google Sans Text","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC","Noto Sans CJK SC","Source Han Sans SC",system-ui,sans-serif}
 body{line-height:1.7}
@@ -193,6 +363,15 @@ body{line-height:1.7}
 .ver,.btn,section.plain > h2,th,a.rep,.cnt,.vt{letter-spacing:0}
 .ver{line-height:1.4}
 .btn{line-height:1.4}
+.dv .dv-head h1{letter-spacing:0;line-height:1.25}
+.dv .dv-label,.dv .dv-hr th,.dv .dv-leg,.dv .dv-tag,.dv .dv-ro,.dv .dv-soon-l,.dv .dv-help h2,.dv .dv-ways li strong{letter-spacing:0}
+.dv .dv-lede,.dv .dv-help-line,.dv .dv-help-end,.dv .dv-fiio,.dv .dv-soon,.dv .dv-ways li{line-height:1.7}
+.dv .dv-set{line-height:1.6}
+/* phone: "10 个存储位" must not break inside the word, so the bands column and the gaps get a little narrower */
+@media (min-width:360px) and (max-width:719px){
+  .dv{--dv-cols:70px auto minmax(0,1fr);--dv-gap:8px}
+  .dv .dv-mem{white-space:nowrap;font-size:13.5px}
+}
 </style>
 <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
 <script defer src="/_vercel/insights/script.js"></script>
@@ -202,46 +381,123 @@ body{line-height:1.7}
 
 <p class="top"><span class="lockup"><a href="/zh/">Contour</a><a class="by" href="https://soundblooms.com/" rel="noopener" target="_blank" aria-label="Soundblooms 出品"><span class="by-word" aria-hidden="true">by</span><span class="sb-mark" aria-hidden="true">sound<span class="sb-face"><i class="sb-band"></i><span class="sb-eyes" data-eyes="calm"><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i></span></span>blooms</span></a></span> <a href="/zh/install/">安装</a> <a href="/zh/guide/">使用指南</a> <a class="lang-switch" href="/devices/" hreflang="en" lang="en">English</a></p>
 
-<header class="hero">
-  <img class="icon" src="/images/icon-512.png" width="88" height="88" alt="Contour 应用图标">
-  <h1>支持的设备</h1>
-  <p class="lede">看看你的 USB 解码耳放（小尾巴）能否搭配 Contour 使用，试过之后也请告诉我们结果。</p>
-  <p class="ver"><span class="dot" aria-hidden="true"></span><span>正式版 1.6.6</span></p>
-  <div class="cta">
-    <a class="btn btn-primary" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20">报告不在列表中的设备</a>
-    <a class="btn btn-tonal" href="#h-find">查找 VID:PID</a>
+<main>
+<div class="dv">
+<svg class="dv-defs" width="0" height="0" aria-hidden="true" focusable="false"><defs><symbol id="dv-g-peak" viewBox="0 0 28 20"><path d="M1 14 C8 14 9 5 14 5 C19 5 20 14 27 14"/></symbol><symbol id="dv-g-low_shelf" viewBox="0 0 28 20"><path d="M1 6 H8 C13 6 15 14 20 14 H27"/></symbol><symbol id="dv-g-high_shelf" viewBox="0 0 28 20"><path d="M1 14 H8 C13 14 15 6 20 6 H27"/></symbol><symbol id="dv-g-low_pass" viewBox="0 0 28 20"><path d="M1 6 H12 C18 6 19 12 27 17"/></symbol><symbol id="dv-g-high_pass" viewBox="0 0 28 20"><path d="M1 17 C9 12 10 6 16 6 H27"/></symbol><symbol id="dv-g-band_pass" viewBox="0 0 28 20"><path d="M1 17 C8 17 9 5 14 5 C19 5 20 17 27 17"/></symbol><symbol id="dv-g-all_pass" viewBox="0 0 28 20"><path d="M1 10 H27"/><path class="dv-ph" d="M1 16 C10 16 11 4 20 4 H27"/></symbol><symbol id="dv-ic-kofi" viewBox="0 0 24 24"><path d="M11.351 2.715c-2.7 0-4.986.025-6.83.26C2.078 3.285 0 5.154 0 8.61c0 3.506.182 6.13 1.585 8.493 1.584 2.701 4.233 4.182 7.662 4.182h.83c4.209 0 6.494-2.234 7.637-4a9.5 9.5 0 0 0 1.091-2.338C21.792 14.688 24 12.22 24 9.208v-.415c0-3.247-2.13-5.507-5.792-5.87-1.558-.156-2.65-.208-6.857-.208m0 1.947c4.208 0 5.09.052 6.571.182 2.624.311 4.13 1.584 4.13 4v.39c0 2.156-1.792 3.844-3.87 3.844h-.935l-.156.649c-.208 1.013-.597 1.818-1.039 2.546-.909 1.428-2.545 3.064-5.922 3.064h-.805c-2.571 0-4.831-.883-6.078-3.195-1.09-2-1.298-4.155-1.298-7.506 0-2.181.857-3.402 3.012-3.714 1.533-.233 3.559-.26 6.39-.26m6.547 2.287c-.416 0-.65.234-.65.546v2.935c0 .311.234.545.65.545 1.324 0 2.051-.754 2.051-2s-.727-2.026-2.052-2.026m-10.39.182c-1.818 0-3.013 1.48-3.013 3.142 0 1.533.858 2.857 1.949 3.897.727.701 1.87 1.429 2.649 1.896a1.47 1.47 0 0 0 1.507 0c.78-.467 1.922-1.195 2.623-1.896 1.117-1.039 1.974-2.364 1.974-3.897 0-1.662-1.247-3.142-3.039-3.142-1.065 0-1.792.545-2.338 1.298-.493-.753-1.246-1.298-2.312-1.298"/></symbol><symbol id="dv-ic-github" viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></symbol><symbol id="dv-ic-parcel" viewBox="0 0 64 64"><g fill="var(--dv-ic-bg,transparent)" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="24" width="40" height="32" rx="3" vector-effect="non-scaling-stroke"/><path d="M6 24 L18 13 H58 L46 24 Z" vector-effect="non-scaling-stroke"/><path d="M46 24 L58 13 V45 L46 56 Z" vector-effect="non-scaling-stroke"/><path d="M12 47 H22" fill="none" vector-effect="non-scaling-stroke"/></g><g fill="var(--dv-ic-bg,transparent)" stroke="var(--accent)" stroke-linecap="round" stroke-linejoin="round"><rect x="28.5" y="9.5" width="7" height="10" rx="1.8" vector-effect="non-scaling-stroke"/><rect x="24.5" y="2" width="15" height="9" rx="3.2" vector-effect="non-scaling-stroke"/></g></symbol></defs></svg>
+<header class="dv-head">
+  <img class="dv-icon" src="/images/icon-512.png" width="64" height="64" alt="Contour 应用图标">
+  <div class="dv-title">
+    <h1>支持的 USB 解码耳放</h1>
+    <p class="dv-lede">Contour 把你的 EQ（均衡器）直接写入 USB 解码耳放（小尾巴）内部，因此在任何应用中都能生效。列表中的每款解码器都已在实际设备上测试，并已用测试设备实测。</p>
+  </div>
+  <div class="dv-side">
+    <p class="ver"><span class="dot" aria-hidden="true"></span><span>正式版 1.6.6</span></p>
+    <a class="btn btn-primary" href="/zh/install/">安装 Contour</a>
   </div>
 </header>
 
-<div class="groups" id="results">
-<details class="grp" id="t1" open><summary><div class="sum-text"><h2>Contour 1.6.6 支持的设备</h2><p>均已在实际设备上测试。</p></div><span class="cnt">10</span><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary><div class="grp-body"><p>以下每款解码器都已在实际设备上测试。感谢 Reddit 用户 u/Master_Cartoonist_16 最先报告 TRN Black Pearl 可用，也感谢试用 Protocol Max 的社区测试者。</p><div class="tw"><table><thead><tr>
-<th>设备</th>
-<th>VID:PID</th>
-<th>已确认的功能</th>
-<th>验证者</th>
-<th>你的结果</th>
-</tr></thead><tbody>
-<tr><td>CrinEar Protocol Micro</td><td><code>3302:C20F</code></td><td>读取、导入、写入并回读校验、A/B 对比；自 1.6.0 起支持低通（LOW PASS）和高通（HIGH PASS）</td><td>维护者</td><td><a class="rep" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20CrinEar%20Protocol%20Micro&amp;device_name=CrinEar%20Protocol%20Micro&amp;vid_pid=3302%3AC20F&amp;listed_as=Confirmed%20on%20hardware" aria-label="报告结果：CrinEar Protocol Micro">报告结果</a></td></tr>
-<tr><td>CrinEar Protocol Max</td><td><code>3302:43CC</code></td><td>已在实际设备上测试</td><td>社区测试者</td><td><a class="rep" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20CrinEar%20Protocol%20Max&amp;device_name=CrinEar%20Protocol%20Max&amp;vid_pid=3302%3A43CC&amp;listed_as=Confirmed%20on%20hardware" aria-label="报告结果：CrinEar Protocol Max">报告结果</a></td></tr>
-<tr><td>飞傲（FiiO）KA15</td><td><code>2972:0104</code></td><td>读取，写入存储位（USER1 至 USER3）并回读校验，显示存储位名称并支持重命名；自 1.3.3 起，搁架滤波器的 Q 值和前置增益（PREAMP）经过实测并加以补偿；自 1.6.0 起还支持高通、低通、带通（BAND PASS）和全通（ALL PASS），提供 DAC 页（DAC page），可调音量、声道平衡、数字滤波器、输出模式等（USB 音频为只读），以及恢复出厂设置（执行前会先保存一份你的存储位和设置的副本）</td><td>维护者</td><td><a class="rep" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20FiiO%20KA15&amp;device_name=FiiO%20KA15&amp;vid_pid=2972%3A0104&amp;listed_as=Confirmed%20on%20hardware" aria-label="报告结果：飞傲 KA15">报告结果</a></td></tr>
-<tr><td>飞傲 K13 R2R（台式解码耳放）</td><td><code>2972:0120</code></td><td>读取，写入存储位（USER1 至 USER10）并回读校验；断电重启后，存储位仍保留全部 10 个频段和前置增益；自 1.6.0 起，峰值（PEAK）频段的实际效果与设定一致（写入时 Q 值乘以 √2 加以补偿），并支持高通、低通、带通和全通</td><td>维护者</td><td><a class="rep" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20FiiO%20K13%20R2R%20%28desktop%29&amp;device_name=FiiO%20K13%20R2R%20%28desktop%29&amp;vid_pid=2972%3A0120&amp;listed_as=Confirmed%20on%20hardware" aria-label="报告结果：飞傲 K13 R2R（台式解码耳放）">报告结果</a></td></tr>
-<tr><td>雪漫天（SnowSky）Melody</td><td><code>2972:0126</code></td><td>读取，写入存储位（USER1 至 USER3）并回读校验；写入的存储位会成为当前生效的存储位；自 1.6.0 起，搁架滤波器的实际效果与设定一致（写入时 Q 值乘以 √2 加以补偿），支持高通、低通、带通和全通，提供 DAC 页，可调音量、声道平衡、数字滤波器、增益、输出模式等（USB 音频为只读），以及恢复出厂设置（执行前会先保存一份副本）</td><td>维护者</td><td><a class="rep" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20SnowSky%20Melody&amp;device_name=SnowSky%20Melody&amp;vid_pid=2972%3A0126&amp;listed_as=Confirmed%20on%20hardware" aria-label="报告结果：雪漫天 Melody">报告结果</a></td></tr>
-<tr><td>雪漫天 Tiny A</td><td><code>2972:0147</code></td><td>读取，写入存储位（USER1 至 USER3）并回读校验；写入的存储位会成为当前生效的存储位；自 1.6.0 起，搁架滤波器的实际效果与设定一致（写入时 Q 值乘以 √2 加以补偿），支持高通、低通、带通和全通，并提供 DAC 页，可调音量、声道平衡、线控麦克风和指示灯（USB 音频为只读）。不支持恢复出厂设置：该解码器会忽略这一操作</td><td>维护者</td><td><a class="rep" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20SnowSky%20Tiny%20A&amp;device_name=SnowSky%20Tiny%20A&amp;vid_pid=2972%3A0147&amp;listed_as=Confirmed%20on%20hardware" aria-label="报告结果：雪漫天 Tiny A">报告结果</a></td></tr>
-<tr><td>TRN Black Pearl</td><td><code>3302:43E8</code></td><td>读取，写入并回读校验，支持峰值、低架（LOW SHELF）和高架（HIGH SHELF）；拔下后 EQ（均衡器）和前置增益仍会保留；自 1.6.4 起提供 DAC 页，可调数字滤波器、输出模式、增益和声道平衡，每项更改都会回读校验，拔下后仍会保留。只有插着耳机时，手机才能通过 USB 识别到它</td><td>维护者；Reddit 用户 u/Master_Cartoonist_16 最先报告可用</td><td><a class="rep" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20TRN%20Black%20Pearl&amp;device_name=TRN%20Black%20Pearl&amp;vid_pid=3302%3A43E8&amp;listed_as=Confirmed%20on%20hardware" aria-label="报告结果：TRN Black Pearl">报告结果</a></td></tr>
-<tr><td>水月雨（Moondrop）Dawn Pro 2</td><td><code>35D8:011D</code></td><td>读取，写入当前生效的参数均衡（PEQ）组，即 EQ 序号 7 或 9，并回读校验；共 8 个频段，可用峰值、低架、高架、低通和高通，所用数据帧与 Moondrop Hub 相同；如果解码器正在使用它自带的某个预设，Contour 不会写入。需要先在解码器上开启自定义 EQ。DAC 页显示 EQ 序号（EQ INDEX）、全局增益（GLOBAL GAIN）和前置增益（PRE GAIN），均为只读；已用测试设备实测。Contour 通过 USB 名称 DAWN PRO2 识别这款解码器（2 之前没有空格）</td><td>维护者</td><td><a class="rep" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20Moondrop%20Dawn%20Pro%202&amp;device_name=Moondrop%20Dawn%20Pro%202&amp;vid_pid=35D8%3A011D&amp;listed_as=Confirmed%20on%20hardware" aria-label="报告结果：水月雨 Dawn Pro 2">报告结果</a></td></tr>
-<tr><td>水月雨 Echo-A</td><td><code>3302:12C5</code></td><td>读取，写入并回读校验：峰值、低架、低通、高通和高架（由一个低架滤波器加前置增益实现，因此其增益只能是整数 dB），前置增益最高 0 dB；滤波器按 DSP 的实际运行频率 93750 Hz 计算；已用测试设备实测</td><td>维护者</td><td><a class="rep" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20Moondrop%20Echo-A&amp;device_name=Moondrop%20Echo-A&amp;vid_pid=3302%3A12C5&amp;listed_as=Confirmed%20on%20hardware" aria-label="报告结果：水月雨 Echo-A">报告结果</a></td></tr>
-<tr><td>Kiwi Ears Allegro Mini</td><td><code>31B2:0111</code></td><td>读取，写入并回读校验（峰值），5 个频段，无前置增益；滤波器按 48 kHz 音频流设定：Contour 假定音频流为 48 kHz，这是 Android 上常见的 USB 采样率。DAC 页提供 EQ 开关（EQ ON/OFF）和全局增益（-18 至 +3 dB，步进 1.5 dB）</td><td>维护者</td><td><a class="rep" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20Kiwi%20Ears%20Allegro%20Mini&amp;device_name=Kiwi%20Ears%20Allegro%20Mini&amp;vid_pid=31B2%3A0111&amp;listed_as=Confirmed%20on%20hardware" aria-label="报告结果：Kiwi Ears Allegro Mini">报告结果</a></td></tr>
-</tbody></table></div></div></details>
-</div>
-
-<section class="plain" id="more">
-  <h2>不在列表中</h2>
-  <p class="note" style="margin-top:0">其他 WalkPlay、飞傲、水月雨和 KT Micro 解码器，等有人在实际设备上确认后，也可能陆续加入。你手上有这样的解码器？请<a href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20">报告不在列表中的设备</a>，并附上名称、VID:PID 和 USB 名称。</p>
+<section class="dv-list" aria-labelledby="dv-list-h">
+  <h2 class="dv-label" id="dv-list-h">Contour 1.6.6 已支持</h2>
+  <div class="dv-well">
+    <table class="dv-table" role="table" aria-labelledby="dv-list-h">
+      <thead role="rowgroup">
+        <tr class="dv-hr" role="row">
+          <th scope="col" class="dv-c dv-h-name" role="columnheader">解码器</th>
+          <th scope="col" class="dv-c dv-h-bands" role="columnheader">频段</th>
+          <th scope="col" class="dv-c dv-h-filt" role="columnheader"><span class="dv-hl">滤波类型</span><span class="dv-leg"><abbr title="峰值">PK</abbr><abbr title="低架">LS</abbr><abbr title="高架">HS</abbr><abbr title="低通">LP</abbr><abbr title="高通">HP</abbr><abbr title="带通">BP</abbr><abbr title="全通">AP</abbr></span></th>
+          <th scope="col" class="dv-c dv-h-mem" role="columnheader">保存在解码器内部</th>
+          <th scope="col" class="dv-c dv-h-set" role="columnheader">应用中的 DAC 设置</th>
+        </tr>
+      </thead>
+      <tbody role="rowgroup">
+<tr class="dv-row dv-static" role="row">
+<th scope="row" class="dv-c dv-name" role="rowheader"><span class="dv-link"><span class="dv-brand">CrinEar</span><span class="dv-model"><span class="dv-mn">Protocol Max</span></span></span></th>
+<td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="dv-n">10</span><span class="dv-w"> 个频段</span></td>
+<td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="峰值"><title>峰值</title><use href="#dv-g-peak"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="低架"><title>低架</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="高架"><title>高架</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>低通</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>高通</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>带通</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>全通</title><use href="#dv-g-all_pass"/></svg></td>
+<td class="dv-c dv-mem" role="cell">1 组 EQ</td>
+<td class="dv-c dv-set empty" role="cell"><span class="dv-pre">DAC 设置：</span>-</td>
+</tr>
+<tr class="dv-row dv-static" role="row">
+<th scope="row" class="dv-c dv-name" role="rowheader"><span class="dv-link"><span class="dv-brand">CrinEar</span><span class="dv-model"><span class="dv-mn">Protocol Micro</span></span></span></th>
+<td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="dv-n">8</span><span class="dv-w"> 个频段</span></td>
+<td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="峰值"><title>峰值</title><use href="#dv-g-peak"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="低架"><title>低架</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="高架"><title>高架</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="低通"><title>低通</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="高通"><title>高通</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>带通</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>全通</title><use href="#dv-g-all_pass"/></svg></td>
+<td class="dv-c dv-mem" role="cell">1 组 EQ</td>
+<td class="dv-c dv-set empty" role="cell"><span class="dv-pre">DAC 设置：</span>-</td>
+</tr>
+<tr class="dv-row dv-static" role="row">
+<th scope="row" class="dv-c dv-name" role="rowheader"><span class="dv-link"><span class="dv-brand">飞傲（FiiO）</span><span class="dv-model"><span class="dv-mn">K13 R2R</span><span class="dv-tag">台式解码耳放</span></span></span></th>
+<td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="dv-n">10</span><span class="dv-w"> 个频段</span></td>
+<td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="峰值"><title>峰值</title><use href="#dv-g-peak"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="低架"><title>低架</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="高架"><title>高架</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="低通"><title>低通</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="高通"><title>高通</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="带通"><title>带通</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="全通"><title>全通</title><use href="#dv-g-all_pass"/></svg></td>
+<td class="dv-c dv-mem" role="cell">10 个存储位</td>
+<td class="dv-c dv-set empty" role="cell"><span class="dv-pre">DAC 设置：</span>-</td>
+</tr>
+<tr class="dv-row dv-static" role="row">
+<th scope="row" class="dv-c dv-name" role="rowheader"><span class="dv-link"><span class="dv-brand">飞傲</span><span class="dv-model"><span class="dv-mn">KA15</span></span></span></th>
+<td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="dv-n">10</span><span class="dv-w"> 个频段</span></td>
+<td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="峰值"><title>峰值</title><use href="#dv-g-peak"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="低架"><title>低架</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="高架"><title>高架</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="低通"><title>低通</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="高通"><title>高通</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="带通"><title>带通</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="全通"><title>全通</title><use href="#dv-g-all_pass"/></svg></td>
+<td class="dv-c dv-mem" role="cell">3 个存储位</td>
+<td class="dv-c dv-set" role="cell" title="音量、音量档位、声道平衡、数字滤波器、输出模式、DRE、亮度、息屏时间、屏幕旋转、语言"><span class="dv-pre">DAC 设置：</span>音量、音量档位、声道平衡 <span class="dv-more">+7 项</span></td>
+</tr>
+<tr class="dv-row dv-static" role="row">
+<th scope="row" class="dv-c dv-name" role="rowheader"><span class="dv-link"><span class="dv-brand">Kiwi Ears</span><span class="dv-model"><span class="dv-mn">Allegro Mini</span></span></span></th>
+<td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></span><span class="dv-n">5</span><span class="dv-w"> 个频段</span></td>
+<td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="峰值"><title>峰值</title><use href="#dv-g-peak"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>低架</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>高架</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>低通</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>高通</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>带通</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>全通</title><use href="#dv-g-all_pass"/></svg></td>
+<td class="dv-c dv-mem" role="cell">1 组 EQ</td>
+<td class="dv-c dv-set" role="cell" title="EQ 开关、全局增益"><span class="dv-pre">DAC 设置：</span>EQ 开关、全局增益</td>
+</tr>
+<tr class="dv-row dv-static" role="row">
+<th scope="row" class="dv-c dv-name" role="rowheader"><span class="dv-link"><span class="dv-brand">水月雨（Moondrop）</span><span class="dv-model"><span class="dv-mn">Dawn Pro 2</span></span></span></th>
+<td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="dv-n">8</span><span class="dv-w"> 个频段</span></td>
+<td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="峰值"><title>峰值</title><use href="#dv-g-peak"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="低架"><title>低架</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="高架"><title>高架</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="低通"><title>低通</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="高通"><title>高通</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>带通</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>全通</title><use href="#dv-g-all_pass"/></svg></td>
+<td class="dv-c dv-mem" role="cell">PEQ 组</td>
+<td class="dv-c dv-set" role="cell" title="EQ 序号（只读）、全局增益（只读）、前置增益（只读）"><span class="dv-pre">DAC 设置：</span>EQ 序号、全局增益、前置增益 <span class="dv-ro">只读</span></td>
+</tr>
+<tr class="dv-row dv-static" role="row">
+<th scope="row" class="dv-c dv-name" role="rowheader"><span class="dv-link"><span class="dv-brand">水月雨</span><span class="dv-model"><span class="dv-mn">Echo-A</span></span></span></th>
+<td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="dv-n">8</span><span class="dv-w"> 个频段</span></td>
+<td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="峰值"><title>峰值</title><use href="#dv-g-peak"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="低架"><title>低架</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="高架"><title>高架</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="低通"><title>低通</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="高通"><title>高通</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>带通</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>全通</title><use href="#dv-g-all_pass"/></svg></td>
+<td class="dv-c dv-mem" role="cell">1 组 EQ</td>
+<td class="dv-c dv-set empty" role="cell"><span class="dv-pre">DAC 设置：</span>-</td>
+</tr>
+<tr class="dv-row dv-static" role="row">
+<th scope="row" class="dv-c dv-name" role="rowheader"><span class="dv-link"><span class="dv-brand">雪漫天（SnowSky）</span><span class="dv-model"><span class="dv-mn">Melody</span></span></span></th>
+<td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="dv-n">10</span><span class="dv-w"> 个频段</span></td>
+<td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="峰值"><title>峰值</title><use href="#dv-g-peak"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="低架"><title>低架</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="高架"><title>高架</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="低通"><title>低通</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="高通"><title>高通</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="带通"><title>带通</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="全通"><title>全通</title><use href="#dv-g-all_pass"/></svg></td>
+<td class="dv-c dv-mem" role="cell">3 个存储位</td>
+<td class="dv-c dv-set" role="cell" title="音量、音量档位、声道平衡、数字滤波器、增益、输出模式、DRE、线控麦克风、指示灯、按键"><span class="dv-pre">DAC 设置：</span>音量、音量档位、声道平衡 <span class="dv-more">+7 项</span></td>
+</tr>
+<tr class="dv-row dv-static" role="row">
+<th scope="row" class="dv-c dv-name" role="rowheader"><span class="dv-link"><span class="dv-brand">雪漫天</span><span class="dv-model"><span class="dv-mn">Tiny A</span></span></span></th>
+<td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="dv-n">10</span><span class="dv-w"> 个频段</span></td>
+<td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="峰值"><title>峰值</title><use href="#dv-g-peak"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="低架"><title>低架</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="高架"><title>高架</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="低通"><title>低通</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="高通"><title>高通</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="带通"><title>带通</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="全通"><title>全通</title><use href="#dv-g-all_pass"/></svg></td>
+<td class="dv-c dv-mem" role="cell">3 个存储位</td>
+<td class="dv-c dv-set" role="cell" title="音量、音量档位、声道平衡、线控麦克风、指示灯"><span class="dv-pre">DAC 设置：</span>音量、音量档位、声道平衡 <span class="dv-more">+2 项</span></td>
+</tr>
+<tr class="dv-row dv-static" role="row">
+<th scope="row" class="dv-c dv-name" role="rowheader"><span class="dv-link"><span class="dv-brand">TRN</span><span class="dv-model"><span class="dv-mn">Black Pearl</span></span></span></th>
+<td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="dv-n">10</span><span class="dv-w"> 个频段</span></td>
+<td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="峰值"><title>峰值</title><use href="#dv-g-peak"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="低架"><title>低架</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="高架"><title>高架</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>低通</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>高通</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>带通</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>全通</title><use href="#dv-g-all_pass"/></svg></td>
+<td class="dv-c dv-mem" role="cell">1 组 EQ</td>
+<td class="dv-c dv-set" role="cell" title="数字滤波器、输出模式、增益、声道平衡"><span class="dv-pre">DAC 设置：</span>数字滤波器、输出模式、增益 <span class="dv-more">+1 项</span></td>
+</tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="dv-soon"><span class="dv-soon-l">尚未加入应用</span><span>JCally JM12：已测试</span><span>飞傲 JadeAudio JA11：已测试</span><span>水月雨 FreeDSP 线缆：测试中</span></p>
 </section>
 
-<section class="plain" id="find">
-  <h2>帮助</h2>
-  <div class="groups">
+<section class="dv-help" id="help-add" aria-labelledby="dv-help-h">
+  <h2 id="dv-help-h">没有找到你的解码器？</h2>
+  <p class="dv-help-line">每款解码器在加入 Contour 之前都要在实际设备上测试，所以我需要拿到实物。</p>
+  <ul class="dv-ways">
+    <li><strong><svg class="dv-ic kofi" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#dv-ic-kofi"/></svg>赞助：</strong>Contour 永久免费。如果你想支持它继续发展，你在 <a href="https://ko-fi.com/chronosaur" rel="noopener" target="_blank">Ko-fi</a> 上的打赏会用来购买下一批待测试和加入的解码器。</li>
+    <li><strong><svg class="dv-ic parcel" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dv-ic-parcel"/></svg>寄送样机：</strong>如果你生产或销售解码器，欢迎寄一台给我测试。<a href="mailto:chronosaur@soundblooms.com">chronosaur@soundblooms.com</a></li>
+    <li><strong><svg class="dv-ic github" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#dv-ic-github"/></svg>告诉我你用的是哪款：</strong>提交一份<a href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20" rel="noopener" target="_blank">设备报告</a>，附上名称和 VID:PID。<a href="#h-find">如何查找 VID:PID</a></li>
+  </ul>
+  <p class="dv-help-end">时间无法保证，但每台设备都会测试。</p>
+</section>
+
+<div class="groups dv-find">
 <details class="grp" id="h-find"><summary><div class="sum-text"><h2>查找你的 VID:PID</h2><p>Contour 不会显示它，下面是查找方法。</p></div><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary><div class="grp-body">
 <p><strong>Contour 不会显示已插上设备的 VID:PID 和 USB 名称。</strong>在配置库（LIBRARY）中长按状态标签可以打开服务页面，那里会显示 Contour 匹配到的型号和一段简短日志，但只限于它已经识别的设备。对于未知设备，它什么也不会显示，所以请改用以下方法之一：</p>
 <ul class="plain-list">
@@ -252,20 +508,16 @@ body{line-height:1.7}
 </ul>
 <p>请原样复制 USB 产品名称，包括多余的空格：有些名称末尾带有空格，或中间有两个连续空格，而 Contour 会逐字符比较。</p>
 </div></details>
-  </div>
-</section>
+</div>
+</div>
+</main>
 
-<footer>
-  <p class="links"><a href="/zh/">首页</a> <a href="/zh/install/">安装</a> <a href="/zh/guide/">使用指南</a> <a href="https://github.com/Chronosauros/contour">源代码</a></p>
-  <ul>
-    <li><a href="https://soundblooms.com/" rel="noopener" target="_blank">Soundblooms</a>：我所有作品的大本营。</li>
-    <li>源代码：<a href="https://github.com/Chronosauros/contour">github.com/Chronosauros/contour</a></li>
-    <li>许可证：Apache 2.0</li>
-    <li>隐私：<a href="/zh/privacy/">隐私政策</a>。应用没有联网权限，没有统计分析，也没有账号；本网站只统计匿名访问量，不使用 Cookie</li>
-  </ul>
-  <p class="footer-icons"><a href="https://github.com/Chronosauros" rel="noopener" target="_blank" aria-label="GitHub 主页" title="GitHub"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a><a href="https://www.reddit.com/user/T6_8K/" rel="noopener" target="_blank" aria-label="Reddit 主页" title="Reddit"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 0C5.373 0 0 5.373 0 12c0 3.314 1.343 6.314 3.515 8.485l-2.286 2.286C.775 23.225 1.097 24 1.738 24H12c6.627 0 12-5.373 12-12S18.627 0 12 0Zm4.388 3.199c1.104 0 1.999.895 1.999 1.999 0 1.105-.895 2-1.999 2-.946 0-1.739-.657-1.947-1.539v.002c-1.147.162-2.032 1.15-2.032 2.341v.007c1.776.067 3.4.567 4.686 1.363.473-.363 1.064-.58 1.707-.58 1.547 0 2.802 1.254 2.802 2.802 0 1.117-.655 2.081-1.601 2.531-.088 3.256-3.637 5.876-7.997 5.876-4.361 0-7.905-2.617-7.998-5.87-.954-.447-1.614-1.415-1.614-2.538 0-1.548 1.255-2.802 2.803-2.802.645 0 1.239.218 1.712.585 1.275-.79 2.881-1.291 4.64-1.365v-.01c0-1.663 1.263-3.034 2.88-3.207.188-.911.993-1.595 1.959-1.595Zm-8.085 8.376c-.784 0-1.459.78-1.506 1.797-.047 1.016.64 1.429 1.426 1.429.786 0 1.371-.369 1.418-1.385.047-1.017-.553-1.841-1.338-1.841Zm7.406 0c-.786 0-1.385.824-1.338 1.841.047 1.017.634 1.385 1.418 1.385.785 0 1.473-.413 1.426-1.429-.046-1.017-.721-1.797-1.506-1.797Zm-3.703 4.013c-.974 0-1.907.048-2.77.135-.147.015-.241.168-.183.305.483 1.154 1.622 1.964 2.953 1.964 1.33 0 2.47-.81 2.953-1.964.057-.137-.037-.29-.184-.305-.863-.087-1.795-.135-2.769-.135Z"/></svg></a><a href="https://discord.gg/msgvnUG7js" rel="noopener" target="_blank" aria-label="Discord 服务器" title="Discord"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg></a><a href="https://x.com/soundblooms" rel="noopener" target="_blank" aria-label="X（原推特）主页" title="X（原推特）"><svg viewBox="-2 -2 28 28" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z"/></svg></a></p>
-  <p>Contour 是非官方项目，与 CrinEar 及本页列出的其他品牌均无隶属关系，也未获得其认可。产品名称归各自所有者所有。</p>
-  <p>由 Chronosaur 制作</p>
+<footer class="fv">
+  <p class="fv-sentence">Contour 免费，由一个人独立开发。在 <a href="https://soundblooms.com/dacs" rel="noopener" target="_blank">Soundblooms</a> 上可以找到能搭配它使用的解码器。</p>
+  <div class="fv-quiet">
+    <p class="fv-legal"><span>由 <a href="https://soundblooms.com/about" rel="noopener" target="_blank">Chronosaur</a> 制作</span><a href="https://github.com/Chronosauros/contour">源代码</a><span>Apache 2.0</span><a href="/zh/privacy/">隐私政策</a></p>
+    <p class="fv-note">Contour 是非官方项目，与 CrinEar 及本页列出的其他品牌均无隶属关系，也未获得其认可。产品名称归各自所有者所有。</p>
+  </div>
 </footer>
 
 </div>
@@ -302,6 +554,26 @@ body{line-height:1.7}
   openHash();
   window.addEventListener("hashchange", openHash);
 
+  /* a link to the collapsed "Find your VID:PID" opens it, also when the address already ends in #h-find */
+  document.addEventListener("click", function(e){
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a) return;
+    var el = document.getElementById(a.getAttribute("href").slice(1));
+    if (el && el.tagName === "DETAILS") el.open = true;
+  });
+
+  /* the whole row is the link: the stretched link covers most of it, this covers the cells that keep their own tooltip */
+  Array.prototype.forEach.call(document.querySelectorAll("tr.dv-row"), function(row){
+    var link = row.querySelector("a.dv-link");
+    if (!link) return;
+    row.addEventListener("click", function(e){
+      if (e.target.closest("a")) return;
+      var sel = window.getSelection && window.getSelection();
+      if (sel && String(sel).length) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey) { window.open(link.href, "_blank"); return; }
+      window.location.href = link.href;
+    });
+  });
 })();
 </script>
 </body>

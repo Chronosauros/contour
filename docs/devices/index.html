@@ -269,13 +269,18 @@ a.rep:active{box-shadow:var(--lift-raised-held)}
 .vt .dot{width:7px;height:7px;border-radius:50%;background:var(--led-on);flex:none}
 .hide{display:none!important}
 
-footer{padding:8px 6px 48px;color:var(--text-dim);font-size:14px}
-footer ul{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:6px}
-footer p{margin:0 0 8px}
-footer .footer-icons{margin:0 0 8px -11px}
-footer .footer-icons a{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;opacity:.75}
-footer .footer-icons a:hover{opacity:1}
-footer .links{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 14px}
+footer.fv{display:block;padding:clamp(56px,9vw,88px) 6px 72px;color:var(--text-dim);font-size:14px;line-height:1.5}
+footer.fv p{margin:0}
+.fv a{color:var(--text);text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:4px}
+.fv-sentence{max-width:21em;color:var(--text);font-size:clamp(25px,6.6vw,34px);font-weight:600;letter-spacing:-.02em;line-height:1.3;text-wrap:balance}
+.fv-sentence a{text-decoration-thickness:3px;text-underline-offset:6px;padding:.22em 0}
+@media (min-width:1000px){.fv-sentence{font-size:40px;max-width:23em}}
+.fv-quiet{margin-top:clamp(56px,9vw,96px)}
+.fv-legal{display:flex;flex-wrap:wrap;gap:0 22px;font-size:13px}
+.fv-legal > *{display:inline-flex;align-items:center;gap:.3em;min-height:44px}
+.fv .fv-legal a{color:var(--text-dim);text-decoration-thickness:1px;text-underline-offset:3px;text-decoration-color:color-mix(in srgb,var(--accent) 65%,transparent)}
+@media (max-width:480px){.fv-legal{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}}
+.fv-note{max-width:46em;margin-top:2px;font-size:12.5px;line-height:1.5;color:var(--text-dim)}
 
 @media (max-width:480px){.hero h1{font-size:32px}.grp-body{padding:2px 16px 20px 16px}}
 @media print{
@@ -287,6 +292,171 @@ footer .links{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 14px}
   details.grp::details-content{content-visibility:visible;display:block}
   details.grp > summary{pointer-events:none}
 }
+/* the designed table of /devices/ (owner-approved variant A, 11.11.2026): wide column, table of rows, help block */
+.wrap{max-width:1380px}
+
+.dv{
+  --dv-ink:color-mix(in srgb, var(--accent) 68%, var(--text));
+  --dv-off:color-mix(in srgb, var(--text) 15%, transparent);
+  --dv-hair:color-mix(in srgb, var(--text) 11%, transparent);
+  --dv-sec:color-mix(in srgb, var(--text) 72%, var(--sunken));
+  --dv-cols:minmax(0,1.25fr) 172px 236px 132px minmax(0,2fr);
+  --dv-gap:20px;
+  --dv-px:18px;
+}
+@media (prefers-color-scheme: dark){
+  .dv{--dv-ink:var(--accent);--dv-off:color-mix(in srgb, var(--text) 17%, transparent);--dv-hair:color-mix(in srgb, var(--text) 10%, transparent)}
+}
+.dv .dv-defs{position:absolute;width:0;height:0;overflow:hidden}
+
+/* header: compact, icon beside the title */
+.dv .dv-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:20px;align-items:center;padding:20px 0 22px}
+.dv .dv-icon{display:block;width:64px;height:64px;border-radius:16px;box-shadow:var(--lift-card)}
+.dv .dv-head h1{font-size:34px;font-weight:700;letter-spacing:-.01em;line-height:1.1;text-transform:uppercase}
+.dv .dv-lede{color:var(--text-dim);margin:6px 0 0;max-width:46em;font-size:16px;line-height:1.45}
+.dv .dv-side{display:flex;align-items:center;gap:16px}
+.dv .dv-side .ver{margin:0;white-space:nowrap}
+.dv .dv-side .btn{flex:none;min-height:52px;padding:10px 24px}
+
+/* list */
+.dv .dv-label{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);padding:0 6px;margin:0 0 10px}
+.dv .dv-well{background:var(--sunken);border-radius:var(--r-card);box-shadow:var(--sink);padding:6px 8px 8px}
+.dv .dv-table,.dv .dv-table thead,.dv .dv-table tbody{display:block;width:100%;border:0}
+.dv .dv-table :where(tr){display:grid;grid-template-columns:var(--dv-cols);column-gap:var(--dv-gap);align-items:center;position:relative;padding:0 var(--dv-px)}
+.dv :where(th,td){display:block;min-width:0;padding:0;border:0;text-align:left;vertical-align:baseline;font-size:inherit;font-weight:inherit;letter-spacing:normal;text-transform:none;white-space:normal;color:inherit}
+
+.dv .dv-hr{align-items:start;padding-top:14px;padding-bottom:12px;border-bottom:1px solid var(--dv-hair);border-radius:0}
+.dv .dv-hr th{color:var(--dv-sec);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;white-space:normal;line-height:1.3}
+.dv .dv-h-filt{display:flex;flex-direction:column;gap:6px}
+.dv .dv-leg{display:grid;grid-template-columns:repeat(7,28px);column-gap:4px;font-size:10px;font-weight:600;letter-spacing:.04em;color:var(--dv-sec)}
+.dv .dv-leg abbr{text-decoration:none;text-align:center;cursor:default}
+
+.dv .dv-row{min-height:68px;padding-top:12px;padding-bottom:12px;border-radius:var(--r-row);transition:box-shadow .14s,background-color .14s}
+.dv .dv-row::before{content:"";position:absolute;left:var(--dv-px);right:var(--dv-px);bottom:0;height:1px;background:var(--dv-hair);pointer-events:none}
+.dv .dv-row:last-child::before{display:none}
+.dv .dv-row:hover,.dv .dv-row:focus-within{background:var(--surface);box-shadow:var(--lift-raised);z-index:2}
+.dv .dv-row:hover::before,.dv .dv-row:focus-within::before,.dv .dv-row:has(+ .dv-row:hover)::before,.dv .dv-row:has(+ .dv-row:focus-within)::before{opacity:0}
+.dv .dv-row:has(.dv-link:focus-visible){outline:3px solid var(--accent);outline-offset:-3px}
+.dv .dv-row{cursor:pointer}
+/* a row without a page to open (the Chinese page: the device pages are English only): no lift, no pointer */
+.dv .dv-row.dv-static,.dv .dv-row.dv-static:hover{cursor:default;background:none;box-shadow:none}
+.dv .dv-row.dv-static:hover::before,.dv .dv-row:has(+ .dv-row.dv-static:hover)::before{opacity:1}
+.dv .dv-row.dv-static:hover .dv-tag,.dv .dv-row.dv-static:hover .dv-ro{background:var(--surface)}
+
+.dv .dv-link{display:block;color:inherit;text-decoration:none}
+.dv .dv-link:focus-visible{outline:none}
+.dv a.dv-link::after{content:"";position:absolute;inset:0;border-radius:var(--r-row)}
+.dv .dv-brand{display:block;font-size:13px;line-height:1.3;color:var(--dv-sec)}
+.dv .dv-model{display:flex;flex-wrap:wrap;align-items:center;gap:2px 10px;font-size:18px;font-weight:650;letter-spacing:-.01em;line-height:1.3}
+.dv .dv-tag{display:inline-block;background:var(--surface);color:var(--dv-sec);border-radius:var(--r-tag);padding:2px 7px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;line-height:1.3;white-space:nowrap}
+.dv .dv-row:hover .dv-tag,.dv .dv-row:focus-within .dv-tag{background:var(--surface2)}
+
+.dv .dv-bands{display:flex;align-items:center;gap:12px}
+.dv .dv-bars{display:flex;align-items:center;gap:3px}
+.dv .dv-bars i{display:block;width:4px;height:20px;border-radius:2px;background:var(--dv-off)}
+.dv .dv-bars i.on{background:var(--dv-ink)}
+.dv .dv-n{font-size:17px;font-weight:600;font-feature-settings:"tnum";min-width:1.3em}
+.dv .dv-w{display:none}
+
+.dv .dv-filt{display:flex;align-items:center;gap:4px;position:relative;z-index:1}
+.dv .dv-g{display:block;flex:none;width:28px;height:20px;fill:none;stroke:var(--dv-off);stroke-width:1.9px;stroke-linecap:round;stroke-linejoin:round}
+.dv .dv-g.on{stroke:var(--dv-ink)}
+.dv .dv-g *{vector-effect:non-scaling-stroke}
+.dv .dv-g .dv-ph{stroke-dasharray:2 2.6;opacity:.55}
+
+.dv .dv-mem{font-size:15px;font-weight:500}
+.dv .dv-set{position:relative;z-index:1;font-size:15px;line-height:1.4;color:var(--dv-sec)}
+.dv .dv-set.empty{color:var(--text-mute)}
+.dv .dv-pre{display:none}
+.dv .dv-more{color:var(--dv-sec);opacity:.85;white-space:nowrap}
+.dv .dv-ro{display:inline-block;background:var(--surface);color:var(--dv-sec);border-radius:var(--r-tag);padding:1px 7px;margin-left:4px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;line-height:1.4;white-space:nowrap;vertical-align:1px}
+.dv .dv-row:hover .dv-ro,.dv .dv-row:focus-within .dv-ro{background:var(--surface2)}
+
+/* quiet lines under the table */
+.dv .dv-soon{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 0;margin:16px 6px 0;color:var(--text-dim);font-size:14.5px}
+.dv .dv-soon-l{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-right:16px}
+.dv .dv-soon > span:not(.dv-soon-l){padding:0 14px}
+.dv .dv-soon > span:nth-child(2){padding-left:0}
+.dv .dv-soon > span:not(.dv-soon-l):not(:last-child){border-right:1px solid var(--dv-hair)}
+.dv .dv-fiio{margin:8px 6px 0;color:var(--text-dim);font-size:14.5px}
+
+/* help-add */
+.dv .dv-help{margin:40px 0 24px;background:var(--surface);border-radius:var(--r-card);box-shadow:var(--lift-card);padding:26px 28px 24px}
+.dv .dv-help h2{font-size:22px;font-weight:700;letter-spacing:-.015em;line-height:1.2;text-transform:uppercase}
+.dv .dv-help-line{margin:6px 0 18px;color:var(--text-dim);font-size:16px}
+.dv .dv-ways{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.dv .dv-ways li{background:var(--sunken);box-shadow:var(--sink);border-radius:var(--r-row);padding:16px 20px 18px;font-size:15.5px;line-height:1.5}
+.dv .dv-ways li{--dv-ic-bg:var(--sunken)}
+.dv .dv-ways li strong{display:flex;align-items:center;gap:10px;font-size:17px;font-weight:700;letter-spacing:-.01em;margin-bottom:4px}
+/* small mark beside the tile title (owner pick, variant 1 of 11.11.2026): decorative, text colour, the parcel with an accent dongle */
+.dv .dv-ic{display:block;flex:none;width:24px;height:24px;color:var(--text);opacity:.88;fill:currentColor;stroke:none}
+.dv .dv-ic.parcel{fill:none;stroke-width:1.7px}
+.dv .dv-ways li a{display:inline}
+.dv .dv-help-end{margin:16px 2px 0;color:var(--text-dim);font-size:15px}
+
+.dv .dv-find{margin:0 0 24px}
+
+/* middle widths: settings move under the name */
+@media (max-width:1179px){
+  .dv{--dv-cols:minmax(0,1fr) 170px 236px 104px}
+  .dv .dv-h-set{display:none}
+  .dv .dv-set{grid-column:1 / -1;font-size:14px;margin-top:2px}
+  .dv .dv-set.empty{display:none}
+  .dv .dv-pre{display:inline}
+  .dv .dv-row{min-height:0}
+  .dv .dv-head h1{font-size:30px}
+}
+@media (max-width:959px){
+  .dv{--dv-cols:minmax(0,1fr) 52px 236px 100px}
+  .dv .dv-bars{display:none}
+  .dv .dv-head{grid-template-columns:auto minmax(0,1fr)}
+  .dv .dv-side{grid-column:1 / -1;margin-top:14px}
+  .dv .dv-ways{grid-template-columns:1fr}
+}
+
+/* phone: two-line blocks, no settings column */
+@media (max-width:719px){
+  .dv{--dv-cols:74px auto minmax(0,1fr);--dv-gap:10px;--dv-px:12px}
+  .dv .dv-head{grid-template-columns:auto minmax(0,1fr);column-gap:14px;padding:16px 0 18px}
+  .dv .dv-icon{width:52px;height:52px;border-radius:14px}
+  .dv .dv-head h1{font-size:26px}
+  .dv .dv-title{display:contents}
+  .dv .dv-lede{grid-column:1 / -1;margin-top:12px;font-size:16px}
+  .dv .dv-side{margin-top:14px;gap:12px;flex-wrap:wrap}
+  .dv .dv-side .btn{flex:1 1 220px;white-space:nowrap}
+  .dv .dv-well{padding:4px}
+  .dv .dv-table :where(tr){grid-template-areas:"name name name" "bands filt mem";row-gap:7px}
+  .dv .dv-hr{grid-template-areas:"bands filt mem";row-gap:0;padding-top:10px;padding-bottom:10px}
+  .dv .dv-h-name,.dv .dv-h-set,.dv .dv-set{display:none}
+  .dv .dv-h-bands{grid-area:bands}
+  .dv .dv-h-filt{grid-area:filt}
+  .dv .dv-h-mem{grid-area:mem;text-align:right}
+  .dv .dv-hr th{font-size:11px;letter-spacing:.06em}
+  .dv .dv-name{grid-area:name}
+  .dv .dv-bands{grid-area:bands;gap:.3em}
+  .dv .dv-filt{grid-area:filt;gap:2px}
+  .dv .dv-mem{grid-area:mem;text-align:right;font-size:14.5px}
+  .dv .dv-n{font-size:14.5px;min-width:0}
+  .dv .dv-w{display:inline;font-size:14.5px;font-weight:600;white-space:nowrap}
+  .dv .dv-g{width:21px;height:15px}
+  .dv .dv-leg{grid-template-columns:repeat(7,21px);column-gap:2px;font-size:9px;letter-spacing:.02em}
+  .dv .dv-h-filt{gap:0}
+  .dv .dv-hl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .dv .dv-row{padding-top:16px;padding-bottom:16px;min-height:0}
+  .dv .dv-model{font-size:18px}
+  .dv .dv-soon{margin-top:14px}
+  .dv .dv-soon-l{width:100%;margin-bottom:2px}
+  .dv .dv-soon > span:not(.dv-soon-l){display:block;width:100%;padding:0;border:0!important}
+  .dv .dv-help{padding:20px 16px 18px;margin-top:32px}
+  .dv .dv-help h2{font-size:20px}
+  .dv .dv-ways li{padding:14px 16px 16px}
+}
+@media (max-width:359px){
+  .dv{--dv-cols:56px auto minmax(0,1fr)}
+  .dv .dv-g{width:19px}
+  .dv .dv-leg{grid-template-columns:repeat(7,19px)}
+}
+
 </style>
 <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
 <script defer src="/_vercel/insights/script.js"></script>
@@ -296,64 +466,124 @@ footer .links{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 14px}
 
 <p class="top"><span class="lockup"><a href="../">Contour</a><a class="by" href="https://soundblooms.com/" rel="noopener" target="_blank" aria-label="by Soundblooms"><span class="by-word" aria-hidden="true">by</span><span class="sb-mark" aria-hidden="true">sound<span class="sb-face"><i class="sb-band"></i><span class="sb-eyes" data-eyes="calm"><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i></span></span>blooms</span></a></span> <a href="../install/">Install</a> <a href="../guide/">Guide</a> <a class="lang-switch" href="/zh/devices/" hreflang="zh-CN" lang="zh-CN">中文</a></p>
 
-<header class="hero">
-  <img class="icon" src="../images/icon-512.png" width="88" height="88" alt="Contour app icon">
-  <h1>Supported devices</h1>
-  <p class="lede">Check whether your USB DAC works with Contour, and tell us what happens when you try it.</p>
-  <p class="ver"><span class="dot" aria-hidden="true"></span><span>Stable 1.6.6</span></p>
-  <div class="cta">
-    <a class="btn btn-primary" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20">Report a device not on this list</a>
-    <a class="btn btn-tonal" href="#h-find">Find the VID:PID</a>
+<main>
+<div class="dv">
+<svg class="dv-defs" width="0" height="0" aria-hidden="true" focusable="false"><defs><symbol id="dv-g-peak" viewBox="0 0 28 20"><path d="M1 14 C8 14 9 5 14 5 C19 5 20 14 27 14"/></symbol><symbol id="dv-g-low_shelf" viewBox="0 0 28 20"><path d="M1 6 H8 C13 6 15 14 20 14 H27"/></symbol><symbol id="dv-g-high_shelf" viewBox="0 0 28 20"><path d="M1 14 H8 C13 14 15 6 20 6 H27"/></symbol><symbol id="dv-g-low_pass" viewBox="0 0 28 20"><path d="M1 6 H12 C18 6 19 12 27 17"/></symbol><symbol id="dv-g-high_pass" viewBox="0 0 28 20"><path d="M1 17 C9 12 10 6 16 6 H27"/></symbol><symbol id="dv-g-band_pass" viewBox="0 0 28 20"><path d="M1 17 C8 17 9 5 14 5 C19 5 20 17 27 17"/></symbol><symbol id="dv-g-all_pass" viewBox="0 0 28 20"><path d="M1 10 H27"/><path class="dv-ph" d="M1 16 C10 16 11 4 20 4 H27"/></symbol><symbol id="dv-ic-kofi" viewBox="0 0 24 24"><path d="M11.351 2.715c-2.7 0-4.986.025-6.83.26C2.078 3.285 0 5.154 0 8.61c0 3.506.182 6.13 1.585 8.493 1.584 2.701 4.233 4.182 7.662 4.182h.83c4.209 0 6.494-2.234 7.637-4a9.5 9.5 0 0 0 1.091-2.338C21.792 14.688 24 12.22 24 9.208v-.415c0-3.247-2.13-5.507-5.792-5.87-1.558-.156-2.65-.208-6.857-.208m0 1.947c4.208 0 5.09.052 6.571.182 2.624.311 4.13 1.584 4.13 4v.39c0 2.156-1.792 3.844-3.87 3.844h-.935l-.156.649c-.208 1.013-.597 1.818-1.039 2.546-.909 1.428-2.545 3.064-5.922 3.064h-.805c-2.571 0-4.831-.883-6.078-3.195-1.09-2-1.298-4.155-1.298-7.506 0-2.181.857-3.402 3.012-3.714 1.533-.233 3.559-.26 6.39-.26m6.547 2.287c-.416 0-.65.234-.65.546v2.935c0 .311.234.545.65.545 1.324 0 2.051-.754 2.051-2s-.727-2.026-2.052-2.026m-10.39.182c-1.818 0-3.013 1.48-3.013 3.142 0 1.533.858 2.857 1.949 3.897.727.701 1.87 1.429 2.649 1.896a1.47 1.47 0 0 0 1.507 0c.78-.467 1.922-1.195 2.623-1.896 1.117-1.039 1.974-2.364 1.974-3.897 0-1.662-1.247-3.142-3.039-3.142-1.065 0-1.792.545-2.338 1.298-.493-.753-1.246-1.298-2.312-1.298"/></symbol><symbol id="dv-ic-github" viewBox="0 0 24 24"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></symbol><symbol id="dv-ic-parcel" viewBox="0 0 64 64"><g fill="var(--dv-ic-bg,transparent)" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="24" width="40" height="32" rx="3" vector-effect="non-scaling-stroke"/><path d="M6 24 L18 13 H58 L46 24 Z" vector-effect="non-scaling-stroke"/><path d="M46 24 L58 13 V45 L46 56 Z" vector-effect="non-scaling-stroke"/><path d="M12 47 H22" fill="none" vector-effect="non-scaling-stroke"/></g><g fill="var(--dv-ic-bg,transparent)" stroke="var(--accent)" stroke-linecap="round" stroke-linejoin="round"><rect x="28.5" y="9.5" width="7" height="10" rx="1.8" vector-effect="non-scaling-stroke"/><rect x="24.5" y="2" width="15" height="9" rx="3.2" vector-effect="non-scaling-stroke"/></g></symbol></defs></svg>
+<header class="dv-head">
+  <img class="dv-icon" src="../images/icon-512.png" width="64" height="64" alt="Contour app icon">
+  <div class="dv-title">
+    <h1>Supported USB DACs</h1>
+    <p class="dv-lede">Contour writes your EQ into the DAC itself, so it plays in every app. Every DAC on this list was tested on a real unit and measured on a test rig.</p>
+  </div>
+  <div class="dv-side">
+    <p class="ver"><span class="dot" aria-hidden="true"></span><span>Stable 1.6.6</span></p>
+    <a class="btn btn-primary" href="../install/">Install Contour</a>
   </div>
 </header>
 
-<div class="groups" id="results">
-<details class="grp" id="t1" open><summary><div class="sum-text"><h2>Supported in Contour 1.6.6</h2><p>Tested on real hardware.</p></div><span class="cnt">10</span><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary><div class="grp-body"><p>Every DAC below has been tried on real hardware. Thanks to u/Master_Cartoonist_16 on Reddit for the first report of the TRN Black Pearl working, and to the community tester who tried the Protocol Max.</p><div class="tw"><table><thead><tr>
-<th>Device</th>
-<th>VID:PID</th>
-<th>What was confirmed</th>
-<th>Verified by</th>
-<th>Your result</th>
-</tr></thead><tbody>
-<tr><td><a href="/devices/crinear-protocol-micro/">CrinEar Protocol Micro</a></td><td><code>3302:C20F</code></td><td>Read, import, write with read-back, A/B; LOW PASS and HIGH PASS since 1.6.0</td><td>maintainer</td><td><a class="rep" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20CrinEar%20Protocol%20Micro&amp;device_name=CrinEar%20Protocol%20Micro&amp;vid_pid=3302%3AC20F&amp;listed_as=Confirmed%20on%20hardware" aria-label="Report result for CrinEar Protocol Micro">Report result</a></td></tr>
-<tr><td><a href="/devices/crinear-protocol-max/">CrinEar Protocol Max</a></td><td><code>3302:43CC</code></td><td>Tested on a real device</td><td>community tester</td><td><a class="rep" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20CrinEar%20Protocol%20Max&amp;device_name=CrinEar%20Protocol%20Max&amp;vid_pid=3302%3A43CC&amp;listed_as=Confirmed%20on%20hardware" aria-label="Report result for CrinEar Protocol Max">Report result</a></td></tr>
-<tr><td><a href="/devices/fiio-ka15/">FiiO KA15</a></td><td><code>2972:0104</code></td><td>Read, write to USER1-3 with read-back, slot names and rename; shelf Q and preamp measured and compensated since 1.3.3; since 1.6.0 also HIGH PASS, LOW PASS, BAND PASS and ALL PASS, a DAC page (volume, balance, filter, output and more; USB audio is read-only) and a factory reset that saves a copy of your slots and settings first</td><td>maintainer</td><td><a class="rep" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20FiiO%20KA15&amp;device_name=FiiO%20KA15&amp;vid_pid=2972%3A0104&amp;listed_as=Confirmed%20on%20hardware" aria-label="Report result for FiiO KA15">Report result</a></td></tr>
-<tr><td><a href="/devices/fiio-k13-r2r/">FiiO K13 R2R (desktop)</a></td><td><code>2972:0120</code></td><td>Read, write to USER1-10 with read-back; the slot keeps all ten bands and the preamp after a power cycle; since 1.6.0 PEAK bands play as set (Q written x sqrt 2) and HIGH PASS, LOW PASS, BAND PASS and ALL PASS are available</td><td>maintainer</td><td><a class="rep" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20FiiO%20K13%20R2R%20%28desktop%29&amp;device_name=FiiO%20K13%20R2R%20%28desktop%29&amp;vid_pid=2972%3A0120&amp;listed_as=Confirmed%20on%20hardware" aria-label="Report result for FiiO K13 R2R (desktop)">Report result</a></td></tr>
-<tr><td><a href="/devices/snowsky-melody/">SnowSky Melody</a></td><td><code>2972:0126</code></td><td>Read, write to USER1-3 with read-back; the written slot becomes the active one; since 1.6.0 shelves play as set (Q written x sqrt 2), HIGH PASS, LOW PASS, BAND PASS and ALL PASS, a DAC page (volume, balance, filter, gain, output and more; USB audio is read-only) and a factory reset that saves a copy first</td><td>maintainer</td><td><a class="rep" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20SnowSky%20Melody&amp;device_name=SnowSky%20Melody&amp;vid_pid=2972%3A0126&amp;listed_as=Confirmed%20on%20hardware" aria-label="Report result for SnowSky Melody">Report result</a></td></tr>
-<tr><td><a href="/devices/snowsky-tiny-a/">SnowSky Tiny A</a></td><td><code>2972:0147</code></td><td>Read, write to USER1-3 with read-back; the written slot becomes the active one; since 1.6.0 shelves play as set (Q written x sqrt 2), HIGH PASS, LOW PASS, BAND PASS and ALL PASS, and a DAC page (volume, balance, in-line mic, light; USB audio is read-only). No factory reset: the DAC ignores it</td><td>maintainer</td><td><a class="rep" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20SnowSky%20Tiny%20A&amp;device_name=SnowSky%20Tiny%20A&amp;vid_pid=2972%3A0147&amp;listed_as=Confirmed%20on%20hardware" aria-label="Report result for SnowSky Tiny A">Report result</a></td></tr>
-<tr><td><a href="/devices/trn-black-pearl/">TRN Black Pearl</a></td><td><code>3302:43E8</code></td><td>Read, write with read-back (PEAK, LOW SHELF, HIGH SHELF); the EQ and preamp stay after unplugging; since 1.6.4 a DAC page (filter, output, gain, balance), each change read back and kept after unplugging. Shows up on USB only with headphones plugged in</td><td>maintainer, first reported working by u/Master_Cartoonist_16 on Reddit</td><td><a class="rep" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20TRN%20Black%20Pearl&amp;device_name=TRN%20Black%20Pearl&amp;vid_pid=3302%3A43E8&amp;listed_as=Confirmed%20on%20hardware" aria-label="Report result for TRN Black Pearl">Report result</a></td></tr>
-<tr><td><a href="/devices/moondrop-dawn-pro-2/">Moondrop Dawn Pro 2</a></td><td><code>35D8:011D</code></td><td>Read, write with read-back to the active PEQ bank (EQ index 7 or 9), 8 bands of PEAK, LOW SHELF, HIGH SHELF, LOW PASS and HIGH PASS, with the same frames as Moondrop Hub; on one of the DAC&#x27;s own presets Contour does not write. The custom EQ must be switched on in the DAC. The DAC page shows EQ INDEX, GLOBAL GAIN and PRE GAIN (read-only); measured on a test rig. Contour matches it by the USB name DAWN PRO2, written without a space before the 2</td><td>maintainer</td><td><a class="rep" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20Moondrop%20Dawn%20Pro%202&amp;device_name=Moondrop%20Dawn%20Pro%202&amp;vid_pid=35D8%3A011D&amp;listed_as=Confirmed%20on%20hardware" aria-label="Report result for Moondrop Dawn Pro 2">Report result</a></td></tr>
-<tr><td><a href="/devices/moondrop-echo-a/">Moondrop Echo-A</a></td><td><code>3302:12C5</code></td><td>Read, write with read-back: PEAK, LOW SHELF, LOW PASS, HIGH PASS, HIGH SHELF (made from a low shelf and the preamp, so its gain is in whole dB), preamp up to 0 dB; filters computed for the 93 750 Hz the DSP runs at; measured on a test rig</td><td>maintainer</td><td><a class="rep" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20Moondrop%20Echo-A&amp;device_name=Moondrop%20Echo-A&amp;vid_pid=3302%3A12C5&amp;listed_as=Confirmed%20on%20hardware" aria-label="Report result for Moondrop Echo-A">Report result</a></td></tr>
-<tr><td><a href="/devices/kiwi-ears-allegro-mini/">Kiwi Ears Allegro Mini</a></td><td><code>31B2:0111</code></td><td>Read, write with read-back (PEAK), 5 bands, no preamp; the DAC tunes its filters for a 48 kHz stream and Contour assumes 48 kHz, the usual USB rate on Android. The DAC page has the EQ ON/OFF switch and GLOBAL GAIN (-18 to +3 dB in 1.5 dB steps)</td><td>maintainer</td><td><a class="rep" href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20Kiwi%20Ears%20Allegro%20Mini&amp;device_name=Kiwi%20Ears%20Allegro%20Mini&amp;vid_pid=31B2%3A0111&amp;listed_as=Confirmed%20on%20hardware" aria-label="Report result for Kiwi Ears Allegro Mini">Report result</a></td></tr>
-</tbody></table></div></div></details>
-</div>
-<p class="note" id="fiio-snowsky-note">Own a FiiO or SnowSky DAC? <a href="/fiio-snowsky/">Contour EQ or FiiO Control</a> compares the two on the KA15, K13 R2R, Melody and Tiny A.</p>
+<section class="dv-list" aria-labelledby="dv-list-h">
+  <h2 class="dv-label" id="dv-list-h">In Contour 1.6.6</h2>
+  <div class="dv-well">
+    <table class="dv-table" role="table" aria-labelledby="dv-list-h">
+      <thead role="rowgroup">
+        <tr class="dv-hr" role="row">
+          <th scope="col" class="dv-c dv-h-name" role="columnheader">DAC</th>
+          <th scope="col" class="dv-c dv-h-bands" role="columnheader">Bands</th>
+          <th scope="col" class="dv-c dv-h-filt" role="columnheader"><span class="dv-hl">Filter types</span><span class="dv-leg"><abbr title="Peak">PK</abbr><abbr title="Low shelf">LS</abbr><abbr title="High shelf">HS</abbr><abbr title="Low pass">LP</abbr><abbr title="High pass">HP</abbr><abbr title="Band pass">BP</abbr><abbr title="All pass">AP</abbr></span></th>
+          <th scope="col" class="dv-c dv-h-mem" role="columnheader">Kept in the DAC</th>
+          <th scope="col" class="dv-c dv-h-set" role="columnheader">DAC settings in the app</th>
+        </tr>
+      </thead>
+      <tbody role="rowgroup">
+<tr class="dv-row" role="row">
+<th scope="row" class="dv-c dv-name" role="rowheader"><a class="dv-link" href="/devices/crinear-protocol-max/" aria-label="CrinEar Protocol Max - what Contour does on it"><span class="dv-brand">CrinEar</span><span class="dv-model"><span class="dv-mn">Protocol Max</span></span></a></th>
+<td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="dv-n">10</span><span class="dv-w"> bands</span></td>
+<td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Peak"><title>Peak</title><use href="#dv-g-peak"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Low shelf"><title>Low shelf</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="High shelf"><title>High shelf</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>Low pass</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>High pass</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>Band pass</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>All pass</title><use href="#dv-g-all_pass"/></svg></td>
+<td class="dv-c dv-mem" role="cell">1 EQ</td>
+<td class="dv-c dv-set empty" role="cell"><span class="dv-pre">DAC settings: </span>-</td>
+</tr>
+<tr class="dv-row" role="row">
+<th scope="row" class="dv-c dv-name" role="rowheader"><a class="dv-link" href="/devices/crinear-protocol-micro/" aria-label="CrinEar Protocol Micro - what Contour does on it"><span class="dv-brand">CrinEar</span><span class="dv-model"><span class="dv-mn">Protocol Micro</span></span></a></th>
+<td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="dv-n">8</span><span class="dv-w"> bands</span></td>
+<td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Peak"><title>Peak</title><use href="#dv-g-peak"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Low shelf"><title>Low shelf</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="High shelf"><title>High shelf</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Low pass"><title>Low pass</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="High pass"><title>High pass</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>Band pass</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>All pass</title><use href="#dv-g-all_pass"/></svg></td>
+<td class="dv-c dv-mem" role="cell">1 EQ</td>
+<td class="dv-c dv-set empty" role="cell"><span class="dv-pre">DAC settings: </span>-</td>
+</tr>
+<tr class="dv-row" role="row">
+<th scope="row" class="dv-c dv-name" role="rowheader"><a class="dv-link" href="/devices/fiio-k13-r2r/" aria-label="FiiO K13 R2R - what Contour does on it"><span class="dv-brand">FiiO</span><span class="dv-model"><span class="dv-mn">K13 R2R</span><span class="dv-tag">Desktop DAC</span></span></a></th>
+<td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="dv-n">10</span><span class="dv-w"> bands</span></td>
+<td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Peak"><title>Peak</title><use href="#dv-g-peak"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Low shelf"><title>Low shelf</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="High shelf"><title>High shelf</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Low pass"><title>Low pass</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="High pass"><title>High pass</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Band pass"><title>Band pass</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="All pass"><title>All pass</title><use href="#dv-g-all_pass"/></svg></td>
+<td class="dv-c dv-mem" role="cell">10 slots</td>
+<td class="dv-c dv-set empty" role="cell"><span class="dv-pre">DAC settings: </span>-</td>
+</tr>
+<tr class="dv-row" role="row">
+<th scope="row" class="dv-c dv-name" role="rowheader"><a class="dv-link" href="/devices/fiio-ka15/" aria-label="FiiO KA15 - what Contour does on it"><span class="dv-brand">FiiO</span><span class="dv-model"><span class="dv-mn">KA15</span></span></a></th>
+<td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="dv-n">10</span><span class="dv-w"> bands</span></td>
+<td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Peak"><title>Peak</title><use href="#dv-g-peak"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Low shelf"><title>Low shelf</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="High shelf"><title>High shelf</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Low pass"><title>Low pass</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="High pass"><title>High pass</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Band pass"><title>Band pass</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="All pass"><title>All pass</title><use href="#dv-g-all_pass"/></svg></td>
+<td class="dv-c dv-mem" role="cell">3 slots</td>
+<td class="dv-c dv-set" role="cell" title="Volume, Volume steps, Balance, Filter, Output, DRE, Brightness, Screen off, Rotation, Language"><span class="dv-pre">DAC settings: </span>Volume, Volume steps, Balance <span class="dv-more">+7 more</span></td>
+</tr>
+<tr class="dv-row" role="row">
+<th scope="row" class="dv-c dv-name" role="rowheader"><a class="dv-link" href="/devices/kiwi-ears-allegro-mini/" aria-label="Kiwi Ears Allegro Mini - what Contour does on it"><span class="dv-brand">Kiwi Ears</span><span class="dv-model"><span class="dv-mn">Allegro Mini</span></span></a></th>
+<td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i></span><span class="dv-n">5</span><span class="dv-w"> bands</span></td>
+<td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Peak"><title>Peak</title><use href="#dv-g-peak"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>Low shelf</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>High shelf</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>Low pass</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>High pass</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>Band pass</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>All pass</title><use href="#dv-g-all_pass"/></svg></td>
+<td class="dv-c dv-mem" role="cell">1 EQ</td>
+<td class="dv-c dv-set" role="cell" title="EQ on/off, Global gain"><span class="dv-pre">DAC settings: </span>EQ on/off, Global gain</td>
+</tr>
+<tr class="dv-row" role="row">
+<th scope="row" class="dv-c dv-name" role="rowheader"><a class="dv-link" href="/devices/moondrop-dawn-pro-2/" aria-label="Moondrop Dawn Pro 2 - what Contour does on it"><span class="dv-brand">Moondrop</span><span class="dv-model"><span class="dv-mn">Dawn Pro 2</span></span></a></th>
+<td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="dv-n">8</span><span class="dv-w"> bands</span></td>
+<td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Peak"><title>Peak</title><use href="#dv-g-peak"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Low shelf"><title>Low shelf</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="High shelf"><title>High shelf</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Low pass"><title>Low pass</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="High pass"><title>High pass</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>Band pass</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>All pass</title><use href="#dv-g-all_pass"/></svg></td>
+<td class="dv-c dv-mem" role="cell">PEQ bank</td>
+<td class="dv-c dv-set" role="cell" title="EQ index (read only), Global gain (read only), Pre gain (read only)"><span class="dv-pre">DAC settings: </span>EQ index, Global gain, Pre gain <span class="dv-ro">read only</span></td>
+</tr>
+<tr class="dv-row" role="row">
+<th scope="row" class="dv-c dv-name" role="rowheader"><a class="dv-link" href="/devices/moondrop-echo-a/" aria-label="Moondrop Echo-A - what Contour does on it"><span class="dv-brand">Moondrop</span><span class="dv-model"><span class="dv-mn">Echo-A</span></span></a></th>
+<td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="dv-n">8</span><span class="dv-w"> bands</span></td>
+<td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Peak"><title>Peak</title><use href="#dv-g-peak"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Low shelf"><title>Low shelf</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="High shelf"><title>High shelf</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Low pass"><title>Low pass</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="High pass"><title>High pass</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>Band pass</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>All pass</title><use href="#dv-g-all_pass"/></svg></td>
+<td class="dv-c dv-mem" role="cell">1 EQ</td>
+<td class="dv-c dv-set empty" role="cell"><span class="dv-pre">DAC settings: </span>-</td>
+</tr>
+<tr class="dv-row" role="row">
+<th scope="row" class="dv-c dv-name" role="rowheader"><a class="dv-link" href="/devices/snowsky-melody/" aria-label="SnowSky Melody - what Contour does on it"><span class="dv-brand">SnowSky</span><span class="dv-model"><span class="dv-mn">Melody</span></span></a></th>
+<td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="dv-n">10</span><span class="dv-w"> bands</span></td>
+<td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Peak"><title>Peak</title><use href="#dv-g-peak"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Low shelf"><title>Low shelf</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="High shelf"><title>High shelf</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Low pass"><title>Low pass</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="High pass"><title>High pass</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Band pass"><title>Band pass</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="All pass"><title>All pass</title><use href="#dv-g-all_pass"/></svg></td>
+<td class="dv-c dv-mem" role="cell">3 slots</td>
+<td class="dv-c dv-set" role="cell" title="Volume, Volume steps, Balance, Filter, Gain, Output, DRE, In-line mic, Light, Buttons"><span class="dv-pre">DAC settings: </span>Volume, Volume steps, Balance <span class="dv-more">+7 more</span></td>
+</tr>
+<tr class="dv-row" role="row">
+<th scope="row" class="dv-c dv-name" role="rowheader"><a class="dv-link" href="/devices/snowsky-tiny-a/" aria-label="SnowSky Tiny A - what Contour does on it"><span class="dv-brand">SnowSky</span><span class="dv-model"><span class="dv-mn">Tiny A</span></span></a></th>
+<td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="dv-n">10</span><span class="dv-w"> bands</span></td>
+<td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Peak"><title>Peak</title><use href="#dv-g-peak"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Low shelf"><title>Low shelf</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="High shelf"><title>High shelf</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Low pass"><title>Low pass</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="High pass"><title>High pass</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Band pass"><title>Band pass</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="All pass"><title>All pass</title><use href="#dv-g-all_pass"/></svg></td>
+<td class="dv-c dv-mem" role="cell">3 slots</td>
+<td class="dv-c dv-set" role="cell" title="Volume, Volume steps, Balance, In-line mic, Light"><span class="dv-pre">DAC settings: </span>Volume, Volume steps, Balance <span class="dv-more">+2 more</span></td>
+</tr>
+<tr class="dv-row" role="row">
+<th scope="row" class="dv-c dv-name" role="rowheader"><a class="dv-link" href="/devices/trn-black-pearl/" aria-label="TRN Black Pearl - what Contour does on it"><span class="dv-brand">TRN</span><span class="dv-model"><span class="dv-mn">Black Pearl</span></span></a></th>
+<td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="dv-n">10</span><span class="dv-w"> bands</span></td>
+<td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Peak"><title>Peak</title><use href="#dv-g-peak"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Low shelf"><title>Low shelf</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="High shelf"><title>High shelf</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>Low pass</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>High pass</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>Band pass</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>All pass</title><use href="#dv-g-all_pass"/></svg></td>
+<td class="dv-c dv-mem" role="cell">1 EQ</td>
+<td class="dv-c dv-set" role="cell" title="Filter, Output, Gain, Balance"><span class="dv-pre">DAC settings: </span>Filter, Output, Gain <span class="dv-more">+1 more</span></td>
+</tr>
+      </tbody>
+    </table>
+  </div>
+  <p class="dv-soon"><span class="dv-soon-l">Not in the app yet</span><span>JCally JM12 - tested</span><span>FiiO JadeAudio JA11 - tested</span><span>Moondrop FreeDSP cable - testing</span></p>
+  <p class="dv-fiio">Own a FiiO or SnowSky DAC? <a href="/fiio-snowsky/">Contour EQ or FiiO Control</a> compares the two on the KA15, K13 R2R, Melody and Tiny A.</p>
+</section>
 
-<section class="plain" id="not-yet">
-  <h2>Not supported yet - device in hand, testing</h2>
-  <ul class="plain-list">
-<li>JadeAudio JA11</li>
-<li>Moondrop FreeDSP cable</li>
+<section class="dv-help" id="help-add" aria-labelledby="dv-help-h">
+  <h2 id="dv-help-h">Your DAC is not here?</h2>
+  <p class="dv-help-line">Every DAC is tested on a real unit before it goes into Contour, so I need the device in hand.</p>
+  <ul class="dv-ways">
+    <li><strong><svg class="dv-ic kofi" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#dv-ic-kofi"/></svg>Chip in:</strong> Contour is free and always will be. If you want to help it grow, tips on <a href="https://ko-fi.com/chronosaur" rel="noopener" target="_blank">Ko-fi</a> buy the next DACs to test and add.</li>
+    <li><strong><svg class="dv-ic parcel" viewBox="0 0 64 64" aria-hidden="true" focusable="false"><use href="#dv-ic-parcel"/></svg>Send a unit:</strong> if you make or sell DACs, send one over for testing. <a href="mailto:chronosaur@soundblooms.com">chronosaur@soundblooms.com</a></li>
+    <li><strong><svg class="dv-ic github" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><use href="#dv-ic-github"/></svg>Tell me which one you have:</strong> open a <a href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20" rel="noopener" target="_blank">device report</a> with its name and VID:PID. <a href="#h-find">How to find the VID:PID</a></li>
   </ul>
+  <p class="dv-help-end">No promises on timing, but every unit gets tested.</p>
 </section>
 
-<section class="plain" id="more">
-  <h2>Not on the list</h2>
-  <p class="note" style="margin-top:0">Other WalkPlay, FiiO, Moondrop and KT Micro DACs may follow once someone confirms them on real hardware. Own one? <a href="https://github.com/Chronosauros/contour/issues/new?template=device-report.yml&amp;title=Device%20report%3A%20">Report a device not on this list</a> with its name, VID:PID and USB name.</p>
-</section>
-<section class="plain" id="help-add">
-  <h2>Help add the next DAC</h2>
-  <p class="note" style="margin-top:0">Every DAC is tested on real hardware before it goes into Contour, so I need the device in hand.</p>
-  <ul class="plain-list" style="color:var(--text-dim);font-size:15px;margin:10px 6px">
-    <li><strong>Chip in:</strong> tips on <a href="https://ko-fi.com/chronosaur">Ko-fi</a> buy the next DAC.</li>
-    <li><strong>Send a unit:</strong> if you make or sell DACs, send one over for testing. <a href="mailto:chronosaur@soundblooms.com">chronosaur@soundblooms.com</a></li>
-  </ul>
-  <p class="note" style="margin-top:0">No promises on timing, but every unit gets tested.</p>
-</section>
-
-<section class="plain" id="find">
-  <h2>Help</h2>
-  <div class="groups">
+<div class="groups dv-find">
 <details class="grp" id="h-find"><summary><div class="sum-text"><h2>Find your VID:PID</h2><p>Contour does not show it, so here is how to look it up.</p></div><span class="chev" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></span></summary><div class="grp-body">
 <p><strong>Contour does not show the VID:PID or the USB name of a plugged-in device.</strong> Its service screen (long-press the status pill in the Library) shows the model name Contour matched, and a short log, but only for a device it already recognises. For an unknown device it tells you nothing, so use one of these instead:</p>
 <ul class="plain-list">
@@ -364,20 +594,16 @@ footer .links{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 14px}
 </ul>
 <p>Copy the USB product name exactly as shown, including any extra spaces: some names carry a trailing or double space, and Contour compares them character by character.</p>
 </div></details>
-  </div>
-</section>
+</div>
+</div>
+</main>
 
-<footer>
-  <p class="links"><a href="../">Home</a> <a href="../install/">Install</a> <a href="../guide/">Guide</a> <a href="https://github.com/Chronosauros/contour">Source code</a></p>
-  <ul>
-    <li><a href="https://soundblooms.com/" rel="noopener" target="_blank">Soundblooms</a> - the home of everything I make.</li>
-    <li>Source code: <a href="https://github.com/Chronosauros/contour">github.com/Chronosauros/contour</a></li>
-    <li>Licence: Apache 2.0</li>
-    <li>Privacy: <a href="../privacy/">Privacy policy</a> - the app has no internet permission, no analytics, no accounts; this website counts anonymous visits, without cookies</li>
-  </ul>
-  <p class="footer-icons"><a href="https://github.com/Chronosauros" rel="noopener" target="_blank" aria-label="GitHub profile" title="GitHub"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a><a href="https://www.reddit.com/user/T6_8K/" rel="noopener" target="_blank" aria-label="Reddit profile" title="Reddit"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 0C5.373 0 0 5.373 0 12c0 3.314 1.343 6.314 3.515 8.485l-2.286 2.286C.775 23.225 1.097 24 1.738 24H12c6.627 0 12-5.373 12-12S18.627 0 12 0Zm4.388 3.199c1.104 0 1.999.895 1.999 1.999 0 1.105-.895 2-1.999 2-.946 0-1.739-.657-1.947-1.539v.002c-1.147.162-2.032 1.15-2.032 2.341v.007c1.776.067 3.4.567 4.686 1.363.473-.363 1.064-.58 1.707-.58 1.547 0 2.802 1.254 2.802 2.802 0 1.117-.655 2.081-1.601 2.531-.088 3.256-3.637 5.876-7.997 5.876-4.361 0-7.905-2.617-7.998-5.87-.954-.447-1.614-1.415-1.614-2.538 0-1.548 1.255-2.802 2.803-2.802.645 0 1.239.218 1.712.585 1.275-.79 2.881-1.291 4.64-1.365v-.01c0-1.663 1.263-3.034 2.88-3.207.188-.911.993-1.595 1.959-1.595Zm-8.085 8.376c-.784 0-1.459.78-1.506 1.797-.047 1.016.64 1.429 1.426 1.429.786 0 1.371-.369 1.418-1.385.047-1.017-.553-1.841-1.338-1.841Zm7.406 0c-.786 0-1.385.824-1.338 1.841.047 1.017.634 1.385 1.418 1.385.785 0 1.473-.413 1.426-1.429-.046-1.017-.721-1.797-1.506-1.797Zm-3.703 4.013c-.974 0-1.907.048-2.77.135-.147.015-.241.168-.183.305.483 1.154 1.622 1.964 2.953 1.964 1.33 0 2.47-.81 2.953-1.964.057-.137-.037-.29-.184-.305-.863-.087-1.795-.135-2.769-.135Z"/></svg></a><a href="https://discord.gg/msgvnUG7js" rel="noopener" target="_blank" aria-label="Discord server" title="Discord"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg></a><a href="https://x.com/soundblooms" rel="noopener" target="_blank" aria-label="X profile" title="X"><svg viewBox="-2 -2 28 28" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z"/></svg></a></p>
-  <p>Contour is an unofficial project, not affiliated with or endorsed by CrinEar or any other brand listed here. Product names belong to their owners.</p>
-  <p>Made by Chronosaur</p>
+<footer class="fv">
+  <p class="fv-sentence">Contour is free and made by one person. Find a DAC for it on <a href="https://soundblooms.com/dacs" rel="noopener" target="_blank">Soundblooms</a>, or ask for yours on <a href="https://discord.gg/msgvnUG7js" rel="noopener" target="_blank">Discord</a>.</p>
+  <div class="fv-quiet">
+    <p class="fv-legal"><span>Made by <a href="https://soundblooms.com/about" rel="noopener" target="_blank">Chronosaur</a></span><a href="https://github.com/Chronosauros/contour">Source code</a><span>Apache 2.0</span><a href="/privacy/">Privacy policy</a></p>
+    <p class="fv-note">Contour is an unofficial project, not affiliated with or endorsed by CrinEar or any other brand listed here. Product names belong to their owners.</p>
+  </div>
 </footer>
 
 </div>
@@ -414,6 +640,26 @@ footer .links{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 14px}
   openHash();
   window.addEventListener("hashchange", openHash);
 
+  /* a link to the collapsed "Find your VID:PID" opens it, also when the address already ends in #h-find */
+  document.addEventListener("click", function(e){
+    var a = e.target.closest && e.target.closest('a[href^="#"]');
+    if (!a) return;
+    var el = document.getElementById(a.getAttribute("href").slice(1));
+    if (el && el.tagName === "DETAILS") el.open = true;
+  });
+
+  /* the whole row is the link: the stretched link covers most of it, this covers the cells that keep their own tooltip */
+  Array.prototype.forEach.call(document.querySelectorAll("tr.dv-row"), function(row){
+    var link = row.querySelector("a.dv-link");
+    if (!link) return;
+    row.addEventListener("click", function(e){
+      if (e.target.closest("a")) return;
+      var sel = window.getSelection && window.getSelection();
+      if (sel && String(sel).length) return;
+      if (e.metaKey || e.ctrlKey || e.shiftKey) { window.open(link.href, "_blank"); return; }
+      window.location.href = link.href;
+    });
+  });
 })();
 </script>
 </body>

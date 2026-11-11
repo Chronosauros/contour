@@ -33,7 +33,7 @@ notes, and the devices and ideas for later; nothing new is enabled until it is c
 - Open: a test rig measures amplitude, and ALL PASS changes only the phase, so for ALL PASS the evidence is that it leaves the amplitude alone.
 
 ## CrinEar Protocol Max (WalkPlay SchemeNo16)
-- Supported since Contour 1.3.0, tested by a community member on 02.10.2026 (8 bands, peak and shelf filters, no crashes; a small pop when sending is normal - the dongle saves to its memory): 10-band PEQ with native shelves, host pregain, strict read-back; A/B off.
+- Supported since Contour 1.3.0, first tried by a community member on 02.10.2026; tested by the developer on hardware and on a test rig in November 2026 (firmware 1.4; a small pop when sending is normal - the dongle saves to its memory): 10-band PEQ with native shelves, host pregain, strict read-back; A/B off.
 - Protocol: 10 bands, +-10 dB, low and high shelf, no frequency/Q compensation, pregain via command 0x03.
 
 ## Moondrop Dawn Pro 2 (Moondrop protocol)
