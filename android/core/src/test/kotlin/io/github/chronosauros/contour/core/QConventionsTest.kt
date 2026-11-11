@@ -167,10 +167,10 @@ class QConventionsTest {
     }
 
     @Test fun `a WalkPlay record scale reaches the caps and a read-back divides by it before it compares`() {
-        // TRN: shelves x sqrt2 in the register, peaks as set; Micro, Max: no scale
+        // TRN and Max (the Max plays a shelf at register / sqrt2 too, dac-lab run 2026-11-10-crinear-protocol-max-13): shelves x sqrt2 in the register, peaks as set; Micro: no scale
         val trn = DeviceProtocol.TRN.caps
         assertEquals(root2, trn.shelfQScale); assertEquals(1.0, trn.peakQScale)
-        assertEquals(1.0, DeviceProtocol.MICRO.caps.shelfQScale); assertEquals(1.0, DeviceProtocol.MAX.caps.shelfQScale)
+        assertEquals(1.0, DeviceProtocol.MICRO.caps.shelfQScale); assertEquals(root2, DeviceProtocol.MAX.caps.shelfQScale); assertEquals(1.0, DeviceProtocol.MAX.caps.peakQScale)
         assertEquals(root2, WalkPlay.bandWrite(0, Band("s", FilterType.LOW_SHELF, 100.0, 3.0, 1.0), trn).qScale)
         assertEquals(1.0, WalkPlay.bandWrite(0, Band("p", FilterType.PEAK, 100.0, 3.0, 1.0), trn).qScale)
         assertEquals(1.0, WalkPlay.bandWrite(0, Band("l", FilterType.LOW_PASS, 100.0, 0.0, 1.0), trn).qScale)

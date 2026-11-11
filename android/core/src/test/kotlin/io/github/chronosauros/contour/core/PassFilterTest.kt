@@ -198,8 +198,13 @@ class PassFilterTest {
         }
     }
 
-    @Test fun `Protocol Max refuses the pass types, the Micro takes LP and HP only since 25 October 2026, and the WalkPlay encoder never maps BP or AP to a peak`() {
-        for (t in pass) assertIs<DevicePlan.Rejected>(DeviceProtocol.MAX.plan(listOf(band(t)), null), "Max $t")
+    @Test fun `Protocol Max and the Micro take LP and HP only since 25 October 2026 and 10 November 2026, and the WalkPlay encoder never maps BP or AP to a peak`() {
+        for (t in pass) {
+            val plan = DeviceProtocol.MAX.plan(listOf(band(t)), null)
+            if (t == FilterType.LOW_PASS || t == FilterType.HIGH_PASS) assertIs<DevicePlan.Ready>(plan, "Max $t") else assertIs<DevicePlan.Rejected>(plan, "Max $t")
+        }
+        // the Max's LP and HP are ProtocolMax.CANDIDATES_VERIFIED's (the phone run of 10.11.2026): without them the Max refuses all four
+        for (t in pass) assertIs<DevicePlan.Rejected>(DeviceProtocol.MAX.plan(listOf(band(t)), null, ProtocolMax.capabilities(false, false)), "Max without the candidates $t")
         for (t in pass) {
             val plan = DeviceProtocol.MICRO.plan(listOf(band(t)), null)
             if (t == FilterType.LOW_PASS || t == FilterType.HIGH_PASS) assertIs<DevicePlan.Ready>(plan, "Micro $t") else assertIs<DevicePlan.Rejected>(plan, "Micro $t")
@@ -208,7 +213,7 @@ class PassFilterTest {
         assertFailsWith<IllegalArgumentException> { WalkPlay.typeCode(FilterType.ALL_PASS) }
         assertEquals(4, WalkPlay.typeCode(FilterType.LOW_PASS)); assertEquals(5, WalkPlay.typeCode(FilterType.HIGH_PASS))
         assertEquals(setOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF, FilterType.LOW_PASS, FilterType.HIGH_PASS), DeviceProtocol.MICRO.caps.types)
-        assertEquals(setOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF), DeviceProtocol.MAX.caps.types)
+        assertEquals(setOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF, FilterType.LOW_PASS, FilterType.HIGH_PASS), DeviceProtocol.MAX.caps.types)
     }
 
     // ---- reading a pass band back from the DAC ----------------------------------------------------------------

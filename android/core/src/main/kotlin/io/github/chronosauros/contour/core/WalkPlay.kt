@@ -170,6 +170,8 @@ object WalkPlay {
     data class BandWrite(
         val index: Int, val freq: Double, val gainDb: Double, val q: Double, val typeCode: Int,
         val qScale: Double = 1.0, val rateHz: Double = DESIGN_FS,
+        /** The biquad is sent wrapped to int32 when it overflows signed Q30 ([DeviceCapabilities.wrapQ30]) instead of being refused. */
+        val wrapQ30: Boolean = false,
     ) {
         /** The Q register value this write stores. */
         internal val qRegister: Int get() = toInt32(jsRound(q * qScale * 256)) and 0xFFFF
@@ -194,7 +196,7 @@ object WalkPlay {
 
     /** [bandWrite] for a DAC with measured conventions: the Q register scale of the band's type and the coefficient rate of [caps]. */
     fun bandWrite(index: Int, band: Band, caps: DeviceCapabilities): BandWrite =
-        bandWrite(index, band).copy(qScale = caps.qScale(band.type), rateHz = caps.coefficientRateHz)
+        bandWrite(index, band).copy(qScale = caps.qScale(band.type), rateHz = caps.coefficientRateHz, wrapQ30 = caps.wrapQ30)
 
     /**
      * The decoded band of a read-back, in the intended domain: the register Q divided by the scale of its type. The inverse of [bandWrite]'s Q register
@@ -293,10 +295,11 @@ object WalkPlay {
      * computeIIRFilter: 5 x int32 LE, Q30 - b0, b1, b2, -a1, -a2 normalised by a0, RBJ at [rateHz]. The vendor's tool designs for 96 kHz ([DESIGN_FS], the default); the Micro's
      * and the Echo-A's DSP runs the coefficients at 93 750 Hz, so their writes design for that (`peq.coefficientRateHz`, carried by [BandWrite.rateHz]).
      */
-    fun computeIir(freq: Double, gainDb: Double, q: Double, typeCode: Int, rateHz: Double = DESIGN_FS): ByteArray {
+    fun computeIir(freq: Double, gainDb: Double, q: Double, typeCode: Int, rateHz: Double = DESIGN_FS, wrapQ30: Boolean = false): ByteArray {
         val values = scaledCoefficients(freq, gainDb, q, typeCode, rateHz)
         require(values.all { it.isFinite() }) { "non-finite biquad coefficients" }
-        q30Violation(values)?.let { throw Q30Overflow(it) }
+        // [wrapQ30]: devicePEQ's quantizer rounds and its byte split (`value >> (8 * i)`) takes the low 32 bits, so an overflowing coefficient goes out wrapped; only a DAC that plays the registers asks for it
+        if (!wrapQ30) q30Violation(values)?.let { throw Q30Overflow(it) }
         val out = ByteArray(20)
         values.forEachIndexed { i, v ->
             val n = toInt32(if (i < 3) jsRound(v) else -jsRound(-v))
@@ -314,8 +317,8 @@ object WalkPlay {
 
     /** Filter write `01 09 18 00 i 00 00` + biquad + freq + q + gain + type + 00 + slot + 00 ([lenByte] 0x21 for the TRN). */
     fun bandWriteReport(w: BandWrite, slot: Int, lenByte: Int = BAND_LEN): ByteArray {
-        val biquad = computeIir(w.freq, w.gainDb, w.q, w.typeCode, w.rateHz)
-        q30ViolationQuantized(w)?.let { throw Q30Overflow(it) }
+        val biquad = computeIir(w.freq, w.gainDb, w.q, w.typeCode, w.rateHz, w.wrapQ30)
+        if (!w.wrapQ30) q30ViolationQuantized(w)?.let { throw Q30Overflow(it) }
         // The frequency register is truncated here; FreeDSP-Studio rounds. For whole Hz (every band the editor
         // makes) they agree, so Contour's rule stays as it is for every DAC.
         val f = toInt32(w.freq) and 0xFFFF

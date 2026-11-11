@@ -9,6 +9,7 @@ import android.hardware.usb.UsbManager
 import android.os.SystemClock
 import io.github.chronosauros.contour.core.DeviceTarget
 import io.github.chronosauros.contour.core.WalkPlay
+import io.github.chronosauros.contour.core.native.MoondropGen1Catalog
 import io.github.chronosauros.contour.core.native.NativeHidReports
 import java.io.IOException
 
@@ -22,11 +23,16 @@ import java.io.IOException
 class HidTransport private constructor(
     private val connection: UsbDeviceConnection,
     private val intf: UsbInterface,
-    private val epIn: UsbEndpoint,
+    private val epIn: UsbEndpoint?,
     private val epOut: UsbEndpoint?,
     private val nativeReports: NativeHidReports.Shape? = null,
     private val nativeReportId: Int? = null,
     private val sessionGuard: () -> Unit = {},
+    /**
+     * Moondrop gen 1 (DUSK-SP): every request is SET_REPORT(Output) and then, after this many ms, GET_REPORT(Input) on the control pipe; the cable does not answer on its interrupt endpoints, so
+     * there is no IN endpoint to read and no OUT endpoint to write. Null = every other DAC.
+     */
+    private val controlReplyWaitMs: Long? = null,
 ) : HidIo {
 
     companion object {
@@ -73,6 +79,8 @@ class HidTransport private constructor(
             val hids = firstConfigInterfaces(device).filter { it.interfaceClass == UsbConstants.USB_CLASS_HID }
             val target = DeviceIdentity.target(device) ?: throw IOException("Unsupported DAC")
             target.fiio?.let { return openNative(manager, device, hids, target, it.reportId, guard) }
+            // Moondrop gen 1 (DUSK-SP): report 1 on the Consumer page, control pipe only; opened through the descriptor that proves its 62-byte report.
+            target.gen1?.let { return openNative(manager, device, hids, target, MoondropGen1Catalog.REPORT_ID, guard, gen1 = it) }
             // Contour 1.6 families (Dawn Pro 2, Allegro Mini, Echo-A): report 0x4B, opened only through the report descriptor that proves its sizes.
             if (target.walkplay == null) return openNative(manager, device, hids, target, WalkPlay.REPORT_ID, guard)
             val p = requireNotNull(target.walkplay)
@@ -112,9 +120,9 @@ class HidTransport private constructor(
          * [reportId] in the same collection, each at least as big as [target]'s protocol needs ([NativeHidReports.minimumRawBytes]: FiiO 17, Allegro Mini 11, Dawn Pro 2
          * 37 and 38, Echo-A 64); nothing is written before this read-only proof. */
         private fun openNative(manager: UsbManager, device: UsbDevice, hids: List<UsbInterface>, target: DeviceTarget, reportId: Int,
-                               guard: () -> Unit): HidTransport {
+                               guard: () -> Unit, gen1: MoondropGen1Catalog.Model? = null): HidTransport {
             guard()
-            data class Target(val intf: UsbInterface, val input: UsbEndpoint, val output: UsbEndpoint?, val shape: NativeHidReports.Shape)
+            data class Target(val intf: UsbInterface, val input: UsbEndpoint?, val output: UsbEndpoint?, val shape: NativeHidReports.Shape)
             val connection = manager.openDevice(device) ?: throw IOException("openDevice failed (permission?)")
             try {
                 val targets = hids.filter { it.alternateSetting == 0 }.mapNotNull { h ->
@@ -129,8 +137,13 @@ class HidTransport private constructor(
                         require(n == length) { "Short HID descriptor read ($n of $length)" }
                         UsbLog.line("HID if ${h.id} report descriptor ${UsbLog.hex(descriptor)}")
                         val eps = (0 until h.endpointCount).map { h.getEndpoint(it) }.filter { it.type == UsbConstants.USB_ENDPOINT_XFER_INT }
-                        val shape = NativeHidReports.parse(descriptor, undefinedDesktop = true)
-                        shape.qualify(target, reportId)
+                        // gen 1: report 1 is on the Consumer page and exactly 62 bytes each way (its own rule); every other family: a vendor page and at least the size the protocol needs
+                        val shape = if (gen1 != null) NativeHidReports.parseGen1(descriptor) else NativeHidReports.parse(descriptor, undefinedDesktop = true)
+                        if (gen1 != null) shape.qualifyGen1() else shape.qualify(target, reportId)
+                        if (gen1 != null) {
+                            UsbLog.line("HID if ${h.id} native output via SET_REPORT control, replies via GET_REPORT control (no interrupt endpoint is used)")
+                            return@runCatching Target(h, null, null, shape)
+                        }
                         val outSize = shape.rawSize(reportId, NativeHidReports.Kind.OUTPUT)
                         val inSize = shape.rawSize(reportId, NativeHidReports.Kind.INPUT)
                         val input = eps.filter { it.direction == UsbConstants.USB_DIR_IN && it.maxPacketSize >= inSize }.singleOrNull()
@@ -144,14 +157,15 @@ class HidTransport private constructor(
                 val target = targets.singleOrNull() ?: throw IOException("No unambiguous descriptor-proven native HID interface")
                 guard()
                 if (!connection.claimInterface(target.intf, true)) throw IOException("claimInterface failed")
-                return HidTransport(connection, target.intf, target.input, target.output, target.shape, reportId, guard).also { it.drain() }
+                return HidTransport(connection, target.intf, target.input, target.output, target.shape, reportId, guard,
+                    controlReplyWaitMs = gen1?.replyWaitMs).also { it.drain() }
             } catch (e: Exception) {
                 connection.close(); throw e
             }
         }
     }
 
-    private val inBuf = ByteArray(maxOf(epIn.maxPacketSize, WalkPlay.REPORT_SIZE,
+    private val inBuf = ByteArray(maxOf(epIn?.maxPacketSize ?: 0, WalkPlay.REPORT_SIZE,
         nativeReports?.let { s -> nativeReportId?.let { id -> s.rawSizes[NativeHidReports.Key(id, NativeHidReports.Kind.INPUT)] } } ?: 0))
 
     /** Opened through its HID report descriptor (FiiO, native Moondrop, KT Micro and the read-only Echo-A): the report sizes are proven. */
@@ -172,7 +186,8 @@ class HidTransport private constructor(
 
     /** One input report, or null after [timeoutMs]. */
     override fun receive(timeoutMs: Int): ByteArray? {
-        val n = connection.bulkTransfer(epIn, inBuf, inBuf.size, timeoutMs.coerceAtLeast(1))
+        val ep = epIn ?: return null // gen 1: nothing arrives on an interrupt endpoint; the replies are GET_REPORT ([requestNative])
+        val n = connection.bulkTransfer(ep, inBuf, inBuf.size, timeoutMs.coerceAtLeast(1))
         if (n <= 0) return null
         val r = inBuf.copyOf(n)
         // Native: a report with our ID must have exactly the descriptor's Input size.
@@ -212,7 +227,7 @@ class HidTransport private constructor(
         val wire = requireNotNull(nativeReports).wire(id, kind, payload)
         UsbLog.tx(wire)
         val n = if (epOut != null) connection.bulkTransfer(epOut, wire, wire.size, WRITE_TIMEOUT_MS)
-            else connection.controlTransfer(0x21, 0x09, (kind.controlType shl 8) or id, intf.id, wire, wire.size, WRITE_TIMEOUT_MS)
+            else connection.controlTransfer(0x21, 0x09, (kind.controlType shl 8) or id, intf.id, wire, wire.size, WRITE_TIMEOUT_MS) // SET_REPORT; gen 1: 0x21 0x09 wValue 0x0201
         checkSession()
         require(n == wire.size) { "Short native output report: $n/${wire.size}" }
     }
@@ -220,6 +235,7 @@ class HidTransport private constructor(
     /** Native request: one outstanding query; stale queued input is dropped first. The reply is the payload
      * after the report ID. A timeout throws "Native request timed out" (NativeSession retries only reads). */
     override fun requestNative(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean): ByteArray {
+        controlReplyWaitMs?.let { return requestControl(id, payload, matches, it) }
         drain()
         sendNative(id, NativeHidReports.Kind.OUTPUT, payload)
         val deadline = SystemClock.elapsedRealtime() + REPLY_TIMEOUT_MS
@@ -232,6 +248,35 @@ class HidTransport private constructor(
             val p = requireNotNull(nativeReports).payload(id, NativeHidReports.Kind.INPUT, raw)
             if (matches(p)) { checkSession(); return p }
         }
+        throw IOException("Native request timed out or returned invalid state")
+    }
+
+    /**
+     * Moondrop gen 1: one request is SET_REPORT(Output, [id]) (the frame, padded to the descriptor's size), a wait of [waitMs], then GET_REPORT(Input, [id]) (0xA1 0x01 wValue 0x0101), the reply being the
+     * report the cable holds. A reply [matches] rejects (the cable has not answered yet, or still shows the previous one) is asked for again every 5 ms until [REPLY_TIMEOUT_MS] after the SET; then the
+     * same "Native request timed out" the interrupt transports throw, which the sessions retry for reads only.
+     */
+    private fun requestControl(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean, waitMs: Long): ByteArray {
+        val shape = requireNotNull(nativeReports)
+        sendNative(id, NativeHidReports.Kind.OUTPUT, payload)
+        val deadline = SystemClock.elapsedRealtime() + REPLY_TIMEOUT_MS
+        val size = shape.rawSize(id, NativeHidReports.Kind.INPUT)
+        var wait = waitMs
+        while (true) {
+            checkSession()
+            if (wait > 0) Thread.sleep(wait)
+            checkSession()
+            val raw = ByteArray(size)
+            val n = connection.controlTransfer(0xA1, 0x01, (NativeHidReports.Kind.INPUT.controlType shl 8) or id, intf.id, raw, size, REPLY_TIMEOUT_MS)
+            if (n == size && (raw[0].toInt() and 255) == id) {
+                UsbLog.rx(raw)
+                val p = shape.payload(id, NativeHidReports.Kind.INPUT, raw)
+                if (matches(p)) { checkSession(); return p }
+            }
+            if (SystemClock.elapsedRealtime() >= deadline) break
+            wait = 5
+        }
+        UsbLog.line("no reply to %02x %02x %02x %02x".format(id, payload[0], payload[1], payload[3]))
         throw IOException("Native request timed out or returned invalid state")
     }
 

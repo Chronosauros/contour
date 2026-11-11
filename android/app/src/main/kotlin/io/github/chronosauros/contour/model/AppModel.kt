@@ -58,6 +58,13 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     var lastSentId by mutableStateOf<String?>(null)
         private set
 
+    /**
+     * Counts what the person does to the EQ they will send: picking a profile in the Library, importing or creating one (all of them [choose] with the page opening) and every change of a band or the preamp
+     * (typed, dragged, undone). [Sender.presetFoot] compares it with the count at the last read or send of the DUSK-SP: until it moves, the foot button names the cable's preset instead of offering HOLD TO SEND.
+     */
+    var touches by mutableIntStateOf(0)
+        private set
+
     /** A page the UI should go to (set by the model or the review hooks, cleared by the pager). */
     var pageRequest by mutableStateOf<Int?>(null)
 
@@ -255,7 +262,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
             selectedBand = 0
             clampSelection()
         }
-        if (open) pageRequest = Page.TUNE
+        if (open) { pageRequest = Page.TUNE; touches++ }
         scheduleState()
     }
 
@@ -288,6 +295,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
             record(old.id, EqState(old))
             if (gestureOpen) gestureRecorded.add(old.id)
         }
+        if (t.bands != old.bands || t.preampDb != old.preampDb) touches++
         val next = t.copy(updatedAt = System.currentTimeMillis())
         profiles[i] = next
         scheduleSave(next, next.id)
@@ -606,7 +614,8 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         scheduleSave(p, p.id)
         currentId = p.id
         selectedBand = 0
-        if (open) pageRequest = Page.TUNE
+        // a new profile opened on Tune (import, NEW PROFILE) is a pick like a Library tap: the DUSK-SP foot turns to HOLD TO SEND
+        if (open) { pageRequest = Page.TUNE; touches++ }
         scheduleState()
         return p
     }

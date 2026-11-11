@@ -79,7 +79,7 @@ fun DebugScreen(device: DeviceController, onClose: () -> Unit) {
                     } + (device.error?.let { " - error: $it" } ?: ""),
                 )
                 if (device.protocol.isFamily) {
-                    val verified = device.protocol.run { moondrop?.hardwareVerified == true || ktMicro?.hardwareVerified == true || echo?.hardwareVerified == true } // Dawn Pro 2 and Allegro Mini since 25.10.2026
+                    val verified = device.protocol.run { moondrop?.hardwareVerified == true || ktMicro?.hardwareVerified == true || gen1?.hardwareVerified == true || echo?.hardwareVerified == true } // Dawn Pro 2 and Allegro Mini since 25.10.2026
                     Text(device.protocol.caps.name + if (device.protocol.readOnly) " - READ ONLY, not verified on hardware" else if (verified) "" else " - not verified on hardware")
                 } else if (device.protocol.experimental) {
                     Text(device.protocol.caps.name)

@@ -18,7 +18,9 @@
       "ignore the upstream WalkPlay-SchemeNo10 collision for this pair (core/native/FiioCatalog.kt:160)",
       "HID replies stop while no USB audio is streaming; the app keeps a silent output track on the DAC (core/native/FiioCatalog.kt:65-67)",
       "the Android USB attach filter is generated from this record at build time",
-      "HID interface 0, report 7, 64 bytes (research/protocol/PROTOCOL.md:201)"
+      "HID interface 0, report 7, 64 bytes (research/protocol/PROTOCOL.md:201)",
+      "Q 0.1-10 is the code's range; FiiO Control and the FiiO web app list 0.25-8 (kept as is)",
+      "after a filter change the echo and the read-back come late, so a restore re-reads before it declares a miss; an earlier filter write hung HID until a replug (17.10.2026)"
     ]
   },
   "family": "fiio",
@@ -72,7 +74,7 @@
   ],
   "info": ["rate", "fw"],
   "preview": { "volume": 34, "volume-steps": 0, "balance": 0, "filter": 4, "output": 0, "dre": 1, "uac": 1, "brightness": 5, "screen-off": 2, "rotation": 0, "language": 1, "rate": 2, "fw": 10106 },
-  "reset": { "offered": false, "src": "FiiO Control resetDefault is configured (command 0x21) but show:false (scope-fiio.md:71,81-82); the vendor software offers none, Contour offers it anyway by owner decision 21.10.2026 (FiioReset.OFFERED); proven on the phone 22.10.2026 (run:2026-10-22-fiio-ka15-05-phone, FiioReset.VERIFIED)" },
+  "reset": { "offered": true, "src": "FiiO Control resetDefault is configured (command 0x21) but show:false (scope-fiio.md:71,81-82); the vendor software hides it, Contour offers it anyway by owner decision 21.10.2026 (FiioReset.OFFERED); proven on the phone 22.10.2026 (run:2026-10-22-fiio-ka15-05-phone, FiioReset.VERIFIED)" },
   "hwVolume": { "inScope": true, "src": "vendor HID volume 0x02 is shown by FiiO Control (VB) and read on hardware; write proven on the phone 21.10.2026 (run:2026-10-21-fiio-ka15-02-phone; scope-fiio.md:56,73,85); UAC Feature Unit not used by vendor software" },
   "upstream": {
     "sourceUrl": "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/usbDeviceConfig.js#L360",
@@ -86,135 +88,15 @@
     "codecBlockers": [],
     "evidenceCaveats": ["Explicit FiiO route for exact FIIO KA15 2972:0104; ignore upstream WalkPlay-SchemeNo10 collision"]
   },
-  "conflicts": [
-    { "field": "peq.q", "values": ["0.1-10 code", "0.25-8 FiiO Control and FiiO web app"], "src": ["core/native/FiioCatalog.kt:142-143", "scope-fiio.md:36,50"], "resolution": "unchanged in 1.6 (code)" },
-    { "field": "peq.heldTypes", "values": ["BP/LP/HP/AP held back: default type map of three (code)", "both vendor apps offer all 7 types on the KA15 (VB, default list, no override for this model)"], "src": ["core/native/FiioCatalog.kt:45-48,168", "scope-fiio.md:31-35,76-78"], "resolution": "offered in every build since 2026-10-25 (FiioKa15.PASS_FILTERS_VERIFIED = true): the PC bench wrote and measured all four (run:2026-10-24-fiio-ka15-02-mac T07, run:2026-10-24-fiio-ka15-06-mac-eqtest) and the phone wrote and read them back (run:2026-10-25-contour16-r7-phone-nothing); the types sit in this record as held, the app adds them behind the flag" },
-    { "field": "slots.bypass", "values": ["10 hardware (Close EQ)", "240 FiiO Control config"], "src": ["core/native/FiioCatalog.kt:149", "scope-fiio.md:41-42,77"], "resolution": "10 (hardware, code)" },
-    { "field": "settings.filter.write", "values": ["not write-verified in code", "vendor app writes it", "17.10.2026 a write hung HID until replug"], "src": ["core/native/DacSettings.kt:174", "scope-fiio.md:59,92,246"], "resolution": "closed 21.10.2026: the filter write was proven on the phone (run:2026-10-21-fiio-ka15-02-phone, 3 -> 4, read-back each time); the echo and the read-back come late after a filter change, so the restore re-reads before it declares a miss (NativeSession.restoreAfterReset)" },
-    { "field": "reset.offered", "values": ["hidden in FiiO Control (show:false)", "command 0x21 configured"], "src": ["scope-fiio.md:71,81-82,244"], "resolution": "owner decision 21.10.2026: Contour offers the reset on the KA15 although FiiO hides it; same flow as the Melody and Tiny A (backup, consent, 0x21, unplug and plug in, re-read, restore); proven 22.10.2026 on the Pixel with Contour perf 830153f (run:2026-10-22-fiio-ka15-05-phone: fw 10106, replug, 6 changes, restore OK, compare identical, 10 saves without a hang)" },
-    { "field": "driver.hardwareVerified", "values": ["true in code (read, write, persistence confirmed 04.10.2026)", "design rule: pcBench + persistence + phone"], "src": ["core/native/FiioCatalog.kt:171"], "resolution": "code value kept; the evidence axes below satisfy the rule" }
-  ],
-  "evidence": {
-    "bands": {
-      "firmware": "V1.1.6 (bcdDevice 0x0116)",
-      "source": "https://www.fiio.com/ka15 states ten bands (number only)",
-      "vendorApp": "web app 2026-10-03: count 0x18 = 10 (advbeta-reddit-astra@39c16e3:research/protocol/fiio-ka15-webhid-capture-2026-10-03.md:29)",
-      "pcBench": "run:2026-10-20-fiio-ka15-01 USER1 read",
-      "persistence": null,
-      "phone": "Pixel 2026-10-04 full 10-band read (advbeta-reddit-astra@39c16e3:research/protocol/fiio-ka15-webhid-capture-2026-10-03.md:54)",
-      "acoustic": null
-    },
-    "types.PEAK": {
-      "firmware": "V1.1.6 (bcdDevice 0x0116)",
-      "source": "devicePEQ peq10Band12dBAllFilters7",
-      "vendorApp": "web app 2026-10-03: echo rounds Q up 1-2 steps (advbeta-reddit-astra@39c16e3:research/protocol/fiio-ka15-webhid-capture-2026-10-03.md:37)",
-      "pcBench": "run:2026-10-20-fiio-ka15-09-eqtest PK 1 kHz Q 0.7/2/5 +5/-6 dB, 6 of 6 PASS, max 0.006 dB",
-      "persistence": null,
-      "phone": "Pixel 2026-10-04 sends to USER1-3; VERIFIED 2026-10-10 and 2026-10-13",
-      "acoustic": "run:2026-10-20-fiio-ka15-04-fr USER1 minus Close EQ vs bands: max 0.010 dB, RMS 0.003 dB (44.1 kHz stream)"
-    },
-    "types.LOW_SHELF": {
-      "firmware": "V1.1.6 (bcdDevice 0x0116)",
-      "source": null,
-      "vendorApp": "web app 2026-10-03: LS code 1",
-      "pcBench": "research/protocol/PROTOCOL.md:225-227 registers written and read over HID",
-      "persistence": null,
-      "phone": "Pixel 2026-10-04 BASS SHELF (LS 80 Hz +4 dB) to USER2",
-      "acoustic": "run:2026-10-20-fiio-ka15-09-eqtest LS 100 Hz +5, LS 400 Hz -6 PASS, shelf Q = register / sqrt2 (research/protocol/PROTOCOL.md:228-230)"
-    },
-    "types.HIGH_SHELF": {
-      "firmware": "V1.1.6 (bcdDevice 0x0116)",
-      "source": null,
-      "vendorApp": "web app 2026-10-03: HS code 2",
-      "pcBench": "research/protocol/PROTOCOL.md:225-227",
-      "persistence": null,
-      "phone": null,
-      "acoustic": "run:2026-10-20-fiio-ka15-09-eqtest HS 3 kHz +5, HS 8 kHz -6 PASS, max 0.010 dB"
-    },
-    "types.pass": {
-      "firmware": null,
-      "source": "devicePEQ lists all 7 types",
-      "vendorApp": "FiiO Control and web app default type list (scope-fiio.md:31-35,76)",
-      "pcBench": "run:2026-10-24-fiio-ka15-02-mac S2 T07: LP 4, HP 5, BP 3, AP 6 each written to USER1 and read back as its own type (verified)",
-      "persistence": null,
-      "phone": "Nothing Phone 2026-10-25, perf APK of 0a99e04, run:2026-10-25-contour16-r7-phone-nothing: LP 16000, HP 25, BP 2000, AP 500 sent in a 10-band profile to slot 7 and read back as types 4, 5, 3, 6 (VERIFIED)",
-      "acoustic": "run:2026-10-24-fiio-ka15-06-mac-eqtest: LP 8000, HP 100, BP 1000, AP 1000 acoustic PASS"
-    },
-    "preamp": {
-      "firmware": "V1.1.6 (bcdDevice 0x0116)",
-      "source": null,
-      "vendorApp": "FiiO Control and web app show the raw register (research/protocol/PROTOCOL.md:235)",
-      "pcBench": "run:2026-10-20-fiio-ka15-09-eqtest preamp -6 and -3 dB in USER2: level -6.001 / -3.001 dB, PASS",
-      "persistence": null,
-      "phone": "Pixel 2026-10-04 preamp -4.0 AUTO, register +8.0, level -4.00 dB; Pixel 2026-10-26 (FW 1.1.6, play-store/bug-2026-10-26-ka15-fractional-preamp.md): a fractional preamp resets the DAC during the send (-4.5, -3.5, -2.5 dB = register 7.5, 8.5, 9.5), every whole dB passes (-6, -5, -4, -3, -2): the plan rounds the preamp down to a whole dB (preamp.wholeDb)",
-      "acoustic": "run:2026-10-20-fiio-ka15-04-fr USER1 plays 5.00 dB below Close EQ = register 7 - 12 dB"
-    },
-    "slots.write": {
-      "firmware": "V1.1.6 (bcdDevice 0x0116)",
-      "source": null,
-      "vendorApp": "web app 2026-10-03: USER1-3 = 7-9 (advbeta-reddit-astra@39c16e3:research/protocol/fiio-ka15-webhid-capture-2026-10-03.md:18)",
-      "pcBench": "run:2026-10-20-fiio-ka15-05-fr presets over USB, select 7 and 10",
-      "persistence": "Pixel 2026-10-04 USER2 content survived unplug and replug (advbeta-reddit-astra@39c16e3:research/protocol/fiio-ka15-webhid-capture-2026-10-03.md:67)",
-      "phone": "Pixel 2026-10-04 writes to USER1/2/3 with and without switching",
-      "acoustic": null
-    },
-    "names": {
-      "firmware": "V1.1.6 (bcdDevice 0x0116)",
-      "source": null,
-      "vendorApp": "web app 2026-10-03: USER1 -> TEST1 (advbeta-reddit-astra@39c16e3:research/protocol/fiio-ka15-webhid-capture-2026-10-03.md:22-24)",
-      "pcBench": "Windows rename script: 7 characters, clean name",
-      "persistence": "Pixel 2026-10-04 name NIGHTFA survived replug",
-      "phone": "Pixel 2026-10-04 rename by long press, clean read",
-      "acoustic": null
-    },
-    "setting.write.screen": {
-      "firmware": "V1.1.6",
-      "source": null,
-      "vendorApp": "FiiO Control 4.6.2 config lists brightness, screen off, rotation, language (scope-fiio.md:49,64-67)",
-      "pcBench": null,
-      "persistence": null,
-      "phone": "Pixel 2026-10-17: four screen settings written, read, restored (scope-fiio.md:64-67)",
-      "acoustic": null
-    },
-    "setting.write.sound": {
-      "firmware": "V1.1.6 (fw 10106)",
-      "source": null,
-      "vendorApp": "FiiO Control 4.6.2 config lists them (scope-fiio.md)",
-      "pcBench": null,
-      "persistence": null,
-      "phone": "run:2026-10-21-fiio-ka15-02-phone Contour perf 1c307ba, write a neighbour value, read back, write the original, read back: PASS for volume (0x02, one step down only), volume-steps (0x0c), balance (0x07), filter (0x03), output Class AB/H/AB (0x05), dre (0x32); the same run proves brightness, screen-off, rotation and language again (0x0e, 0x0f, 0x10, 0x11). USB audio (0x20) is never written",
-      "acoustic": null
-    }
-  },
-  "src": {
-    "peq.peakQScale": ["run:2026-10-20-fiio-ka15-09-eqtest (PK 1 kHz Q 0.7 / 2 / 5 +5 / -6 dB, 6 of 6 PASS with the register as Q)", "core/native/FiioCatalog.kt (FiioConfig.peakQScale)"],
-    "usb.vid": ["core/DeviceTarget.kt:164", "core/native/FiioCatalog.kt:158"],
-    "usb.pid": ["core/native/FiioCatalog.kt:158"],
-    "usb.productName": ["core/native/FiioCatalog.kt:136,158"],
-    "usb.hidInterface": ["research/protocol/PROTOCOL.md:201 (measured; the app picks the interface by report descriptor, android/app/src/main/kotlin/io/github/chronosauros/contour/usb/HidTransport.kt:120-146)"],
-    "driver.reportId": ["core/native/FiioCatalog.kt:138"],
-    "driver.saveCommand": ["core/native/FiioCatalog.kt:144"],
-    "driver.compensation": ["core/native/FiioCatalog.kt:151-152"],
-    "driver.hardwareVerified": ["core/native/FiioCatalog.kt:171"],
-    "peq.bands": ["core/native/FiioCatalog.kt:139"],
-    "peq.fixedBandCount": ["core/native/FiioCatalog.kt:52-54,161"],
-    "peq.gainDb": ["core/native/FiioCatalog.kt:140-141"],
-    "peq.q": ["core/native/FiioCatalog.kt:142-143"],
-    "peq.freqHz": ["core/native/FiioCatalog.kt:49-51 (defaults)"],
-    "peq.types": ["core/native/FiioCatalog.kt:45-48 (default map PK 0, LS 1, HS 2)"],
-    "peq.heldTypes": ["core/native/FiioCatalog.kt:11-14 (codes 3-6 from the K13 / Tiny A capture), :47"],
-    "peq.shelfQScale": ["core/native/FiioCatalog.kt:73-76,169 (sqrt(2.0), not a decimal literal)"],
-    "preamp": ["core/native/FiioCatalog.kt:77-79,104-106,170", "core/DeviceTarget.kt:79 (preampStep: whole dB where preamp.wholeDb)", "core/native/FiioCodec.kt:100 (send floors to whole dB)"],
-    "slots": ["core/native/FiioCatalog.kt:145-149,166"],
-    "slots.names": ["core/native/FiioCatalog.kt:68-70,93 (nameLength default 7)"],
-    "pacing": ["core/native/FiioCatalog.kt:58-67,172"],
-    "pacing.sessionDelays": ["not in the record: family-wide 100/100/300/800 ms after count / before save / after select / after save (core/native/FiioCodec.kt:43-47)"],
-    "readback.qSlack": ["core/native/FiioCatalog.kt:55-57,162"],
-    "settings": ["core/native/DacSettings.kt:120-155,173-177"],
-    "info": ["core/native/DacSettings.kt:185-190"],
-    "preview": ["core/native/DacSettings.kt:201-204"],
-    "upstream": ["core/native/FiioCatalog.kt:118,153-157,160", "android/core/src/test/kotlin/io/github/chronosauros/contour/core/NativeFiioTest.kt:75-98 (oracle, status beta-unverified)"],
-    "reset": ["scope-fiio.md:71,81-82"],
-    "hwVolume": ["core/native/DacSettings.kt:120-121", "scope-fiio.md:56,73,85-87"]
+  "tested": {
+    "date": "2026-10-26",
+    "firmware": "V1.1.6 (bcdDevice 0x0116)",
+    "contour": "1.6 perf builds",
+    "rangesAccepted": { "result": "pass", "note": "Ten bands, USER1-3, all seven filter types and the preamp written and read back on the PC and on phones. A fractional preamp (-4.5, -3.5, -2.5 dB) resets the DAC during the send while every whole dB passes, so the plan rounds the preamp down to a whole dB." },
+    "acoustic": { "result": "pass", "note": "PK and both shelves within 0.010 dB at a 44.1 kHz stream (shelf Q = register / sqrt2); LP, HP, BP and AP passed in a later run; the preamp played -6.001 and -3.001 dB for -6 and -3. USER presets play 12 dB below Close EQ (register offset 12 dB)." },
+    "persistence": { "result": "pass", "note": "USER2 content and its name survived unplug and replug (Pixel)." },
+    "settings": { "result": "pass", "note": "Volume, volume steps, balance, filter, output, DRE, brightness, screen off, rotation and language written, read back and restored on a phone; the USB audio row is never written." },
+    "beyondVendor": "FiiO Control and the FiiO web app list all seven filter types for the KA15; Contour offers them since 2026-10-25 (written and read back on the PC and a phone). FiiO Control hides the factory reset (command 0x21); Contour offers FACTORY RESET with a saved copy first (proven on a phone 2026-10-22: replug, six changes, restore OK).",
+    "runs": ["run:2026-10-20-fiio-ka15-01", "run:2026-10-20-fiio-ka15-04-fr", "run:2026-10-20-fiio-ka15-05-fr", "run:2026-10-20-fiio-ka15-09-eqtest", "run:2026-10-21-fiio-ka15-02-phone", "run:2026-10-22-fiio-ka15-05-phone", "run:2026-10-24-fiio-ka15-02-mac", "run:2026-10-24-fiio-ka15-06-mac-eqtest", "run:2026-10-25-contour16-r7-phone-nothing"]
   }
 }

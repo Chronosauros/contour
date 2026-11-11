@@ -54,7 +54,11 @@ sealed interface SettingWriteOutcome {
 data class WriteTestResult(val id: String, val from: Int?, val to: Int?, val back: Int?, val restored: Int?, val result: String, val extra: String? = null) {
     fun line() = "WRITETEST $id from=${from ?: "none"} to=${to ?: "none"} back=${back ?: "none"} restored=${restored ?: "none"} result=$result"
 }
-data class NativeWriteResult(val verified: Boolean, val reason: String?, val readback: NativeState?)
+/**
+ * The outcome of a FiiO write. [pending]: the DAC leaves the USB bus on SAVE ([FiioConfig.disconnectOnSave], the JA11), so the session ends at the SAVE frame: nothing is verified and nothing is read back here, [expected] is what the
+ * first read after the DAC is back must show ([FiioCodec.matches]); [verified] is false and [readback] null until then.
+ */
+data class NativeWriteResult(val verified: Boolean, val reason: String?, val readback: NativeState?, val expected: FiioSnapshot? = null, val pending: Boolean = false)
 
 /** No mutation on read, qualification or local preflight. Every callback is guarded both sides. */
 class NativeSession(val target: DeviceTarget, private val port: NativePort) {
@@ -270,7 +274,8 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
             val echo = request(frame.reportId, tx) { p -> p.size >= 6 && p[0] == 0xAA.toByte() && p[1] == 0x0A.toByte() && p[4] == cmd }
             log("settings ${s.id} SET RX ${hex(echo)}")
         } catch (e: java.io.IOException) {
-            if (!isReplyTimeout(e)) throw e
+            // a row that makes the DAC leave the bus ([DacSetting.reconnectsAfterWrite]) may lose its echo to the detach: not an error, the read after it is back decides
+            if (!isReplyTimeout(e) && !s.reconnectsAfterWrite) throw e
             log("settings ${s.id} SET no echo")
         }
         pause(gap)
@@ -315,6 +320,27 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
         val c = codec()
         val s = target.settings.firstOrNull { it.id == id } ?: throw IllegalArgumentException("$id is not in the ${target.caps.name} list")
         writeOne(c, s, value, log)
+    }
+    /**
+     * The SET of a setting whose write makes the DAC leave the USB bus ([DacSetting.reconnectsAfterWrite]: the JA11's in-line mic switch) and nothing after it: the frame, its echo if one still arrives, no read-back, no guard after it
+     * (the session is gone or going). Returns the value the caller must find with a settings read once the DAC is back ([writeSetting] reads back in the same session and is for rows that stay on the bus). Same refusals as [writeSetting].
+     */
+    fun sendSettingThenLeave(id: String, value: Int, log: (String) -> Unit = {}) {
+        port.guard()
+        val c = codec()
+        val s = target.settings.firstOrNull { it.id == id } ?: throw IllegalArgumentException("$id is not in the ${target.caps.name} list")
+        require(s.reconnectsAfterWrite) { "${s.label} does not make the DAC leave the bus: use writeSetting" }
+        val frame = c.setSetting(s, value)
+        val tx = frame.payload()
+        val cmd = tx[4]
+        pause((ProbePlan.fiioGapMs(c.config) ?: 0).toLong())
+        log("settings ${s.id} SET TX ${hex(tx)} (the DAC leaves the bus after it)")
+        try {
+            request(frame.reportId, tx) { p -> p.size >= 6 && p[0] == 0xAA.toByte() && p[1] == 0x0A.toByte() && p[4] == cmd }
+            log("settings ${s.id} SET echoed")
+        } catch (e: java.io.IOException) {
+            log("settings ${s.id} SET no echo (${e.message}): the DAC may have left the bus with the frame")
+        }
     }
     /**
      * The write self-test (perf and debug builds, `--es writetest <id> [--ei to <v>]`): read the original, write [to] (default: the next option,
@@ -430,19 +456,23 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
     }
     /** [targetSlot]: the USER slot chosen in the app (KA15 slot picker); null = the target's fixed destination.
      * [onProgress] (done, total): the HID frames completed so far out of those planned; called on the calling thread. */
-    fun write(profile: Profile, explicitHold: Boolean, targetSlot: Int? = null, onProgress: ((done: Int, total: Int) -> Unit)? = null): NativeWriteResult = guarded {
+    fun write(profile: Profile, explicitHold: Boolean, targetSlot: Int? = null, onProgress: ((done: Int, total: Int) -> Unit)? = null): NativeWriteResult {
+        port.guard()
+        // A DAC that leaves the USB bus on SAVE ([FiioConfig.disconnectOnSave]) ends the session at the SAVE frame: no guard after it (the session is gone or going), the result is pending.
+        return writeBody(profile, explicitHold, targetSlot, onProgress).also { if (!it.pending) port.guard() }
+    }
+    private fun writeBody(profile: Profile, explicitHold: Boolean, targetSlot: Int?, onProgress: ((done: Int, total: Int) -> Unit)?): NativeWriteResult {
         require(explicitHold) { "HOLD TO SEND required" }
         require(target.issues(profile).isEmpty()) { target.issues(profile).joinToString("; ") }
-        // Stable builds carry only devices whose save can be read back in the same session (no reconnect proof).
-        require(!requireNotNull(target.fiio).disconnectOnSave) { "Save needs a reconnect proof; not supported" }
         // Frames planned: the read before, select + check + backup read, preamp + count + one per band, save, the read-back, the name.
         val fiio = requireNotNull(target.fiio)
+        val leavesOnSave = fiio.disconnectOnSave
         val readFrames = 3 + codec().padToDeviceCount(profile.bands).size + (if (melody) 0 else 1) + (if (fiio.userSlotNames) fiio.userSlots.size else 0)
         progress = onProgress
         stepsDone = 0
-        stepsTotal = readFrames + (2 + readFrames) + (2 + codec().padToDeviceCount(profile.bands).size) + 1 + readFrames + (if (fiio.userSlotNames) 2 else 0)
+        stepsTotal = readFrames + (2 + readFrames) + (2 + codec().padToDeviceCount(profile.bands).size) + 1 + (if (leavesOnSave) 0 else readFrames + (if (fiio.userSlotNames) 2 else 0))
         onProgress?.invoke(0, stepsTotal)
-        try {
+        return try {
         when (val before = read()) {
             is NativeState.Fiio -> {
                 val c = before.codec
@@ -471,6 +501,16 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
                     pause(c.config.writeGapMs.toLong())
                 }
                 pause(p.delayBeforeSaveMs.toLong())
+                if (leavesOnSave) {
+                    // The DAC leaves the USB bus after SAVE (devicePEQ: the JA11): the frame is the last thing asked of it - no echo, no wait, no read, no guard (the session is gone or going). Nothing is verified here:
+                    // the first read after the DAC is back must show [FiioWritePlan.expected] (the app: DeviceController's pending save; the bench: read-plan or parse --expect).
+                    port.guard()
+                    // An IOException here is the transport's session check after the transfer (the DAC detached with the frame): the frame went out, and the read after the DAC is back decides, so it is pending, not a failure.
+                    // A frame that did not go out is no IOException (a short report is an IllegalArgumentException) and the read after it would not match.
+                    try { port.send(p.save.reportId, NativeHidReports.Kind.OUTPUT, p.save.payload()) } catch (e: java.io.IOException) { port.log("SAVE: the session ended with the frame (the DAC left the bus): ${e.message}") }
+                    frameDone()
+                    return NativeWriteResult(false, null, null, expected = p.expected, pending = true)
+                }
                 if (melody) saveMelody(p.save) else if (c.config.consumeWriteEchoes) saveKa15(p.save) else send(p.save.reportId, p.save.payload())
                 pause(p.delayAfterSaveMs.toLong())
                 val back = if (melody) {

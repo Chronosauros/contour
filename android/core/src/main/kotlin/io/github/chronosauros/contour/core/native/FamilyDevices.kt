@@ -12,11 +12,12 @@ import io.github.chronosauros.contour.core.Proven
 import io.github.chronosauros.contour.core.ProtocolMicro
 import io.github.chronosauros.contour.core.WalkPlay
 import io.github.chronosauros.contour.core.isPass
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 /**
  * What one read of a Contour 1.6 family DAC holds, in the terms the app works with (the 1.6 counterpart of [NativeState], which stays
- * FiiO's): the Moondrop Dawn Pro 2, the Kiwi Ears Allegro Mini and the Moondrop Echo-A (read only until its write is verified). Pure JVM; built by the app from the
+ * FiiO's): the Moondrop Dawn Pro 2, the Kiwi Ears Allegro Mini, the Moondrop DUSK-SP and the Moondrop Echo-A (read only until its write is verified). Pure JVM; built by the app from the
  * sessions' reads and by the tests from replays.
  *
  * Two questions about a profile, because they have different jobs: [holds] = the EQ the profile compiles to sounds the same as the registers
@@ -93,14 +94,14 @@ sealed interface FamilyState {
                 snapshot.bands.joinToString("\n") { b -> "${b.index + 1}  ${b.type?.name?.take(2) ?: "--"} ${b.frequencyHz} Hz ${"%.2f".format(java.util.Locale.ROOT, b.gainDb)} dB Q ${"%.3f".format(java.util.Locale.ROOT, b.q)}" }
     }
 
-    /** Kiwi Ears Allegro Mini: the five bands, the EQ switch, the digital DAC gain, the Global Gain register (raw, read only) when it answered. */
+    /** A KT Micro DAC (Kiwi Ears Allegro Mini, JCally JM12): the five bands, the EQ switch, the digital DAC gain, and for a model with Global Gain the register (raw, read only) when it answered. */
     data class Allegro(val model: KtMicroCatalog.Model, val snapshot: KtMicroCodec.Snapshot, val globalGain: KtMicroCodec.RegisterValue? = null) : FamilyState {
         override val slot: Int get() = 0
         override val preampDb: Double? get() = null
         override val importable: Boolean get() = true
         val eqEnabled: Boolean get() = snapshot.eqEnabled
         /** The vendor tool's Global Gain steps are the record's `preamp.globalGain.userSteps`; the layout of register 0x3B is not proven, so only a first byte inside that range counts. */
-        val globalGainStep: Int? get() = globalGain?.value?.firstOrNull()?.takeIf { it in model.globalGainUserSteps }
+        val globalGainStep: Int? get() = model.globalGainUserSteps?.let { steps -> globalGain?.value?.firstOrNull()?.takeIf { it in steps } }
 
         private fun planned(profile: Profile) = KtMicroCodec.compile(profile.copy(preampDb = 0.0), snapshot, snapshot.eqEnabled).expectedBands
         override fun holds(profile: Profile): Boolean = runCatching {
@@ -114,8 +115,11 @@ sealed interface FamilyState {
             // anyway (exactly the filler of [KtMicroCodec.compile]), and a trailing shelf at 0 dB, which does nothing and which Contour does not write.
             val last = maxOf(0, snapshot.bands.indexOfLast { if (it.nativeType == 0) !isFiller(it) else it.gainTenths != 0 })
             val bands = snapshot.bands.take(last + 1).map { r ->
-                require(r.nativeType == 0) { "Band ${r.index + 1}: the DAC holds a shelf; Contour writes PEAK bands to the ${model.productName} only" }
-                Band("dac${r.index}", FilterType.PEAK, model.intendedFrequency(r.storedFrequencyHz), r.gainTenths / 10.0, r.qMilli / 1000.0)
+                val type = KtMicroCodec.type(r.nativeType)
+                // a type the model does not offer (a shelf another tool stored on the Allegro Mini) is not opened as something else
+                require(type in model.nativeTypes) { if (type == FilterType.PEAK) "Band ${r.index + 1}: the DAC holds a type Contour does not write to the ${model.productName}" else
+                    "Band ${r.index + 1}: the DAC holds a shelf; Contour writes ${if (model.nativeTypes.size == 1) "PEAK bands to the ${model.productName} only" else "only ${model.nativeTypes.joinToString { it.name }} to the ${model.productName}"}" }
+                Band("dac${r.index}", type, model.intendedFrequency(r.storedFrequencyHz), r.gainTenths / 10.0, r.qMilli / 1000.0 / (if (type == FilterType.PEAK) 1.0 else model.shelfQScale))
             }
             return ImportedEq(bands, 0.0)
         }
@@ -125,9 +129,57 @@ sealed interface FamilyState {
             globalGainStep?.let { SettingReading(FamilySettings.GLOBAL_GAIN, it, null) },
         )
         override fun describe(): String =
-            "${model.productName}: EQ ${if (eqEnabled) "ON" else "OFF"}; ${snapshot.digitalGain?.describe() ?: "digital DAC gain unknown"}; " +
-                "Global Gain register 0x3B ${globalGain?.value?.joinToString(" ") { "%02x".format(it) } ?: "not read"} (raw)\n" +
+            "${model.productName}: EQ ${if (eqEnabled) "ON" else "OFF"}; ${snapshot.digitalGain?.describe() ?: "digital DAC gain unknown"}" +
+                (if (model.globalGainUserSteps == null) "\n" else "; Global Gain register 0x3B ${globalGain?.value?.joinToString(" ") { "%02x".format(it) } ?: "not read"} (raw)\n") +
                 snapshot.bands.joinToString("\n") { b -> "${b.index + 1}  ${KtMicroCodec.type(b.nativeType).name.take(2)} ${b.storedFrequencyHz} Hz ${b.gainTenths / 10.0} dB Q ${b.qMilli / 1000.0}" }
+    }
+
+    /**
+     * A Moondrop gen-1 cable (DUSK-SP): the active preset and the nine meta records of the Custom bank. What PLAYS is the Custom bank when the preset is the Custom one ([onCustom]); on one of the
+     * firmware presets (1-5) the bands that read back are the Custom bank, NOT what plays, and what plays is the preset's table ([presetBands], record `slots.presetBands`: the cable cannot report it,
+     * so the app shows the published values as if that profile had been sent). [holds], [matches] and [importExact] all speak of what plays.
+     * The Custom bank is compared on the meta records (type, integer Hz, Q x 256, whole-dB gain): the coefficients, which carry the exact gain, cannot be read back, so a band whose meta record equals what a send
+     * would write counts as the same band (the gain on screen is the exact one, the record's is rounded half away from zero). A firmware preset is compared on the table itself, exactly (see [samePreset]).
+     */
+    data class Dusk(val model: MoondropGen1Catalog.Model, val snapshot: MoondropGen1Codec.Snapshot) : FamilyState {
+        override val slot: Int get() = snapshot.activeIndex
+        override val preampDb: Double? get() = null
+        val onCustom: Boolean get() = snapshot.onCustom
+        /** What plays on a firmware preset: its table bands; null on the Custom EQ (the bank read is what plays) and for a preset the record lists no bands for. */
+        val presetBands: List<Band>? get() = if (onCustom) null else model.presetBands(snapshot.activeIndex)
+        override val importable: Boolean get() = onCustom || presetBands != null
+        /** The name of a profile made from what plays: the firmware preset's name ("DUSK-V"); null on the Custom EQ (the app's usual FROM DAC name). */
+        val importName: String? get() = if (onCustom || presetBands == null) null else model.presetName(snapshot.activeIndex)
+        /** What the foot button of the Tune screen reads while the cable is idle and nothing was picked or edited since the last read or send: the cable's active preset in capitals ("CUSTOM EQ", "DUSK-DEFAULT", ...). */
+        val footLabel: String get() = model.presetName(snapshot.activeIndex).uppercase(java.util.Locale.ROOT)
+
+        private fun planned(profile: Profile) = MoondropGen1Codec.plan(model, profile.bands)
+        override fun holds(profile: Profile): Boolean = runCatching {
+            if (onCustom) MoondropGen1Codec.issues(model, profile.bands).isEmpty() &&
+                MoondropGen1Codec.mismatches(planned(profile), snapshot.activeIndex, snapshot.bands, model.customIndex).isEmpty()
+            else presetBands?.let { samePreset(it, profile.bands) } == true
+        }.getOrDefault(false)
+        /** ON DAC: the cable plays the profile: its Custom bank (the nine meta records are what a send writes) or the firmware preset whose table the profile's bands equal. */
+        override fun matches(profile: Profile): Boolean = holds(profile)
+
+        override fun importExact(): ImportedEq {
+            presetBands?.let { table -> return ImportedEq(table.mapIndexed { i, b -> b.copy(id = "dac$i") }, 0.0) }
+            require(onCustom) { "${model.productName} plays its ${model.presetName(snapshot.activeIndex)} preset, which the record lists no bands for, so nothing is opened" }
+            val raw = snapshot.bands.sortedBy { it.index }
+            // Every band comes in, 0 dB ones included (each has its own frequency and Q, which a send writes back); only the trailing bands that are exactly the factory ones (what a send writes for a missing band) are left out.
+            val last = maxOf(0, raw.indexOfLast { !isFiller(model, it) })
+            val bands = raw.take(last + 1).map { r ->
+                val type = r.type ?: throw IllegalArgumentException("Band ${r.index}: the cable holds filter type ${r.nativeType}, which Contour does not write")
+                Band("dac${r.index - 1}", type, r.freqHz.toDouble(), r.gainDb.toDouble(), r.q)
+            }
+            return ImportedEq(bands, 0.0)
+        }
+
+        override fun readings(): List<SettingReading> = listOf(SettingReading(FamilySettings.PRESET, snapshot.activeIndex, null))
+        override fun describe(): String =
+            "${model.productName}: preset ${snapshot.activeIndex} (${model.presetName(snapshot.activeIndex)})" + (if (onCustom) "" else "; the bands below are the preset's table, the cable cannot report what plays") + "\n" +
+                (presetBands?.mapIndexed { i, b -> "${i + 1}  ${b.type.name.take(2)} ${b.freqHz} Hz ${b.gainDb} dB Q ${"%.3f".format(java.util.Locale.ROOT, b.q)}" }
+                    ?: snapshot.bands.map { b -> "${b.index}  ${b.type?.name?.take(2) ?: "--"} ${b.freqHz} Hz ${b.gainDb} dB Q ${"%.3f".format(java.util.Locale.ROOT, b.q)}" }).joinToString("\n")
     }
 
     /**
@@ -176,6 +228,17 @@ private fun isFiller(r: MoondropCodec.RawBand): Boolean = MoondropCodec.neutralB
 }
 /** The Allegro Mini band holds exactly what a send writes for a missing band ([KtMicroCodec.compile]: 0 dB, stored 100 Hz, Q 1.000, PEAK). */
 private fun isFiller(r: KtMicroCodec.RawBand): Boolean = r.gainTenths == 0 && r.storedFrequencyHz == 100 && r.qMilli == 1000 && r.nativeType == 0
+/** A Moondrop gen-1 band that is exactly the factory band of its position (what a send writes for a missing band: PEAK, 0 dB, Q 1.0 at the position's frequency). */
+private fun isFiller(model: MoondropGen1Catalog.Model, r: MoondropGen1Codec.RawBand): Boolean =
+    MoondropGen1Codec.meta(MoondropGen1Codec.neutralBand(model, r.index - 1)) == r.meta
+/** A profile's audible bands (enabled, not at 0 dB) are exactly the firmware preset's table, in any order: same type, frequency, gain and Q (to what the table prints: 0.5 Hz, 0.01 dB, 0.01 Q). */
+private fun samePreset(table: List<Band>, bands: List<Band>): Boolean {
+    val order = compareBy<Band>({ it.freqHz }, { it.gainDb }, { it.q })
+    val mine = bands.filter { it.enabled && it.gainDb != 0.0 }.sortedWith(order)
+    return table.size == mine.size && table.sortedWith(order).zip(mine).all { (t, b) ->
+        t.type == b.type && abs(t.freqHz - b.freqHz) <= 0.5 && abs(t.gainDb - b.gainDb) <= 0.01 && abs(t.q - b.q) <= 0.01
+    }
+}
 private fun sameSound(e: MoondropCodec.BandWrite, a: MoondropCodec.RawBand): Boolean =
     (silent(e.nativeType, e.gainQ8) && silent(a.nativeType, a.gainQ8)) ||
         (e.nativeType == a.nativeType && e.frequencyHz == a.frequencyHz && e.qQ8 == a.qQ8 && e.gainQ8 == a.gainQ8)
@@ -198,7 +261,12 @@ object FamilyDevices {
     /** Why HOLD TO SEND may not write [target] given what was last read ([state], null = nothing read); empty = it may. The profile's own limits are [DeviceTarget.issues]. */
     fun stateIssues(target: DeviceTarget, state: FamilyState?): List<String> = when (target.family) {
         DeviceTarget.Family.MOONDROP -> if (state is FamilyState.Dawn) emptyList() else listOf(READ_FIRST)
-        DeviceTarget.Family.KT_MICRO -> if (state is FamilyState.Allegro) listOfNotNull(state.snapshot.writeBlocker) else listOf(READ_FIRST)
+        DeviceTarget.Family.KT_MICRO ->
+            if (target.readOnly) listOf(DeviceTarget.READ_ONLY_ISSUE.format(target.caps.name))
+            else if (state is FamilyState.Allegro) listOfNotNull(state.snapshot.writeBlocker) else listOf(READ_FIRST)
+        DeviceTarget.Family.MOONDROP_GEN1 ->
+            if (target.readOnly) listOf(DeviceTarget.READ_ONLY_ISSUE.format(target.caps.name))
+            else if (state is FamilyState.Dusk) emptyList() else listOf(READ_FIRST)
         DeviceTarget.Family.WALKPLAY_READ_ONLY ->
             if (target.readOnly) listOf(DeviceTarget.READ_ONLY_ISSUE.format(target.caps.name))
             else if (state is FamilyState.EchoA) emptyList() else listOf(READ_FIRST)

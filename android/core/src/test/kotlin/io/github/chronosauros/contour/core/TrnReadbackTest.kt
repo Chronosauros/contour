@@ -217,10 +217,21 @@ class TrnReadbackTest {
     }
 
     @Test
-    fun `the Protocol Max read keeps its strict ranges`() {
-        val rec = WalkPlay.bandWriteReport(WalkPlay.BandWrite(7, 9300.0, -2662 / 256.0, 2.0, WalkPlay.TYPE_PK), 0).also { it[1] = WalkPlay.READ.toByte(); it[3] = 0 }
+    fun `the Protocol Max read has the TRN's register-format tolerance, the plan keeps the caps`() {
         val max = DeviceProtocol.MAX
-        assertEquals("Malformed ${max.caps.name} registers", assertFailsWith<IllegalArgumentException> { max.parseBand(rec, 7) }.message)
+        fun reply(w: WalkPlay.BandWrite) = WalkPlay.bandWriteReport(w, 0).also { it[1] = WalkPlay.READ.toByte(); it[3] = 0 }
+        // what a unit can hold: 9300 Hz Q 2.0 -10.4 dB (the TRN tester's band) and bands past the offered +-12 dB: all read, the ones outside the offered ranges are not sent back as they are
+        for (w in listOf(WalkPlay.BandWrite(7, 9300.0, -2662 / 256.0, 2.0, WalkPlay.TYPE_PK), WalkPlay.BandWrite(7, 1000.0, 13.0, 1.0, WalkPlay.TYPE_PK),
+            WalkPlay.BandWrite(7, 1000.0, -13.0, 1.0, WalkPlay.TYPE_LSQ), WalkPlay.BandWrite(7, 9000.0, 0.0, 0.71, WalkPlay.TYPE_LP))) assertEquals(7, max.parseBand(reply(w), 7).registers.index)
+        // the register format is still checked: a frequency above the 48 kHz bound, an unknown type
+        assertFailsWith<IllegalArgumentException> { max.parseBand(reply(WalkPlay.BandWrite(7, 60000.0, 1.0, 1.0, WalkPlay.TYPE_PK)), 7) }
+        val tooLoud = reply(WalkPlay.BandWrite(7, 1000.0, 0.0, 1.0, WalkPlay.TYPE_PK)).also { it[32] = (60 * 256 + 1).toByte(); it[33] = ((60 * 256 + 1) shr 8).toByte() }
+        assertEquals("Malformed ${max.caps.name} registers", assertFailsWith<IllegalArgumentException> { max.parseBand(tooLoud, 7) }.message)
+        // a Max holding a +13 dB peak loads with the warning, and sending it back stays blocked
+        val held = List(10) { i -> max.parseBand(reply(if (i == 0) WalkPlay.BandWrite(0, 1000.0, 13.0, 1.0, WalkPlay.TYPE_PK) else max.flatPlan().bands[i]), i) }
+        val imported = max.importExact(held, 0) as DacImport.Ready
+        assertTrue(imported.warning!!.contains("Sending it back stays blocked"), imported.warning)
+        assertTrue(max.plan(imported.eq.bands, imported.eq.preampDb) is DevicePlan.Rejected)
     }
 
     @Test

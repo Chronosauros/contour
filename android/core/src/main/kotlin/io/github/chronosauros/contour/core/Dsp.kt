@@ -138,6 +138,13 @@ object Dsp {
 /** Auto preamp: whole dB, never positive. */
 object Preamp {
     /**
+     * The lowest preamp Contour offers on any DAC, whatever its register takes (owner 11.11.2026: "nikt realnie nie potrzebuje -128 dB of preamp").
+     * The Moondrop Dawn Pro 2's PRE-GAIN register runs -128..0 dB; the WalkPlay DACs already stop at -30. It limits what the editor, the
+     * slider, the DAC page and a send take; a read keeps what the DAC holds, so a lower value set by another tool loads and blocks the send.
+     */
+    const val FLOOR_DB = -30.0
+
+    /**
      * Rounds [x] dB DOWN (toward quieter, never louder) to a multiple of [step]; the 1e-6 guard keeps a value that is
      * already on the grid (-3.2 stays -3.2). Every rounding of a stored or sent preamp goes through here.
      */

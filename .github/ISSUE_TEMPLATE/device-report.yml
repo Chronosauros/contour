@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Thanks for testing. Check the [supported devices page](https://contoureq.app/devices/) first: the buttons there open this form with the device already filled in.
+        Thanks for testing. Check the [supported devices page](https://contoureq.app/install/#dacs) first: the buttons there open this form with the device already filled in.
         A new device joins the supported list once it is confirmed on real hardware. Please do not attach anything you do not want to be public.
   - type: input
     id: device_name
@@ -40,6 +40,7 @@ body:
     attributes:
       label: App
       options:
+        - Contour 1.7.0
         - Contour 1.6.6
         - Contour 1.6.5
         - Contour 1.6.4

@@ -52,8 +52,8 @@
         {
           "@type": "ListItem",
           "position": 2,
-          "name": "Supported devices",
-          "item": "https://contoureq.app/devices/"
+          "name": "Supported USB DACs",
+          "item": "https://contoureq.app/install/#dacs"
         },
         {
           "@type": "ListItem",
@@ -69,11 +69,11 @@
       "name": "Contour",
       "alternateName": "Contour EQ",
       "url": "https://contoureq.app/",
-      "description": "Free, open-source Android EQ manager for USB DACs: send profiles from your phone to CrinEar Protocol, FiiO, SnowSky, TRN, Moondrop and Kiwi Ears dongles.",
+      "description": "Free, open-source Android EQ manager for USB DACs: send profiles from your phone to CrinEar Protocol, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears and JCally dongles.",
       "operatingSystem": "Android",
       "applicationCategory": "MultimediaApplication",
-      "softwareVersion": "1.6.6",
-      "dateModified": "2026-11-10",
+      "softwareVersion": "1.7.0",
+      "dateModified": "2026-11-11",
       "offers": {
         "@type": "Offer",
         "price": "0",
@@ -97,7 +97,7 @@
 </script>
 <style>
 /*
-  Look = /devices/ and the guide (same tokens, font, column, hero and footer), which follow the Contour app
+  Look = the install page and the guide (same tokens, font, column, hero and footer), which follow the Contour app
   (android/.../ui/Theme.kt). 1 dp = 1 CSS px. Colors: only Palette roles (light here, dark under prefers-color-scheme).
   Generated per device by gen_device_pages.py from this template.
 */
@@ -239,13 +239,13 @@ footer.fv p{margin:0}
 <body>
 <div class="wrap">
 
-<p class="top"><span class="lockup"><a href="/">Contour</a><a class="by" href="https://soundblooms.com/" rel="noopener" target="_blank" aria-label="by Soundblooms"><span class="by-word" aria-hidden="true">by</span><span class="sb-mark" aria-hidden="true">sound<span class="sb-face"><i class="sb-band"></i><span class="sb-eyes" data-eyes="calm"><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i></span></span>blooms</span></a></span> <a href="/guide/">Guide</a> <a href="/devices/">Devices</a> <a href="/install/">Install</a> <a class="lang-switch" href="/zh/devices/" hreflang="zh-CN" lang="zh-CN">中文</a></p>
+<p class="top"><span class="lockup"><a href="/">Contour</a><a class="by" href="https://soundblooms.com/" rel="noopener" target="_blank" aria-label="by Soundblooms"><span class="by-word" aria-hidden="true">by</span><span class="sb-mark" aria-hidden="true">sound<span class="sb-face"><i class="sb-band"></i><span class="sb-eyes" data-eyes="calm"><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i></span></span>blooms</span></a></span> <a href="/guide/">Guide</a> <a href="/install/#dacs">Devices</a> <a href="/install/">Install</a> <a class="lang-switch" href="/zh/devices/" hreflang="zh-CN" lang="zh-CN">中文</a></p>
 
 <header class="hero">
   <img class="icon" src="/images/icon-512.png" width="88" height="88" alt="Contour app icon">
   <h1>SnowSky Melody EQ app for Android</h1>
   <p class="lede">Contour EQ is a free, open-source Android app that reads and writes the parametric EQ stored inside the SnowSky Melody. The EQ is written into one of the dongle's USER slots, so it works in every app, with no system equaliser.</p>
-  <p class="ver"><span class="dot" aria-hidden="true"></span><span>Stable 1.6.6</span></p>
+  <p class="ver"><span class="dot" aria-hidden="true"></span><span>Stable 1.7.0</span></p>
   <div class="cta">
     <a class="btn btn-primary" href="/install/">Install Contour</a>
   </div>
@@ -265,7 +265,7 @@ footer.fv p{margin:0}
         <tr><th scope="row">Gain</th><td>-12 to +12 dB</td></tr>
         <tr><th scope="row">Q</th><td>0.1 to 10</td></tr>
         <tr><th scope="row">Frequency</th><td>20 Hz to 20 kHz</td></tr>
-        <tr><th scope="row">Preamp</th><td>-12 to 12 dB, whole dB</td></tr>
+        <tr><th scope="row">Preamp</th><td>-12 to +12 dB, whole dB</td></tr>
         <tr><th scope="row">Where the EQ is kept</th><td>In the USER slot you pick, USER1, USER2 or USER3, which becomes the active one.</td></tr>
         <tr><th scope="row">DAC page</th><td>Since 1.6.0: VOLUME, VOLUME STEPS, BALANCE, FILTER, GAIN, OUTPUT, DRE, IN-LINE MIC, LIGHT and BUTTONS; USB AUDIO is shown, read-only. FACTORY RESET saves a copy of your USER slots, their names and the settings on the phone first.</td></tr>
         <tr><th scope="row">Tested</th><td>By the developer on hardware and on a test rig, October 2026, firmware 1.2.0. First reported working by a community tester in a beta build.</td></tr>
@@ -322,13 +322,16 @@ footer.fv p{margin:0}
     <li><a href="/devices/crinear-protocol-max/">CrinEar Protocol Max</a></li>
     <li><a href="/devices/fiio-ka15/">FiiO KA15</a></li>
     <li><a href="/devices/fiio-k13-r2r/">FiiO K13 R2R</a></li>
+    <li><a href="/devices/fiio-ja11/">FiiO JadeAudio JA11</a></li>
     <li><a href="/devices/snowsky-tiny-a/">SnowSky Tiny A</a></li>
     <li><a href="/devices/trn-black-pearl/">TRN Black Pearl</a></li>
     <li><a href="/devices/moondrop-dawn-pro-2/">Moondrop Dawn Pro 2</a></li>
     <li><a href="/devices/moondrop-echo-a/">Moondrop Echo-A</a></li>
+    <li><a href="/devices/moondrop-dusk/">Moondrop DUSK-SP</a></li>
     <li><a href="/devices/kiwi-ears-allegro-mini/">Kiwi Ears Allegro Mini</a></li>
+    <li><a href="/devices/jcally-jm12/">JCally JM12</a></li>
   </ul>
-  <p><a href="/devices/">All supported devices</a></p>
+  <p><a href="/install/#dacs">All supported devices</a></p>
 </section>
 
 <footer class="fv">

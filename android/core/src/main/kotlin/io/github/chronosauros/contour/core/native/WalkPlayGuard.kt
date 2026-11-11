@@ -18,11 +18,13 @@ import io.github.chronosauros.contour.core.WalkPlay
  *    (devicePEQ's commit, hardware-proven on the Micro): they stay allowed there, as part of that commit, and nowhere else is one built;
  *  - a POSITIVE preamp (`01 03 02 00 g`, g above 0) unless the profile's [WalkPlayProfile.preampMaxDb] is above 0 (never in the app: [ProtocolMicro.MICRO_POSITIVE_PREAMP_VERIFIED], [ProtocolMicro.ECHO_A_POSITIVE_PREAMP_VERIFIED]).
  *
- * Settings writes follow the tabs WalkPlay shows for the scheme: `01 11`, `01 19`, `01 1D` only on the TRN (SchemeNo16, the DAC Filter tab); `01 02` (mic) on the Micro,
- * the Echo-A and the TRN (the MIC tab); nothing else. The Protocol Max (SchemeNo16) has no row here: not studied.
+ * Settings writes follow the tabs WalkPlay shows for the scheme: `01 11`, `01 16` and `01 1D` on the TRN and the Protocol Max (SchemeNo16, the DAC Filter tab, see
+ * [WalkPlaySettings]), `01 19` (gain mode) on the TRN only (the Max has a physical Eco / Boost switch that wins after every replug); `01 02` (mic) on every WalkPlay DAC (the MIC tab; the Max
+ * exposes no audio input, its row is vendor parity); nothing else. `01 01 00` (the flash save after a mic write) goes to the Max only in [Context.MIC_SAVE]: there `01 01 x` is also the EQ enable / flash frame.
  */
 object WalkPlayGuard {
-    enum class Context { NORMAL, RESET }
+    /** [MIC_SAVE]: the flash save `01 01 00` right after a mic write ([WalkPlaySession.writeSetting]); the one place a Max may be sent it. */
+    enum class Context { NORMAL, RESET, MIC_SAVE }
 
     private val CANDIDATES: List<List<Int>> = listOf(
         listOf(0x05, 0x01, 0x02, 0x00, 0xFF), listOf(0x05, 0x01, 0x01, 0x00, 0xFF), listOf(0x02, 0x00, 0x00, 0x01, 0xFF), listOf(0x80, 0x00, 0x00, 0x00, 0xFF),
@@ -42,6 +44,7 @@ object WalkPlayGuard {
             if (cmd == 0xFF) return "01 FF is the firmware update: never sent"
             if (cmd == 0x1B) return "01 1B (noise reduction) is disabled for class CB: never sent"
             val trn = profile.protocol == DeviceProtocol.TRN
+            val schemeNo16 = trn || profile.protocol == DeviceProtocol.MAX
             when (cmd) {
                 0x05 -> {
                     val sub = u(payload, 2)
@@ -53,9 +56,12 @@ object WalkPlayGuard {
                     val g = payload.getOrNull(4)?.toInt() ?: 0
                     if (g > 0 && profile.preampMaxDb <= 0) return "a positive preamp ($g dB) is not verified on a unit: never sent"
                 }
-                WalkPlaySettings.CMD_DAC_FILTER, WalkPlaySettings.CMD_GAIN_MODE, WalkPlaySettings.CMD_WORK_MODE, WalkPlaySettings.CMD_BALANCE ->
-                    if (!trn) return "0x%02x is not a setting of ${profile.name} (WalkPlay shows it for SchemeNo16 only)".format(cmd)
-                WalkPlaySettings.CMD_MIC -> if (profile.protocol == DeviceProtocol.MAX) return "01 02 (mic) is not a setting of ${profile.name}"
+                WalkPlaySettings.CMD_GAIN_MODE ->
+                    if (!trn) return "0x%02x (gain mode) is not a setting of ${profile.name}: ".format(cmd) + if (profile.protocol == DeviceProtocol.MAX) "its physical Eco / Boost switch sets it and wins after every replug" else "WalkPlay shows it for SchemeNo16 only"
+                WalkPlaySettings.CMD_DAC_FILTER, WalkPlaySettings.CMD_WORK_MODE, WalkPlaySettings.CMD_BALANCE ->
+                    if (!schemeNo16) return "0x%02x is not a setting of ${profile.name} (WalkPlay shows it for SchemeNo16 only)".format(cmd)
+                // the vendor's flash save after a mic write: on a Max `01 01 x` is also the EQ enable / flash frame, so `01 01 00` goes out only as that save (it kept the mic over a replug and left the EQ alone, dac-lab run 2026-11-11-crinear-protocol-max-23)
+                0x01 -> if (profile.protocol == DeviceProtocol.MAX && u(payload, 2) == 0 && context != Context.MIC_SAVE) return "01 01 00 is sent to ${profile.name} only as the flash save after a mic write: its `01 01 x` is also the EQ enable / flash frame"
             }
         } else if (op == WalkPlay.READ && cmd in CB1300D_READS) return "0x%02x is a CB1300D read: never sent".format(cmd)
         return null

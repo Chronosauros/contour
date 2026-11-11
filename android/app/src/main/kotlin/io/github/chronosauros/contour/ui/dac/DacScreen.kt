@@ -63,6 +63,7 @@ import io.github.chronosauros.contour.ui.kit.detectHorizontalDragWithEnds
 import io.github.chronosauros.contour.ui.kit.holdsPager
 import io.github.chronosauros.contour.ui.lift
 import io.github.chronosauros.contour.ui.pal
+import io.github.chronosauros.contour.ui.AppButton
 import io.github.chronosauros.contour.ui.sheets.ChoiceSheet
 import io.github.chronosauros.contour.ui.sink
 import io.github.chronosauros.contour.ui.tune.StackedValue
@@ -186,7 +187,12 @@ fun DacScreen(device: DeviceController, top: Dp, bottom: Dp, onNotSent: (String)
                     section, style = Type.small, color = c.textDim, maxLines = 1,
                     modifier = Modifier.padding(start = 6.dp, top = groupGap).testTag("dac_section_${section.lowercase()}"),
                 )
-                SettingRow(
+                if (s.kind == SettingKind.CHOICE && s.inlineChoice) InlineChoice(
+                    s, value, preview || writable, dim,
+                    onPick = { v -> if (preview) local[s.id] = v else send(s, v) },
+                    onBlocked = { onNotSent(blocked(s.label)) },
+                    modifier = Modifier.padding(top = if (section != null) 0.dp else groupGap),
+                ) else SettingRow(
                     s, value, shown, dim, preview || writable, levelMax,
                     onMove = { v -> if (preview) local[s.id] = v else pending[s.id] = v },
                     onCommit = { v -> if (!preview) { if (v == device.settingValues[s.id]?.value) pending.remove(s.id) else send(s, v) } },
@@ -257,6 +263,24 @@ private fun format(s: DacSetting, v: Int): String = when (s.kind) {
     SettingKind.CHOICE -> s.shortOption(v)
     SettingKind.LEVEL -> s.valueText?.invoke(v) ?: if (s.scale > 1) "%.1f".format(java.util.Locale.ROOT, v.toDouble() / s.scale) else v.toString() // dB rows hold tenths (scale 10); a row with valueText words its own value
     SettingKind.BALANCE -> if (v == 0) "CENTER" else if (v < 0) "L ${-v}" else "R $v" // the side the sound moves to, like FiiO Control
+}
+
+/**
+ * A choice whose options are few and picked all the time (the DUSK-SP presets, [DacSetting.inlineChoice]): every option is a full-width button on the page itself, the current one in the selected style;
+ * one tap picks it. No dropdown, no sheet, no row label (the buttons are the row).
+ */
+@Composable
+private fun InlineChoice(s: DacSetting, value: Int?, live: Boolean, dim: Boolean, onPick: (Int) -> Unit, onBlocked: () -> Unit, modifier: Modifier) {
+    Column(modifier.fillMaxWidth().alpha(if (dim) 0.4f else 1f).testTag("dac_inline_${s.id}"), verticalArrangement = Arrangement.spacedBy(Grid.GAP)) {
+        s.options.forEachIndexed { i, label ->
+            AppButton(
+                label,
+                { if (i != value) { if (live) onPick(i) else onBlocked() } },
+                Modifier.fillMaxWidth().testTag("dac_inline_${s.id}_$i"),
+                primary = i == value,
+            )
+        }
+    }
 }
 
 /** A row in the language of TuneScreen's ParamRow: the label over the value on the left, the control in a well on the right. */

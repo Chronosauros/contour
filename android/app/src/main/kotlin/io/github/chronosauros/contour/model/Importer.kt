@@ -93,7 +93,7 @@ object Importer {
         bands = bands.map { b ->
             val f = Math.round(b.freqHz.coerceIn(caps.freqMinHz, caps.freqMaxHz)).toDouble()
             // down: boosts never grow. An emulated HIGH SHELF goes down to the preamp's grid, because its gain is folded into the preamp register (DeviceTarget.highShelfStepDb).
-            val g = Preamp.floorTo(b.gainDb.coerceIn(caps.gainMinDb, caps.gainMaxDb), if (b.type == FilterType.HIGH_SHELF) protocol.highShelfStepDb ?: 0.1 else 0.1)
+            val g = Preamp.floorTo(b.gainDb.coerceIn(caps.gainRange(b.type).start, caps.gainRange(b.type).endInclusive), if (b.type == FilterType.HIGH_SHELF) protocol.highShelfStepDb ?: 0.1 else 0.1)
             val qRange = caps.qRange(b.type)
             // Q keeps the precision the file brought (0.707 stays 0.707); the family codec rounds it when it builds the register value.
             val q = b.q.coerceIn(qRange.start, qRange.endInclusive)

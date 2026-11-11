@@ -32,6 +32,14 @@
     "dongle": false
   },
   {
+    "id": "fiio-ja11",
+    "name": "FiiO JadeAudio JA11",
+    "url": "https://contoureq.app/devices/fiio-ja11/",
+    "soundbloomsSlug": null,
+    "since": "1.7.0",
+    "dongle": true
+  },
+  {
     "id": "snowsky-melody",
     "name": "SnowSky Melody",
     "url": "https://contoureq.app/devices/snowsky-melody/",
@@ -72,11 +80,27 @@
     "dongle": true
   },
   {
+    "id": "moondrop-dusk",
+    "name": "Moondrop DUSK-SP",
+    "url": "https://contoureq.app/devices/moondrop-dusk/",
+    "soundbloomsSlug": null,
+    "since": "1.7.0",
+    "dongle": true
+  },
+  {
     "id": "kiwi-ears-allegro-mini",
     "name": "Kiwi Ears Allegro Mini",
     "url": "https://contoureq.app/devices/kiwi-ears-allegro-mini/",
     "soundbloomsSlug": "kiwi-ears-allegro-mini",
     "since": "1.6.0",
+    "dongle": true
+  },
+  {
+    "id": "jcally-jm12",
+    "name": "JCally JM12",
+    "url": "https://contoureq.app/devices/jcally-jm12/",
+    "soundbloomsSlug": "jcally-jm12",
+    "since": "1.7.0",
     "dongle": true
   }
 ]

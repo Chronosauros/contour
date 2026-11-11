@@ -82,6 +82,7 @@ import io.github.chronosauros.contour.usb.UsbLog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import io.github.chronosauros.contour.core.isShelf
 
 /** Text fields in sheets and dialogs: the M corner of the app instead of the Material 4 dp. */
 private val FIELD = RoundedCornerShape(Radii.M)
@@ -334,7 +335,9 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
         }
         return
     }
-    val initial = param.edit(start) // the preamp in full when it is not on a 0.1 step (Param.edit)
+    // A DAC that keeps a whole-dB preamp only: the field opens as -4, not -4.0, and a typed fraction says what is saved (below).
+    val wholeDb = param == Param.PREAMP && model.protocol.preampStep == 1.0
+    val initial = param.edit(start, wholeDb) // the preamp in full when it is not on a 0.1 step (Param.edit)
     val opening = remember { Triple(p.id, if (param == Param.PREAMP) null else i to b!!.id, initial) }
     var text by remember { mutableStateOf(TextFieldValue(opening.third, TextRange(0, opening.third.length))) }
     var invalid by remember { mutableStateOf(false) }
@@ -374,7 +377,7 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
             onDone()
             return@commit
         }
-        val parsed = param.parse(text.text, model.protocol.caps)
+        val parsed = param.parse(text.text, model.protocol.caps, band?.let { live.bands.getOrNull(it.first)?.type })
         if (parsed == null || band == null) {
             invalid = true
         } else {
@@ -385,19 +388,31 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
     SheetFrame(onDone) {
         SheetTitle(if (param == Param.PREAMP) "PREAMP" else "BAND ${i + 1} - ${param.label}")
         val caps = model.protocol.caps
+        val shelfType = model.current?.bands?.getOrNull(i)?.type?.takeIf { it.isShelf }
         val range = when (param) {
             Param.FREQ -> "20 - 20 000 Hz"
-            Param.GAIN -> "%.1f - +%.1f dB".format(java.util.Locale.ROOT, caps.gainMinDb, caps.gainMaxDb)
-            Param.Q -> "0.10 - 10.00"
+            Param.GAIN -> (shelfType?.let { caps.gainRange(it) } ?: (caps.gainMinDb..caps.gainMaxDb)).let { "%.1f - +%.1f dB".format(java.util.Locale.ROOT, it.start, it.endInclusive) }
+            Param.Q -> if (shelfType != null && caps.shelfLimits != null) caps.qRange(shelfType).let { "%.2f - %.2f".format(java.util.Locale.ROOT, it.start, it.endInclusive) } else "0.10 - 10.00"
             Param.PREAMP -> if (model.protocol.usesWalkPlayRules) "%.0f - %s%.0f dB, whole dB".format(java.util.Locale.ROOT, model.protocol.preampMin, if (model.protocol.preampMax > 0) "+" else "", model.protocol.preampMax)
                 else "%.1f - +%.1f dB, step %s".format(java.util.Locale.ROOT, model.protocol.preampMin, model.protocol.preampMax, if (model.protocol.preampStep == 1.0) "1" else "0.1")
+        }
+        // A typed fraction on a whole-dB DAC is saved rounded down (AppModel.setPreamp): say so before DONE, not after (user report 11.11.2026:
+        // -3.6 became -4.0 without a word). Only for a value DONE will take; one it refuses gets the refusal instead.
+        val savedAs = if (!wholeDb || invalid) null else text.text.trim().replace(',', '.').toDoubleOrNull()?.takeIf { it.isFinite() }?.let { typed ->
+            val down = io.github.chronosauros.contour.core.Preamp.floorTo(typed, model.protocol.preampStep)
+            val bands = model.current?.bands
+            if (bands == null || down == typed || !model.preampAccepted(bands, typed)) null else down
         }
         OutlinedTextField(
             value = text,
             onValueChange = { text = it; invalid = false; reason = null },
             label = { Text(range) },
             isError = invalid,
-            supportingText = if (invalid) ({ Text(reason ?: (if (param == Param.PREAMP) "Enter a value within the range above" else "Enter a valid number")) }) else null,
+            supportingText = when {
+                invalid -> ({ Text(reason ?: (if (param == Param.PREAMP) "Enter a value within the range above" else "Enter a valid number")) })
+                savedAs != null -> ({ Text("Saved as ${Param.PREAMP.text(savedAs, true)} - this DAC keeps whole dB, so Contour rounds down (never louder).") })
+                else -> null
+            },
             suffix = { if (param.unit.isNotEmpty()) Text(param.unit) },
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),

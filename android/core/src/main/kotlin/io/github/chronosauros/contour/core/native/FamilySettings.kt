@@ -20,6 +20,8 @@ object FamilySettings {
     const val GLOBAL_GAIN = "global-gain"
     const val PRE_GAIN = "pre-gain"
     const val EQ_SWITCH = "eq-switch"
+    /** The active preset of a Moondrop gen-1 cable (DUSK-SP): option 0 is the Custom EQ Contour writes, 1-5 are the firmware presets. */
+    const val PRESET = "preset"
 
     /** The page's mark for a row whose value comes from the family read; [command] is the register the value lives in. */
     private fun mark(command: Int) = SettingRead.WalkPlayGet(command) { null }
@@ -34,34 +36,71 @@ object FamilySettings {
         DacSetting(GLOBAL_GAIN, "GLOBAL GAIN", SettingKind.LEVEL, EvidenceRank.HW, min = (MoondropCatalog.dawnPro2.globalGainMinDb * 10).roundToInt(),
             max = (MoondropCatalog.dawnPro2.globalGainMaxDb * 10).roundToInt(), unit = "dB", group = 0,
             read = mark(MoondropCodec.CMD_GLOBAL_GAIN), writeCommand = null, writeVerified = false, scale = 10),
-        // Register 0x23, the manufacturer's PRE-GAIN (the preamp), MoondropCatalog's range in 0.1 dB. The read layout and the write are from the vendor tool, not yet proven on the unit.
-        DacSetting(PRE_GAIN, "PRE GAIN", SettingKind.LEVEL, EvidenceRank.VB, min = (MoondropCatalog.dawnPro2.preGainMinDb * 10).roundToInt(),
+        // Register 0x23, the manufacturer's PRE-GAIN (the preamp), MoondropCatalog's range in 0.1 dB, from Contour's floor (Preamp.FLOOR_DB, -30 dB) instead of the register's -128.
+        // The read layout and the write are from the vendor tool, not yet proven on the unit.
+        DacSetting(PRE_GAIN, "PRE GAIN", SettingKind.LEVEL, EvidenceRank.VB, min = (maxOf(MoondropCatalog.dawnPro2.preGainMinDb, io.github.chronosauros.contour.core.Preamp.FLOOR_DB) * 10).roundToInt(),
             max = (MoondropCatalog.dawnPro2.preGainMaxDb * 10).roundToInt(), unit = "dB", group = 0,
             read = mark(MoondropCodec.CMD_PRE_GAIN), writeCommand = MoondropCodec.CMD_PRE_GAIN, writeVerified = false, scale = 10),
     )
 
+    /**
+     * The EQ switch row of a KT model, register 0x24. writeVerified here means: a write is accepted by the page and then proven by a read after the DAC re-enumerates
+     * (KtMicroSession.writeSwitch). Allegro Mini: PC bench passed; the first phone run (runs/2026-10-22-kiwi-ears-allegro-mini-01-phone) could not open the 10-byte HID report, fixed in 289fbfb, and the phone then
+     * switched EQ OFF and ON with a VERIFIED read-back each time (Pixel run 2026-10-24-kiwi-ears-allegro-mini-04-phone): on in every build. The JM12's register was only READ on the unit (10.11.2026): its
+     * write is for a review build until the bench and the phone have proven it.
+     */
+    private fun ktSwitch(writeVerified: Boolean) = DacSetting(EQ_SWITCH, "EQ", SettingKind.TOGGLE, EvidenceRank.HW, options = listOf("OFF", "ON"), group = 0,
+        read = mark(KtMicroCodec.EQ_ENABLE_REGISTER), writeCommand = KtMicroCodec.EQ_ENABLE_REGISTER, writeVerified = writeVerified)
+
+    /** The Global Gain row of a KT model: the model's steps; [writeVerified] as for the EQ switch (the Allegro Mini's passed on the unit; the JM12's was only measured in RAM). */
+    private fun ktGlobalGain(model: KtMicroCatalog.Model, writeVerified: Boolean) = ktGlobalGainRow(requireNotNull(model.globalGainUserSteps), writeVerified)
+
+    /** A KT model without Global Gain: the EQ switch alone (no model today; the generator allows it). */
+    private val ktSwitchOnly = listOf(ktSwitch(writeVerified = false))
+
     private val allegro = listOf(
-        // Register 0x24. writeVerified here means: a write is accepted by the page and then proven by a read after the DAC re-enumerates
-        // (KtMicroSession.writeSwitch). PC bench passed; the first phone run (runs/2026-10-22-kiwi-ears-allegro-mini-01-phone) could not open the 10-byte HID report, fixed in 289fbfb, and the phone then
-        // switched EQ OFF and ON with a VERIFIED read-back each time (Pixel run 2026-10-24-kiwi-ears-allegro-mini-04-phone): on in every build.
-        DacSetting(EQ_SWITCH, "EQ", SettingKind.TOGGLE, EvidenceRank.HW, options = listOf("OFF", "ON"), group = 0,
-            read = mark(KtMicroCodec.EQ_ENABLE_REGISTER), writeCommand = KtMicroCodec.EQ_ENABLE_REGISTER, writeVerified = true),
+        ktSwitch(writeVerified = true),
         // Register 0x3B, the vendor tool's GLOBAL GAIN (analog DAC gain): the record's steps (13 = 0 dB per the vendor tool); the page shows the step as its dB (1-15 = -18.0..+3.0 dB in 1.5 dB steps), the value and the write stay the step. The write (KtMicroSession.writeGlobalGain,
         // step 0 never) passed the PC bench: runs/2026-10-21-kiwi-ears-allegro-mini-02 T14, 13 -> 12 -> 13, each written, saved and read back after the DAC re-enumerated. Like the EQ switch,
         // the phone then wrote steps 1, 15 and 13 with a VERIFIED read-back each (Pixel run 2026-10-24-kiwi-ears-allegro-mini-04-phone), so writeVerified is true.
-        DacSetting(GLOBAL_GAIN, "GLOBAL GAIN", SettingKind.LEVEL, EvidenceRank.VB, min = KtMicroCatalog.models.first().globalGainUserSteps.first,
-            max = KtMicroCatalog.models.first().globalGainUserSteps.last, unit = "dB", group = 1,
-            read = mark(KtMicroCodec.GLOBAL_GAIN_REGISTER), writeCommand = KtMicroCodec.GLOBAL_GAIN_REGISTER, writeVerified = true, valueText = ::globalGainText),
+        ktGlobalGain(KtMicroCatalog.models.first(), writeVerified = true),
     )
+
+    /**
+     * The JCally JM12: the same two rows, writes on (the phone run 2026-11-10-jcally-jm12-11-phone verified the EQ switch OFF and ON). The EQ switch was written and verified in every bench run (runs 2026-11-10-jcally-jm12-02 and -03, the EQ played in the acoustic runs); register 0x3B took
+     * [step, 0, 0, 0] for steps 1-15 and the level followed it by about 1.5 dB per step (run -06), and the Global Gain with SAVE passed 9 -> 8 -> 9 on the Mac (run -10, T14). The unit ships at step 9.
+     */
+    private val jm12 = listOf(ktSwitch(writeVerified = true), ktGlobalGain(KtMicroCatalog.jm12Models.first(), writeVerified = true))
+
+    /**
+     * The preset row of a Moondrop gen-1 cable: the Custom EQ and the firmware presets of the record (`slots.labels`), when the record offers the stock picker (`slots.stockPicker`). Choosing one selects it
+     * (`5a 00 [5a, idx]`, the commit `dc 00 [ff]`) and reads the index back ([MoondropGen1Session.selectPreset]); a send always goes to the Custom EQ and leaves the cable on it. The row's write is
+     * for a review build until a unit has taken it (`driver.hardwareVerified` of the record opens it everywhere).
+     */
+    private fun gen1(model: MoondropGen1Catalog.Model): List<DacSetting> =
+        if (!model.stockPicker) emptyList() else listOf(DacSetting(PRESET, "PRESET", SettingKind.CHOICE, EvidenceRank.OS,
+            options = model.presetLabels.toSortedMap().values.map { it.uppercase(java.util.Locale.ROOT) }, group = 0, inlineChoice = model.stockPickerInline,
+            read = mark(MoondropGen1Codec.CMD_PRESET), writeCommand = MoondropGen1Codec.CMD_PRESET, writeVerified = model.hardwareVerified))
+
+    private val dusk = gen1(MoondropGen1Catalog.duskSp)
 
     fun of(target: DeviceTarget): List<DacSetting> = when {
         target.moondrop != null -> dawn
-        target.ktMicro != null -> allegro
+        target.gen1 != null -> dusk
+        target.ktMicro != null -> when {
+            target.ktMicro.globalGainUserSteps == null -> ktSwitchOnly
+            target.ktMicro in KtMicroCatalog.jm12Models -> jm12
+            else -> allegro
+        }
         else -> emptyList()
     }
 }
 
-/** The Allegro Mini's Global Gain step as its dB, the way the other dB rows read: `-18.0`, `0.0`, `+3.0` (the unit is the row's); a value outside the steps stays the number. */
+private fun ktGlobalGainRow(steps: IntRange, writeVerified: Boolean) =
+    DacSetting(FamilySettings.GLOBAL_GAIN, "GLOBAL GAIN", SettingKind.LEVEL, EvidenceRank.VB, min = steps.first, max = steps.last, unit = "dB", group = 1,
+        read = SettingRead.WalkPlayGet(KtMicroCodec.GLOBAL_GAIN_REGISTER) { null }, writeCommand = KtMicroCodec.GLOBAL_GAIN_REGISTER, writeVerified = writeVerified, valueText = ::globalGainText)
+
+/** The KT Micro Global Gain step as its dB, the way the other dB rows read: `-18.0`, `0.0`, `+3.0` (the unit is the row's); a value outside the steps stays the number. */
 internal fun globalGainText(step: Int): String {
     if (step !in KtMicroCodec.GLOBAL_GAIN_STEP_MIN..KtMicroCodec.GLOBAL_GAIN_STEP_MAX) return step.toString()
     val db = KtMicroCodec.globalGainDb(step)

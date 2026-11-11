@@ -1,0 +1,8 @@
+New DACs: JCally JM12, FiiO JadeAudio JA11 and Moondrop DUSK-SP.
+CrinEar Protocol Max:
+- Shelves now play as drawn (in 1.6.6 up to 2.2 dB off).
+- LOW PASS, HIGH PASS and ±12 dB.
+- DAC page: FILTER, BALANCE, OUTPUT and MIC GAIN.
+PREAMP is a slider like GAIN, with AUTO beside it.
+Moondrop Dawn Pro 2: PREAMP stops at -30 dB, like every other DAC.
+A DAC that keeps whole dB shows -4, not -4.0. Thanks, jtremblant.

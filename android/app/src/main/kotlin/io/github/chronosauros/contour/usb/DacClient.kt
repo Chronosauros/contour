@@ -24,6 +24,8 @@ import io.github.chronosauros.contour.core.native.KtMicroCodec
 import io.github.chronosauros.contour.core.native.KtMicroSession
 import io.github.chronosauros.contour.core.native.MoondropCatalog
 import io.github.chronosauros.contour.core.native.MoondropCodec
+import io.github.chronosauros.contour.core.native.MoondropGen1Catalog
+import io.github.chronosauros.contour.core.native.MoondropGen1Session
 import io.github.chronosauros.contour.core.native.MoondropSession
 import io.github.chronosauros.contour.core.native.NativeHidReports
 import io.github.chronosauros.contour.core.native.NativePort
@@ -97,7 +99,11 @@ data class WriteResult(
 )
 
 /** What proves a write that ended at SAVE: [verify] gets the first read of the DAC after it is back and returns what differs from what was written (empty = verified). */
-class PendingSave(val verify: (DacSnapshot) -> List<String>)
+class PendingSave(
+    /** Run once, with the DAC back on the bus, before the read that proves the write (the DUSK-SP: the RAM select of the Custom EQ, since the cable restarts onto preset 1); null = nothing. */
+    val afterReturn: (suspend (DacHandle) -> Unit)? = null,
+    val verify: (DacSnapshot) -> List<String>,
+)
 
 /**
  * Operations on the supported DACs (Protocol Micro, Protocol Max, TRN Black Pearl, FiiO KA15). Each one opens the HID interface, does its reports on the single
@@ -112,7 +118,8 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
 
     fun shutdown() = executor.shutdown()
 
-    private suspend fun <T> withDevice(device: DacHandle, block: (HidIo) -> T): T = hidLock.withLock {
+    /** [postGuard]: false for a write that ends at a SAVE the DAC leaves the bus on (the JA11): the session guard after the block would throw "DAC SESSION CHANGED" for the detach that is expected there. */
+    private suspend fun <T> withDevice(device: DacHandle, postGuard: Boolean = true, block: (HidIo) -> T): T = hidLock.withLock {
         // Review builds only (`--es simulate`): a simulated DAC has no USB; nothing below it runs for it.
         device.simulated?.let { open -> return@withLock withContext(usb) { open(guardFor(device)).use(block) } }
         val dev = requireNotNull(device.usb)
@@ -121,7 +128,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
         withContext(usb) {
             guard()
             val stream = if (fiio.needsAudioStream) audioKeepAlive(dev) else null
-            try { HidTransport.open(manager, dev, guard).use(block).also { guard() } } finally { stream?.close() }
+            try { HidTransport.open(manager, dev, guard).use(block).also { if (postGuard) guard() } } finally { stream?.close() }
         }
     }
 
@@ -200,7 +207,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
     /**
      * Sets one setting of a WalkPlay DAC (TRN: DAC filter, work mode, mic; Micro and Echo-A: mic) and reads it back ([WalkPlaySession.writeSetting]). The caller (the controller)
      * lets it through only for a row the gate opened ([DacSetting.writeEnabled]); it is checked here again, so a row that is read only for the app (the gain mode, the balance)
-     * or that no release has proven cannot reach a frame. The vendor's flash save (`01 01 00`) follows a mic write only, as in its tool.
+     * or that no release has proven cannot reach a frame. The vendor's flash save (`01 01 00`) follows a mic write only, as in its tool, on a Max too (without it the Max loses the mic value over a replug; the guard lets `01 01 00` through there only as that save).
      */
     suspend fun writeWalkPlaySetting(device: DacHandle, id: String, value: Int): SettingWriteOutcome = withDevice(device) { t ->
         val target = target(device)
@@ -414,6 +421,16 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
         confirmed
     }
 
+    /**
+     * A setting whose write makes the DAC leave the USB bus ([io.github.chronosauros.contour.core.native.DacSetting.reconnectsAfterWrite]: the JA11's in-line mic): the SET and nothing after it. The session ends with the frame (no guard after it,
+     * [withDevice] without its post-guard): the controller waits for the DAC to come back and confirms the value with a settings read.
+     */
+    suspend fun writeSettingThenLeave(device: DacHandle, id: String, value: Int) = withDevice(device, postGuard = false) { t ->
+        val target = target(device)
+        if (target.fiio == null || target.settings.isEmpty()) throw IOException("No settings writer for ${target.caps.name}")
+        nativeSession(device, t, target).sendSettingThenLeave(id, value, UsbLog::line)
+    }
+
     /** A FiiO USER slot Contour has not seen, and the background scan: the DAC switches to USER [slot] (nothing is saved) and that slot is read. */
     suspend fun readSlot(device: DacHandle, slot: Int): DacSnapshot = withDevice(device) { t ->
         val target = target(device)
@@ -448,16 +465,27 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
         target.echo?.let { return writeEcho(device, profile, target, it, onProgress) }
         target.moondrop?.let { return writeDawn(device, profile, target, it, onProgress) }
         target.ktMicro?.let { return writeAllegro(device, profile, target, it, onProgress) }
+        target.gen1?.let { return writeGen1(device, profile, target, it, onProgress) }
         if (!target.native) return when (val plan = requireNotNull(target.walkplay).plan(profile)) {
             is DevicePlan.Rejected -> throw IOException(plan.issues.joinToString("; "))
             is DevicePlan.Ready -> writePlan(device, plan, onProgress)
         }
         target.issues(profile).takeIf { it.isNotEmpty() }?.let { throw IOException(it.joinToString("; ")) }
-        return withDevice(device) { t ->
+        return withDevice(device, postGuard = target.fiio?.disconnectOnSave != true) { t ->
             val start = SystemClock.elapsedRealtime()
             UsbLog.line("native write: target slot ${targetSlot ?: target.destinationSlot}")
             val r = nativeSession(device, t, target).write(profile, explicitHold = true, targetSlot = targetSlot,
                 onProgress = onProgress?.let { report -> { done, total -> report(done.toFloat() / total) } })
+            // A DAC that leaves the USB bus on SAVE (JA11): the write ended at the SAVE frame, the result is pending until the first read after it is back matches what was written.
+            r.expected?.takeIf { r.pending }?.let { expected ->
+                val ms = SystemClock.elapsedRealtime() - start
+                UsbLog.line("native write: SAVE sent, $ms ms; the DAC leaves the USB bus; not verified until it is read again")
+                return@withDevice WriteResult(false, emptyList(), ms, 0, null, pending = PendingSave { back ->
+                    val state = back.nativeState as? NativeState.Fiio ?: return@PendingSave listOf("the DAC was not read back")
+                    if (runCatching { state.codec.matches(expected, state.raw) }.getOrDefault(false)) emptyList()
+                    else listOf("FiiO native register mismatch (the DAC reads slot ${state.slot}, ${state.raw.count} filters; wrote slot ${expected.activeSlot}, ${expected.count})")
+                })
+            }
             t.checkSession()
             r.reason?.let { UsbLog.line("native write: ${if (r.verified) "VERIFIED, note" else "NOT VERIFIED"}: $it") }
             if (r.reason == null) UsbLog.line("native write: VERIFIED")
@@ -468,18 +496,24 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
 
     // ---- Contour 1.6 families: Moondrop Dawn Pro 2, Kiwi Ears Allegro Mini, Moondrop Echo-A (report 0x4B through the descriptor-proven transport) ----------
 
+    /** The port of a 1.6 family: report 0x4B, except the Moondrop gen-1 cable (DUSK-SP), whose report is 1 and whose requests are SET_REPORT and GET_REPORT ([HidTransport.requestNative]). */
+    private fun familyPort(t: HidIo, device: DacHandle, target: DeviceTarget, tick: () -> Unit = {}) =
+        WalkPlayPort(t, device, if (target.gen1 != null) MoondropGen1Catalog.REPORT_ID else WalkPlay.REPORT_ID, tick)
+
     private fun familySnapshot(target: DeviceTarget, state: FamilyState, ms: Long) =
         DacSnapshot((state as? FamilyState.EchoA)?.snapshot?.firmware ?: "native", state.slot, emptyList(), null, ms, protocol = null, target = target, familyState = state)
 
     /** One read of a 1.6 family DAC by its :core session. The Echo-A is read through [FamilyDevices.readEchoA]; its write is [writeEcho] and only reachable once the flag is set. */
     private fun readFamily(device: DacHandle, t: HidIo, target: DeviceTarget): DacSnapshot {
-        val port = WalkPlayPort(t, device)
+        val port = familyPort(t, device, target)
         val start = SystemClock.elapsedRealtime()
         val dawn = target.moondrop
         val allegro = target.ktMicro
+        val gen1 = target.gen1
         val state: FamilyState = when {
             dawn != null -> FamilyState.Dawn(dawn, MoondropSession(dawn, port).read(withPreGain = true))
-            allegro != null -> KtMicroSession(allegro, port).let { s -> FamilyState.Allegro(allegro, s.read(), s.readGlobalGain()) }
+            gen1 != null -> FamilyState.Dusk(gen1, MoondropGen1Session(gen1, port).read())
+            allegro != null -> KtMicroSession(allegro, port).let { s -> FamilyState.Allegro(allegro, s.read(), if (allegro.globalGainUserSteps != null) s.readGlobalGain() else null) }
             else -> FamilyDevices.readEchoA(port)
         }
         t.checkSession()
@@ -539,6 +573,53 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
         }
     }
 
+    /**
+     * DUSK-SP (Moondrop gen 1): the nine bands to the Custom EQ ([MoondropGen1Session.write]): a read, the 56 requests with the record's pacing, ending at the commit. The commit stores the bank and
+     * RESTARTS the cable (it leaves the bus ~650 ms after the commit and is back 0.5-0.7 s later, on preset 1), so the result is pending: once it is back the controller selects the Custom EQ in RAM
+     * ([PendingSave.afterReturn]) and the read after it must show preset 0 and the nine meta records written. It has no preamp: only the bands reach the codec.
+     */
+    private suspend fun writeGen1(device: DacHandle, profile: Profile, target: DeviceTarget, model: MoondropGen1Catalog.Model,
+                                  onProgress: ((Float) -> Unit)?): WriteResult {
+        target.issues(profile).takeIf { it.isNotEmpty() }?.let { throw IOException(it.joinToString("; ")) }
+        // postGuard false: the cable leaves the bus after the commit, and the session guard after the block would throw for that expected detach
+        return withDevice(device, postGuard = false) { t ->
+            val start = SystemClock.elapsedRealtime()
+            val steps = Steps(io.github.chronosauros.contour.core.native.MoondropGen1Codec.plannedRequests(model), onProgress)
+            val session = MoondropGen1Session(model, familyPort(t, device, target) { steps.tick() })
+            UsbLog.line("write: ${target.caps.name}: Custom EQ, ${model.bandCount} bands (the missing ones neutral), meta records and coefficients, then the commit")
+            session.write(profile.bands, explicitHold = true)
+            val planned = requireNotNull(session.lastPlanned)
+            val ms = SystemClock.elapsedRealtime() - start
+            UsbLog.line("write: commit sent, $ms ms; the cable restarts (leaves the bus, comes back on preset ${model.powerUpPreset}); not verified until it is back, selected onto the Custom EQ and read again")
+            WriteResult(false, emptyList(), ms, 0, null, pending = PendingSave(afterReturn = { d ->
+                val r = selectGen1Preset(d, model.customIndex)
+                if (!r.verified) throw IOException(r.mismatches.firstOrNull() ?: "the cable did not take the Custom EQ")
+            }) { back ->
+                val state = back.familyState as? FamilyState.Dusk ?: return@PendingSave listOf("the DAC was not read back")
+                io.github.chronosauros.contour.core.native.MoondropGen1Codec.mismatches(planned, state.snapshot.activeIndex, state.snapshot.bands, model.customIndex)
+            })
+        }
+    }
+
+    /**
+     * DUSK-SP: selects firmware preset (or the Custom EQ) [index] ([MoondropGen1Session.selectPreset]: the select frame alone, no commit, then a read of the preset) and reads the cable again, so the result
+     * carries the state a read shows. The choice is RAM only (kept until the cable restarts or is plugged in again); nothing is written to any bank. Verified when the cable reports [index].
+     */
+    suspend fun selectGen1Preset(device: DacHandle, index: Int): WriteResult = withDevice(device) { t ->
+        val target = target(device)
+        val model = target.gen1 ?: throw IOException("No preset to select on ${target.caps.name}")
+        val start = SystemClock.elapsedRealtime()
+        val session = MoondropGen1Session(model, familyPort(t, device, target))
+        UsbLog.line("switch: ${target.caps.name} -> preset $index (${model.presetName(index)})")
+        val confirmed = session.selectPreset(index, explicitUserAction = true)
+        val back = session.read()
+        t.checkSession()
+        val ms = SystemClock.elapsedRealtime() - start
+        UsbLog.line("switch: preset $index confirmed $confirmed, $ms ms")
+        val reason = if (confirmed == index) null else "the cable reports preset $confirmed, not $index"
+        WriteResult(confirmed == index, listOfNotNull(reason), ms, 0, familySnapshot(target, FamilyState.Dusk(model, back), 0))
+    }
+
     /** Allegro Mini: the bands and SAVE, register 0x24 (the EQ switch) untouched: the switch on the DAC page is the only way to change it. The DAC leaves the bus, so the result is pending (see [savePending]). The Allegro has no preamp: only 0 dB reaches the codec. */
     private suspend fun writeAllegro(device: DacHandle, profile: Profile, target: DeviceTarget, model: KtMicroCatalog.Model,
                                      onProgress: ((Float) -> Unit)?): WriteResult {
@@ -547,8 +628,9 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
             val start = SystemClock.elapsedRealtime()
             val steps = Steps(2 * KtMicroCodec.readQueries(model).size + 2 * model.bandCount + 6, onProgress)
             val session = KtMicroSession(model, WalkPlayPort(t, device) { steps.tick() })
-            UsbLog.line("write: ${target.caps.name}: ${model.bandCount} bands, EQ switch left as found")
-            session.write(profile.copy(preampDb = 0.0), explicitHold = true, eqEnabled = null)
+            UsbLog.line("write: ${target.caps.name}: ${model.bandCount} bands, " + if (model.sendTurnsEqOn) "EQ switch turned on if it is off" else "EQ switch left as found")
+            session.write(profile.copy(preampDb = 0.0), explicitHold = true, eqEnabled = model.sendEqEnabled)
+            if (model.sendTurnsEqOn) UsbLog.line("write: EQ switch " + if (session.lastPlan?.frames?.any { (it.payload[0].toInt() and 255) == KtMicroCodec.EQ_ENABLE_REGISTER } == true) "was off: turned on" else "was already on")
             savePending(session, start)
         }
     }
@@ -602,7 +684,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
 
     /** The WalkPlay session of [target] (Micro, Max, TRN) on [t]; [tick] hears every frame (the progress of a send). */
     private fun walkPlaySession(device: DacHandle, t: HidIo, target: DeviceTarget, tick: () -> Unit = {}): Pair<WalkPlaySession, WalkPlayPort> {
-        val port = WalkPlayPort(t, device, tick)
+        val port = WalkPlayPort(t, device, tick = tick)
         return WalkPlaySession(requireNotNull(target.walkplayProfile), port) to port
     }
 

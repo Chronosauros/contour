@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CrinEar Protocol Max EQ app for Android - Contour EQ</title>
-<meta name="description" content="Free, open-source Android app that writes the CrinEar Protocol Max's 10-band EQ and preamp and reads every send back. Tested on a real Max and a test rig.">
+<meta name="description" content="Free, open-source Android app that writes the CrinEar Protocol Max's 10-band EQ and preamp, LOW PASS and HIGH PASS included, plus its DAC settings.">
 <link rel="canonical" href="https://contoureq.app/devices/crinear-protocol-max/">
 <link rel="alternate" hreflang="en" href="https://contoureq.app/devices/crinear-protocol-max/">
 <link rel="alternate" hreflang="x-default" href="https://contoureq.app/devices/crinear-protocol-max/">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://contoureq.app/devices/crinear-protocol-max/">
 <meta property="og:title" content="CrinEar Protocol Max EQ app for Android - Contour EQ">
-<meta property="og:description" content="Free, open-source Android app that writes the CrinEar Protocol Max's 10-band EQ and preamp and reads every send back. Tested on a real Max and a test rig.">
+<meta property="og:description" content="Free, open-source Android app that writes the CrinEar Protocol Max's 10-band EQ and preamp, LOW PASS and HIGH PASS included, plus its DAC settings.">
 <meta property="og:image" content="https://contoureq.app/images/icon-512.png">
 <meta name="twitter:card" content="summary">
 <meta name="theme-color" content="#EFECE8" media="(prefers-color-scheme: light)">
@@ -30,7 +30,7 @@
       "@id": "https://contoureq.app/devices/crinear-protocol-max/#webpage",
       "url": "https://contoureq.app/devices/crinear-protocol-max/",
       "name": "CrinEar Protocol Max EQ app for Android - Contour EQ",
-      "description": "Free, open-source Android app that writes the CrinEar Protocol Max's 10-band EQ and preamp and reads every send back. Tested on a real Max and a test rig.",
+      "description": "Free, open-source Android app that writes the CrinEar Protocol Max's 10-band EQ and preamp, LOW PASS and HIGH PASS included, plus its DAC settings.",
       "inLanguage": "en",
       "dateModified": "2026-11-11",
       "isPartOf": {
@@ -52,8 +52,8 @@
         {
           "@type": "ListItem",
           "position": 2,
-          "name": "Supported devices",
-          "item": "https://contoureq.app/devices/"
+          "name": "Supported USB DACs",
+          "item": "https://contoureq.app/install/#dacs"
         },
         {
           "@type": "ListItem",
@@ -69,11 +69,11 @@
       "name": "Contour",
       "alternateName": "Contour EQ",
       "url": "https://contoureq.app/",
-      "description": "Free, open-source Android EQ manager for USB DACs: send profiles from your phone to CrinEar Protocol, FiiO, SnowSky, TRN, Moondrop and Kiwi Ears dongles.",
+      "description": "Free, open-source Android EQ manager for USB DACs: send profiles from your phone to CrinEar Protocol, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears and JCally dongles.",
       "operatingSystem": "Android",
       "applicationCategory": "MultimediaApplication",
-      "softwareVersion": "1.6.6",
-      "dateModified": "2026-11-10",
+      "softwareVersion": "1.7.0",
+      "dateModified": "2026-11-11",
       "offers": {
         "@type": "Offer",
         "price": "0",
@@ -97,7 +97,7 @@
 </script>
 <style>
 /*
-  Look = /devices/ and the guide (same tokens, font, column, hero and footer), which follow the Contour app
+  Look = the install page and the guide (same tokens, font, column, hero and footer), which follow the Contour app
   (android/.../ui/Theme.kt). 1 dp = 1 CSS px. Colors: only Palette roles (light here, dark under prefers-color-scheme).
   Generated per device by gen_device_pages.py from this template.
 */
@@ -239,13 +239,13 @@ footer.fv p{margin:0}
 <body>
 <div class="wrap">
 
-<p class="top"><span class="lockup"><a href="/">Contour</a><a class="by" href="https://soundblooms.com/" rel="noopener" target="_blank" aria-label="by Soundblooms"><span class="by-word" aria-hidden="true">by</span><span class="sb-mark" aria-hidden="true">sound<span class="sb-face"><i class="sb-band"></i><span class="sb-eyes" data-eyes="calm"><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i></span></span>blooms</span></a></span> <a href="/guide/">Guide</a> <a href="/devices/">Devices</a> <a href="/install/">Install</a> <a class="lang-switch" href="/zh/devices/" hreflang="zh-CN" lang="zh-CN">中文</a></p>
+<p class="top"><span class="lockup"><a href="/">Contour</a><a class="by" href="https://soundblooms.com/" rel="noopener" target="_blank" aria-label="by Soundblooms"><span class="by-word" aria-hidden="true">by</span><span class="sb-mark" aria-hidden="true">sound<span class="sb-face"><i class="sb-band"></i><span class="sb-eyes" data-eyes="calm"><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i></span></span>blooms</span></a></span> <a href="/guide/">Guide</a> <a href="/install/#dacs">Devices</a> <a href="/install/">Install</a> <a class="lang-switch" href="/zh/devices/" hreflang="zh-CN" lang="zh-CN">中文</a></p>
 
 <header class="hero">
   <img class="icon" src="/images/icon-512.png" width="88" height="88" alt="Contour app icon">
   <h1>CrinEar Protocol Max EQ app for Android</h1>
   <p class="lede">Contour EQ is a free, open-source Android app that writes the parametric EQ stored inside the CrinEar Protocol Max and reads every send back. The EQ is written into the dongle itself, so it works in every app, with no system equaliser.</p>
-  <p class="ver"><span class="dot" aria-hidden="true"></span><span>Stable 1.6.6</span></p>
+  <p class="ver"><span class="dot" aria-hidden="true"></span><span>Stable 1.7.0</span></p>
   <div class="cta">
     <a class="btn btn-primary" href="/install/">Install Contour</a>
   </div>
@@ -261,12 +261,13 @@ footer.fv p{margin:0}
         <tr><th scope="row">Chip / protocol</th><td>WalkPlay</td></tr>
         <tr><th scope="row">EQ</th><td>Write; every band and the preamp are read back from the DAC after each send, and any mismatch counts as a failed send.</td></tr>
         <tr><th scope="row">Bands</th><td>10</td></tr>
-        <tr><th scope="row">Filter types</th><td>PEAK, LOW SHELF, HIGH SHELF</td></tr>
-        <tr><th scope="row">Gain</th><td>-10 to +10 dB</td></tr>
-        <tr><th scope="row">Q</th><td>0.1 to 10</td></tr>
+        <tr><th scope="row">Filter types</th><td>PEAK, LOW SHELF, HIGH SHELF, LOW PASS, HIGH PASS</td></tr>
+        <tr><th scope="row">Gain</th><td>-12 to +12 dB</td></tr>
+        <tr><th scope="row">Q</th><td>0.1 to 10 (shelves up to 7.07)</td></tr>
         <tr><th scope="row">Frequency</th><td>20 Hz to 20 kHz</td></tr>
         <tr><th scope="row">Preamp</th><td>-30 to 0 dB, whole dB</td></tr>
         <tr><th scope="row">Where the EQ is kept</th><td>In the DAC's memory: one EQ, no slots. It stays after unplugging, preamp included.</td></tr>
+        <tr><th scope="row">DAC page</th><td>Since 1.7.0: FILTER (FAST-LL, FAST-PC, SLOW-LL, SLOW-PC, NON-OS), OUTPUT (CLASS H, CLASS AB), BALANCE, up to 15 steps to either side, and MIC GAIN, -15 to +15 dB. Each change is read back and stays after unplugging. There is no GAIN row: the Max's Eco / Boost switch sets the gain.</td></tr>
         <tr><th scope="row">Tested</th><td>By the developer on hardware and on a test rig, November 2026, firmware 1.4.</td></tr>
       </tbody>
     </table>
@@ -277,16 +278,17 @@ footer.fv p{margin:0}
   <h2>What Contour does not do on the Protocol Max</h2>
   <ul class="plain-list">
     <li>Firmware updates.</li>
-    <li>LOW PASS and HIGH PASS filters. The Max plays them, but Contour 1.6.6 does not offer them yet.</li>
-    <li>Large HIGH SHELF boosts at lower frequencies. They don't fit the Max's filter format, so Contour refuses them with a message instead of sending them.</li>
+    <li>Setting the gain. The Max has a physical Eco / Boost switch, and the switch wins every time the dongle is plugged in, so Contour has no GAIN row for the Max.</li>
+    <li>Preamp steps finer than 1 dB. The Max keeps the preamp in whole dB, so Contour rounds a typed fraction down, never louder.</li>
+    <li>A LOW SHELF or HIGH SHELF at Q 7.07 with a cut of 10 dB or more. No filter of that shape exists, so Contour blocks the band before anything is sent.</li>
     <li>A/B comparison. It works on the Protocol Micro only for now.</li>
-    <li>A DAC page.</li>
   </ul>
 </section>
 
 <section class="plain" id="vendor-app">
   <h2>Contour EQ and the Device PEQ tool on Hangout.Audio</h2>
-  <p>The official way to set the Protocol Max's EQ is Device PEQ, a plugin of the Hangout.Audio graph tool: you connect the DAC, pick the Custom slot, then Pull or Push the EQ. Device PEQ works in a web browser, which Contour does not: Contour runs on the Android phone the dongle is plugged into. Both write the same single slot, Custom. Contour keeps your profiles in a library on the phone and needs no internet or account.</p>
+  <p>The official way to set the Protocol Max's EQ is Device PEQ, a plugin of the Hangout.Audio graph tool: you connect the DAC, pick the Custom slot, then Pull or Push the EQ. Device PEQ works in a web browser, which Contour does not: Contour runs on the Android phone the dongle is plugged into. Both write the same single slot, Custom.</p>
+  <p>Device PEQ stops at -10 to +10 dB for this DAC. Contour offers -12 to +12 dB and LOW PASS and HIGH PASS, because the Max played them as drawn on a test rig. The DAC page has the official tool's settings, FILTER, OUTPUT, BALANCE and MIC GAIN, except its gain control, which the Eco / Boost switch overrides every time the dongle is plugged in. Contour keeps your profiles in a library on the phone and needs no internet or account.</p>
 </section>
 
 <section class="plain" id="steps">
@@ -294,7 +296,8 @@ footer.fv p{margin:0}
   <ol class="plain-list">
     <li>Send a profile with HOLD TO SEND. Contour reads every band and the preamp back from the DAC, and shows ON DAC only if everything matches.</li>
     <li>A small pop when you send is normal: the dongle is saving the EQ to its memory.</li>
-    <li>If a red line under HOLD TO SEND blocks a big treble boost with HIGH SHELF, lower the boost and send again.</li>
+    <li>Change FILTER, OUTPUT, BALANCE or MIC GAIN on the DAC page. For the gain, use the Eco / Boost switch on the Max itself.</li>
+    <li>MIC GAIN is there because the official tool has it. The Max has no microphone input, so it changes nothing you can hear.</li>
   </ol>
   <p class="more">Everything else works the same on every DAC: <a href="/guide/">How to use Contour</a>.</p>
 </section>
@@ -303,15 +306,19 @@ footer.fv p{margin:0}
   <h2>Questions about the Protocol Max</h2>
   <div class="qa">
     <h3>Is there an EQ app for the CrinEar Protocol Max on Android?</h3>
-    <p>Yes. Contour EQ writes the Protocol Max's 10-band EQ and preamp from an Android phone and reads every send back. It is free and open source (Apache 2.0). The official tool for this DAC is Device PEQ on the Hangout.Audio graph tool, in a web browser.</p>
+    <p>Yes. Contour EQ writes the Protocol Max's 10-band EQ and preamp from an Android phone, reads every send back, and sets FILTER, OUTPUT, BALANCE and MIC GAIN on its DAC page. It is free and open source (Apache 2.0). The official tool for this DAC is Device PEQ on the Hangout.Audio graph tool, in a web browser.</p>
   </div>
   <div class="qa">
     <h3>Which PEQ filters can I use on the Protocol Max?</h3>
-    <p>PEAK, LOW SHELF and HIGH SHELF, all native filters of the DAC, on 10 bands. The Max also plays LOW PASS and HIGH PASS, but Contour 1.6.6 does not offer them yet.</p>
+    <p>PEAK, LOW SHELF, HIGH SHELF, LOW PASS and HIGH PASS on 10 bands, from -12 to +12 dB and Q 0.1 to 10. All five are native filters of the DAC, and each played as drawn on a test rig.</p>
+  </div>
+  <div class="qa">
+    <h3>Did shelf filters on the Max sound different from the curve in Contour?</h3>
+    <p>Yes, before Contour 1.7.0. The Max plays a shelf's Q 1.41 times lower than the value it is sent, so a LOW SHELF or HIGH SHELF could play up to 2.2 dB away from the curve Contour drew. Contour 1.7.0 sends the value the Max needs to play the Q you set, and on the test rig they play within 0.07 dB of the curve. Send your profiles with shelves again after updating.</p>
   </div>
   <div class="qa">
     <h3>Can Contour update the Protocol Max's firmware?</h3>
-    <p>No. Contour does not update firmware. It writes the EQ and the preamp.</p>
+    <p>No. Contour does not update firmware. It writes the EQ and the preamp, and the four settings on the DAC page.</p>
   </div>
 </section>
 
@@ -322,14 +329,17 @@ footer.fv p{margin:0}
     <li><a href="/devices/crinear-protocol-micro/">CrinEar Protocol Micro</a></li>
     <li><a href="/devices/fiio-ka15/">FiiO KA15</a></li>
     <li><a href="/devices/fiio-k13-r2r/">FiiO K13 R2R</a></li>
+    <li><a href="/devices/fiio-ja11/">FiiO JadeAudio JA11</a></li>
     <li><a href="/devices/snowsky-melody/">SnowSky Melody</a></li>
     <li><a href="/devices/snowsky-tiny-a/">SnowSky Tiny A</a></li>
     <li><a href="/devices/trn-black-pearl/">TRN Black Pearl</a></li>
     <li><a href="/devices/moondrop-dawn-pro-2/">Moondrop Dawn Pro 2</a></li>
     <li><a href="/devices/moondrop-echo-a/">Moondrop Echo-A</a></li>
+    <li><a href="/devices/moondrop-dusk/">Moondrop DUSK-SP</a></li>
     <li><a href="/devices/kiwi-ears-allegro-mini/">Kiwi Ears Allegro Mini</a></li>
+    <li><a href="/devices/jcally-jm12/">JCally JM12</a></li>
   </ul>
-  <p><a href="/devices/">All supported devices</a></p>
+  <p><a href="/install/#dacs">All supported devices</a></p>
 </section>
 
 <footer class="fv">

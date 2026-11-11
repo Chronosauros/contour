@@ -88,6 +88,7 @@ import io.github.chronosauros.contour.core.Proven
 import io.github.chronosauros.contour.core.isPass
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.model.AppModel
+import io.github.chronosauros.contour.model.Page
 import io.github.chronosauros.contour.model.DacEditor
 import io.github.chronosauros.contour.model.Sender
 import io.github.chronosauros.contour.ui.AppButton
@@ -257,7 +258,7 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
                 // One scale object per DAC range: a DAC with its own range gets a new Scale from every scaleFor call, and a row given a new object is
                 // never skipped (all three rows were recomposed on each step of a drag instead of the one being dragged).
                 val caps = model.protocol.caps
-                val scales = remember(caps) { BAND_PARAMS.map { it.scaleFor(caps)!! } }
+                val scales = remember(caps, b.type) { BAND_PARAMS.map { it.scaleFor(caps, b.type)!! } }
                 // ids, not this pass's profile and band objects: a callback that holds those is a new one on every step of a drag, and its row is never skipped
                 val profileId = p.id
                 val bandId = b.id
@@ -278,7 +279,7 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
         }
         p.preampDb?.let { db ->
             if (!model.protocol.preampFits(p.bands, db)) {
-                Text("${model.protocol.preampLabel} ${Param.PREAMP.number(db)} dB is outside the device range. Tap the number to type a new value, or switch to AUTO.", color = pal.textDim, style = Type.small)
+                Text("${model.protocol.preampLabel} ${Param.PREAMP.number(db, model.protocol.preampStep == 1.0)} dB is outside the device range. Tap the number to type a new value, or switch to AUTO.", color = pal.textDim, style = Type.small)
             }
         }
         // FiiO KA15 (read, USER1-3 writes, slot names and rename tested on a Pixel 04.10.2026): why a send is blocked,
@@ -329,8 +330,8 @@ private fun TuneFoot(model: AppModel, p: Profile, device: DeviceController, send
         }
         if (slots) SlotRow(device, p, sender, editor, sender.isOnDac(p),
             modifier = Modifier.padding(top = if (remembered != null) 0.dp else Grid.GROUP - GAP))
-        HoldToSend(p, device, sender, actions::sendDetails,
-            Modifier.padding(top = if (slots) 0.dp else Grid.GROUP - GAP).fillMaxWidth().height(ROW_H))
+        HoldToSend(p, device, sender, actions::sendDetails, onPresets = { model.pageRequest = Page.DAC },
+            modifier = Modifier.padding(top = if (slots) 0.dp else Grid.GROUP - GAP).fillMaxWidth().height(ROW_H))
     }
 }
 
@@ -361,8 +362,11 @@ private fun FamilyNotes(device: DeviceController) {
                 AppButton("RETURN TO INDEX $index", { device.returnToPreviousIndex() }, Modifier.fillMaxWidth().testTag("return_index"), enabled = !device.busy)
             }
         }
+        // DUSK-SP (Moondrop gen 1): no text here at all (owner 11.11.2026): the foot button names the cable's preset ([Sender.presetFoot]) and the presets are buttons on the DAC page.
+        target.gen1 != null -> Unit
         // Allegro Mini: verified on the phone 25.10.2026. The DSP designs its filters for 24 kHz and plays them at the stream rate, so Contour writes for a 48 kHz stream (owner decision 25.10.2026).
-        else -> Text(if (review) "${target.caps.bands} PEAK bands, no preamp. Contour assumes this DAC plays at 48 kHz; at 44.1 kHz every band sounds about 8 % lower. After SAVE the DAC reconnects; the send counts only after Contour has read it back."
+        // The line follows the model's offered types: the Allegro Mini takes PEAK bands only, the JCally JM12 also low and high shelves.
+        else -> Text(if (review) "${target.caps.bands} ${if (target.caps.types == setOf(FilterType.PEAK)) "PEAK bands" else "bands: peak, low shelf and high shelf"}, no preamp. Contour assumes this DAC plays at 48 kHz; at 44.1 kHz every band sounds about 8 % lower. After SAVE the DAC reconnects; the send counts only after Contour has read it back."
             else "Contour tunes this DAC for 48 kHz; at 44.1 kHz every band sounds about 8 % lower.",
             color = dim, style = Type.small)
     }
@@ -941,7 +945,7 @@ private const val PREAMP_DB_PER_DP = 0.08
 private const val PREAMP_SLOW = 0.25f
 
 /**
- * PREAMP: the value, and one bar that is both the MANUAL / AUTO switch and the manual slider ([PreampBar]).
+ * PREAMP: the value, a slider like FREQ / GAIN / Q and the AUTO chip beside it ([PreampBar]).
  * A tap on the value types it (manual only).
  */
 @Composable
@@ -971,7 +975,7 @@ private fun PreampRow(model: AppModel, p: Profile, sender: Sender, actions: Tune
             // AUTO: a computed value, dimmed; manual: bright
             StackedValue(
                 model.protocol.preampLabel, // PREAMP; the Moondrop manufacturer's name for the same register is PRE GAIN
-                db?.let { Param.PREAMP.number(it) } ?: "--",
+                db?.let { Param.PREAMP.number(it, model.protocol.preampStep == 1.0) } ?: "--", // -4, not -4.0, on a whole-dB DAC
                 if (db != null) Param.PREAMP.unit else "",
                 if (auto) c.textDim else c.text,
             )
@@ -980,27 +984,16 @@ private fun PreampRow(model: AppModel, p: Profile, sender: Sender, actions: Tune
     }
 }
 
-/** MANUAL and AUTO side by side, both in [manual] and [auto] colour: drawn once under the pill and once, clipped to it, over it. */
-@Composable
-private fun PreampLabels(manual: Color, auto: Color, onManual: (() -> Unit)?, onAuto: (() -> Unit)?) {
-    Row(Modifier.fillMaxSize()) {
-        Box(
-            Modifier.weight(1f).fillMaxHeight().then(if (onManual != null) Modifier.clickable(onClick = onManual) else Modifier),
-            contentAlignment = Alignment.Center,
-        ) { Text("MANUAL", style = Type.segment, color = manual, maxLines = 1) }
-        Box(
-            Modifier.weight(1f).fillMaxHeight().then(if (onAuto != null) Modifier.clickable(onClick = onAuto) else Modifier),
-            contentAlignment = Alignment.Center,
-        ) { Text("AUTO", style = Type.segment, color = auto, maxLines = 1) }
-    }
-}
+/** The AUTO chip at the end of the PREAMP row. */
+private val PREAMP_CHIP_W = 84.dp
 
 /**
- * A pressed-in bar with a raised orange pill, the look of the PEAK / LOW SHELF row. AUTO: the pill sits under AUTO
- * and a tap on MANUAL switches. MANUAL: the bar becomes a slider like FREQ / GAIN / Q (a light fill from the left edge
- * to the value, MANUAL bright, AUTO dimmed), and a sideways drag adjusts (0.1 dB steps, a tick at every whole dB, a
- * strong one at 0 dB, a reject tick at the device limits; lifting the finger off a value keeps it, [LiftGuard]);
- * a tap on AUTO switches back.
+ * The PREAMP slider and the AUTO chip (owner's pick of 11.11.2026, after a user report that the old bar - MANUAL and AUTO
+ * inside the slider, AUTO a fixed half bar - looked out of proportion). The track is a slider like FREQ / GAIN / Q in both
+ * modes: a fill from the left edge to the value over the device range. MANUAL: bright and dragged sideways (steps on the
+ * DAC's grid, a tick at every whole dB, a strong one at 0 dB, a reject tick at the device limits; lifting the finger off a
+ * value keeps it, [LiftGuard]). AUTO: the computed value, dimmed, not draggable. The chip is raised orange while AUTO is on
+ * and pressed in while it is off; a tap toggles it.
  */
 @Composable
 private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, valid: Boolean, sender: Sender, modifier: Modifier) {
@@ -1009,21 +1002,14 @@ private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, v
     val pagerLock = LocalPagerLock.current
     val prof = rememberUpdatedState(p)
     val shape = RoundedCornerShape(Radii.M)
-    val pill = shape // same corners as the slider fill: the pill is the whole bar height
     val adjustable = !auto && db != null && !sender.bypassed && !sender.abBusy
     val hs = model.protocol.shelfOffset(p.bands)
     val lo = model.protocol.preampMin - hs
     val hi = model.protocol.preampMax - hs
     val pos = if (db == null || hi <= lo) 0f else ((db - lo) / (hi - lo)).toFloat().coerceIn(0f, 1f)
-    val manual by animateFloatAsState(if (auto) 0f else 1f, label = "preamp-mode")
     val switchTo = { toAuto: Boolean -> haptics.segment(); sender.leaveAb { model.setPreampAuto(toAuto) } }
-    BoxWithConstraints(
-        modifier
-            .testTag("preamp_bar")
-            .clip(shape)
-            .background(c.track)
-            .sink(shape)
-            .then(if (!adjustable) Modifier else Modifier.holdsPager(pagerLock).pointerInput(p.id) {
+    // the drag that moves a MANUAL preamp
+    val gesture = if (!adjustable) Modifier else Modifier.holdsPager(pagerLock).pointerInput(p.id) {
                     val guard = LiftGuard<Double>(density, "PREAMP")
                     var acc = 0.0
                     var atEnd = false
@@ -1071,57 +1057,38 @@ private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, v
                             ticked = next
                         }
                     }
-                })
-    ) {
-        if (!valid) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("INVALID EQ", style = Type.segment, color = c.textDim, maxLines = 1)
-            }
-            return@BoxWithConstraints
-        }
-        // the pill fills the bar's full height, as tall as the fill of the FREQ / GAIN / Q sliders above
-        val w = maxWidth
-        val half = w / 2
-        if (!auto) {
-            // MANUAL is a slider like FREQ / GAIN / Q (light fill from the left edge to the value); MANUAL reads at
-            // full strength, AUTO dimmed - a tap on AUTO switches back
-            val h = maxHeight
-            val fillW = h + (w - h) * pos
-            Box(Modifier.fillMaxSize()) {
-                PreampLabels(c.text, c.textMute, null, { switchTo(true) })
-                Box(
-                    Modifier
-                        .width(fillW)
-                        .fillMaxHeight()
-                        .lift(pill, Lift.RAISED)
-                        .background(c.fill, pill)
-                        .clip(pill),
-                ) {
-                    Box(Modifier.fillMaxHeight().wrapContentWidth(Alignment.Start, unbounded = true).width(w)) {
-                        PreampLabels(c.bg, c.bg.copy(alpha = 0.45f), null, null)
-                    }
                 }
+    Row(modifier.testTag("preamp_bar"), horizontalArrangement = Arrangement.spacedBy(GAP), verticalAlignment = Alignment.CenterVertically) {
+        BoxWithConstraints(Modifier.weight(1f).fillMaxHeight().clip(shape).background(c.track).sink(shape).then(gesture)) {
+            if (!valid || db == null) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("INVALID EQ", style = Type.segment, color = c.textDim, maxLines = 1)
+                }
+                return@BoxWithConstraints
             }
-            return@BoxWithConstraints
-        }
-        val x = half * (1f - manual)
-        val pillW = half + half * (pos * manual)
-        Box(Modifier.fillMaxSize()) {
-            PreampLabels(c.text, c.text, if (auto) ({ switchTo(false) }) else null, if (!auto) ({ switchTo(true) }) else null)
+            // the fill is the track's full height, as the fill of the FREQ / GAIN / Q sliders above
+            val fillW = maxHeight + (maxWidth - maxHeight) * pos
             Box(
                 Modifier
-                    .offset(x = x)
-                    .width(pillW)
+                    .width(fillW)
                     .fillMaxHeight()
-                    .lift(pill, Lift.RAISED)
-                    .background(c.accent, pill)
-                    .clip(pill),
-            ) {
-                Box(Modifier.fillMaxHeight().wrapContentWidth(Alignment.Start, unbounded = true).width(w).offset(x = -x)) {
-                    PreampLabels(c.onAccent, c.onAccent, null, null)
-                }
-            }
+                    .then(if (auto) Modifier else Modifier.lift(shape, Lift.RAISED))
+                    .background(if (auto) c.fill.copy(alpha = 0.28f) else c.fill, shape),
+            )
         }
+        // AUTO without a valid EQ has no value to switch to: the chip waits, as the old bar showed no switch then
+        Box(
+            Modifier
+                .width(PREAMP_CHIP_W)
+                .fillMaxHeight()
+                .then(
+                    if (auto) Modifier.lift(shape, Lift.RAISED).background(c.accent, shape).clip(shape)
+                    else Modifier.clip(shape).background(c.track).sink(shape),
+                )
+                .clickable(enabled = valid) { switchTo(!auto) }
+                .testTag("preamp_auto"),
+            contentAlignment = Alignment.Center,
+        ) { Text("AUTO", style = Type.segment, color = if (auto) c.onAccent else c.textDim, maxLines = 1) }
     }
 }
 

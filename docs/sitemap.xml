@@ -3,23 +3,25 @@
   <url><loc>https://contoureq.app/</loc></url>
   <url><loc>https://contoureq.app/install/</loc></url>
   <url><loc>https://contoureq.app/guide/</loc></url>
-  <url><loc>https://contoureq.app/devices/</loc></url>
   <!-- device-pages:start -->
   <url><loc>https://contoureq.app/devices/crinear-protocol-micro/</loc><lastmod>2026-11-09</lastmod></url>
   <url><loc>https://contoureq.app/devices/crinear-protocol-max/</loc><lastmod>2026-11-11</lastmod></url>
   <url><loc>https://contoureq.app/devices/fiio-ka15/</loc><lastmod>2026-11-09</lastmod></url>
   <url><loc>https://contoureq.app/devices/fiio-k13-r2r/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://contoureq.app/devices/fiio-ja11/</loc><lastmod>2026-11-11</lastmod></url>
   <url><loc>https://contoureq.app/devices/snowsky-melody/</loc><lastmod>2026-11-09</lastmod></url>
   <url><loc>https://contoureq.app/devices/snowsky-tiny-a/</loc><lastmod>2026-11-09</lastmod></url>
   <url><loc>https://contoureq.app/devices/trn-black-pearl/</loc><lastmod>2026-11-09</lastmod></url>
   <url><loc>https://contoureq.app/devices/moondrop-dawn-pro-2/</loc><lastmod>2026-11-09</lastmod></url>
   <url><loc>https://contoureq.app/devices/moondrop-echo-a/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://contoureq.app/devices/moondrop-dusk/</loc><lastmod>2026-11-11</lastmod></url>
   <url><loc>https://contoureq.app/devices/kiwi-ears-allegro-mini/</loc><lastmod>2026-11-09</lastmod></url>
+  <url><loc>https://contoureq.app/devices/jcally-jm12/</loc><lastmod>2026-11-11</lastmod></url>
   <!-- device-pages:end -->
   <!-- article-pages:start -->
-  <url><loc>https://contoureq.app/autoeq-to-dongle/</loc><lastmod>2026-11-10</lastmod></url>
-  <url><loc>https://contoureq.app/eq-in-the-dongle/</loc><lastmod>2026-11-10</lastmod></url>
-  <url><loc>https://contoureq.app/fiio-snowsky/</loc><lastmod>2026-11-10</lastmod></url>
+  <url><loc>https://contoureq.app/autoeq-to-dongle/</loc><lastmod>2026-11-11</lastmod></url>
+  <url><loc>https://contoureq.app/eq-in-the-dongle/</loc><lastmod>2026-11-11</lastmod></url>
+  <url><loc>https://contoureq.app/fiio-snowsky/</loc><lastmod>2026-11-11</lastmod></url>
   <!-- article-pages:end -->
   <url><loc>https://contoureq.app/privacy/</loc></url>
   <url><loc>https://contoureq.app/zh/</loc></url>

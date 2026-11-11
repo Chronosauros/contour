@@ -140,12 +140,13 @@ class TrnWriteTest {
         flat.bands.forEachIndexed { i, b ->
             assertEquals(hex(report(factoryTx[i])), hex(WalkPlay.bandWriteReport(b, 0, WalkPlay.TRN_BAND_LEN)), "factory slot $i")
         }
-        // a short profile is padded with exactly those slots, whatever the Max would do
+        // a short profile is padded with exactly those slots
         val one = trn.plan(listOf(Band("a", FilterType.PEAK, 1000.0, 3.0, 1.0)), -4.0) as DevicePlan.Ready
         assertEquals(10, one.bands.size)
         assertEquals(flat.bands.drop(1).map { it.registers() }, one.bands.drop(1).map { it.registers() })
         assertEquals(1000, one.bands[0].registers().freq)
-        assertNotEquals(DeviceProtocol.MAX.flatPlan().bands.map { it.registers() }, flat.bands.map { it.registers() })
+        // the Max's own factory flat, read on a unit (2026-11-10), is the same: PK, 0 dB, register Q 182/256 on 31 - 16000 Hz
+        assertEquals(DeviceProtocol.MAX.flatPlan().bands.map { it.registers() }, flat.bands.map { it.registers() })
         // the factory slot is also what a disabled band leaves behind
         val withDisabled = trn.plan(listOf(Band("a", FilterType.PEAK, 1000.0, 3.0, 1.0), Band("b", FilterType.PEAK, 2000.0, 3.0, 1.0, enabled = false)), -4.0) as DevicePlan.Ready
         assertEquals(flat.bands[1].registers(), withDisabled.bands[1].registers())

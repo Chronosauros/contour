@@ -62,10 +62,14 @@ class ProtocolParityTest {
     @Test
     fun `Protocol Max ten bands native shelves and complete deterministic spare slots`() {
         val max = DeviceProtocol.MAX
-        // 8 kHz: a positive native shelf below about 5.5 kHz (Q 0.71, +3 dB) no longer fits signed Q30 and is refused.
+        // 8 kHz: a positive native shelf below about 5.5 kHz (Q 0.71, +3 dB) does not fit signed Q30: the Max sends it wrapped to int32 (devicePEQ's bytes; the unit plays the registers, dac-lab run
+        // 2026-11-10-crinear-protocol-max-16) since ProtocolMax.CANDIDATES_VERIFIED, and without that the planner refuses it as before.
         val hs = Band("hs", FilterType.HIGH_SHELF, 8000.0, 3.0, 0.71)
-        val refused = max.plan(listOf(hs.copy(freqHz = 4000.0)), -4.0) as DevicePlan.Rejected
+        assertTrue(max.plan(listOf(hs.copy(freqHz = 4000.0)), -4.0) is DevicePlan.Ready)
+        val refused = max.plan(listOf(hs.copy(freqHz = 4000.0)), -4.0, ProtocolMax.capabilities(passFilters = true, wideGain = true, wrapQ30 = false)) as DevicePlan.Rejected
         assertEquals(listOf("Max band 1 cannot be represented safely. Reduce the boost, raise the shelf frequency or adjust Q."), refused.issues)
+        // a shelf with no finite biquad at all (a low shelf of -10 dB at the top of the shelf Q range) is blocked, wrapped or not
+        assertTrue(max.plan(listOf(Band("ls", FilterType.LOW_SHELF, 100.0, -10.0, 7.07)), -4.0) is DevicePlan.Rejected)
         // AUTO that needs more than -30 dB is refused with the number (it used to be sent as -30); an explicit -30 still sends.
         val stacked = List(5) { Band("p$it", FilterType.PEAK, 1000.0, 10.0, 0.7) }
         val tooLow = "this EQ needs -50 dB; Contour supports down to -30 dB for this device. Reduce the combined boosts."
@@ -105,7 +109,7 @@ class ProtocolParityTest {
         assertFailsWith<IllegalArgumentException> { p.parseBand(good.copyOf().also { it[1] = 1 }, 9) }
         assertFailsWith<IllegalArgumentException> { p.parseBand(good.copyOf().also { it[0] = 0x03 }, 9) }
         assertFailsWith<IllegalArgumentException> { p.parseBand(good, 8) }
-        assertFailsWith<IllegalArgumentException> { p.parseBand(good.copyOf().also { it[34] = 5 }, 9) }
+        assertFailsWith<IllegalArgumentException> { p.parseBand(good.copyOf().also { it[34] = 6 }, 9) }   // 1..5 are the codes a unit can hold (the TRN's tolerance)
         assertFailsWith<IllegalArgumentException> { p.parseSlot(good) }
         assertFailsWith<IllegalArgumentException> { p.parseSlot(good.copyOf(10)) }
         assertEquals(101, p.parseSlot(maxReply(p.flatPlan().bands[0], 101)))
@@ -674,14 +678,14 @@ class ProtocolParityTest {
     @Test
     fun `FROM DAC loads a band the guard refuses with a warning and sending stays blocked`() {
         val max = DeviceProtocol.MAX
-        val hsBad = WalkPlay.BandWrite(0, 1000.0, 3.0, 0.71, WalkPlay.TYPE_HSQ)
+        val hsBad = WalkPlay.BandWrite(0, 1000.0, 13.0, 0.71, WalkPlay.TYPE_HSQ)   // 13 dB: outside the offered +-12
         val reads = max.flatPlan().bands.map { fromDacBand(it, FilterType.PEAK) }.toMutableList()
         assertEquals(null, (max.importExact(reads, -3) as DacImport.Ready).warning) // a normal DAC state: no warning
         reads[0] = fromDacBand(hsBad, FilterType.HIGH_SHELF)
         val loaded = max.importExact(reads, -3) as DacImport.Ready
         assertEquals(FilterType.HIGH_SHELF, loaded.eq.bands[0].type)
-        assertEquals(3.0, loaded.eq.bands[0].gainDb)
-        assertEquals(true, loaded.warning!!.startsWith("Max band 1 cannot be represented safely."), loaded.warning)
+        assertEquals(13.0, loaded.eq.bands[0].gainDb)
+        assertEquals(true, loaded.warning!!.startsWith("Band 1: outside CrinEar Protocol Max supported types/ranges"), loaded.warning)
         assertEquals(true, "stays blocked" in loaded.warning!!)
         assertEquals(true, max.plan(loaded.eq.bands, loaded.eq.preampDb) is DevicePlan.Rejected)
         // Micro: an extreme peak written by another tool

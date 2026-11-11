@@ -25,7 +25,18 @@ data class DeviceCapabilities(
     val peakQScale: Double = 1.0,
     /** The rate the DSP runs the biquad coefficients Contour sends at (record `peq.coefficientRateHz`); WalkPlay only, see [WalkPlay.computeIir]. */
     val coefficientRateHz: Double = WalkPlay.DESIGN_FS,
+    /** A shelf's limits where they are narrower than the device-wide ones (record `peq.shelfGainDb` and `peq.shelfQ`: what a unit was measured to play within tolerance); null = none. */
+    val shelfLimits: ShelfLimits? = null,
+    /**
+     * A band whose biquad overflows signed Q30 is sent with its coefficients wrapped to int32, as devicePEQ's quantizer and byte split do, instead of being refused. Only for a DAC that
+     * plays the registers and not the coefficient bytes (the Protocol Max, see [ProtocolMax]); false everywhere else: the other WalkPlay DACs play the bytes, so a wrapped one would be a different filter.
+     */
+    val wrapQ30: Boolean = false,
 ) {
+    /** The gain a band of [type] may have: the device range, narrowed to [shelfLimits] for a shelf. */
+    fun gainRange(type: FilterType): ClosedFloatingPointRange<Double> =
+        if (type.isShelf && shelfLimits != null) maxOf(gainMinDb, shelfLimits.gainMinDb)..minOf(gainMaxDb, shelfLimits.gainMaxDb) else gainMinDb..gainMaxDb
+
     /** The register-over-intended Q factor for a band of [type]: shelves and peaks have their own, pass filters play the register as Q. */
     fun qScale(type: FilterType): Double = when {
         type.isShelf -> shelfQScale
@@ -34,8 +45,13 @@ data class DeviceCapabilities(
     }
 
     /** The intended (acoustic) Q range for a band of [type]: the register Q range divided by [qScale]. */
-    fun qRange(type: FilterType): ClosedFloatingPointRange<Double> = qScale(type).let { qMin / it..qMax / it }
+    fun qRange(type: FilterType): ClosedFloatingPointRange<Double> = qScale(type).let { qMin / it..qMax / it }.let { r ->
+        if (type.isShelf && shelfLimits != null) maxOf(r.start, shelfLimits.qMin)..minOf(r.endInclusive, shelfLimits.qMax) else r
+    }
 }
+
+/** Shelf limits narrower than the device's own: gain in dB and the INTENDED Q (not the register Q). */
+data class ShelfLimits(val gainMinDb: Double, val gainMaxDb: Double, val qMin: Double, val qMax: Double)
 
 /** A profile translated for the device: 8 band writes plus the preamp, or the reasons it does not fit. */
 sealed interface DevicePlan {
@@ -107,6 +123,48 @@ object ProtocolTrn {
     /** The TRN's record caps; with [passFilters] LOW PASS and HIGH PASS are offered too (the tests build both). */
     fun capabilities(passFilters: Boolean): DeviceCapabilities = GeneratedDevices.TRN_BLACK_PEARL.caps().let { base ->
         if (passFilters) base.copy(types = base.types + setOf(FilterType.LOW_PASS, FilterType.HIGH_PASS)) else base
+    }
+}
+
+/**
+ * CrinEar Protocol Max (WalkPlay SchemeNo16). What a unit measured on the Mac (dac-lab runs 2026-11-10-crinear-protocol-max-07 to -14) says about it: the DSP plays the REGISTERS (frequency, gain, Q) at the stream
+ * rate and not the coefficient bytes, and a shelf plays Q = register / sqrt(2) (the record's `shelfQScale`, the TRN's convention, in every build). Three things were CANDIDATES behind one flag,
+ * [CANDIDATES_VERIFIED], and [Proven]: LOW PASS and HIGH PASS (native codes 4 and 5, the TRN's frames; they played within 0.1 dB, runs 12 and 20), gain up to +-[CANDIDATE_GAIN_DB] dB for peaks and shelves
+ * (registers kept, run 08; -12 dB cuts and +9 dB boosts played, runs 16 and 19; devicePEQ's profile stops at +-10) and shelf boosts whose coefficient bytes overflow signed Q30 (sent wrapped to int32 as
+ * devicePEQ sends them, [DeviceCapabilities.wrapQ30]; the unit plays the registers, run 16). The flag is true since the phone run of 10.11.2026 (dac-lab run 2026-11-10-crinear-protocol-max-22-phone: a full edge
+ * profile with all three, VERIFIED, byte-identical after a replug), so a release offers them and the record states them (`peq.types`, `peq.gainDb`); the wrap is code, not data. Set false, a release goes back to PEAK
+ * and the two shelves at +-10 dB with the refusal of an overflowing shelf. The bench's `--pass-filters`, `--wide-gain` and `--wrap-q30` ([capabilities]) add the candidates one by one on top of that.
+ */
+object ProtocolMax {
+    /** The edge beyond devicePEQ's +-10 dB. */
+    const val CANDIDATE_GAIN_DB = 12.0
+
+    /** devicePEQ's gain edge: what a Max offers while the candidates are off. */
+    private const val VENDOR_GAIN_DB = 10.0
+
+    private val CAPS_PLAIN: DeviceCapabilities = capabilities(passFilters = false, wideGain = false, wrapQ30 = false)
+    private val CAPS_CANDIDATES: DeviceCapabilities = capabilities(passFilters = true, wideGain = true, wrapQ30 = true)
+
+    /** The caps the app plans with now: the record's (LOW PASS, HIGH PASS, +-12 dB) with wrapped Q30 where [candidatesOn]; without it PEAK and the shelves at +-10 dB, no wrap. */
+    val CAPABILITIES: DeviceCapabilities get() = if (candidatesOn) CAPS_CANDIDATES else CAPS_PLAIN
+
+    /** LOW PASS, HIGH PASS, +-12 dB and wrapped shelf boosts are offered on the Max: proven ([CANDIDATES_VERIFIED], true) or a review build ([Proven.on]). */
+    val candidatesOn: Boolean get() = Proven.on(CANDIDATES_VERIFIED)
+
+    /**
+     * THE verification flag of the Max candidates above. True since the phone run of 10.11.2026 (dac-lab run 2026-11-10-crinear-protocol-max-22-phone: the edge profile with LOW PASS, HIGH PASS, +-12 dB
+     * peaks and shelves and a wrapped shelf boost written, VERIFIED, and read back byte for byte after an unplug), after the Mac had played them. One line to disable: set this to false.
+     */
+    const val CANDIDATES_VERIFIED = true
+
+    /** The Max's record caps (which state LOW PASS, HIGH PASS and +-12 dB), narrowed to PEAK, the shelves and +-10 dB unless [passFilters] and [wideGain]; wrapped Q30 overflow when [wrapQ30]. */
+    fun capabilities(passFilters: Boolean, wideGain: Boolean, wrapQ30: Boolean = false): DeviceCapabilities = GeneratedDevices.CRINEAR_PROTOCOL_MAX.caps().let { base ->
+        base.copy(
+            types = if (passFilters) base.types + setOf(FilterType.LOW_PASS, FilterType.HIGH_PASS) else base.types - setOf(FilterType.LOW_PASS, FilterType.HIGH_PASS),
+            gainMinDb = if (wideGain) -CANDIDATE_GAIN_DB else -VENDOR_GAIN_DB,
+            gainMaxDb = if (wideGain) CANDIDATE_GAIN_DB else VENDOR_GAIN_DB,
+            wrapQ30 = wrapQ30,
+        )
     }
 }
 

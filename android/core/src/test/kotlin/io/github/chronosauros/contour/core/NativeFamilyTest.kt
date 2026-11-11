@@ -235,6 +235,230 @@ class NativeFamilyTest {
         assertTrue(frames.dropLast(1).all { it.payload[0].toInt() in 0x24..0x2F })
     }
 
+    // ---- KT Micro: JCally JM12 (chip KT02H20, the Allegro Mini's VID:PID, told apart by the USB name) ----------------------------
+
+    private val jm12 = requireNotNull(KtMicroCatalog.find(0x31B2, 0x0111, "KT02H20 HIFI Audio"))
+    private fun jm12Seed() = LogPort(resource("jm12-read-constructed.log"), 0x4B, null, "k")
+    private fun eqOf(vararg bands: Band) = Profile("id", "t", bands = bands.toList(), preampDb = 0.0, createdAt = 0, updatedAt = 0)
+
+    @Test fun `the JM12 is told from the Allegro Mini by the exact USB name alone, with its own limits and the Allegro Mini's Global Gain steps`() {
+        assertSame(KtMicroCatalog.models.first(), KtMicroCatalog.find(0x31B2, 0x0111, "Kiwi Ears-Allegro Mini"))
+        assertNotNull(KtMicroCatalog.find(0x31B2, 0x0111, "Kiwi Ears Allegro Mini"))
+        for (other in listOf(null, "KT02H20", "KT02H20 HiFi Audio", "KT02H20 HIFI Audio ", "Kiwi Ears-Allegro PRO")) assertNull(KtMicroCatalog.find(0x31B2, 0x0111, other), other)
+        assertNull(KtMicroCatalog.find(0x31B2, 0x0112, "KT02H20 HIFI Audio"))
+        assertEquals("JCally JM12", jm12.name); assertEquals("Kiwi Ears Allegro Mini", allegro.name)
+        assertEquals(setOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF), jm12.nativeTypes)
+        assertEquals(setOf(FilterType.PEAK), allegro.nativeTypes)
+        assertEquals(1..15, jm12.globalGainUserSteps); assertEquals(1..15, allegro.globalGainUserSteps)
+        assertTrue(jm12.reconnectAfterSave); assertTrue(allegro.reconnectAfterSave) // measured on the JM12: it leaves the bus after SAVE
+        assertTrue(jm12.eqEnableStatusBytes); assertFalse(allegro.eqEnableStatusBytes)
+        assertTrue(jm12.hardwareVerified); assertFalse(jm12.resetOffered); assertTrue(allegro.resetOffered)
+        assertEquals(1.0, jm12.shelfQScale)
+        // the editor's intended range is the register range (10-20000 Hz) doubled and capped: 20-20000 Hz (the Allegro Mini 40-20000 Hz)
+        val caps = DeviceTarget.JCALLY_JM12.caps
+        assertEquals("JCally JM12", caps.name); assertEquals(20.0, caps.freqMinHz); assertEquals(20000.0, caps.freqMaxHz)
+        assertEquals(-12.0, caps.gainMinDb); assertEquals(12.0, caps.gainMaxDb); assertEquals(0.2, caps.qMin); assertEquals(10.0, caps.qMax) // peaks: +-12 dB, Q 0.2-10 (Q 0.1 measured 0.98 dB off)
+        // shelves: only what was measured, +-6 dB and Q 0.7-1.0; the Allegro Mini has no per-type limits
+        assertEquals(ShelfLimits(-6.0, 6.0, 0.7, 1.0), caps.shelfLimits)
+        assertEquals(-6.0..6.0, caps.gainRange(FilterType.LOW_SHELF)); assertEquals(-12.0..12.0, caps.gainRange(FilterType.PEAK))
+        assertEquals(0.7..1.0, caps.qRange(FilterType.HIGH_SHELF)); assertEquals(0.2..10.0, caps.qRange(FilterType.PEAK))
+        assertNull(DeviceTarget.ALLEGRO_MINI.caps.shelfLimits); assertEquals(-12.0..12.0, DeviceTarget.ALLEGRO_MINI.caps.gainRange(FilterType.LOW_SHELF))
+        assertEquals(5, caps.bands); assertEquals(jm12.nativeTypes, caps.types); assertFalse(DeviceTarget.JCALLY_JM12.hasPreamp)
+        // the same two DAC page rows; the JM12's writes stay off until the bench run with SAVE and the phone have proven them, the Allegro Mini's are proven
+        assertEquals(listOf(FamilySettings.EQ_SWITCH, FamilySettings.GLOBAL_GAIN), DeviceTarget.JCALLY_JM12.settings.map { it.id })
+        assertEquals(listOf(FamilySettings.EQ_SWITCH, FamilySettings.GLOBAL_GAIN), DeviceTarget.ALLEGRO_MINI.settings.map { it.id })
+        assertEquals(listOf(true, true), DeviceTarget.JCALLY_JM12.settings.map { it.writeVerified }) // eq switch (runs -02, -03) and Global Gain with SAVE (run -10)
+        assertEquals(listOf(true, true), DeviceTarget.ALLEGRO_MINI.settings.map { it.writeVerified })
+        assertEquals(1..15, DeviceTarget.JCALLY_JM12.settings.last().let { it.min..it.max })
+    }
+
+    @Test fun `the constructed JM12 read decodes to the unit's factory EQ and clears the write blocker through the channel flags`() {
+        val port = jm12Seed()
+        val s = KtMicroSession(jm12, port).read()
+        assertEquals(port.frames.size, port.next)
+        assertEquals(2, s.eqControl); assertFalse(s.eqEnabled)
+        assertEquals(listOf(1000, 2000, 5000, 8000, 10000), s.bands.map { it.storedFrequencyHz })
+        assertTrue(s.bands.all { it.gainTenths == 0 && it.qMilli == 707 && it.nativeType == 0 })
+        assertNull(s.digitalGain!!.rightDb); assertTrue(s.hasZeroDigitalGain); assertNull(s.writeBlocker)
+    }
+
+    @Test fun `a JM12 send writes shelves and edge peaks at register = intended x 24000 over 48000, refuses LOW_PASS, and builds nothing but 0x24, the bands and SAVE`() {
+        val before = KtMicroSession(jm12, jm12Seed()).read()
+        val eq = eqOf(Band("a", FilterType.LOW_SHELF, 100.0, 3.0, 1.0), Band("b", FilterType.HIGH_SHELF, 8000.0, -2.0, 0.7),
+            Band("c", FilterType.PEAK, 20.0, 1.0, 1.0), Band("d", FilterType.PEAK, 20000.0, -1.0, 10.0))
+        val plan = KtMicroCodec.compile(eq, before, eqEnabled = null)
+        val writes = plan.frames.map { hex(it.payload) }
+        assertEquals(listOf(
+            "26 00 00 00 57 00 1e 00 32 00", "27 00 00 00 57 00 e8 03 03 00",   // low shelf: +3.0 dB, 100 Hz -> register 50, Q 1.0 x 1.0, type 3
+            "28 00 00 00 57 00 ec ff a0 0f", "29 00 00 00 57 00 bc 02 04 00",   // high shelf: -2.0 dB, 8000 Hz -> register 4000, Q 0.7, type 4
+            "2a 00 00 00 57 00 0a 00 0a 00", "2b 00 00 00 57 00 e8 03 00 00",   // peak at the lower edge: 20 Hz -> register 10 (the register floor)
+            "2c 00 00 00 57 00 f6 ff 10 27", "2d 00 00 00 57 00 10 27 00 00",   // peak at the upper edge: 20000 Hz -> register 10000, Q 10
+            "2e 00 00 00 57 00 00 00 64 00", "2f 00 00 00 57 00 e8 03 00 00",   // the unused band: 0 dB, 100 Hz, Q 1.0, PK
+            "00 00 00 00 53 00 00 00 00 00"), writes)
+        assertEquals(listOf(true, true, true, true, true, true, true, true, true, true, true), plan.frames.map { it.mutating })
+        assertTrue(plan.reconnectAfterSave) // measured: the JM12 leaves the bus after SAVE
+        // never CLEAR, never 0x54, never a write of 0x66 or 0x3B, and the EQ switch only when asked for
+        assertTrue(plan.frames.all { f -> (f.payload[4].toInt() and 255).let { it == 0x57 || it == 0x53 } })
+        assertTrue(plan.frames.dropLast(1).all { it.payload[0].toInt() in 0x26..0x2F })
+        assertEquals(listOf(0x24), KtMicroCodec.compile(eq, before, eqEnabled = true).frames.take(1).map { it.payload[0].toInt() })
+        // a shelf played back is the shelf: FROM DAC reads the same bands in the intended domain
+        val back = FamilyState.Allegro(jm12, KtMicroSession(jm12, FakeKt(jm12Seed()).also { d -> plan.expectedRegisters.forEach { d.regs[it.register] = it.value.map { v -> v.toByte() }.toByteArray() } }).read())
+        val opened = back.importExact().bands
+        assertEquals(listOf(FilterType.LOW_SHELF, FilterType.HIGH_SHELF, FilterType.PEAK, FilterType.PEAK), opened.take(4).map { it.type })
+        assertEquals(listOf(100.0, 8000.0, 20.0, 20000.0), opened.take(4).map { it.freqHz }); assertEquals(0.7, opened[1].q)
+        assertTrue(back.holds(eq))
+        // per-type limits: a shelf at +-6 dB and Q 0.7 / 1.0 is written, a peak at +-12 dB and Q 0.2 / 10 too; a shelf at +7 dB, Q 0.5 or Q 1.5 and a peak at Q 0.15 are refused with the limit in the message
+        for (ok in listOf(Band("a", FilterType.LOW_SHELF, 100.0, 6.0, 0.7), Band("a", FilterType.HIGH_SHELF, 8000.0, -6.0, 1.0), Band("a", FilterType.PEAK, 1000.0, 12.0, 0.2), Band("a", FilterType.PEAK, 1000.0, -12.0, 10.0)))
+            assertEquals(emptyList(), KtMicroCodec.issues(jm12, eqOf(ok)), ok.toString())
+        assertTrue(KtMicroCodec.issues(jm12, eqOf(Band("a", FilterType.LOW_SHELF, 100.0, 7.0, 1.0))).single().let { it.contains("gain 7.0 dB outside -6.0..6.0 dB") && it.contains("limited to what was measured") })
+        assertTrue(KtMicroCodec.issues(jm12, eqOf(Band("a", FilterType.HIGH_SHELF, 8000.0, 1.0, 0.5))).single().contains("Q 0.5 outside 0.7-1.0"))
+        assertTrue(KtMicroCodec.issues(jm12, eqOf(Band("a", FilterType.LOW_SHELF, 100.0, 1.0, 1.5))).single().contains("Q 1.5 outside 0.7-1.0"))
+        assertTrue(KtMicroCodec.issues(jm12, eqOf(Band("a", FilterType.PEAK, 1000.0, 1.0, 0.15))).single().contains("Q 0.15 outside 0.2-10.0"))
+        assertEquals(emptyList(), KtMicroCodec.issues(allegro, eqOf(Band("a", FilterType.PEAK, 1000.0, 12.0, 0.1)))) // the Allegro Mini keeps Q 0.1
+        for (bad in listOf(Band("a", FilterType.LOW_SHELF, 100.0, 7.0, 1.0), Band("a", FilterType.HIGH_SHELF, 8000.0, 1.0, 0.5), Band("a", FilterType.PEAK, 1000.0, 1.0, 0.15)))
+            assertFailsWith<IllegalArgumentException> { KtMicroCodec.compile(eqOf(bad), before) }
+        review { assertTrue(DeviceTarget.JCALLY_JM12.issues(eqOf(Band("a", FilterType.LOW_SHELF, 100.0, 7.0, 1.0))).single().contains("outside -6..6 dB")) }
+        // refused: LOW_PASS (and every other type the model does not offer), a frequency outside 20-20000 Hz, a shelf Q above 10, a preamp
+        assertFailsWith<IllegalArgumentException> { KtMicroCodec.compile(eqOf(Band("a", FilterType.LOW_PASS, 1000.0, 0.0, 0.7)), before) }
+        assertTrue(KtMicroCodec.issues(jm12, eqOf(Band("a", FilterType.LOW_PASS, 1000.0, 0.0, 0.7))).single().contains("takes PEAK, LOW_SHELF and HIGH_SHELF bands only"))
+        assertTrue(KtMicroCodec.issues(jm12, eqOf(Band("a", FilterType.PEAK, 19.0, 1.0, 1.0))).single().contains("outside 20.0-20000.0 Hz"))
+        assertFailsWith<IllegalArgumentException> { KtMicroCodec.compile(eqOf(Band("a", FilterType.HIGH_SHELF, 1000.0, 1.0, 10.5)), before) }
+        assertFailsWith<IllegalArgumentException> { KtMicroCodec.compile(eqOf(Band("a", FilterType.PEAK, 1000.0, 1.0, 1.0)).copy(preampDb = -2.0), before) }
+        // the Allegro Mini still takes PEAK bands only, in its own words
+        assertTrue(KtMicroCodec.issues(allegro, eqOf(Band("a", FilterType.LOW_SHELF, 100.0, 3.0, 1.0))).single().endsWith("takes PEAK bands only"))
+    }
+
+    @Test fun `the JM12 switch write is eq 0 0 0 whatever the status bytes read, and its read-back is verified on byte 0 only, the Allegro Mini still echoes and compares all four`() {
+        val eq = eqOf(Band("a", FilterType.PEAK, 1000.0, 3.0, 1.0))
+        fun seeded(model: KtMicroCatalog.Model, status: List<Int>): KtMicroCodec.Snapshot {
+            val dac = FakeKt(jm12Seed()); dac.regs[0x24] = status.map { it.toByte() }.toByteArray()
+            return KtMicroSession(model, dac).read()
+        }
+        val j = seeded(jm12, listOf(2, 0, 0, 2))
+        val plan = KtMicroCodec.compile(eq, j, eqEnabled = true)
+        assertEquals("24 00 00 00 57 00 03 00 00 00", hex(plan.frames[0].payload))
+        assertEquals("24 00 00 00 57 00 03 00 00 00", hex(KtMicroCodec.compileSwitch(j, true).frames[0].payload))
+        // the DAC reads 03 00 00 02 or 03 00 00 00 after the save on its own: both verify
+        for (tail in listOf(listOf(3, 0, 0, 2), listOf(3, 0, 0, 0))) {
+            val back = KtMicroSession(jm12, FakeKt(jm12Seed()).also { d -> plan.expectedRegisters.forEach { d.regs[it.register] = it.value.map { v -> v.toByte() }.toByteArray() }; d.regs[0x24] = tail.map { it.toByte() }.toByteArray() }).read()
+            assertEquals(emptyList(), KtMicroCodec.mismatches(plan, back), tail.toString())
+        }
+        // a wrong switch byte or a wrong band register still fails
+        val off = KtMicroSession(jm12, FakeKt(jm12Seed()).also { d -> plan.expectedRegisters.forEach { d.regs[it.register] = it.value.map { v -> v.toByte() }.toByteArray() }; d.regs[0x24] = byteArrayOf(2, 0, 0, 0) }).read()
+        assertTrue(KtMicroCodec.mismatches(plan, off).any { it.startsWith("EQ switch") })
+        // the Allegro Mini echoes bytes 1-3 and compares them
+        val a = seeded(allegro, listOf(2, 0, 0, 2))
+        assertEquals("24 00 00 00 57 00 03 00 00 02", hex(KtMicroCodec.compile(eq, a, eqEnabled = true).frames[0].payload))
+        val aPlan = KtMicroCodec.compile(eq, a, eqEnabled = true)
+        val aBack = KtMicroSession(allegro, FakeKt(jm12Seed()).also { d -> aPlan.expectedRegisters.forEach { d.regs[it.register] = it.value.map { v -> v.toByte() }.toByteArray() }; d.regs[0x24] = byteArrayOf(3, 0, 0, 0) }).read()
+        assertTrue(KtMicroCodec.mismatches(aPlan, aBack).any { it.startsWith("register 0x24") })
+    }
+
+    @Test fun `the app's JM12 send turns the EQ switch on when it reads off, writes nothing to 0x24 when it reads on, and the Allegro Mini's send leaves it as found`() {
+        assertTrue(jm12.sendTurnsEqOn); assertEquals(true, jm12.sendEqEnabled)
+        assertFalse(allegro.sendTurnsEqOn); assertNull(allegro.sendEqEnabled)
+        val eq = eqOf(Band("a", FilterType.PEAK, 1000.0, 3.0, 1.0))
+        fun send(model: KtMicroCatalog.Model, found: List<Int>): Pair<KtMicroCodec.Plan, List<String>> {
+            val dac = FakeKt(jm12Seed()).also { it.regs[0x24] = found.map { v -> v.toByte() }.toByteArray() }
+            val session = KtMicroSession(model, dac)
+            session.write(eq, explicitHold = true, eqEnabled = model.sendEqEnabled)
+            return session.lastPlan!! to dac.events.filter { it.startsWith("tx:") }.map { it.removePrefix("tx:") }.filter { it.split(" ")[4] != "52" }
+        }
+        // factory JM12: switch OFF (status byte whatever) -> one extra [3,0,0,0] write first, then the bands and SAVE; verified on byte 0 = 3
+        for (off in listOf(listOf(2, 0, 0, 0), listOf(2, 0, 0, 2))) {
+            val (plan, tx) = send(jm12, off)
+            assertEquals("24 00 00 00 57 00 03 00 00 00", tx.first(), off.toString())
+            assertEquals(1 + 10 + 1, tx.size); assertEquals("00 00 00 00 53 00 00 00 00 00", tx.last())
+            assertEquals(3, plan.expectedEqControl)
+        }
+        // already ON (the status byte may be anything): no 0x24 write at all, the bands and SAVE only
+        for (on in listOf(listOf(3, 0, 0, 0), listOf(3, 0, 0, 2), listOf(3, 0, 0, 1))) {
+            val (plan, tx) = send(jm12, on)
+            assertTrue(tx.none { it.startsWith("24 ") }, on.toString()); assertEquals(10 + 1, tx.size)
+            assertEquals(3, plan.expectedEqControl)
+        }
+        // the Allegro Mini: OFF stays OFF, no register 0x24 write
+        val (aPlan, aTx) = send(allegro, listOf(2, 0, 0, 0))
+        assertTrue(aTx.none { it.startsWith("24 ") }); assertEquals(2, aPlan.expectedEqControl)
+    }
+
+    @Test fun `the JM12 Global Gain is read at step 9, written as step 0 0 0 and SAVE only for steps 1 to 15, and verified after the reconnect with the status byte of 0x24 ignored`() {
+        val before = KtMicroSession(jm12, jm12Seed()).read()
+        val factory = KtMicroCodec.RegisterValue(KtMicroCodec.GLOBAL_GAIN_REGISTER, listOf(9, 0, 0, 0))
+        assertEquals(9, KtMicroCodec.globalGainStep(factory)); assertEquals(-6.0, KtMicroCodec.globalGainDb(9))
+        val plan = KtMicroCodec.compileGlobalGain(before, factory, 10)
+        assertEquals(listOf("3b 00 00 00 57 00 0a 00 00 00", "00 00 00 00 53 00 00 00 00 00"), plan.frames.map { hex(it.payload) })
+        assertEquals(KtMicroCodec.RegisterValue(0x3B, listOf(10, 0, 0, 0)), plan.expectedGlobalGain)
+        assertTrue(plan.reconnectAfterSave)
+        for (bad in listOf(0, 16, -1)) assertFailsWith<IllegalArgumentException> { KtMicroCodec.compileGlobalGain(before, factory, bad) }
+        assertFailsWith<IllegalArgumentException> { KtMicroCodec.compileGlobalGain(before, factory, 9) }               // already there
+        assertFailsWith<IllegalArgumentException> { KtMicroCodec.compileGlobalGain(before, KtMicroCodec.RegisterValue(0x3B, listOf(0, 0, 0, 0)), 10) } // not a plain step
+        // the session: read 0x3B, write it acknowledged, SAVE - and nothing else (never 0x66, 0x43, 0x54)
+        val dac = FakeKt(jm12Seed()).also { it.regs[0x3B] = byteArrayOf(9, 0, 0, 0) }
+        val r = KtMicroSession(jm12, dac).writeGlobalGain(10, explicitHold = true)
+        assertTrue(r.pending && !r.verified)
+        val tx = dac.events.filter { it.startsWith("tx:") }.map { it.removePrefix("tx:") }
+        assertEquals(listOf("3b 00 00 00 57 00 0a 00 00 00"), tx.filter { it.split(" ")[4] == "57" })
+        assertEquals("00 00 00 00 53 00 00 00 00 00", tx.last())
+        assertTrue(tx.none { it.split(" ")[0] == "66" && it.split(" ")[4] != "52" })
+        // the DAC is back with the step and its own status byte in register 0x24: verified
+        val back = KtMicroSession(jm12, FakeKt(jm12Seed()).also { d -> plan.expectedRegisters.forEach { d.regs[it.register] = it.value.map { v -> v.toByte() }.toByteArray() }; d.regs[0x24] = byteArrayOf(2, 0, 0, 2) }).read()
+        assertEquals(emptyList(), KtMicroCodec.mismatches(plan, back, KtMicroCodec.RegisterValue(0x3B, listOf(10, 0, 0, 0))))
+        assertEquals(1, KtMicroCodec.mismatches(plan, back, KtMicroCodec.RegisterValue(0x3B, listOf(9, 0, 0, 0))).size)
+        // the page reading: step 9 of the row's range
+        val state = FamilyState.Allegro(jm12, before, factory)
+        assertEquals(9, state.globalGainStep)
+        assertEquals(listOf(FamilySettings.EQ_SWITCH to 0, FamilySettings.GLOBAL_GAIN to 9), state.readings().map { it.id to it.value })
+        assertEquals("-6.0", DeviceTarget.JCALLY_JM12.settings.last().valueText!!(9))
+    }
+
+    @Test fun `a saved KT DAC that is back on USB but answers nothing ends the wait after five failed reads with an unplug and plug-in message, never as saved`() {
+        class Silent : NativePort {
+            override val deviceKey = "k"; var sent = 0
+            override fun guard() {}
+            override fun pause(ms: Long) {}
+            override fun send(id: Int, kind: NativeHidReports.Kind, payload: ByteArray) { sent++ }
+            override fun request(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean): ByteArray { sent++; throw IOException("Native request timed out or returned invalid state") }
+        }
+        val port = Silent()
+        var failures = 0
+        val verdicts = ArrayList<String?>()
+        repeat(KtMicroSaveWait.SILENT_READS) {
+            assertFailsWith<IOException> { KtMicroSession(jm12, port).read() }; failures++
+            verdicts += KtMicroSaveWait.silentVerdict(failures)
+        }
+        assertEquals(List(KtMicroSaveWait.SILENT_READS - 1) { null }, verdicts.dropLast(1))
+        assertTrue(verdicts.last()!!.contains("unplug it, plug it back in"))
+        assertEquals(5, KtMicroSaveWait.SILENT_READS)
+        // a silent DAC is only ever asked: the session's read sends nothing but read frames and gives up
+        val reads = Silent()
+        assertFailsWith<IOException> { KtMicroSession(jm12, reads).read() }
+        assertTrue(reads.sent >= 1)
+    }
+
+    @Test fun `the JM12 never gets a reset or a write of 0x66, and its target writes in a release and in a review build like the other families`() {
+        val before = KtMicroSession(jm12, jm12Seed()).read()
+        val gain = KtMicroCodec.RegisterValue(KtMicroCodec.GLOBAL_GAIN_REGISTER, listOf(9, 0, 0, 0))
+        val quiet = FakeKt(jm12Seed())
+        assertFailsWith<IllegalArgumentException> { KtMicroResetFlow(jm12).begin(KtMicroResetBackup(0, before, gain)) }
+        assertFailsWith<IllegalArgumentException> { KtMicroSession(jm12, quiet).factoryClear(KtMicroResetTicket(0)) }
+        assertTrue(quiet.events.none { it.startsWith("tx:") }, "nothing was sent")
+        val pk = eqOf(Band("a", FilterType.PEAK, 1000.0, 3.0, 1.0))
+        // written and read back from a phone on 10.11.2026 (run 2026-11-10-jcally-jm12-11-phone): not read only in any build
+        Proven.asChannel(BuildChannel.RELEASE) {
+            assertFalse(DeviceTarget.JCALLY_JM12.readOnly); assertTrue(jm12.hardwareVerified)
+            assertEquals(emptyList(), DeviceTarget.JCALLY_JM12.issues(pk))
+            assertEquals(listOf(FamilyDevices.READ_FIRST), FamilyDevices.stateIssues(DeviceTarget.JCALLY_JM12, null))
+            assertFalse(DeviceTarget.ALLEGRO_MINI.readOnly)
+        }
+        review {
+            assertFalse(DeviceTarget.JCALLY_JM12.readOnly)
+            assertEquals(emptyList(), DeviceTarget.JCALLY_JM12.issues(eqOf(Band("a", FilterType.LOW_SHELF, 100.0, 3.0, 1.0), Band("b", FilterType.HIGH_SHELF, 8000.0, -2.0, 1.0))))
+            assertTrue(DeviceTarget.JCALLY_JM12.issues(eqOf(Band("a", FilterType.LOW_PASS, 1000.0, 0.0, 0.7))).isNotEmpty())
+            assertEquals(listOf(FamilyDevices.READ_FIRST), FamilyDevices.stateIssues(DeviceTarget.JCALLY_JM12, null))
+        }
+    }
+
     // ---- native Moondrop: Dawn Pro 2 -----------------------------------------------------------------------------------------
 
     private val dawn = requireNotNull(MoondropCatalog.find(0x35D8, 0x011D, "DAWN PRO2"))
@@ -488,7 +712,7 @@ class NativeFamilyTest {
         // 1.5 is untouched: find knows neither family, and the other 1.5 identities still resolve
         assertNull(DeviceTarget.find(0x35D8, 0x011D)); assertNull(DeviceTarget.find(0x31B2, 0x0111)); assertNull(DeviceTarget.find(0x3302, 0x12C5))
         assertSame(DeviceTarget.MICRO, DeviceTarget.findDevice(0x3302, 0xC20F, "Protocol Micro"))
-        assertEquals(setOf(DeviceTarget.Family.MOONDROP, DeviceTarget.Family.KT_MICRO, DeviceTarget.Family.WALKPLAY_READ_ONLY), DeviceTarget.FAMILIES.map { it.family }.toSet())
+        assertEquals(setOf(DeviceTarget.Family.MOONDROP, DeviceTarget.Family.KT_MICRO, DeviceTarget.Family.WALKPLAY_READ_ONLY, DeviceTarget.Family.MOONDROP_GEN1), DeviceTarget.FAMILIES.map { it.family }.toSet())
         assertTrue(DeviceTarget.FAMILIES.all { it.isFamily && !it.supportsAb })
         assertTrue(listOf(DeviceTarget.MICRO, DeviceTarget.KA15).none { it.isFamily })
     }
@@ -501,7 +725,8 @@ class NativeFamilyTest {
         assertEquals(five, d.types) // the pass filters and the shelves behind MoondropCatalog.PASS_FILTERS_VERIFIED and SHELVES_VERIFIED (both true since 25.10.2026)
         assertEquals(five, Proven.asChannel(BuildChannel.RELEASE) { DeviceTarget.DAWN_PRO_2.caps.types })
         assertEquals(kotlin.math.sqrt(2.0), d.shelfQScale); assertEquals(1.0, d.peakQScale)
-        assertEquals(dawn.preGainMinDb, DeviceTarget.DAWN_PRO_2.preampMin); assertEquals(dawn.preGainMaxDb, DeviceTarget.DAWN_PRO_2.preampMax)
+        // the register takes -128..0 dB; Contour offers it from its floor (Preamp.FLOOR_DB, owner 11.11.2026)
+        assertEquals(-128.0, dawn.preGainMinDb); assertEquals(Preamp.FLOOR_DB, DeviceTarget.DAWN_PRO_2.preampMin); assertEquals(dawn.preGainMaxDb, DeviceTarget.DAWN_PRO_2.preampMax)
         assertEquals("PRE GAIN", DeviceTarget.DAWN_PRO_2.preampLabel)
         val a = DeviceTarget.ALLEGRO_MINI.caps
         assertEquals(5, a.bands); assertEquals(-12.0, a.gainMinDb); assertEquals(12.0, a.gainMaxDb); assertEquals(0.1, a.qMin); assertEquals(10.0, a.qMax)
@@ -515,7 +740,9 @@ class NativeFamilyTest {
         assertTrue(DeviceTarget.DAWN_PRO_2.issues(profile(Band("a", FilterType.BAND_PASS, 100.0, 0.0, 0.7))).isNotEmpty())
         assertTrue(DeviceTarget.DAWN_PRO_2.issues(profile(pk.copy(gainDb = 12.5))).isNotEmpty())
         assertTrue(DeviceTarget.DAWN_PRO_2.issues(profile(*Array(9) { pk })).isNotEmpty()) // 9 bands, no truncation
-        assertTrue(DeviceTarget.DAWN_PRO_2.issues(profile(pk, preamp = 1.0)).isNotEmpty())  // pre-gain is -128..0
+        assertTrue(DeviceTarget.DAWN_PRO_2.issues(profile(pk, preamp = 1.0)).isNotEmpty())  // Contour's pre-gain is -30..0
+        assertEquals(emptyList(), DeviceTarget.DAWN_PRO_2.issues(profile(pk, preamp = -30.0)))
+        assertTrue(DeviceTarget.DAWN_PRO_2.issues(profile(pk, preamp = -40.0)).isNotEmpty())  // the register would take it; Contour does not send it
         assertEquals(emptyList(), DeviceTarget.ALLEGRO_MINI.issues(profile(pk)))
         assertTrue(DeviceTarget.ALLEGRO_MINI.issues(profile(pk.copy(gainDb = 12.5))).isNotEmpty())
         assertTrue(DeviceTarget.ALLEGRO_MINI.issues(profile(*Array(6) { pk })).isNotEmpty())

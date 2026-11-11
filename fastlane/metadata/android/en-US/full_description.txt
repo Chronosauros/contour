@@ -7,12 +7,15 @@
 <li>CrinEar Protocol Max</li>
 <li>FiiO KA15</li>
 <li>FiiO K13 R2R</li>
+<li>FiiO JadeAudio JA11</li>
 <li>SnowSky Melody</li>
 <li>SnowSky Tiny A</li>
 <li>TRN Black Pearl</li>
 <li>Moondrop Dawn Pro 2</li>
 <li>Moondrop Echo-A</li>
+<li>Moondrop DUSK-SP</li>
 <li>Kiwi Ears Allegro Mini</li>
+<li>JCally JM12</li>
 </ul>
 <p><b>Made for your DAC</b></p>
 <p>Contour only shows what your DAC can do: its bands, filter types and gain range. On the FiiO KA15, SnowSky Melody and SnowSky Tiny A you pick USER1, USER2 or USER3 before you send, on the FiiO K13 R2R one of ten USER slots.</p>
@@ -20,7 +23,7 @@
 <ul>
 <li>Drag bands on the response graph, or add one with +.</li>
 <li>Fine-tune frequency, gain and Q with sliders, or tap a number to type it.</li>
-<li>Leave the preamp on AUTO or set it by hand in MANUAL.</li>
+<li>Leave the preamp on AUTO, or tap AUTO off and set it by hand with its slider.</li>
 <li>PEAK on every DAC, plus LOW SHELF, HIGH SHELF, LOW PASS, HIGH PASS, BAND PASS and ALL PASS where your DAC has them.</li>
 <li>Undo and redo, up to 100 steps per profile.</li>
 </ul>
@@ -34,7 +37,7 @@
 <li>Three profiles to start from: BASS BOOST, SOFTER VOCALS and TREBLE BOOST.</li>
 </ul>
 <p><b>DAC settings in the same app</b></p>
-<p>On the FiiO KA15, SnowSky Melody, SnowSky Tiny A, TRN Black Pearl, Moondrop Dawn Pro 2 and Kiwi Ears Allegro Mini, a DAC page shows the settings that DAC has, such as volume, balance, filter or output. Factory reset on the KA15 and Melody saves a copy of your slots and settings on the phone first.</p>
+<p>On ten of these DACs a DAC page shows the settings that DAC has, such as volume, balance, filter, output or presets. Factory reset on the KA15 and Melody saves a copy of your slots and settings on the phone first.</p>
 <p><b>Private by design</b></p>
 <p>No account, no ads, no analytics. The app has no internet access and talks only to the DAC you plug in. Your profiles stay on your phone and leave it only when you share or save them yourself.</p>
 <p><b>Good to know</b></p>
@@ -43,8 +46,9 @@
 <li>Contour writes to the DAC only when you hold HOLD TO SEND or change a setting on the DAC page.</li>
 <li>Contour does not update firmware.</li>
 <li>Moondrop Dawn Pro 2: its custom EQ has to be switched on. According to Moondrop it is off after every plug-in; holding both volume buttons for 2 seconds toggles it.</li>
+<li>Moondrop DUSK-SP: after every plug-in it plays its DUSK-DEFAULT preset. Tap CUSTOM EQ on the DAC page to hear what you sent.</li>
 <li>TRN Black Pearl: plug your headphones in first. Without them it does not show up on USB.</li>
 </ul>
-<p>Every supported DAC has its own page with its limits and notes: contoureq.app/devices</p>
+<p>Every supported DAC has its own page with its limits and notes: contoureq.app/install</p>
 <p>Contour is free and open source (Apache-2.0) and part of Soundblooms, a small audio label by Chronosaur.</p>
-<p>Unofficial. Not affiliated with or endorsed by CrinEar, FiiO, SnowSky, TRN, Moondrop or Kiwi Ears. AutoEQ, squig.link and Equalizer APO are named only as profile formats Contour can read.</p>
+<p>Unofficial. Not affiliated with or endorsed by CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears or JCally. AutoEQ, squig.link and Equalizer APO are named only as profile formats Contour can read.</p>

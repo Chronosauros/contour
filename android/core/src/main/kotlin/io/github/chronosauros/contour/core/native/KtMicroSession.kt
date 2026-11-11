@@ -5,7 +5,18 @@ import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.core.Proven
 
 /**
- * Reads and writes a KT Micro DAC (Kiwi Ears Allegro Mini) through a [NativePort]: the session the app would run, with the
+ * How long a KT DAC that was saved is waited for once it is back on USB. After SAVE it leaves the bus and returns in 0.8-3 s (JCally JM12, runs 2026-11-10-jcally-jm12-*); twice it came back and
+ * answered no read until it was unplugged and plugged in again. The app reads again every second; after [SILENT_READS] reads that failed with the DAC on the bus the send ends, never as saved, and
+ * [silentVerdict] is what it tells the person.
+ */
+object KtMicroSaveWait {
+    const val SILENT_READS = 5
+    fun silentVerdict(failedReads: Int): String? =
+        if (failedReads >= SILENT_READS) "the DAC is back on USB but does not answer; unplug it, plug it back in, then tap to read it" else null
+}
+
+/**
+ * Reads and writes a KT Micro DAC (Kiwi Ears Allegro Mini, JCally JM12) through a [NativePort]: the session the app would run, with the
  * transport left to the port. A write ends at SAVE: the DAC drops off the USB bus then ([WriteOutcome.pending]), and the proof is
  * a read by a new session once it is back ([KtMicroCodec.Plan.expectedRegisters] is what that read must return).
  */
@@ -76,6 +87,7 @@ class KtMicroSession(val model: KtMicroCatalog.Model, private val port: NativePo
     fun writeGlobalGain(step: Int, explicitHold: Boolean, save: Boolean = true): WriteOutcome<KtMicroCodec.Snapshot> {
         port.guard()
         require(explicitHold) { "An explicit user action is required" }
+        require(model.globalGainUserSteps != null) { "${model.productName} offers no Global Gain: register 0x3B is never written for it" }
         KtMicroCodec.requireGlobalGainStep(step)
         val before = read()
         val current = readGlobalGain() ?: throw java.io.IOException("Global Gain (0x3B) gave no valid reply; nothing written")
@@ -124,6 +136,7 @@ class KtMicroSession(val model: KtMicroCatalog.Model, private val port: NativePo
      * Then the session waits [KtMicroReset.SETTLE_MS]; the read after it is the caller's.
      */
     fun factoryClear(ticket: KtMicroResetTicket, log: (String) -> Unit = {}): KtMicroResetSent {
+        require(model.resetOffered) { "${model.productName} has no reset in Contour: CLEAR (0x43) is never sent to it" }
         port.guard()
         val frame = KtMicroCodec.compileClear(ticket)
         var acknowledged = false

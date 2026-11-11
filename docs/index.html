@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Contour EQ: CrinEar Protocol, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears</title>
-<meta name="description" content="Free, open-source Android EQ manager for USB DACs: send profiles from your phone to CrinEar Protocol, FiiO, SnowSky, TRN, Moondrop and Kiwi Ears dongles.">
+<meta name="description" content="Free, open-source Android EQ manager for USB DACs: send profiles from your phone to CrinEar Protocol, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears and JCally dongles.">
 <link rel="canonical" href="https://contoureq.app/">
 <link rel="alternate" hreflang="en" href="https://contoureq.app/">
 <link rel="alternate" hreflang="zh-CN" href="https://contoureq.app/zh/">
@@ -12,7 +12,7 @@
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://contoureq.app/">
 <meta property="og:title" content="Contour EQ: CrinEar Protocol, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears">
-<meta property="og:description" content="Keep EQ profiles on your phone and send one to your USB DAC from CrinEar, FiiO, SnowSky, TRN, Moondrop or Kiwi Ears. Free and open source.">
+<meta property="og:description" content="Keep EQ profiles on your phone and send one to your USB DAC from CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears or JCally. Free and open source.">
 <meta property="og:image" content="https://contoureq.app/images/icon-512.png">
 <meta property="og:site_name" content="Contour">
 <meta property="og:image:width" content="512">
@@ -20,7 +20,7 @@
 <meta property="og:image:alt" content="Contour app icon: a white EQ curve with an orange dot at its peak on a dark background">
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="Contour EQ: CrinEar Protocol, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears">
-<meta name="twitter:description" content="Keep EQ profiles on your phone and send one to your USB DAC from CrinEar, FiiO, SnowSky, TRN, Moondrop or Kiwi Ears. Free and open source.">
+<meta name="twitter:description" content="Keep EQ profiles on your phone and send one to your USB DAC from CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears or JCally. Free and open source.">
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -38,11 +38,11 @@
       "name": "Contour",
       "alternateName": "Contour EQ",
       "url": "https://contoureq.app/",
-      "description": "Free, open-source Android EQ manager for USB DACs: send profiles from your phone to CrinEar Protocol, FiiO, SnowSky, TRN, Moondrop and Kiwi Ears dongles.",
+      "description": "Free, open-source Android EQ manager for USB DACs: send profiles from your phone to CrinEar Protocol, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears and JCally dongles.",
       "operatingSystem": "Android",
       "applicationCategory": "MultimediaApplication",
-      "softwareVersion": "1.6.6",
-      "dateModified": "2026-11-10",
+      "softwareVersion": "1.7.0",
+      "dateModified": "2026-11-11",
       "offers": {
         "@type": "Offer",
         "price": "0",
@@ -282,7 +282,7 @@ footer.fv p{margin:0}
 
 <header class="top">
   <span class="lockup"><a class="brand" href="#top" aria-label="Contour, top of the page">Contour</a><a class="by" href="https://soundblooms.com/" rel="noopener" target="_blank" aria-label="by Soundblooms"><span class="by-word" aria-hidden="true">by</span><span class="sb-mark" aria-hidden="true">sound<span class="sb-face"><i class="sb-band"></i><span class="sb-eyes" data-eyes="calm"><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i></span></span>blooms</span></a></span>
-  <nav aria-label="Pages"><a href="guide/">Guide</a><a href="devices/">Devices</a><a href="#install">Install</a><a class="lang-switch" href="/zh/" hreflang="zh-CN" lang="zh-CN">中文</a></nav>
+  <nav aria-label="Pages"><a href="guide/">Guide</a><a href="install/#dacs">Devices</a><a href="#install">Install</a><a class="lang-switch" href="/zh/" hreflang="zh-CN" lang="zh-CN">中文</a></nav>
 </header>
 
 <main id="top">
@@ -292,22 +292,25 @@ footer.fv p{margin:0}
     <p class="sub" data-fade>Edit, keep and send EQ profiles to your DAC.</p>
     <p class="intro" data-fade>Shape the parametric EQ on your Android phone, keep a profile for every pair of headphones or IEMs and send one to your DAC with a single hold. The DAC stores it, so it works with every app and every device you plug it into.</p>
     <div class="devs" data-fade>
-      <p class="devs-h">Works with 10 USB DACs <a href="devices/">device details</a></p>
+      <p class="devs-h">Works with 10 USB DACs <a href="install/#dacs">device details</a></p>
       <ul class="devs-list" aria-label="Supported USB DACs, brand and model">
         <!-- devices-grid:start -->
         <li><a class="tx" href="devices/crinear-protocol-micro/"><span class="mk">CrinEar</span> <span class="md">Protocol Micro</span></a></li>
         <li><a class="tx" href="devices/crinear-protocol-max/"><span class="mk">CrinEar</span> <span class="md">Protocol Max</span></a></li>
         <li><a class="tx" href="devices/fiio-ka15/"><span class="mk">FiiO</span> <span class="md">KA15</span></a></li>
         <li><a class="tx" href="devices/fiio-k13-r2r/"><span class="mk">FiiO</span> <span class="md">K13 R2R</span></a></li>
+        <li><a class="tx" href="devices/fiio-ja11/"><span class="mk">FiiO</span> <span class="md">JadeAudio JA11</span></a></li>
         <li><a class="tx" href="devices/snowsky-melody/"><span class="mk">SnowSky</span> <span class="md">Melody</span></a></li>
         <li><a class="tx" href="devices/snowsky-tiny-a/"><span class="mk">SnowSky</span> <span class="md">Tiny A</span></a></li>
         <li><a class="tx" href="devices/trn-black-pearl/"><span class="mk">TRN</span> <span class="md">Black Pearl</span></a></li>
         <li><a class="tx" href="devices/moondrop-dawn-pro-2/"><span class="mk">Moondrop</span> <span class="md">Dawn Pro 2</span></a></li>
         <li><a class="tx" href="devices/moondrop-echo-a/"><span class="mk">Moondrop</span> <span class="md">Echo-A</span></a></li>
+        <li><a class="tx" href="devices/moondrop-dusk/"><span class="mk">Moondrop</span> <span class="md">DUSK-SP</span></a></li>
         <li><a class="tx" href="devices/kiwi-ears-allegro-mini/"><span class="mk">Kiwi Ears</span> <span class="md">Allegro Mini</span></a></li>
+        <li><a class="tx" href="devices/jcally-jm12/"><span class="mk">JCally</span> <span class="md">JM12</span></a></li>
         <!-- devices-grid:end -->
       </ul>
-      <p class="devs-soon">More devices coming soon - <a href="devices/#help-add">help add the next one</a>.</p>
+      <p class="devs-soon">More devices coming soon - <a href="install/#help-add">help add the next one</a>.</p>
     </div>
     <div class="cta" data-fade>
       <a class="btn" href="https://groups.google.com/g/contour-eq-testers">Join the Google Play test</a>
@@ -316,7 +319,7 @@ footer.fv p{margin:0}
     </div>
     <p class="cta-note" data-fade>Tips buy the next DAC for Contour to support.</p>
     <!-- release:start -->
-    <p class="cta-note" data-fade>Latest version 1.6.6 - 10 Nov 2026</p>
+    <p class="cta-note" data-fade>Latest version 1.7.0 - 11 Nov 2026</p>
     <!-- release:end -->
   </div>
   <div class="dev-box"><div class="dev-pos"><div class="drift" data-drift="hero"><div class="dev">
@@ -384,7 +387,7 @@ footer.fv p{margin:0}
       <a class="btn line" href="https://github.com/Chronosauros/contour/releases/latest">Download APK</a>
       <a class="btn line" href="https://github.com/Chronosauros/contour">GitHub</a>
     </div>
-    <p class="more" data-rev><a href="guide/">Guide and films</a><a href="devices/">Supported devices</a></p>
+    <p class="more" data-rev><a href="guide/">Guide and films</a><a href="install/#dacs">Supported devices</a></p>
     <div class="sibling" data-rev>
       <div class="sibling-text">
         <p class="sibling-brand"><svg class="sibling-mark" viewBox="17 36 68 36" aria-hidden="true" focusable="false"><defs><linearGradient id="es-mk" gradientUnits="userSpaceOnUse" x1="27" y1="0" x2="81" y2="0"><stop offset=".62" stop-color="#ECE3D6" stop-opacity=".5"/><stop offset="1" stop-color="#ECE3D6" stop-opacity="0"/></linearGradient></defs><path d="M36.2,58 H38 C43,58 45,42 49,42 C53,42 56,68 62,68 C66,68 68,58 72,58 H81" fill="none" stroke="url(#es-mk)" stroke-width="6" stroke-linejoin="round"/><circle cx="27" cy="58" r="7" fill="#E3A857"/></svg>EQ Sweep</p>
@@ -413,7 +416,7 @@ footer.fv p{margin:0}
     <p class="fv-sentence">Contour is free and made by one person. Find a DAC for it on <a href="https://soundblooms.com/dacs" rel="noopener" target="_blank">Soundblooms</a>, or ask for yours on <a href="https://discord.gg/msgvnUG7js" rel="noopener" target="_blank">Discord</a>.</p>
     <div class="fv-quiet">
       <p class="fv-legal"><span>Made by <a href="https://soundblooms.com/about" rel="noopener" target="_blank">Chronosaur</a></span><a href="https://github.com/Chronosauros/contour">Source code</a><span>Apache 2.0</span><a href="https://github.com/Chronosauros/contour/blob/main/THIRD_PARTY_NOTICES.md">Credits</a><a href="/privacy/">Privacy policy</a></p>
-      <p class="fv-note">Unofficial, not affiliated with or endorsed by CrinEar, FiiO, SnowSky, TRN, Moondrop or Kiwi Ears; it writes to hardware, so use it at your own risk. Google Play is a trademark of Google LLC.</p>
+      <p class="fv-note">Unofficial, not affiliated with or endorsed by CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears or JCally; it writes to hardware, so use it at your own risk. Google Play is a trademark of Google LLC.</p>
     </div>
   </div>
 </footer>

@@ -9,7 +9,7 @@ import io.github.chronosauros.contour.core.native.*
  * FiiO ([fiio]: native FiiO HID protocol; the KA15 was hardware-tested on a Pixel 04.10.2026, the K13 R2R, the
  * SnowSky Melody and Tiny A are routed the same way). Family identity is separate from WalkPlay's wire representation; no native register coercion.
  *
- * Contour 1.6 adds three targets that only [findDevice] knows (they need the USB product name, and the 1.5 recognition list of [find] stays
+ * Contour 1.6 adds three targets (and the JCally JM12, a second KT Micro) that only [findDevice] knows (they need the USB product name, and the 1.5 recognition list of [find] stays
  * as it was): the Moondrop Dawn Pro 2 ([moondrop], one bank), the Kiwi Ears Allegro Mini ([ktMicro], the DAC leaves the bus after SAVE) and the Moondrop
  * Echo-A ([echo]; the Protocol Micro's planner and write sequence drive it, held to the Echo-A's own limits). None of the three is proven on hardware for a write,
  * so each is [readOnly] in a release and writable in a review build ([Proven]).
@@ -20,21 +20,25 @@ data class DeviceTarget private constructor(
     val moondrop: MoondropCatalog.Model? = null,
     val ktMicro: KtMicroCatalog.Model? = null,
     val echo: WalkPlayProfile? = null,
+    /** The Moondrop DUSK-SP (gen-1 protocol, report 1 over the control pipe): its own session, no preamp, nine bands. */
+    val gen1: MoondropGen1Catalog.Model? = null,
 ) {
     /**
      * The FiiO config the app drives this DAC with now: the record's, except that the SnowSky Melody's follows its pass-filter gate
      * ([SnowSkyMelody.PASS_FILTERS_VERIFIED] or a review build, see [Proven]): LP, HP, BP and AP in the offered types and in what a read decodes.
      * The FiiO KA15's follows [FiioKa15.PASS_FILTERS_VERIFIED] or a review build ([FiioKa15.passFiltersOn], see [Proven]), like the Melody's: a release offered PEAK and the two shelves until a unit had taken the four (it has: the flag is true since 25.10.2026).
+     * The FiiO JA11's follows [FiioJa11.PASS_FILTERS_VERIFIED] the same way (true: LOW PASS and HIGH PASS in every build; false, a release offers PEAK and the two shelves).
      */
-    val fiio: FiioConfig? get() = fiioRecord?.let { if (SnowSkyMelody.isRecord(it)) SnowSkyMelody.CONFIG else if (FiioKa15.isRecord(it)) FiioKa15.CONFIG else it }
+    val fiio: FiioConfig? get() = fiioRecord?.let { if (SnowSkyMelody.isRecord(it)) SnowSkyMelody.CONFIG else if (FiioKa15.isRecord(it)) FiioKa15.CONFIG else if (FiioJa11.isRecord(it)) FiioJa11.CONFIG else it }
 
     /** Which family of code drives this DAC. */
-    enum class Family { WALKPLAY, FIIO, MOONDROP, KT_MICRO, WALKPLAY_READ_ONLY }
+    enum class Family { WALKPLAY, FIIO, MOONDROP, KT_MICRO, WALKPLAY_READ_ONLY, MOONDROP_GEN1 }
     val family: Family get() = when {
         walkplay != null -> Family.WALKPLAY
         fiio != null -> Family.FIIO
         moondrop != null -> Family.MOONDROP
         ktMicro != null -> Family.KT_MICRO
+        gen1 != null -> Family.MOONDROP_GEN1
         else -> Family.WALKPLAY_READ_ONLY
     }
     /** One of the three Contour 1.6 targets (Dawn Pro 2, Allegro Mini, Echo-A): driven by its own :core session, not by FiiO's or WalkPlay's. */
@@ -42,15 +46,18 @@ data class DeviceTarget private constructor(
     /**
      * Read only: the app reads this DAC's EQ and never writes it. A 1.6 family DAC is read only until its write is proven on hardware (its own flag) or the build is a
      * review build ([Proven.on]): the Echo-A ([WalkPlayProfile.hardwareVerified]), the Dawn Pro 2 and the Allegro Mini ([MoondropCatalog.Model.hardwareVerified]).
+     * A FiiO-family DAC is read only the same way while its record says `hardwareVerified` false (the JA11, until a unit has taken a write); the four proven FiiO records (KA15, K13 R2R, Melody, Tiny A) say true, so they are never read only.
      */
     val readOnly: Boolean get() = when {
         echo != null -> !echo.writeOn
         moondrop != null -> !Proven.on(moondrop.hardwareVerified)
         ktMicro != null -> !Proven.on(ktMicro.hardwareVerified)
+        gen1 != null -> !Proven.on(gen1.hardwareVerified)
+        fiioRecord != null -> !Proven.on(fiioRecord.hardwareVerified)
         else -> false
     }
     /** The DAC has a preamp the app writes; the Allegro Mini has none (its Global Gain is the analog DAC gain, never written). */
-    val hasPreamp: Boolean get() = ktMicro == null
+    val hasPreamp: Boolean get() = ktMicro == null && gen1 == null
     /** What the preamp is called on this DAC: the Moondrop manufacturer's name for register 0x23. */
     val preampLabel: String get() = if (moondrop != null) "PRE GAIN" else "PREAMP"
 
@@ -70,7 +77,8 @@ data class DeviceTarget private constructor(
     val info: List<DacInfo> get() = fiio?.info.orEmpty()
     val settingsPreview: Map<String, Int> get() = fiio?.settingsPreview.orEmpty()
     /** KA15: the intended (acoustic) range, register range minus [FiioConfig.preampOffsetDb] (-24..0 dB). */
-    val preampMin: Double get() = fiio?.preampMinDb ?: walkplay?.preampMin?.toDouble() ?: moondrop?.preGainMinDb ?: echo?.protocol?.preampMin?.toDouble() ?: 0.0
+    /** Never below [Preamp.FLOOR_DB]: only the Dawn Pro 2's register goes lower (-128 dB), and Contour offers it down to -30 like the WalkPlay DACs. */
+    val preampMin: Double get() = maxOf(Preamp.FLOOR_DB, fiio?.preampMinDb ?: walkplay?.preampMin?.toDouble() ?: moondrop?.preGainMinDb ?: echo?.protocol?.preampMin?.toDouble() ?: 0.0)
     val preampMax: Double get() = fiio?.preampMaxDb ?: walkplay?.preampMax?.toDouble() ?: moondrop?.preGainMaxDb ?: echo?.preampMaxDb?.toDouble() ?: 0.0
     /**
      * The grid the editor keeps a manual preamp on: 0.1 dB, or a whole dB for a DAC that keeps whole dB only ([DeviceCapabilities.preampWholeDb]: the KA15, SnowSky Melody
@@ -90,8 +98,9 @@ data class DeviceTarget private constructor(
     private fun familyCaps(): DeviceCapabilities = when {
         moondrop != null -> DeviceCapabilities(MOONDROP_NAME, MoondropCatalog.VENDOR_ID, moondrop.productIds.min(), moondrop.bandCount,
             moondrop.minGainDb, moondrop.maxGainDb, moondrop.minQ, moondrop.maxQ, moondrop.minFrequencyHz, moondrop.maxFrequencyHz, MOONDROP_TYPES, false, shelfQScale = moondrop.shelfQScale)
-        ktMicro != null -> DeviceCapabilities(KT_NAME, KtMicroCatalog.VENDOR_ID, ktMicro.productIds.min(), ktMicro.bandCount,
-            ktMicro.minGainDb, ktMicro.maxGainDb, ktMicro.minQ, ktMicro.maxQ, ktMicro.minFrequencyHz, ktMicro.maxFrequencyHz, ktMicro.nativeTypes, false)
+        ktMicro != null -> DeviceCapabilities(ktMicro.name, KtMicroCatalog.VENDOR_ID, ktMicro.productIds.min(), ktMicro.bandCount,
+            ktMicro.minGainDb, ktMicro.maxGainDb, ktMicro.minQ, ktMicro.maxQ, ktMicro.minFrequencyHz, ktMicro.maxFrequencyHz, ktMicro.nativeTypes, false, shelfQScale = ktMicro.shelfQScale, shelfLimits = ktMicro.shelfLimits)
+        gen1 != null -> gen1.caps()
         // The Echo-A's record gives the band count, gain, Q and types; its frequency range is still "unknown" there (PendingRecords), and its preamp
         // policy is the Protocol Micro's, whose code drives it (see [WalkPlayProfiles.echoA]).
         else -> requireNotNull(echo).caps
@@ -149,7 +158,7 @@ data class DeviceTarget private constructor(
             ?.let { profile.bands.getOrNull(it - 1) }
             ?: if ("no finite response" in issue) profile.bands.firstOrNull {
                 it.enabled && (!it.freqHz.isFinite() || it.freqHz !in caps.freqMinHz..caps.freqMaxHz ||
-                    !it.gainDb.isFinite() || (!it.type.isPass && it.gainDb !in caps.gainMinDb..caps.gainMaxDb) ||
+                    !it.gainDb.isFinite() || (!it.type.isPass && it.gainDb !in caps.gainRange(it.type)) ||
                     !it.q.isFinite() || it.q !in qRange(it.type))
             } else null
         val cause = when {
@@ -161,7 +170,7 @@ data class DeviceTarget private constructor(
                 issue.startsWith("manual/auto attenuation") || issue.startsWith("this eq needs") -> "preamp"
             // Max/catalog refusals group the fields into one range reason. Resolve that reason from its band.
             band != null && (!band.freqHz.isFinite() || band.freqHz !in caps.freqMinHz..caps.freqMaxHz) -> "frequency"
-            band != null && (!band.gainDb.isFinite() || (!band.type.isPass && band.gainDb !in caps.gainMinDb..caps.gainMaxDb)) -> "gain"
+            band != null && (!band.gainDb.isFinite() || (!band.type.isPass && band.gainDb !in caps.gainRange(band.type))) -> "gain"
             band != null && (!band.q.isFinite() || band.q !in qRange(band.type)) -> "Q"
             "shelf" in issue || (band?.type in setOf(FilterType.LOW_SHELF, FilterType.HIGH_SHELF) &&
                 "non-finite biquad" in issue) -> "shelf gain or Q"
@@ -191,8 +200,8 @@ data class DeviceTarget private constructor(
                 if (!b.freqHz.isFinite() || b.freqHz !in caps.freqMinHz..caps.freqMaxHz)
                     found += "Band $n: freq ${num(b.freqHz)} Hz outside ${num(caps.freqMinHz)}-${num(caps.freqMaxHz)} Hz"
                 // A pass filter has no gain: it is written as 0 and its stored value is not checked against the range.
-                if (!b.gainDb.isFinite() || (!b.type.isPass && b.gainDb !in caps.gainMinDb..caps.gainMaxDb))
-                    found += "Band $n: gain ${num(b.gainDb)} dB outside ${num(caps.gainMinDb)}..${num(caps.gainMaxDb)} dB"
+                if (!b.gainDb.isFinite() || (!b.type.isPass && b.gainDb !in caps.gainRange(b.type)))
+                    found += "Band $n: gain ${num(b.gainDb)} dB outside ${num(caps.gainRange(b.type).start)}..${num(caps.gainRange(b.type).endInclusive)} dB"
                 if (!b.q.isFinite() || b.q !in qLo..qHi)
                     found += "Band $n: ${if (!scaled) "" else if (b.type.isShelf) "shelf " else "peak "}Q %.2f outside %.2f-%.2f".format(java.util.Locale.ROOT, b.q, qLo, qHi)
             }
@@ -216,8 +225,8 @@ data class DeviceTarget private constructor(
             if (b.type !in caps.types) found += "Band $n: type unsupported"
             if (!b.freqHz.isFinite() || b.freqHz !in caps.freqMinHz..caps.freqMaxHz)
                 found += "Band $n: freq ${num(b.freqHz)} Hz outside ${num(caps.freqMinHz)}-${num(caps.freqMaxHz)} Hz"
-            if (!b.gainDb.isFinite() || (!b.type.isPass && b.gainDb !in caps.gainMinDb..caps.gainMaxDb))
-                found += "Band $n: gain ${num(b.gainDb)} dB outside ${num(caps.gainMinDb)}..${num(caps.gainMaxDb)} dB"
+            if (!b.gainDb.isFinite() || (!b.type.isPass && b.gainDb !in caps.gainRange(b.type)))
+                found += "Band $n: gain ${num(b.gainDb)} dB outside ${num(caps.gainRange(b.type).start)}..${num(caps.gainRange(b.type).endInclusive)} dB"
             // a shelf's intended Q range is the register range divided by the DAC's shelf scale (the Dawn Pro 2: up to 7.07)
             val qRange = caps.qRange(b.type)
             if (!b.q.isFinite() || b.q !in qRange)
@@ -234,6 +243,7 @@ data class DeviceTarget private constructor(
         if (found.isNotEmpty()) return found
         return when {
             moondrop != null -> MoondropCodec.planFor(moondrop, profile.bands, gain).issues
+            gen1 != null -> MoondropGen1Codec.issues(gen1, profile.bands)
             else -> KtMicroCodec.issues(requireNotNull(ktMicro), profile.copy(preampDb = 0.0))
         }
     }
@@ -241,6 +251,7 @@ data class DeviceTarget private constructor(
     companion object {
         /** The display names of the 1.6 families, from their records. */
         val MOONDROP_NAME: String = GeneratedDevices.MOONDROP_DAWN_PRO_2.name
+        /** The Allegro Mini's display name; a KT target's own is its caps name ([KtMicroCatalog.Model.name]). */
         val KT_NAME: String = GeneratedDevices.KIWI_EARS_ALLEGRO_MINI.name
         /** 1.6: the Dawn Pro 2 offers PEAK; its pass filters (LP, HP) where [MoondropCatalog.passFiltersOn] and its shelves (LS, HS) where [MoondropCatalog.shelvesOn] (proven or a review build). */
         val MOONDROP_TYPES: Set<FilterType> get() = MoondropCatalog.OFFERED_TYPES
@@ -277,6 +288,8 @@ data class DeviceTarget private constructor(
         val K13 = DeviceTarget(fiioRecord = FiioCatalog.K13)
         val MELODY = DeviceTarget(fiioRecord = FiioCatalog.MELODY)
         val TINY_A = DeviceTarget(fiioRecord = FiioCatalog.TINY_A)
+        /** The FiiO JadeAudio JA11 (found by its USB name; [readOnly] in a release until its record says `hardwareVerified`). */
+        val FIIO_JA11 = DeviceTarget(fiioRecord = FiioCatalog.JA11)
         private val MELODY_WITH_PASS = DeviceTarget(fiioRecord = SnowSkyMelody.config(true))
         private val KA15_WITH_PASS = DeviceTarget(fiioRecord = FiioKa15.config(true))
         /** The KA15 as the app plans with it now is [KA15]; this is it with LP, HP, BP and AP offered whatever the flag says (the bench's `--pass-filters` and the tests). */
@@ -285,11 +298,15 @@ data class DeviceTarget private constructor(
         fun melody(passFilters: Boolean): DeviceTarget = if (passFilters) MELODY_WITH_PASS else MELODY
         val DAWN_PRO_2 = DeviceTarget(moondrop = MoondropCatalog.dawnPro2)
         val ALLEGRO_MINI = DeviceTarget(ktMicro = KtMicroCatalog.models.first())
+        /** The JCally JM12 (KT02H20, same VID:PID as the Allegro Mini, found by its USB name): written and read back from a phone on 10.11.2026 (run 2026-11-10-jcally-jm12-11-phone), so it writes in every build. */
+        val JCALLY_JM12 = DeviceTarget(ktMicro = KtMicroCatalog.jm12Models.first())
         val ECHO_A = DeviceTarget(echo = WalkPlayProfiles.echoA)
+        /** The Moondrop DUSK-SP (35D8:1499, found by its USB name; [readOnly] in a release until its record says `hardwareVerified`). */
+        val MOONDROP_DUSK = DeviceTarget(gen1 = MoondropGen1Catalog.duskSp)
         /** An Echo-A target for [profile] (tests: the writable variant, `echoA.copy(hardwareVerified = true)`). */
         internal fun forEcho(profile: WalkPlayProfile) = DeviceTarget(echo = profile)
-        /** The 1.6 families, which [find] does not know. */
-        val FAMILIES = listOf(DAWN_PRO_2, ALLEGRO_MINI, ECHO_A)
+        /** The 1.6 families whose write is proven in every build, which [find] does not know (the DUSK-SP since its phone run of 11.11.2026, run 2026-11-11-moondrop-dusk-09-phone). */
+        val FAMILIES = listOf(DAWN_PRO_2, ALLEGRO_MINI, JCALLY_JM12, ECHO_A, MOONDROP_DUSK)
         fun of(protocol: DeviceProtocol) = when (protocol) {
             DeviceProtocol.MICRO -> MICRO
             DeviceProtocol.MAX -> MAX
@@ -305,9 +322,12 @@ data class DeviceTarget private constructor(
             GeneratedDevices.FIIO_K13_R2R_USB.recordId to K13,
             GeneratedDevices.SNOWSKY_MELODY_USB.recordId to MELODY,
             GeneratedDevices.SNOWSKY_TINY_A_USB.recordId to TINY_A,
+            GeneratedDevices.FIIO_JA11_USB.recordId to FIIO_JA11,
             GeneratedDevices.MOONDROP_DAWN_PRO_2_USB.recordId to DAWN_PRO_2,
             GeneratedDevices.KIWI_EARS_ALLEGRO_MINI_USB.recordId to ALLEGRO_MINI,
+            GeneratedDevices.JCALLY_JM12_USB.recordId to JCALLY_JM12,
             GeneratedDevices.MOONDROP_ECHO_A_USB.recordId to ECHO_A,
+            GeneratedDevices.MOONDROP_DUSK_USB.recordId to MOONDROP_DUSK,
         ).also { m -> require(m.keys == GeneratedDevices.USB_IDS.map { it.recordId }.toSet()) { "a device record has no DeviceTarget (or the other way round)" } }
 
         /**

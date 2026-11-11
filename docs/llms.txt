@@ -1,0 +1,25 @@
+# Contour
+
+> Contour (Contour EQ) is a free, open-source Android app that writes a parametric EQ into a USB DAC dongle, so the EQ plays in every app on the phone. Made by Chronosaur as part of Soundblooms.
+
+Contour talks to the dongle over USB and stores the EQ in the device itself. It supports USB DACs from CrinEar, FiiO, JCally, Kiwi Ears, Moondrop, SnowSky and TRN, each tested on real hardware. The app has no internet permission, no analytics and no accounts. Source code and releases: https://github.com/Chronosauros/contour (Apache 2.0). Contour is an unofficial project, not affiliated with the makers of the supported devices.
+
+## Pages
+
+- [Contour](https://contoureq.app/): what the app does and which USB DACs it supports.
+- [Install](https://contoureq.app/install/): how to install Contour on an Android phone and check that the APK is genuine.
+- [Guide](https://contoureq.app/guide/): a 6-minute film with full text on using Contour.
+- [Supported DACs](https://contoureq.app/install/#dacs): every USB DAC the released app supports, what works on each, with a page per device.
+- [From AutoEQ to the dongle](https://contoureq.app/autoeq-to-dongle/): make a parametric EQ on AutoEQ or squig.link and send it into a USB DAC dongle with Contour.
+- [EQ in the dongle](https://contoureq.app/eq-in-the-dongle/): why an EQ stored in the dongle plays in every app, and when a phone EQ app is the better choice.
+- [Contour or FiiO Control](https://contoureq.app/fiio-snowsky/): what each app does for the FiiO KA15, K13 R2R, SnowSky Melody and Tiny A.
+- [Privacy](https://contoureq.app/privacy/)
+- [Chinese version](https://contoureq.app/zh/)
+
+## From the same maker
+
+- [Soundblooms](https://soundblooms.com/): Chronosaur's site for portable audio, with the apps, opinions on IEMs and headphones, a Chi-fi price comparison and a catalog of DACs and amps.
+- [Soundblooms Deals](https://soundblooms.com/deals): prices of Chi-fi IEMs, DACs and headphones from six shops (HiFiGo, Linsoul, Shenzhen Audio, The HiFi Cat, Hangout Audio, Apos Audio) side by side, checked every 6 hours, with a price history page for every product since 27 Oct 2026.
+- [Soundblooms DACs](https://soundblooms.com/dacs): over 100 portable DACs and headphone amps from the manufacturers' spec sheets, filterable by output power, outputs, PEQ support and whether they work with Contour.
+- [EQ Sweep](https://eqsweep.app/): an Android app that tunes headphones by ear and builds the EQ for you; it can send the EQ straight into Contour.
+- [Discord](https://discord.gg/msgvnUG7js): the soundblooms community server, for feedback on Contour and EQ Sweep and questions about DACs and IEMs.

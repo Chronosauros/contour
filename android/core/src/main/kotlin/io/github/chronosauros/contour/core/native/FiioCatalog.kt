@@ -133,7 +133,10 @@ object FiioCatalog {
     const val MELODY_PRODUCT_ID = GeneratedDevices.SNOWSKY_MELODY_PRODUCT_ID
     const val TINY_A_PRODUCT_ID = GeneratedDevices.SNOWSKY_TINY_A_PRODUCT_ID
 
-    /** Contour stable: the FiiO KA15, the K13 R2R, the SnowSky Melody and Tiny A, in this order (the oracle test takes the first two). A new
+    /** USB product ID of the FiiO JadeAudio JA11 (found by VID, PID and the exact USB name). */
+    const val JA11_PRODUCT_ID = GeneratedDevices.FIIO_JA11_PRODUCT_ID
+
+    /** Contour stable: the FiiO KA15, the K13 R2R, the SnowSky Melody and Tiny A, then the FiiO JA11, in this order (the oracle test takes the first two). A new
      * FiiO-family record is generated as soon as it exists in devices/, but is part of the catalog only when it is listed here.
      */
     val rules: List<FiioConfig> = listOf(
@@ -141,6 +144,7 @@ object FiioCatalog {
         GeneratedDevices.FIIO_K13_R2R,
         GeneratedDevices.SNOWSKY_MELODY,
         GeneratedDevices.SNOWSKY_TINY_A,
+        GeneratedDevices.FIIO_JA11,
     )
 
     /** The SnowSky Melody and Tiny A by their exact USB identities (see DeviceTarget.find). */
@@ -152,6 +156,9 @@ object FiioCatalog {
 
     /** The K13 R2R by its exact USB identity from its record (see DeviceTarget.find). */
     val K13: FiioConfig = GeneratedDevices.FIIO_K13_R2R
+
+    /** The FiiO JadeAudio JA11, found by VID, PID and the exact USB name from its record (see DeviceTarget.findDevice); the app drives it with [FiioJa11.CONFIG]. */
+    val JA11: FiioConfig = GeneratedDevices.FIIO_JA11
 
     /** Positive route solely for the captured exact VID/PID/name identity; the HID descriptor is still
      * required before any I/O. Every unknown PID/name returns null; no probing writes.

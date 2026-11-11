@@ -2,6 +2,7 @@ package io.github.chronosauros.contour.core.devices
 
 import io.github.chronosauros.contour.core.DeviceCapabilities
 import io.github.chronosauros.contour.core.FilterType
+import io.github.chronosauros.contour.core.ShelfLimits
 
 /*
  * The plain data the catalog generator (:core:generateDeviceCatalog, android/core/devices.gradle.kts) fills from the device records. The classes are
@@ -118,7 +119,7 @@ internal data class MoondropData(
     val globalGainMaxDb: Double,
 )
 
-/** The KT Micro record (Allegro Mini): five bands as register pairs consecutive from [bandRegisterBase] (gain and frequency, then Q and type). */
+/** A KT Micro record (Allegro Mini, JCally JM12): up to five bands as register pairs consecutive from [bandRegisterBase] (gain and frequency, then Q and type). One per record; each model has its own. */
 internal data class KtMicroData(
     val name: String,
     val vendorId: Int,
@@ -137,10 +138,75 @@ internal data class KtMicroData(
     val enableRegister: Int,
     val digitalGainRegister: Int,
     val writeAck: Int,
-    /** The Global Gain steps the vendor tool offers (register 0x3B). */
-    val globalGainUserSteps: IntRange,
+    /** The Global Gain steps the vendor tool offers (register 0x3B); null = the record offers no Global Gain and the code never writes 0x3B for it. */
+    val globalGainUserSteps: IntRange?,
     /** The rate the DSP designs its biquads for (record `peq.designRateHz`, 24 000 Hz measured): a band plays at register frequency x stream rate / design rate. */
     val designRateHz: Double,
     /** The stream rate Contour assumes (record `peq.assumedStreamHz`, 48 000 Hz) when it converts an intended frequency to the register. */
     val assumedStreamHz: Double,
+    /** The register Q of a shelf is the intended Q times this (record `peq.shelfQScale`; 1.0 = the register is the Q). Only meaningful for a record whose `peq.types` has a shelf. */
+    val shelfQScale: Double,
+    /** `driver.reconnectAfterSave`: the USB device leaves the bus after SAVE. null = the record says "unknown" and the code's own value is used ([PendingRecords]). */
+    val reconnectAfterSave: Boolean?,
+    /** `reset.offered`: the vendor software offers CLEAR (0x43) and Contour's bench may build it. False = Contour never sends it to this model. */
+    val resetOffered: Boolean,
+    /** `driver.eqEnableStatusBytes`: bytes 1-3 of the EQ switch register (0x24) are device status that changes on its own (JM12, run 2026-11-10-jcally-jm12-01-mac). A write sends `[eq, 0, 0, 0]` and a read-back is compared on byte 0 only. False = the bytes are echoed and compared (Allegro Mini). */
+    val eqEnableStatusBytes: Boolean,
+    /** `driver.sendTurnsEqOn`: the app's send turns the EQ switch (0x24) ON when it reads OFF; false = it is left as found (Allegro Mini). */
+    val sendTurnsEqOn: Boolean,
+    /** `peq.shelfGainDb` and `peq.shelfQ`: a shelf's own, narrower limits (measured); null = a shelf has the device-wide ones. */
+    val shelfLimits: ShelfLimits? = null,
+)
+
+/** One band of a firmware preset of a gen-1 cable: a PEAK filter in Hz, dB and Q. */
+internal data class Gen1PresetBand(val freqHz: Double, val gainDb: Double, val q: Double)
+
+/**
+ * The Moondrop gen-1 record (DUSK-SP; MAY, FreeDSP and Echo-B speak the same protocol): nine bands, a meta record and five coefficient sets per band, a firmware preset list,
+ * and the control-pipe pacing. [factoryBank] is what the Custom EQ holds from the factory, by band position (PEAK, 0 dB, Q 1.0 at these frequencies): a band Contour does not use is written as that.
+ */
+internal data class MoondropGen1Data(
+    val id: String,
+    val name: String,
+    val vendorId: Int,
+    val productId: Int,
+    val productName: String,
+    val reportId: Int,
+    val reportBytes: Int,
+    val bands: Int,
+    val gainMinDb: Double,
+    val gainMaxDb: Double,
+    val qMin: Double,
+    val qMax: Double,
+    val freqMinHz: Double,
+    val freqMaxHz: Double,
+    val types: Set<FilterType>,
+    /** The firmware presets and the Custom EQ by index (record `slots.labels`): 0 is the Custom EQ Contour writes. */
+    val presetLabels: Map<Int, String>,
+    /** The Custom EQ index (record `driver.customIndex`). */
+    val customIndex: Int,
+    /** `slots.stockPicker`: the DAC page offers the firmware presets as a row. */
+    val stockPicker: Boolean,
+    /** `slots.stockPickerInline`: the DAC page shows the presets as buttons on the page. */
+    val stockPickerInline: Boolean,
+    /** The factory bank by band position (record `slots.factoryBank`): the frequency of each band, all PEAK, 0 dB, Q = [factoryQ]. */
+    val factoryFrequenciesHz: List<Int>,
+    val factoryQ: Double,
+    /** `pacing`: the wait between SET_REPORT and GET_REPORT of every request, the pause after a band or coefficient write, after the commit of a write, and after a preset select. */
+    val replyWaitMs: Long,
+    val writeGapMs: Long,
+    val afterCommitMs: Long,
+    val afterSelectMs: Long,
+    /** The commit stores the Custom bank and restarts the cable (measured, runs 2026-11-11-moondrop-dusk-02/04-mac): it leaves the bus [restartLeavesAfterMs] after the commit's reply and is back after [restartAwayMinMs]..[restartAwayMaxMs]; the rig waits [reconnectGoneWaitMs] for it to leave and [reconnectBackWaitMs] for it to return. */
+    val restartLeavesAfterMs: Long,
+    val restartAwayMinMs: Long,
+    val restartAwayMaxMs: Long,
+    val reconnectGoneWaitMs: Long,
+    val reconnectBackWaitMs: Long,
+    /** `slots.powerUpPreset`: the preset the cable plays after every restart and every plug-in (1, DUSK-Default). */
+    val powerUpPreset: Int,
+    /** `slots.presetBands`: the bands each firmware preset plays by index (all PEAK, no preamp), which the cable cannot report; the Custom EQ has no entry. */
+    val presetBands: Map<Int, List<Gen1PresetBand>>,
+    /** `driver.hardwareVerified`: false keeps the app from writing the cable in a release build (a review build writes it). */
+    val hardwareVerified: Boolean,
 )

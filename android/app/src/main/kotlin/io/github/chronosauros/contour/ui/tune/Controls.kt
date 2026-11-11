@@ -219,7 +219,11 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
  * What HOLD TO SEND shows for [p] now, and why. [eqBlocked] is the state the touch handler keys on (the EQ cannot be sent),
  * [issues] the full list behind it; the [label] is only how that is worded and never decides what a touch does.
  */
-data class HoldView(val label: String, val eqBlocked: Boolean = false, val issues: List<String> = emptyList())
+data class HoldView(
+    val label: String, val eqBlocked: Boolean = false, val issues: List<String> = emptyList(),
+    /** The DUSK-SP foot names the cable's preset ([Sender.presetFoot]): not a send control, a tap opens the DAC page; [onDac] = the bank is the profile on screen (the orange style, else the neutral one). */
+    val preset: Boolean = false, val onDac: Boolean = false,
+)
 
 fun holdView(p: Profile, device: DeviceController, sender: Sender): HoldView {
     // A write that ended at SAVE (Allegro Mini) is not proven until the DAC is back and read: saving, or TAP TO CONNECT when the system needs a tap to let it in again.
@@ -233,6 +237,8 @@ fun holdView(p: Profile, device: DeviceController, sender: Sender): HoldView {
     if (device.protocol.readOnly) return HoldView(FamilyDevices.READ_ONLY_LABEL, eqBlocked = true, issues = device.sendIssues(p))
     // A slot DAC with no slot chosen yet (a SnowSky right after plug-in, a stock preset): a tap on a slot chooses where HOLD TO SEND writes.
     if (device.slotPicker && device.chosenSlot == null) return HoldView("CHOOSE A SLOT", eqBlocked = true)
+    // DUSK-SP: until a profile is picked, imported or edited after the last read or send, the foot names the cable's preset instead of offering a send (this is the foot label logic of that cable)
+    sender.presetFoot(p)?.let { return HoldView(it, preset = true, onDac = sender.isOnDac(p)) }
     val issues = device.sendIssues(p)
     // A FiiO DAC whose state is not read yet: a tap reads it, not a dead READ THE DAC FIRST (owner, 14.10.2026).
     if (issues.singleOrNull() == "Read the DAC first") return HoldView(TAP_TO_READ_LABEL)
@@ -267,7 +273,7 @@ private const val TRANSFER_RAMP_TO = 0.85f
  * flat grey (no shadow) for NO DAC.
  */
 @Composable
-fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: () -> Unit, modifier: Modifier = Modifier) {
+fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: () -> Unit, onPresets: () -> Unit = {}, modifier: Modifier = Modifier) {
     val haptics = LocalHaptics.current
     val c = pal
     val scope = rememberCoroutineScope()
@@ -276,6 +282,8 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
     val label = view.label
     val labelNow = rememberUpdatedState(label)
     val eqBlockedNow = rememberUpdatedState(view.eqBlocked)
+    val presetNow = rememberUpdatedState(view.preset)
+    val presets = rememberUpdatedState(onPresets)
     // The full issue list goes to the USB log once per block, so a logcat capture shows why a send is blocked.
     LaunchedEffect(view.issues) { device.logSendBlock(view.issues) }
     val profile = rememberUpdatedState(p)
@@ -283,7 +291,7 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
     // White while it can send and orange fills it as it is held; orange once the profile is on the DAC (as the slot pill, owner 14.10.2026).
     val saving = label == SAVING_LABEL
     val white = label == "HOLD TO SEND" || saving
-    val orange = label == ON_DAC_LABEL
+    val orange = label == ON_DAC_LABEL || (view.preset && view.onDac)
     // The fill of the saving state, never backwards within one continuous period: a send follows its real frame progress; any other
     // transfer ramps to 85 % over its expected time (chained transfers extend it), then to 100 % when it ends.
     val shown = remember { Animatable(0f) }
@@ -327,6 +335,11 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
                     val heldSlot = device.destinationSlot()
                     down.consume()
                     if (eqBlockedNow.value) { haptics.reject(); return@awaitEachGesture }
+                    // the DUSK-SP preset foot sends nothing: a tap (hold or not) opens the DAC page, where the presets are
+                    if (presetNow.value) {
+                        if (waitUp()) { haptics.click(); presets.value() }
+                        return@awaitEachGesture
+                    }
                     // A slot tap is reading the DAC: no send until it is done.
                     if (device.busy && labelNow.value != SAVING_LABEL) { haptics.reject(); return@awaitEachGesture }
                     when (labelNow.value) {

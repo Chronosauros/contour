@@ -155,7 +155,7 @@ object KtMicroCodec {
     fun compile(profile: Profile, before: Snapshot, eqEnabled: Boolean? = true): Plan {
         val model = before.model
         require(before.writeBlocker == null) { requireNotNull(before.writeBlocker) }
-        require(model in KtMicroCatalog.models) { "Unqualified KT model" }
+        require(model in KtMicroCatalog.allModels) { "Unqualified KT model" }
         val eqControl = when (eqEnabled) { true -> EQ_ON; false -> EQ_OFF; null -> before.eqControl }
         require(before.eqControl in setOf(EQ_OFF, EQ_ON)) { "Only validated KT EQ enable values (2 off, 3 custom)" }
         require(profile.bands.size <= model.bandCount) { "KT supports ${model.bandCount} bands; no truncation" }
@@ -166,10 +166,10 @@ object KtMicroCodec {
         val bands = List(model.bandCount) { i ->
             val b = profile.bands.getOrNull(i)
             if (b == null || !b.enabled) RawBand(i, 0, 100, 1000, 0)
-            else RawBand(i, tenthsDown(b.gainDb), quantize(model.registerFrequency(b.freqHz)), quantize(b.q * 1000), typeCode(b.type))
+            else RawBand(i, tenthsDown(b.gainDb), quantize(model.registerFrequency(b.freqHz)), quantize(b.q * registerQScale(model, b.type) * 1000), typeCode(model, b.type))
         }
         val encoded = bands.flatMap { encodeRawBand(model.registers, it) }
-        val enableValue = before.registers.single { it.register == EQ_ENABLE_REGISTER }.value.drop(1)
+        val enableValue = enableTail(model, before)
         val writes = mutableListOf<Frame>()
         if (before.eqControl != eqControl) writes += Frame(packet(EQ_ENABLE_REGISTER, WRITE, listOf(eqControl) + enableValue),
             mutating = true, expectsReply = true)
@@ -187,11 +187,11 @@ object KtMicroCodec {
     fun compileSwitch(before: Snapshot, eqEnabled: Boolean): Plan {
         val model = before.model
         require(before.writeBlocker == null) { requireNotNull(before.writeBlocker) }
-        require(model in KtMicroCatalog.models) { "Unqualified KT model" }
+        require(model in KtMicroCatalog.allModels) { "Unqualified KT model" }
         require(before.eqControl in setOf(EQ_OFF, EQ_ON)) { "Only validated KT EQ enable values (2 off, 3 custom)" }
         val eqControl = if (eqEnabled) EQ_ON else EQ_OFF
         require(before.eqControl != eqControl) { "The EQ on ${model.productName} is already ${if (eqEnabled) "ON" else "OFF"}" }
-        val enableValue = before.registers.single { it.register == EQ_ENABLE_REGISTER }.value.drop(1)
+        val enableValue = enableTail(model, before)
         val writes = listOf(
             Frame(packet(EQ_ENABLE_REGISTER, WRITE, listOf(eqControl) + enableValue), mutating = true, expectsReply = true),
             Frame(packet(0, SAVE), mutating = true, delayAfterMs = 1000),
@@ -201,6 +201,14 @@ object KtMicroCodec {
         }.sortedBy { it.register }
         return Plan(model, before.deviceKey, writes, expected, before.bands, eqControl)
     }
+
+    /** Bytes 1-3 a switch write sends: what the read held (echoed, Allegro Mini), or zeros where they are device status ([KtMicroCatalog.Model.eqEnableStatusBytes], JM12). */
+    private fun enableTail(model: KtMicroCatalog.Model, before: Snapshot): List<Int> =
+        if (model.eqEnableStatusBytes) listOf(0, 0, 0) else before.registers.single { it.register == EQ_ENABLE_REGISTER }.value.drop(1)
+
+    /** Does [read] hold what [e] expects? Register 0x24 of a model whose bytes 1-3 are status is compared on byte 0 (the switch) only. */
+    fun sameRegister(model: KtMicroCatalog.Model, e: RegisterValue, read: RegisterValue): Boolean =
+        if (e.register == EQ_ENABLE_REGISTER && model.eqEnableStatusBytes) e.value[0] == read.value[0] else e.value == read.value
 
     /** The vendor tool's Global Gain steps (register 0x3B, `DacAnaGain_ALL`): 1-15 = -18..+3 dB in 1.5 dB, 13 = 0 dB (the default). Step 0 has no dB in the tool: never written. */
     const val GLOBAL_GAIN_STEP_MIN = 1
@@ -231,9 +239,10 @@ object KtMicroCodec {
      */
     fun compileGlobalGain(before: Snapshot, current: RegisterValue, step: Int, save: Boolean = true): Plan {
         val model = before.model
+        require(model.globalGainUserSteps != null) { "${model.productName} offers no Global Gain: register 0x3B is never written for it" }
         requireGlobalGainStep(step)
         require(before.writeBlocker == null) { requireNotNull(before.writeBlocker) }
-        require(model in KtMicroCatalog.models) { "Unqualified KT model" }
+        require(model in KtMicroCatalog.allModels) { "Unqualified KT model" }
         val now = requireNotNull(globalGainStep(current)) {
             "Global Gain (0x3B) reads ${hexBytes(current.value)}, not a step 1-15: the layout is not the one Contour knows, nothing written"
         }
@@ -271,7 +280,7 @@ object KtMicroCodec {
      */
     fun compileRestore(backup: Snapshot, after: Snapshot): Plan? {
         val model = backup.model
-        require(model in KtMicroCatalog.models && after.model == model) { "Unqualified KT model" }
+        require(model in KtMicroCatalog.allModels && after.model == model) { "Unqualified KT model" }
         val restorable = KtMicroReset.restorable(model)
         val have = after.registers.associateBy { it.register }
         val want = backup.registers.filter { it.register in restorable }.sortedBy { it.register }
@@ -300,7 +309,7 @@ object KtMicroCodec {
         plan.expectedRegisters.forEach { e ->
             val r = have[e.register]
             if (r == null) out += "register 0x%02x: not read back".format(e.register)
-            else if (r.value != e.value) out += "register 0x%02x: wrote %s, read %s".format(e.register, hexBytes(e.value), hexBytes(r.value))
+            else if (!sameRegister(plan.model, e, r)) out += "register 0x%02x: wrote %s, read %s".format(e.register, hexBytes(e.value), hexBytes(r.value))
         }
         if (back.eqControl != plan.expectedEqControl) out += "EQ switch: wrote ${plan.expectedEqControl}, read ${back.eqControl}"
         return out
@@ -318,11 +327,26 @@ object KtMicroCodec {
         return out
     }
     private fun validateBand(model: KtMicroCatalog.Model, b: Band, n: Int) {
-        require(b.type in model.nativeTypes) { "Band $n: ${model.productName} takes PEAK bands only" }
+        require(b.type in model.nativeTypes) { "Band $n: ${model.productName} takes ${typeList(model)} only" }
         require(b.freqHz.isFinite() && b.freqHz in model.minFrequencyHz..model.maxFrequencyHz) { "Band $n: freq ${b.freqHz} Hz outside ${model.minFrequencyHz}-${model.maxFrequencyHz} Hz" }
-        require(b.gainDb.isFinite() && b.gainDb in model.minGainDb..model.maxGainDb) { "Band $n: gain ${b.gainDb} dB outside ${model.minGainDb}..${model.maxGainDb} dB" }
-        require(b.q.isFinite() && b.q in model.minQ..model.maxQ) { "Band $n: Q ${b.q} outside ${model.minQ}-${model.maxQ}" }
+        // a shelf may have narrower limits than a peak (record peq.shelfGainDb, peq.shelfQ: what the unit was measured to play)
+        val gains = model.gainRange(b.type)
+        require(b.gainDb.isFinite() && b.gainDb in gains) { "Band $n: gain ${b.gainDb} dB outside ${gains.start}..${gains.endInclusive} dB" + limitNote(model, b.type) }
+        // the register Q of a shelf is the intended Q x the model's shelf scale (1.0 on the JM12), so the intended range is the register range divided by it
+        val scale = registerQScale(model, b.type)
+        val qs = model.qRange(b.type)
+        require(b.q.isFinite() && b.q * scale in model.minQ..model.maxQ && b.q in qs.start..qs.endInclusive) { "Band $n: Q ${b.q} outside ${qs.start}-${qs.endInclusive}" + limitNote(model, b.type) }
     }
+    /** Said after a refusal that comes from a shelf's own limits rather than the device's. */
+    private fun limitNote(model: KtMicroCatalog.Model, type: FilterType) =
+        if (type != FilterType.PEAK && model.shelfLimits != null) " (a shelf on the ${model.name} is limited to what was measured)" else ""
+    /** "PEAK bands" for a model that offers PEAK only (the Allegro Mini), otherwise the offered types by name ("PEAK, LOW_SHELF and HIGH_SHELF bands"). */
+    private fun typeList(model: KtMicroCatalog.Model): String {
+        val names = listOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF).filter { it in model.nativeTypes }.map { it.name }
+        return (if (names.size < 2) names.joinToString() else names.dropLast(1).joinToString(", ") + " and " + names.last()) + " bands"
+    }
+    /** The register Q of a band is its intended Q times this: the model's shelf scale for a shelf, 1 for a peak. */
+    private fun registerQScale(model: KtMicroCatalog.Model, type: FilterType): Double = if (type == FilterType.PEAK) 1.0 else model.shelfQScale
     /** Band gain in tenths of a dB, rounded DOWN (a cut never gets shallower, a boost never grows); on-grid values unchanged. */
     private fun tenthsDown(gainDb: Double): Int {
         require(gainDb.isFinite() && gainDb * 10 in -32768.0..65535.0)
@@ -336,8 +360,12 @@ object KtMicroCodec {
         0 -> FilterType.PEAK; 3 -> FilterType.LOW_SHELF; 4 -> FilterType.HIGH_SHELF
         else -> throw IllegalArgumentException("Unknown KT native type $code")
     }
-    fun typeCode(type: FilterType): Int = when (type) {
-        FilterType.PEAK -> 0
+    /** The native type code of [type] on [model]: PEAK 0, LOW_SHELF 3, HIGH_SHELF 4, and only what the model offers. */
+    fun typeCode(model: KtMicroCatalog.Model, type: FilterType): Int = when {
+        type !in model.nativeTypes -> throw IllegalArgumentException("Unsupported KT type $type")
+        type == FilterType.PEAK -> 0
+        type == FilterType.LOW_SHELF -> 3
+        type == FilterType.HIGH_SHELF -> 4
         else -> throw IllegalArgumentException("Unsupported KT type $type")
     }
     private fun u(b: Byte) = b.toInt() and 255

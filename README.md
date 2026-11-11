@@ -2,13 +2,13 @@
 
 # Contour
 
-**An on-the-go EQ manager for USB DACs from CrinEar, FiiO, SnowSky, TRN, Moondrop and Kiwi Ears.** Keep all your EQ profiles on your phone, plug the
+**An on-the-go EQ manager for USB DACs from CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears and JCally.** Keep all your EQ profiles on your phone, plug the
 DAC in, pick one and send it. Plug in, send, unplug - that is the whole routine. On DACs with their own settings, a DAC page changes those from the phone too.
 
 **Website: [contoureq.app](https://contoureq.app/)** - a 1.5-minute demo film, the full guide film and the install page.
 
 <!-- facts:start -->
-**Contour 1.6.6, released 10 Nov 2026.** Supported DACs, each with its own page: [CrinEar Protocol Micro](https://contoureq.app/devices/crinear-protocol-micro/), [CrinEar Protocol Max](https://contoureq.app/devices/crinear-protocol-max/), [FiiO KA15](https://contoureq.app/devices/fiio-ka15/), [FiiO K13 R2R](https://contoureq.app/devices/fiio-k13-r2r/), [SnowSky Melody](https://contoureq.app/devices/snowsky-melody/), [SnowSky Tiny A](https://contoureq.app/devices/snowsky-tiny-a/), [TRN Black Pearl](https://contoureq.app/devices/trn-black-pearl/), [Moondrop Dawn Pro 2](https://contoureq.app/devices/moondrop-dawn-pro-2/), [Moondrop Echo-A](https://contoureq.app/devices/moondrop-echo-a/) and [Kiwi Ears Allegro Mini](https://contoureq.app/devices/kiwi-ears-allegro-mini/).
+**Contour 1.7.0, released 11 Nov 2026.** Supported DACs, each with its own page: [CrinEar Protocol Micro](https://contoureq.app/devices/crinear-protocol-micro/), [CrinEar Protocol Max](https://contoureq.app/devices/crinear-protocol-max/), [FiiO KA15](https://contoureq.app/devices/fiio-ka15/), [FiiO K13 R2R](https://contoureq.app/devices/fiio-k13-r2r/), [FiiO JadeAudio JA11](https://contoureq.app/devices/fiio-ja11/), [SnowSky Melody](https://contoureq.app/devices/snowsky-melody/), [SnowSky Tiny A](https://contoureq.app/devices/snowsky-tiny-a/), [TRN Black Pearl](https://contoureq.app/devices/trn-black-pearl/), [Moondrop Dawn Pro 2](https://contoureq.app/devices/moondrop-dawn-pro-2/), [Moondrop Echo-A](https://contoureq.app/devices/moondrop-echo-a/), [Moondrop DUSK-SP](https://contoureq.app/devices/moondrop-dusk/), [Kiwi Ears Allegro Mini](https://contoureq.app/devices/kiwi-ears-allegro-mini/) and [JCally JM12](https://contoureq.app/devices/jcally-jm12/).
 
 The EQ is written into the DAC itself: it stays there after unplugging and works in every app and on every device you plug the DAC into. Contour does not update firmware. An EQ app on the phone, such as Wavelet or Poweramp, is a different thing: it changes the sound on that phone only.
 <!-- facts:end -->
@@ -26,7 +26,7 @@ you plug in, and the DAC's own settings where it has them - no vendor app for ea
 
 It started smaller: in September 2026 it was a phone stand-in for
 [CrinEar's desktop browser tool](https://eq.hangout.audio/), for the Protocol Micro alone. A month later it works
-with ten DACs from six makers.
+with thirteen DACs from seven makers.
 
 Every one of them keeps its parametric EQ inside the DAC itself, so the EQ works with every app and every device
 you plug the DAC into - no system equaliser, no app running in the background.
@@ -48,7 +48,7 @@ Contour does not process audio, does not need the internet and has no accounts. 
 
 ## Supported hardware
 
-Ten DACs from six makers. Every one of them was tested on real hardware before Contour enabled it.
+Thirteen DACs from seven makers. Every one of them was tested on real hardware before Contour enabled it.
 
 ### EQ limits
 
@@ -221,7 +221,7 @@ shifts every band about 8% down). The Allegro Mini drops off USB for about a sec
 waits for it.
 </details>
 
-Contour is unofficial and not affiliated with CrinEar, FiiO, SnowSky, TRN, Moondrop or Kiwi Ears. Other WalkPlay, FiiO,
+Contour is unofficial and not affiliated with CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears or JCally. Other WalkPlay, FiiO,
 Moondrop and KT Micro DACs are possible later (see `ROADMAP.md`); they are not enabled until someone confirms one
 on real hardware.
 
@@ -236,7 +236,7 @@ gets a third page, **DAC**, in front of them.
   SHELF and HIGH SHELF filters, plus HIGH PASS, LOW PASS, BAND PASS and ALL PASS on the DACs that have them (Contour
   shows only the types your DAC takes); FREQ, GAIN and Q sliders that are fine when you drag slowly and cover the
   whole range when you drag fast; tap any number to type it; tap the selected band chip again to bypass or
-  delete the band, or delete it with the minus chip; PREAMP with a MANUAL / AUTO anti-clipping bar; A/B to hear the curve off and on at the same volume (the preamp stays; Protocol Micro only for now).
+  delete the band, or delete it with the minus chip; PREAMP as a slider with an AUTO anti-clipping chip; A/B to hear the curve off and on at the same volume (the preamp stays; Protocol Micro only for now).
 - **HOLD TO SEND** (0.7 s hold) writes the profile to the DAC, reads it back, compares every register and
   only then saves it to the DAC's memory. The button then shows ON DAC, and the profile is saved. HOLD TO SEND,
   its caption and the slot picker sit in a fixed footer, and messages appear under the header, so they never

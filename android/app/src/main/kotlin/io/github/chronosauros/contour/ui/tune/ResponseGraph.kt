@@ -44,6 +44,7 @@ import io.github.chronosauros.contour.ui.kit.Scale
 import kotlin.math.exp
 import kotlin.math.hypot
 import kotlin.math.ln
+import io.github.chronosauros.contour.core.isShelf
 
 /**
  * Plot mapping: log frequency 20 Hz - 20 kHz across, [gainLo]..[gainHi] dB down (-12..+12 unless the DAC's own gain range is wider: the K13 R2R takes -24..+12), inside [PAD] on every side
@@ -247,7 +248,7 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                                 val b = prof.value.bands.getOrNull(hit!!) ?: continue
                                 val pos = ch.position + grab
                                 val f = freqScale.quantize(map.f(pos.x))
-                                val g = gainScale.quantize(map.g(pos.y))
+                                val g = (if (b.type.isShelf && capsNow.value.shelfLimits != null) Param.GAIN.scaleFor(capsNow.value, b.type)!! else gainScale).quantize(map.g(pos.y))
                                 if (f != b.freqHz || g != b.gainDb) model.setBand(hit, b.copy(freqHz = f, gainDb = g))
                                 nodeGuard.move(ch.uptimeMillis, ch.position, f to g)
                                 if ((f to g) != ticked && !nodeGuard.settling(ch.uptimeMillis)) {

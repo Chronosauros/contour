@@ -23,6 +23,7 @@ import io.github.chronosauros.contour.core.native.DacSetting
 import io.github.chronosauros.contour.core.native.FamilyDevices
 import io.github.chronosauros.contour.core.native.FamilySettings
 import io.github.chronosauros.contour.core.native.FamilyState
+import io.github.chronosauros.contour.core.native.KtMicroSaveWait
 import io.github.chronosauros.contour.core.native.FiioCodec
 import io.github.chronosauros.contour.core.native.FiioConfig
 import io.github.chronosauros.contour.core.native.FiioMelodyExchange
@@ -292,6 +293,14 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                 if (!permitted(d)) return@launch
                 busy = true
                 try {
+                    if (!walkplay && s.reconnectsAfterWrite) {
+                        // The write makes the DAC leave the bus (JA11 mic): the SET goes out and the session ends with it; the value counts after a read once the DAC is back.
+                        settingLeaving = true
+                        client.writeSettingThenLeave(d, id, value)
+                        busy = false
+                        outcome = awaitSettingAfterReturn(id, value)
+                        return@launch
+                    }
                     outcome = if (walkplay) client.writeWalkPlaySetting(d, id, value) else client.writeSetting(d, id, value)
                     if (epoch == connectionEpoch) when (val o = outcome) {
                         SettingWriteOutcome.Verified -> settingValues = settingValues + (id to SettingReading(id, value, null))
@@ -304,6 +313,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                     outcome = SettingWriteOutcome.NoReply
                 } finally {
                     busy = false
+                    settingLeaving = false
                 }
                 if (outcome == SettingWriteOutcome.Verified && id == "volume-steps") readSettings()
             } finally {
@@ -311,17 +321,60 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             }
         }
     }
+    /** A setting write that makes the DAC leave the bus is waiting for it to come back ([DacSetting.reconnectsAfterWrite]); the detach that ends the connection is expected, not a reason to drop the write. */
+    @Volatile private var settingLeaving = false
+
+    /**
+     * After the SET of a [DacSetting.reconnectsAfterWrite] row: waits for the DAC to leave and come back (it was seen leaving, or [SAVE_NO_DETACH_MS] passed without it leaving, the same rule as a pending SAVE), then reads
+     * the settings and compares the row with [value]: Verified, Mismatch (the value read), or NoReply when the DAC did not come back or answer within [VERIFY_TIMEOUT_MS]. The DAC is free ([busy] false) while it waits, so the
+     * controller's own reconnect and read go on; the read here waits for them and holds the DAC for its one settings read. The rows read then replace [settingValues].
+     */
+    private suspend fun awaitSettingAfterReturn(id: String, value: Int): SettingWriteOutcome {
+        val detachesBefore = dacDetaches
+        val started = SystemClock.elapsedRealtime()
+        UsbLog.line("settings write: waiting for the DAC to come back (up to ${VERIFY_TIMEOUT_MS / 1000} s)")
+        try {
+            while (true) {
+                delay(VERIFY_POLL_MS)
+                val waited = SystemClock.elapsedRealtime() - started
+                if (waited >= VERIFY_TIMEOUT_MS) return SettingWriteOutcome.NoReply
+                val ready = dacDetaches > detachesBefore || waited >= SAVE_NO_DETACH_MS
+                if (!ready || link != Link.CONNECTED || busy || scanning || following || connecting || openPending) continue
+                val d = findDac() ?: continue
+                if (!permitted(d)) continue
+                busy = true
+                try {
+                    val r = client.readSettings(d)
+                    val read = r.firstOrNull { it.id == id }?.value ?: continue
+                    settingValues = r.associateBy { it.id }
+                    settingsRead = true
+                    UsbLog.line("settings write: read after the return: $id = $read (wrote $value)")
+                    return if (read == value) SettingWriteOutcome.Verified else SettingWriteOutcome.Mismatch(read)
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    UsbLog.line("settings write: read after the return failed: ${e.message}")
+                } finally {
+                    busy = false
+                }
+            }
+        } finally {
+            settingLeaving = false
+        }
+    }
+
     /**
      * One setting of a 1.6 family, by id: the Allegro Mini EQ switch (register 0x24) and Global Gain (0x3B, steps 1-15), the Dawn Pro 2 Global Gain (0x03) and Pre Gain
-     * (0x23, tenths of a dB). Only a row with [DacSetting.writeEnabled] gets here ([writeSetting]); an id that has no frame for this DAC is refused (null). An Allegro
+     * (0x23, tenths of a dB), the DUSK-SP preset (the option index is the preset index; the cable is switched and read back in the same session). Only a row with [DacSetting.writeEnabled] gets here ([writeSetting]); an id that has no frame for this DAC is refused (null). An Allegro
      * write ends at SAVE: the DAC leaves the bus and the value counts only after it is back and a read agrees. A Dawn gain is read back in the same session.
      */
     private fun writeFamilySetting(id: String, value: Int, onDone: (SettingWriteOutcome?) -> Unit) {
         val allegro = protocol.ktMicro != null
         val dawn = protocol.moondrop != null
+        val gen1 = protocol.gen1 != null
         val op: (suspend (DacHandle) -> WriteResult)? = when {
+            gen1 && id == FamilySettings.PRESET -> { d -> client.selectGen1Preset(d, value) }
             allegro && id == FamilySettings.EQ_SWITCH -> { d -> client.writeEqSwitch(d, value == 1) }
-            allegro && id == FamilySettings.GLOBAL_GAIN -> { d -> client.writeAllegroGlobalGain(d, value) }
+            allegro && id == FamilySettings.GLOBAL_GAIN && protocol.ktMicro?.globalGainUserSteps != null -> { d -> client.writeAllegroGlobalGain(d, value) }
             dawn && id == FamilySettings.GLOBAL_GAIN -> { d -> client.writeDawnGain(d, MoondropCodec.GainRegister.GLOBAL, value / 10.0) }
             dawn && id == FamilySettings.PRE_GAIN -> { d -> client.writeDawnGain(d, MoondropCodec.GainRegister.PRE, value / 10.0) }
             else -> null
@@ -450,7 +503,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     }
     private fun dropSettings() {
         settingsJob?.cancel()
-        if (pending == null) writeJob?.cancel() // an Allegro write waits for its DAC to come back: the detach that ends the connection is expected
+        if (pending == null && !settingLeaving) writeJob?.cancel() // an Allegro write, or a JA11 mic write, waits for its DAC to come back: the detach that ends the connection is expected
         writeTestLine = null
         settingValues = emptyMap()
         settingsRead = false
@@ -1227,12 +1280,16 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         val startedMs = SystemClock.elapsedRealtime()
         val result = CompletableDeferred<Verdict>()
         @Volatile var detached = false
+        /** [PendingSave.afterReturn] has run. */
+        @Volatile var afterDone = false
         /** A read may count as the proof: the DAC was seen leaving the bus, or it never left within the time a re-enumeration takes. */
         fun ready(): Boolean = detached || SystemClock.elapsedRealtime() - startedMs >= SAVE_NO_DETACH_MS
     }
     /** [reason] is null when verified; [readBack] is null when the DAC did not come back in time. */
     private class Verdict(val reason: String?, val mismatches: List<String>, val readBack: DacSnapshot?) { val verified: Boolean get() = reason == null }
     private var pending: PendingVerify? = null
+    /** Reads that failed since the controller started: [awaitSave] counts the ones after a SAVE (a DAC that is back on USB but does not answer). */
+    @Volatile private var readFailures = 0
     /** A write ended at SAVE and has not been proven by a read yet. */
     var verifyingSave by mutableStateOf(false)
         private set
@@ -1241,7 +1298,11 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     private fun resolvePending() {
         val p = pending ?: return
         val s = snapshot ?: return
-        if (p.result.isCompleted || !p.ready() || s.familyState !is FamilyState.Allegro) return
+        // the read after the DAC is back: a KT Micro family state (Allegro Mini, JM12) or a FiiO native state (JA11, which also leaves the bus on SAVE)
+        if (p.result.isCompleted || !p.ready() || (s.familyState !is FamilyState.Allegro && s.familyState !is FamilyState.Dusk && s.nativeState == null)) return
+        // A read before the step after the return (the DUSK-SP's RAM select of the Custom EQ) proves nothing: the attach read after the USB permission found the cable on preset 1
+        // and failed the send (Nothing, 11.11.2026). The wait in [awaitSave] runs the step and then reads.
+        if (p.save.afterReturn != null && !p.afterDone) return
         val mismatches = p.save.verify(s)
         UsbLog.line("save: read back after ${if (p.detached) "reconnect" else "no reconnect"}: ${if (mismatches.isEmpty()) "VERIFIED" else mismatches.joinToString("; ")}")
         p.result.complete(Verdict(if (mismatches.isEmpty()) null else FailureText.readBack(mismatches.first()), mismatches, s))
@@ -1258,6 +1319,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             // where the system asks again after every SAVE). A dialog nobody answers still ends it, after VERIFY_PERMISSION_MAX_MS. The DAC's absence from the bus counts as before.
             var counted = 0L
             var askedFor = 0L
+            val failuresAtStart = readFailures
             var last = SystemClock.elapsedRealtime()
             while (!p.result.isCompleted) {
                 delay(VERIFY_POLL_MS)
@@ -1267,9 +1329,30 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                 if (p.result.isCompleted) break
                 if (counted >= VERIFY_TIMEOUT_MS || askedFor >= VERIFY_PERMISSION_MAX_MS) {
                     val why = if (counted >= VERIFY_TIMEOUT_MS) "did not come back within ${VERIFY_TIMEOUT_MS / 1000} s" else "was not let in: the USB permission was not given within ${VERIFY_PERMISSION_MAX_MS / 1000} s"
-                    return Verdict("$NOT_VERIFIED: the DAC $why; plug it in again, then tap to read it", emptyList(), null)
+                    return Verdict("$NOT_VERIFIED: the DAC $why; unplug it, plug it back in, then tap to read it", emptyList(), null)
                 }
-                if (p.ready() && link == Link.CONNECTED && !busy && !scanning) read()
+                // The DAC is back on USB (the link is up) but keeps not answering its reads: a few tries over a few seconds, then it has to be unplugged and plugged in again (JCally JM12, 10.11.2026:
+                // twice it came back and answered nothing until a replug). Never reported as saved, never an endless loop.
+                KtMicroSaveWait.silentVerdict(readFailures - failuresAtStart)?.let { text ->
+                    UsbLog.line("save: the DAC is back on USB but did not answer ${readFailures - failuresAtStart} reads")
+                    return Verdict("$NOT_VERIFIED: $text", emptyList(), null)
+                }
+                if (p.ready() && link == Link.CONNECTED && !busy && !scanning) {
+                    // the DUSK-SP restarts onto preset 1 after the commit: its Custom EQ is selected (RAM) once, with the cable back, before the read that proves the write
+                    val after = p.save.afterReturn
+                    if (after != null && !p.afterDone) {
+                        val d = findDac()
+                        if (d != null && permitted(d)) {
+                            busy = true
+                            try { after(d); p.afterDone = true } catch (e: Exception) {
+                                if (e is CancellationException) throw e
+                                readFailures++
+                                UsbLog.line("save: select after the return failed: ${e.message}")
+                            } finally { busy = false }
+                        }
+                    }
+                    if (after == null || p.afterDone) read()
+                }
             }
             return p.result.await()
         } finally {
@@ -1354,6 +1437,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                 error = null
             } catch (e: Exception) {
                 UsbLog.line("$what failed: ${e.message}")
+                if (what == "read") readFailures++
                 if (!keepSnapshot || epoch != connectionEpoch) snapshot = null
                 error = "$what failed: ${FailureText.of(e.message ?: e.javaClass.simpleName)}"
             } finally {

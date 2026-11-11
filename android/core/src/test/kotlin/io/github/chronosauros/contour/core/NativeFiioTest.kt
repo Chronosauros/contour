@@ -72,10 +72,10 @@ class NativeFiioTest {
             assertEquals(d.getValue("productName").jsonPrimitive.content, c.productName)
         }
     }
-    @Test fun `stable catalog is exactly the KA15, K13 R2R, Melody and Tiny A rules not a VID fallback`() {
+    @Test fun `stable catalog is exactly the KA15, K13 R2R, Melody, Tiny A and JA11 rules not a VID fallback`() {
         val oracle = json("catalog-oracle.json").jsonArray
         // The oracle holds the upstream rows of the KA15 and K13 R2R; Melody and Tiny A are measured on hardware (see FiioCatalog).
-        assertEquals(4, FiioCatalog.rules.size)
+        assertEquals(5, FiioCatalog.rules.size) // the JA11 is the fifth: found by its USB name, not in the oracle
         assertEquals(oracle.map { it.jsonObject.getValue("productName").jsonPrimitive.content }.toSet(), FiioCatalog.rules.take(2).map { it.productName }.toSet())
         for (row in oracle) {
             val r = row.jsonObject
@@ -117,6 +117,53 @@ class NativeFiioTest {
             assertTrue(c.matches(p.expected, s.copy(activeSlot = target)))
         }
         assertEquals(10, capturedSnapshot(codec("FIIO KA15"), "fiio_fiio_ka15.json").count)
+    }
+    @Test fun `JA11 replies read on the Mac carry CRC-8 MAXIM over the bytes after the bb 0b header, 12 of 13 (not the slot reply), so its frames stay without a checksum`() {
+        fun crc(bytes: List<Int>): Int { var c = 0; for (b in bytes) { c = c xor b; repeat(8) { c = if (c and 1 != 0) (c ushr 1) xor 0x8C else c ushr 1 } }; return c }
+        // dac-lab run 2026-11-11-fiio-ja11-01-mac, backup-read.txt: bb 0b 00 SEQ cmd LEN data CRC ee
+        val replies = listOf(
+            "bb 0b 00 00 18 01 05 94 ee", "bb 0b 00 00 17 02 00 00 f1 ee",
+            "bb 0b 00 00 15 08 00 00 00 03 e8 00 46 00 e6 ee", "bb 0b 00 00 15 08 01 00 00 07 d0 00 46 00 ee ee", "bb 0b 00 00 15 08 02 00 00 13 88 00 46 00 8c ee",
+            "bb 0b 00 00 15 08 03 00 00 1f 40 00 46 00 cb ee", "bb 0b 00 00 15 08 04 00 00 27 10 00 46 00 79 ee",
+            "bb 0b 00 00 09 01 07 c9 ee", "bb 0b 00 00 0b 02 02 14 b6 ee", "bb 0b 00 00 02 01 3c 96 ee", "bb 0b 00 00 12 01 01 9f ee", "bb 0b 00 00 20 01 01 0e ee",
+        ).map { line -> line.split(" ").map { it.toInt(16) } }
+        for (f in replies) assertEquals(f[f.size - 2], crc(f.subList(2, f.size - 2)), f.joinToString(" ") { "%02x".format(it) })
+        // the first reply of the session, the slot (04, Close EQ), carries c6 where this rule gives 3e; and the header-covering CRC of Contour's own requests (the web app's capture) gives neither
+        assertEquals(0x3E, crc(listOf(0, 0, 0x16, 1, 4))); assertEquals(0xF3, crc(listOf(0xBB, 0x0B, 0, 0, 0x16, 1, 4)))
+        // the JA11's record keeps pacing.checksum false: the frames are the Mac reader's (sequence and CRC 0), which the unit answered
+        val c = codec("JadeAudio JA11")
+        assertFalse(c.config.checksumFrames)
+        assertEquals(listOf(0xBB, 0x0B, 0, 0, 0x16, 0, 0, 0xEE), c.querySlot().bytes)
+        assertEquals(listOf(0xBB, 0x0B, 0, 0, 0x15, 1, 4, 0, 0xEE), c.queryBand(4).bytes)
+        assertEquals(2, c.config.reportId)
+    }
+    @Test fun `JA11 offers PEAK, both shelves, LOW PASS and HIGH PASS in every build and never BAND PASS or ALL PASS, is written in every build (hardwareVerified after the phone run), and a send selects USER1 before its five bands and ends at SAVE`() {
+        val t = DeviceTarget.FIIO_JA11
+        val five = setOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF, FilterType.LOW_PASS, FilterType.HIGH_PASS)
+        val codes = mapOf(FilterType.PEAK to 0, FilterType.LOW_SHELF to 1, FilterType.HIGH_SHELF to 2, FilterType.LOW_PASS to 4, FilterType.HIGH_PASS to 5)
+        for (channel in BuildChannel.entries) Proven.asChannel(channel) {
+            assertEquals(five, t.caps.types, "$channel"); assertEquals(codes, t.fiio!!.typeCodes, "$channel"); assertEquals(3, t.destinationSlot)
+            assertFalse(t.readOnly, "$channel") // hardwareVerified 11.11.2026 (phone run 2026-11-11-fiio-ja11-10-phone)
+        }
+        assertTrue(FiioJa11.PASS_FILTERS_VERIFIED && FiioJa11.passFiltersOn)
+        assertTrue(FilterType.BAND_PASS !in t.caps.types && FilterType.ALL_PASS !in t.caps.types) // BP plays flat (checked twice), AP is indistinguishable from an ignored type
+        // the four proven FiiO targets are never read only
+        for (other in listOf(DeviceTarget.KA15, DeviceTarget.K13, DeviceTarget.MELODY, DeviceTarget.TINY_A)) assertFalse(other.readOnly, other.caps.name)
+        val c = codec("JadeAudio JA11")
+        assertEquals(5, c.config.maxFilters); assertEquals(setOf(3), c.config.userSlots); assertEquals(4, c.config.bypassSlot); assertTrue(c.config.disconnectOnSave)
+        val p = plan(c, List(5) { peak(it) })
+        assertEquals(listOf(0xAA, 0x0A, 0, 0, 0x16, 1, 3, 0, 0xEE), p.selection.bytes) // USER1 first: the unit sits on Close EQ (4) from the factory
+        assertEquals(listOf(FiioCodec.PREAMP, FiioCodec.COUNT) + List(5) { FiioCodec.BAND }, p.writes.map { it.bytes[4] })
+        assertEquals(listOf(0xAA, 0x0A, 0, 0, 0x19, 1, 3, 0, 0xEE), p.save.bytes)
+        assertEquals(FiioSaveVerification.RECONNECT_AND_READ_REQUIRED, p.saveVerification)
+        assertEquals(200, c.config.writeGapMs); assertEquals(0, p.expected.preampTenths) // preamp register offset 0 until measured
+        for (slot in listOf(0, 1, 2, 4)) assertFailsWith<IllegalArgumentException>("slot $slot") { plan(c, slot = slot) }
+        // never built for this unit: 0x1A, 0x21, 0x30 (and report 0x54 is no FiiO frame at all)
+        val all = p.writes + p.selection + p.save + p.backupQueries + p.verificationQueries
+        assertTrue(all.all { it.reportId == 2 && (it.bytes[4] and 255) !in setOf(0x1A, 0x21, 0x30) })
+        // a pending-save plan: Mismatch unless the first read after the DAC is back equals what was planned
+        assertEquals(FiioVerification.Pending("Disconnect-on-save requires reconnect and complete read"), c.verification(p, p.expected))
+        assertEquals(FiioVerification.RegistersMatchPersistenceUnproven, c.verification(p, p.expected, reconnected = true))
     }
     @Test fun `exact requests frame directions effects and no hidden slot change on read`() {
         val c = codec("FIIO KA15")

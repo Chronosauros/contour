@@ -58,6 +58,10 @@ data class DacSetting(
     val scale: Int = 1,
     /** LEVEL: how the page words a value whose raw number is not what a person reads (the Allegro Mini's Global Gain step 13 is 0.0 dB); null = the value, divided by [scale]. Display only: the register value and the write are the raw number. */
     val valueText: ((Int) -> String)? = null,
+    /** The DAC leaves the USB bus after this row's write and comes back by itself (the JA11's in-line mic switch re-enumerates the audio interfaces): the write has no echo or read-back in the same session, the value counts only after a read once the DAC is back. From the record's settings row (`reconnectsAfterWrite`). */
+    val reconnectsAfterWrite: Boolean = false,
+    /** CHOICE: the DAC page shows every option as a full-width button on the page itself (no dropdown or sheet): a few options the person picks between all the time (the DUSK-SP presets, record `slots.stockPickerInline`). */
+    val inlineChoice: Boolean = false,
 ) {
     init {
         require(id.isNotBlank() && label.isNotBlank())
@@ -102,7 +106,7 @@ data class DacInfo(
 )
 
 /** One row of a device record's `settings` list (in devices/): the template [id] and where it sits on that model's page. Emitted by the generator. */
-internal data class SettingPlacement(val id: String, val section: String?, val group: Int, val writeVerified: Boolean)
+internal data class SettingPlacement(val id: String, val section: String?, val group: Int, val writeVerified: Boolean, val reconnectsAfterWrite: Boolean = false)
 
 /** The setting templates (commands, ranges, options, decoders). Which settings a device has, where they sit and which are write-verified is in its record (in devices/): [forModel]. Only what FiiO Control's own config lists for the model; everything is read-only so far. */
 object DacSettings {
@@ -186,7 +190,10 @@ object DacSettings {
      */
     internal fun forModel(placements: List<SettingPlacement>): List<DacSetting> = placements.map { p ->
         val template = templates[p.id] ?: error("no DAC setting template for the id \"${p.id}\" (devices/)")
-        template.copy(section = p.section, group = p.group, writeVerified = p.writeVerified)
+        // A slider whose top follows another row (the volume follows VOLUME STEPS) keeps that rule only when the model has the row: without it the top is the template's own max
+        // (the JA11 has no VOLUME STEPS row and its volume is 0-60, so DacWrite.hardMax must not allow 120).
+        val rule = template.maxRule?.takeIf { r -> placements.any { it.id == r.settingId } }
+        template.copy(section = p.section, group = p.group, writeVerified = p.writeVerified, maxRule = rule, reconnectsAfterWrite = p.reconnectsAfterWrite)
     }
 
     // ---- header info: read with the settings, shown after the DAC's name -------------------------------------------------------
@@ -200,7 +207,10 @@ object DacSettings {
     /** 0x0B: three data bytes major, minor, patch (the reply has no CRC byte); encoded as major * 10000 + minor * 100 + patch. */
     val FIRMWARE = DacInfo("fw", 0x0B, 3, { a -> u(a[6]) * 10_000 + u(a[7]) * 100 + u(a[8]) }) { "FW ${it / 10_000}.${it / 100 % 100}.${it % 100}" }
 
-    private val infos: Map<String, DacInfo> = listOf(SAMPLE_RATE, FIRMWARE).associateBy { it.id }
+    /** 0x0B on a model whose reply carries two data bytes, major and minor, then a CRC byte (FiiO JA11: `bb 0b 00 00 0b 02 02 14 b6 ee` = 2.20); encoded as major * 100 + minor. */
+    val FIRMWARE_2 = DacInfo("fw2", 0x0B, 2, { a -> u(a[6]) * 100 + u(a[7]) }) { "FW ${it / 100}.${"%02d".format(it % 100)}" }
+
+    private val infos: Map<String, DacInfo> = listOf(SAMPLE_RATE, FIRMWARE, FIRMWARE_2).associateBy { it.id }
 
     /** The header reads a device record lists by id (devices/), in the record's order. */
     internal fun infoFor(ids: List<String>): List<DacInfo> = ids.map { infos[it] ?: error("no DAC info read for the id \"$it\" (devices/)") }

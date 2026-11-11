@@ -3,10 +3,12 @@ package io.github.chronosauros.contour.model
 import androidx.compose.runtime.snapshotFlow
 import io.github.chronosauros.contour.core.DacImport
 import io.github.chronosauros.contour.core.Profile
+import io.github.chronosauros.contour.core.native.FamilyState
 import io.github.chronosauros.contour.usb.DacSnapshot
 import io.github.chronosauros.contour.usb.DeviceController
 import io.github.chronosauros.contour.usb.DeviceController.SlotContent
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -19,21 +21,23 @@ class DacEditor(private val model: AppModel, private val device: DeviceControlle
     init {
         device.onConnectRead = ::connectRead
         device.onScanRead = ::scanRead
+        // DUSK-SP: a preset picked on the DAC page (a RAM select, read back) puts what plays on the graph, as if that profile had been sent. A background read of the same preset does not emit.
+        scope.launch { snapshotFlow { (device.snapshot?.familyState as? FamilyState.Dusk)?.slot }.filterNotNull().collect { device.snapshot?.let(::presetRead) } }
     }
 
     /**
      * The library profile for [c], in this order: the slot's link (the profile last opened from or verified-sent to it, while
      * the slot still reads as it did then and the profile exists; otherwise the link is dropped); a profile that is not archived
      * and whose curve the slot holds (working copy or saved version), the one named like the slot first, then the most recently
-     * updated; otherwise null.
+     * updated; otherwise null. [savedToo] false (a DUSK-SP firmware preset, which plays its table whatever the library holds): only a working copy that equals it counts, not one that was edited since its saved version.
      */
-    private fun find(c: SlotContent): String? {
+    private fun find(c: SlotContent, savedToo: Boolean = true): String? {
         val slot = c.slot
         if (slot != null) device.linkOf(slot)?.let { (id, fingerprint) ->
             if (fingerprint == c.fingerprint && model.byId(id) != null) return id
             device.dropLink(slot)
         }
-        return model.active.filter { c.holds(it) || c.holds(model.savedProfile(it)) }
+        return model.active.filter { c.holds(it) || (savedToo && c.holds(model.savedProfile(it))) }
             .sortedWith(compareByDescending<Profile> { c.sameName(it) }.thenByDescending { it.updatedAt })
             .firstOrNull()?.id
     }
@@ -43,7 +47,7 @@ class DacEditor(private val model: AppModel, private val device: DeviceControlle
         s ?: return null
         return when (val r = s.importExact()) {
             is DacImport.Ready -> {
-                val name = c.name ?: c.label
+                val name = c.name ?: c.label ?: (s.familyState as? FamilyState.Dusk)?.importName
                 val p = model.create(r.eq.bands, r.eq.preampDb, name = name, sub = "FROM DAC", open = navigate)
                 val n = r.eq.bands.size
                 model.showOnGraph("FROM DAC${name?.let { " $it" }.orEmpty()}: $n FILTER${if (n == 1) "" else "S"}" + (r.warning?.let { " - $it" } ?: ""))
@@ -58,7 +62,7 @@ class DacEditor(private val model: AppModel, private val device: DeviceControlle
 
     /** Puts [c] on the graph: the profile [find] gives (or a new one made from [s]) becomes current and is linked to its slot. */
     private fun open(c: SlotContent, s: DacSnapshot?, navigate: Boolean): Boolean {
-        val id = find(c) ?: create(c, s, navigate) ?: return false
+        val id = find(c, savedToo = (s?.familyState as? FamilyState.Dusk)?.onCustom != false) ?: create(c, s, navigate) ?: return false
         model.choose(id, navigate)
         c.slot?.let { device.setLink(it, id, c.fingerprint) }
         return true
@@ -71,6 +75,14 @@ class DacEditor(private val model: AppModel, private val device: DeviceControlle
             snapshotFlow { model.loading }.first { !it }
             device.snapshot?.let(::openConnected)
         }
+    }
+
+    /** The DUSK-SP now plays another preset (or the Custom EQ): the library profile for it becomes current, unless the one on screen already is it (a send, a read of the same state). */
+    private fun presetRead(s: DacSnapshot) {
+        if (model.loading || model.loadError) return // the first read of a connection waits for the library in connectRead
+        val c = device.contentOf(s) ?: return
+        if (model.current?.let { c.holds(it) } == true) return
+        open(c, s, navigate = false)
     }
 
     private fun openConnected(s: DacSnapshot) {

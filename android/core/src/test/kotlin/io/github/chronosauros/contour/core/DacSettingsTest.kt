@@ -53,7 +53,8 @@ class DacSettingsTest {
             DeviceTarget.KA15.settings.map { it.id },
         )
         assertEquals(listOf(0x02, 0x0C, 0x07, 0x03, 0x05, 0x32, 0x20, 0x0E, 0x0F, 0x10, 0x11), cmds(DeviceTarget.KA15))
-        assertTrue(DeviceProtocol.MICRO.settings.isEmpty() && DeviceProtocol.MAX.settings.isEmpty() && DeviceTarget.MICRO.settings.isEmpty() && DeviceTarget.MAX.settings.isEmpty())
+        assertTrue(DeviceProtocol.MICRO.settings.isEmpty() && DeviceProtocol.MAX.settings.isEmpty() && DeviceTarget.MICRO.settings.isEmpty())
+        assertEquals(listOf("dac-filter", "work-mode", "balance", "mic"), DeviceTarget.MAX.settings.map { it.id })   // the Max's four verified rows (a release); the TRN's are four
         assertTrue(DeviceTarget.K13.settings.isEmpty() && DeviceTarget.K13.info.isEmpty())
         // FiiO Control's config: VOLUME STEPS is 0x0C, USB AUDIO is 0x20, the balance range is 12; a KA15 has no LED, microphone, gain or buttons mode
         assertEquals(12, tiny.settings.single { it.id == "balance" }.max)
@@ -138,6 +139,35 @@ class DacSettingsTest {
         assertEquals(10, c.settingReply(rx, 0x0B, fw.replyData, crcOptional = true).size)
         assertFailsWith<IllegalArgumentException> { c.settingReply(rx, 0x0B, fw.replyData) } // a settings read still wants its CRC byte
         assertEquals(2, rate.decode(listOf(0xBB, 0x0B, 0, 7, 0x09, 1, 2, 0x55, 0xEE).map { it.toByte() }.toByteArray()))
+    }
+
+    @Test fun `JA11 settings are volume mic and the read only USB audio, its firmware has two data bytes and a CRC (FW 2_20), and its volume tops at 60 with no VOLUME STEPS row`() {
+        val ja = DeviceTarget.FIIO_JA11
+        assertEquals(listOf("volume", "mic", "uac"), ja.settings.map { it.id })
+        assertEquals(listOf(0x02, 0x12, 0x20), ja.settings.map { it.writeCommand })
+        // volume and the in-line mic were written, read back and (mic) re-enumerated on the Mac: vendor parity; USB audio is never written
+        assertEquals(setOf("volume", "mic"), ja.settings.filter { it.writeVerified }.map { it.id }.toSet())
+        assertEquals(listOf(0x09, 0x0B), ja.info.map { it.command }); assertEquals(listOf("rate", "fw2"), ja.info.map { it.id })
+        val (rate, fw2) = ja.info
+        assertEquals("352.8 kHz", rate.format(7)) // the unit reads 7 on the Mac
+        // dac-lab run 2026-11-11-fiio-ja11-01-mac: `bb 0b 00 00 0b 02 02 14 b6 ee` (major, minor, CRC), stale bytes after the terminator
+        val c = FiioCodec(requireNotNull(ja.fiio))
+        val rx = listOf(0xBB, 0x0B, 0, 0, 0x0B, 2, 2, 0x14, 0xB6, 0xEE, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0).map { it.toByte() }.toByteArray()
+        val logical = c.settingReply(rx, 0x0B, fw2.replyData, crcOptional = true)
+        assertEquals(10, logical.size); assertEquals(220, fw2.decode(logical)); assertEquals("FW 2.20", fw2.format(220)); assertEquals("FW 2.05", fw2.format(205))
+        // the three-byte firmware of the other FiiO DACs is a different row and stays as it was
+        assertEquals("FW 1.2.0", DacSettings.FIRMWARE.format(10_200))
+        val volume = ja.settings.first { it.id == "volume" }
+        assertNull(volume.maxRule); assertEquals(60, DacWrite.hardMax(volume))
+        DacWrite.checkValue(volume, 60); assertFailsWith<IllegalArgumentException> { DacWrite.checkValue(volume, 61) }
+        // a model with a VOLUME STEPS row keeps its two tops (60 or 120)
+        assertEquals(120, DacWrite.hardMax(DeviceTarget.KA15.settings.first { it.id == "volume" }))
+        // USB AUDIO (0x20) is never written; the mic toggle and the volume are, behind the review gate
+        assertTrue(ja.settings.first { it.id == "uac" }.readOnly)
+        for (s in ja.settings) assertTrue(s.writeCommand !in DacWrite.NEVER_SEND, s.id)
+        // the in-line mic write re-enumerates the unit (measured 11.11.2026): its row says so, no other row of any model does
+        assertEquals(listOf("mic"), ja.settings.filter { it.reconnectsAfterWrite }.map { it.id })
+        for (t in listOf(DeviceTarget.KA15, DeviceTarget.MELODY, DeviceTarget.TINY_A)) assertTrue(t.settings.none { it.reconnectsAfterWrite }, t.caps.name)
     }
 
     @Test fun `FiiO pauses between reads are 50 ms Tiny A, 100 ms Melody, 200 ms KA15, and the K13 has no FiiO layer`() {

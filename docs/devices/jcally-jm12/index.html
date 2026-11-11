@@ -1,0 +1,354 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>JCally JM12 EQ app for Android - Contour EQ</title>
+<meta name="description" content="Free, open-source Android app that reads and writes the JCally JM12's 5-band EQ with shelves, plus the EQ switch and GLOBAL GAIN. Tested on hardware.">
+<link rel="canonical" href="https://contoureq.app/devices/jcally-jm12/">
+<link rel="alternate" hreflang="en" href="https://contoureq.app/devices/jcally-jm12/">
+<link rel="alternate" hreflang="x-default" href="https://contoureq.app/devices/jcally-jm12/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://contoureq.app/devices/jcally-jm12/">
+<meta property="og:title" content="JCally JM12 EQ app for Android - Contour EQ">
+<meta property="og:description" content="Free, open-source Android app that reads and writes the JCally JM12's 5-band EQ with shelves, plus the EQ switch and GLOBAL GAIN. Tested on hardware.">
+<meta property="og:image" content="https://contoureq.app/images/icon-512.png">
+<meta name="twitter:card" content="summary">
+<meta name="theme-color" content="#EFECE8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#171615" media="(prefers-color-scheme: dark)">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" type="image/png" href="/images/icon-512.png">
+<link rel="apple-touch-icon" href="/images/icon-512.png">
+<link rel="stylesheet" href="/shared/soundblooms.css">
+<script defer src="/shared/soundblooms.js"></script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebPage",
+      "@id": "https://contoureq.app/devices/jcally-jm12/#webpage",
+      "url": "https://contoureq.app/devices/jcally-jm12/",
+      "name": "JCally JM12 EQ app for Android - Contour EQ",
+      "description": "Free, open-source Android app that reads and writes the JCally JM12's 5-band EQ with shelves, plus the EQ switch and GLOBAL GAIN. Tested on hardware.",
+      "inLanguage": "en",
+      "dateModified": "2026-11-11",
+      "isPartOf": {
+        "@id": "https://contoureq.app/#website"
+      },
+      "about": {
+        "@id": "https://contoureq.app/#app"
+      }
+    },
+    {
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Contour",
+          "item": "https://contoureq.app/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Supported USB DACs",
+          "item": "https://contoureq.app/install/#dacs"
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": "JCally JM12",
+          "item": "https://contoureq.app/devices/jcally-jm12/"
+        }
+      ]
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://contoureq.app/#app",
+      "name": "Contour",
+      "alternateName": "Contour EQ",
+      "url": "https://contoureq.app/",
+      "description": "Free, open-source Android EQ manager for USB DACs: send profiles from your phone to CrinEar Protocol, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears and JCally dongles.",
+      "operatingSystem": "Android",
+      "applicationCategory": "MultimediaApplication",
+      "softwareVersion": "1.7.0",
+      "dateModified": "2026-11-11",
+      "offers": {
+        "@type": "Offer",
+        "price": "0",
+        "priceCurrency": "USD"
+      },
+      "isAccessibleForFree": true,
+      "downloadUrl": "https://contoureq.app/install/",
+      "image": "https://contoureq.app/images/icon-512.png",
+      "license": "https://www.apache.org/licenses/LICENSE-2.0",
+      "author": {
+        "@type": "Person",
+        "name": "Chronosaur",
+        "url": "https://github.com/Chronosauros"
+      },
+      "sameAs": [
+        "https://github.com/Chronosauros/contour"
+      ]
+    }
+  ]
+}
+</script>
+<style>
+/*
+  Look = the install page and the guide (same tokens, font, column, hero and footer), which follow the Contour app
+  (android/.../ui/Theme.kt). 1 dp = 1 CSS px. Colors: only Palette roles (light here, dark under prefers-color-scheme).
+  Generated per device by gen_device_pages.py from this template.
+*/
+@font-face{
+  font-family:"Google Sans Flex";
+  src:url("/shared/fonts/google-sans-flex-latin.woff") format("woff");
+  font-weight:400 700; font-style:normal; font-display:swap;
+}
+:root{
+  --bg:#EFECE8; --surface:#FAF8F5; --surface2:#E7E3DE;
+  --text:#1D1B19; --text-dim:#6E6963; --text-mute:#9A948D;
+  --accent:#F07A3A; --on-accent:#2B1A10;
+  --sunken:#E6E2DD; --shadow:#2B2118;
+  --k-card:12.6%; --k-high:16.5%;
+  --led-on:#46D17A;
+
+  --lift-card:0 3px 12.5px color-mix(in srgb, var(--shadow) var(--k-card), transparent);
+  --lift-raised:0 2px 8px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+  --lift-hero:0 5px 17px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+  --lift-hero-held:0 1.5px 7.4px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+  --lift-raised-held:0 0.6px 3.8px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+  --sink:inset 0 2px 7px color-mix(in srgb, var(--shadow) var(--k-high), transparent);
+
+  --font:"Google Sans Flex","Google Sans","Google Sans Text",system-ui,sans-serif;
+  --r-card:20px;
+  --r-row:16px;
+  --r-btn:24px;
+  --r-chip:14px;
+  --r-option:12px;
+  --r-tag:8px;
+  --gap:8px;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#171615; --surface:#242220; --surface2:#2E2B29;
+    --text:#F3F0EC; --text-dim:#A39E98; --text-mute:#77726C;
+    --accent:#F07A3A; --on-accent:#2B1A10;
+    --sunken:#121110; --shadow:#000000;
+    --k-card:42%; --k-high:55%;
+  }
+}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:16px}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{transition:none!important}}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:16px;line-height:1.5;font-weight:400;overflow-x:hidden;font-optical-sizing:auto}
+.wrap{max-width:720px;margin:0 auto;padding:0 16px}
+a{color:var(--text);text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:3px;overflow-wrap:anywhere}
+h1,h2,h3{margin:0}
+p{margin:0 0 .75em}
+strong{font-weight:600}
+code{font-family:inherit;font-feature-settings:"tnum";background:var(--sunken);padding:.05em .4em;border-radius:var(--r-tag);white-space:pre-wrap;overflow-wrap:anywhere;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.mk{color:var(--text-dim);font-size:13px}
+:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+
+.top{display:flex;gap:20px;padding:20px 6px 0;font-size:15px}
+.top{align-items:baseline}
+.top .lockup{display:flex;align-items:baseline;gap:8px;white-space:nowrap}
+.top .by{--by-fs:15px;--by-word:var(--text-dim);--by-ink:var(--text-dim)}
+/* top bar on narrow phones: wrap to a second row instead of squeezing, never break a word; below 390 px closer links at 16 px */
+.top{flex-wrap:wrap;row-gap:4px}
+.top a{white-space:nowrap}
+@media (max-width:389px){.top{column-gap:12px}.top > a{font-size:16px}}
+
+/* hero */
+.hero{padding:24px 0 8px}
+.hero img.icon{width:88px;height:88px;border-radius:var(--r-card);display:block;margin-bottom:20px;box-shadow:var(--lift-card)}
+.hero h1{font-size:38px;font-weight:700;letter-spacing:-.01em;line-height:1.1;text-transform:uppercase}
+.hero .lede{color:var(--text-dim);margin:12px 0 18px;max-width:34em;font-size:17px}
+.ver{display:inline-flex;align-items:center;gap:10px;background:var(--surface);color:var(--text-dim);border-radius:999px;box-shadow:var(--lift-card);padding:10px 14px 10px 16px;margin:0 0 24px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-feature-settings:"tnum";line-height:1.3}
+.ver .dot{order:2;width:8px;height:8px;border-radius:50%;background:var(--led-on);flex:none}
+.cta{display:flex;flex-wrap:wrap;gap:var(--gap)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:58px;padding:12px 22px;border-radius:var(--r-btn);border:0;font:inherit;font-size:17px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;line-height:1.2;text-align:center;text-decoration:none;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:box-shadow .12s}
+.btn-primary{background:var(--accent);color:var(--on-accent);box-shadow:var(--lift-hero)}
+.btn-tonal{background:var(--surface2);color:var(--text);box-shadow:var(--lift-raised)}
+.btn-primary:active{box-shadow:var(--lift-hero-held)}
+.btn-tonal:active{box-shadow:var(--lift-raised-held)}
+.cta .btn{flex:1 1 220px}
+
+/* sections */
+section.plain{margin:32px 0}
+section.plain > h2{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);padding:0 6px;margin-bottom:12px}
+.note{color:var(--text-dim);font-size:15px;margin:16px 6px 0}
+ul.plain-list{margin:0 0 .75em;padding-left:1.2em}
+ul.plain-list li{margin:6px 0}
+ul.plain-list li::marker{color:var(--text-mute)}
+
+/* facts = one raised card, a two-column table (label | value); stacked on narrow screens */
+.facts-card{background:var(--surface);border-radius:var(--r-card);box-shadow:var(--lift-card);padding:6px 20px}
+table.facts{border-collapse:collapse;width:100%;font-size:15px}
+table.facts th,table.facts td{text-align:left;vertical-align:top;padding:12px 0;border-bottom:1px solid var(--surface2)}
+table.facts tr:last-child th,table.facts tr:last-child td{border-bottom:0}
+table.facts th{width:34%;padding-right:16px;color:var(--text-dim);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;line-height:1.7}
+table.facts td{overflow-wrap:anywhere;font-feature-settings:"tnum"}
+
+/* question and answer: plain visible text */
+.qa{margin:0 0 20px}
+.qa h3{font-size:18px;font-weight:700;letter-spacing:-.015em;line-height:1.3;margin:0 0 4px}
+.qa p{margin:0;color:var(--text-dim)}
+ol.plain-list{margin:0 0 .75em;padding-left:1.4em}
+ol.plain-list li{margin:8px 0}
+ol.plain-list li::marker{color:var(--text-mute);font-weight:600}
+.more{margin:6px 0 0}
+.links-block p{margin:0 0 .75em}
+.links-block h2{margin-top:28px}
+
+footer.fv{display:block;padding:clamp(56px,9vw,88px) 6px 72px;color:var(--text-dim);font-size:14px;line-height:1.5}
+footer.fv p{margin:0}
+.fv a{color:var(--text);text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:4px}
+.fv-sentence{max-width:21em;color:var(--text);font-size:clamp(25px,6.6vw,34px);font-weight:600;letter-spacing:-.02em;line-height:1.3;text-wrap:balance}
+.fv-sentence a{text-decoration-thickness:3px;text-underline-offset:6px;padding:.22em 0}
+@media (min-width:1000px){.fv-sentence{font-size:40px;max-width:23em}}
+.fv-quiet{margin-top:clamp(56px,9vw,96px)}
+.fv-legal{display:flex;flex-wrap:wrap;gap:0 22px;font-size:13px}
+.fv-legal > *{display:inline-flex;align-items:center;gap:.3em;min-height:44px}
+.fv .fv-legal a{color:var(--text-dim);text-decoration-thickness:1px;text-underline-offset:3px;text-decoration-color:color-mix(in srgb,var(--accent) 65%,transparent)}
+@media (max-width:480px){.fv-legal{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}}
+.fv-note{max-width:46em;margin-top:2px;font-size:12.5px;line-height:1.5;color:var(--text-dim)}
+
+@media (max-width:480px){
+  .hero h1{font-size:32px}
+  .facts-card{padding:4px 16px}
+  table.facts,table.facts tbody,table.facts tr,table.facts th,table.facts td{display:block;width:100%}
+  table.facts tr{padding:10px 0;border-bottom:1px solid var(--surface2)}
+  table.facts tr:last-child{border-bottom:0}
+  table.facts th,table.facts td{padding:0;border-bottom:0}
+  table.facts th{margin-bottom:2px}
+}
+@media print{
+  :root{--bg:#EFECE8;--surface:#FAF8F5;--surface2:#E7E3DE;--text:#1D1B19;--text-dim:#6E6963;--text-mute:#9A948D;--sunken:#E6E2DD;--accent:#F07A3A}
+  html{scroll-behavior:auto}
+  body{background:var(--surface);color:var(--text)}
+  *{box-shadow:none!important}
+  .cta{display:none!important}
+}
+</style>
+<script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
+<script defer src="/_vercel/insights/script.js"></script>
+</head>
+<body>
+<div class="wrap">
+
+<p class="top"><span class="lockup"><a href="/">Contour</a><a class="by" href="https://soundblooms.com/" rel="noopener" target="_blank" aria-label="by Soundblooms"><span class="by-word" aria-hidden="true">by</span><span class="sb-mark" aria-hidden="true">sound<span class="sb-face"><i class="sb-band"></i><span class="sb-eyes" data-eyes="calm"><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i></span></span>blooms</span></a></span> <a href="/guide/">Guide</a> <a href="/install/#dacs">Devices</a> <a href="/install/">Install</a> <a class="lang-switch" href="/zh/devices/" hreflang="zh-CN" lang="zh-CN">中文</a></p>
+
+<header class="hero">
+  <img class="icon" src="/images/icon-512.png" width="88" height="88" alt="Contour app icon">
+  <h1>JCally JM12 EQ app for Android</h1>
+  <p class="lede">Contour EQ is a free, open-source Android app that reads and writes the parametric EQ stored inside the JCally JM12. The EQ is written into the dongle itself, so it works in every app and on every device you plug it into.</p>
+  <p class="ver"><span class="dot" aria-hidden="true"></span><span>Stable 1.7.0</span></p>
+  <div class="cta">
+    <a class="btn btn-primary" href="/install/">Install Contour</a>
+  </div>
+</header>
+
+<section class="plain" id="facts">
+  <h2>What Contour does on the JM12</h2>
+  <div class="facts-card">
+    <table class="facts">
+      <tbody>
+        <tr><th scope="row">Supported since</th><td>Contour 1.7.0</td></tr>
+        <tr><th scope="row">USB ID (VID:PID)</th><td>31B2:0111</td></tr>
+        <tr><th scope="row">Chip / protocol</th><td>KT Micro</td></tr>
+        <tr><th scope="row">EQ</th><td>Read and write; every send is read back from the DAC once it is back on USB</td></tr>
+        <tr><th scope="row">Bands</th><td>5</td></tr>
+        <tr><th scope="row">Filter types</th><td>PEAK, LOW SHELF, HIGH SHELF</td></tr>
+        <tr><th scope="row">Gain</th><td>-12 to +12 dB (shelves -6 to +6 dB)</td></tr>
+        <tr><th scope="row">Q</th><td>0.2 to 10 (shelves 0.7 to 1.0)</td></tr>
+        <tr><th scope="row">Frequency</th><td>20 Hz to 20 kHz</td></tr>
+        <tr><th scope="row">Preamp</th><td>none</td></tr>
+        <tr><th scope="row">Where the EQ is kept</th><td>In the DAC's memory: one EQ, no slots. Contour saves it after each send, and the JM12 then drops off USB for about one to three seconds. It stays after unplugging.</td></tr>
+        <tr><th scope="row">DAC page</th><td>Since 1.7.0: the EQ switch (OFF / ON) and GLOBAL GAIN from -18 to +3 dB in 1.5 dB steps. Each change is saved and read back once the JM12 is back on USB. A send turns the EQ switch ON if it is OFF.</td></tr>
+        <tr><th scope="row">Tested</th><td>By the developer on hardware and on a test rig, November 2026, firmware 1.0.1.</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<section class="plain" id="not-done">
+  <h2>What Contour does not do on the JM12</h2>
+  <ul class="plain-list">
+    <li>Firmware updates.</li>
+    <li>LOW SHELF and HIGH SHELF beyond -6 to +6 dB, or at a Q outside 0.7 to 1.0. The JM12 takes larger shelves, but on the test rig they played 0.7 to 1.0 dB away from the curve, and other shelf Q values were not measured. Contour offers only what was measured to play as drawn.</li>
+    <li>PEAK bands at a Q below 0.2. At Q 0.1 the JM12 played about 1 dB away from the curve.</li>
+    <li>A preamp. The JM12 has none, so a profile with a preamp has to be changed before it can be sent.</li>
+    <li>Resetting the DAC.</li>
+  </ul>
+</section>
+
+<section class="plain" id="vendor-app">
+  <h2>Contour EQ and devicePEQ</h2>
+  <p>JCally publishes no EQ tool for the JM12. The open-source devicePEQ web tool lists it, under its USB name KT02H20 HIFI Audio, with five PEAK bands and no shelves. Contour adds LOW SHELF and HIGH SHELF up to -6 and +6 dB, PEAK bands up to Q 10, and GLOBAL GAIN, the dongle's output level. Contour runs on the Android phone the dongle is plugged into, keeps your profiles in a library on the phone and needs no internet or account.</p>
+</section>
+
+<section class="plain" id="steps">
+  <h2>Using Contour with the JM12</h2>
+  <ol class="plain-list">
+    <li>Keep the profile to 5 bands of PEAK, LOW SHELF or HIGH SHELF, with no preamp. A profile that does not fit can't be sent until you change it; the red line under HOLD TO SEND says what to change.</li>
+    <li>Send it with HOLD TO SEND. A new JM12 ships with its EQ switched off, so the first send also switches it ON. After each send the JM12 drops off USB for a moment and comes back on its own; Contour waits for it and then reads every band back.</li>
+    <li>If the JM12 does not come back after a send, or comes back but does not answer, unplug it and plug it back in; Contour marks that send as not confirmed and asks you to. On the test bench this happened twice in about 45 saves.</li>
+    <li>Play at 48 kHz, the usual USB rate on Android. The JM12 works out its filters as if the stream ran at 24 kHz, so Contour writes each frequency converted for a 48 kHz stream; a player that forces 44.1 kHz shifts every band about 8% down.</li>
+  </ol>
+  <p class="more">Everything else works the same on every DAC: <a href="/guide/">How to use Contour</a>.</p>
+</section>
+
+<section class="plain" id="questions">
+  <h2>Questions about the JM12</h2>
+  <div class="qa">
+    <h3>Is there an EQ app for the JCally JM12 on Android?</h3>
+    <p>Yes. Contour EQ reads and writes the JM12's 5-band EQ from an Android phone, with PEAK, LOW SHELF and HIGH SHELF filters, and its DAC page sets the EQ switch and GLOBAL GAIN. It is free and open source (Apache 2.0). JCally publishes no EQ tool of its own.</p>
+  </div>
+  <div class="qa">
+    <h3>Can Contour update the JM12's firmware?</h3>
+    <p>No. Contour does not update firmware. It reads and writes the EQ, the EQ switch and GLOBAL GAIN. It was tested on a JM12 with firmware 1.0.1.</p>
+  </div>
+  <div class="qa">
+    <h3>Why does my JM12 show up as KT02H20 HIFI Audio?</h3>
+    <p>That is the name the JM12 reports over USB, after its KT02H20 chip. It shares its USB ID, 31B2:0111, with the Kiwi Ears Allegro Mini, so Contour tells the two apart by that name.</p>
+  </div>
+  <div class="qa">
+    <h3>Can I make the JM12 louder?</h3>
+    <p>Yes, with GLOBAL GAIN on the DAC page, from -18 to +3 dB in 1.5 dB steps. The JM12 ships at about -6 dB, so it can play up to 9 dB louder than it came.</p>
+  </div>
+</section>
+
+<section class="plain links-block" id="other-devices">
+  <p><a href="https://soundblooms.com/dacs/jcally-jm12" rel="noopener" target="_blank">JM12 specs and prices on soundblooms.com</a></p>
+  <h2>Other DACs Contour supports</h2>
+  <ul class="plain-list">
+    <li><a href="/devices/crinear-protocol-micro/">CrinEar Protocol Micro</a></li>
+    <li><a href="/devices/crinear-protocol-max/">CrinEar Protocol Max</a></li>
+    <li><a href="/devices/fiio-ka15/">FiiO KA15</a></li>
+    <li><a href="/devices/fiio-k13-r2r/">FiiO K13 R2R</a></li>
+    <li><a href="/devices/fiio-ja11/">FiiO JadeAudio JA11</a></li>
+    <li><a href="/devices/snowsky-melody/">SnowSky Melody</a></li>
+    <li><a href="/devices/snowsky-tiny-a/">SnowSky Tiny A</a></li>
+    <li><a href="/devices/trn-black-pearl/">TRN Black Pearl</a></li>
+    <li><a href="/devices/moondrop-dawn-pro-2/">Moondrop Dawn Pro 2</a></li>
+    <li><a href="/devices/moondrop-echo-a/">Moondrop Echo-A</a></li>
+    <li><a href="/devices/moondrop-dusk/">Moondrop DUSK-SP</a></li>
+    <li><a href="/devices/kiwi-ears-allegro-mini/">Kiwi Ears Allegro Mini</a></li>
+  </ul>
+  <p><a href="/install/#dacs">All supported devices</a></p>
+</section>
+
+<footer class="fv">
+  <p class="fv-sentence">Contour is free and made by one person. Find a DAC for it on <a href="https://soundblooms.com/dacs" rel="noopener" target="_blank">Soundblooms</a>, or ask for yours on <a href="https://discord.gg/msgvnUG7js" rel="noopener" target="_blank">Discord</a>.</p>
+  <div class="fv-quiet">
+    <p class="fv-legal"><span>Made by <a href="https://soundblooms.com/about" rel="noopener" target="_blank">Chronosaur</a></span><a href="https://github.com/Chronosauros/contour">Source code</a><span>Apache 2.0</span><a href="/privacy/">Privacy policy</a></p>
+    <p class="fv-note">Contour is an unofficial project, not affiliated with or endorsed by CrinEar or any other brand listed here. Product names belong to their owners.</p>
+  </div>
+</footer>
+
+</div>
+</body>
+</html>

@@ -36,8 +36,9 @@ class DeviceRecognitionTest {
             assertNull(DeviceTarget.find(vid, pid), "%04X:%04X".format(vid, pid))
         // Structure behind "exactly": three WalkPlay entries and four native FiiO rules.
         assertEquals(listOf(DeviceProtocol.MICRO, DeviceProtocol.MAX, DeviceProtocol.TRN), DeviceProtocol.entries.toList())
-        assertEquals(listOf("FIIO KA15", "FIIO K13 R2R", "SNOWSKY Melody", "SNOWSKY TINY A"), FiioCatalog.rules.map { it.productName })
+        assertEquals(listOf("FIIO KA15", "FIIO K13 R2R", "SNOWSKY Melody", "SNOWSKY TINY A", "JadeAudio JA11"), FiioCatalog.rules.map { it.productName })
         assertEquals(10610 to 260, FiioCatalog.KA15.capture!!.let { it.vendorId to it.productId })
+        assertNull(FiioCatalog.JA11.capture); assertNull(DeviceTarget.find(0x2972, 0x0102)) // the JA11 is found by findDevice only: the 1.5 list stays
         assertNull(FiioCatalog.K13.capture) // no capture: its identity is the product ID constant
         assertNull(FiioCatalog.MELODY.capture); assertNull(FiioCatalog.TINY_A.capture)
     }
@@ -50,22 +51,27 @@ class DeviceRecognitionTest {
         val xml = java.io.File(requireNotNull(System.getProperty("contour.usbFilterXml"))).readText()
         val listed = Regex("""<usb-device\s+vendor-id="(\d+)"\s+product-id="(\d+)"""").findAll(xml)
             .map { it.groupValues[1].toInt() to it.groupValues[2].toInt() }.toList()
-        val added = listOf(0x35D8 to 0x011D, 0x31B2 to 0x0111, 0x3302 to 0x12C5) // Dawn Pro 2, Allegro Mini, Echo-A
+        val added = listOf(0x35D8 to 0x011D, 0x31B2 to 0x0111, 0x3302 to 0x12C5, 0x2972 to 0x0102, 0x35D8 to 0x1499) // Dawn Pro 2, Allegro Mini, Echo-A, FiiO JA11, Moondrop DUSK-SP
         assertEquals(expected.keys.toList() + added, listed)
-        assertEquals(GeneratedDevices.USB_IDS.map { it.vendorId to it.productId }, listed)
+        assertEquals(GeneratedDevices.USB_IDS.map { it.vendorId to it.productId }.distinct(), listed) // one line per VID:PID: the JM12 shares the Allegro Mini's
         for ((vid, pid) in added) assertNull(DeviceTarget.find(vid, pid), "%04X:%04X is not in the 1.5 list".format(vid, pid))
     }
 
-    /** `findDevice` knows all ten identities; the Dawn Pro 2 and the Allegro Mini need their exact USB product name, the Echo-A does not. */
-    @Test fun `findDevice recognises the ten identities of the device records`() {
+    /** `findDevice` knows all thirteen records; the Dawn Pro 2, the Allegro Mini, the JM12 (the last two share 31B2:0111), the JA11 and the DUSK-SP need their exact USB product name, the Echo-A does not. */
+    @Test fun `findDevice recognises the thirteen records, the JM12 and the Allegro Mini told apart by the USB name`() {
         expected.forEach { (id, target) -> assertEquals(target, DeviceTarget.findDevice(id.first, id.second, null)) }
         assertEquals(DeviceTarget.DAWN_PRO_2, DeviceTarget.findDevice(0x35D8, 0x011D, GeneratedDevices.MOONDROP_DAWN_PRO_2.productName))
         assertEquals(DeviceTarget.ALLEGRO_MINI, DeviceTarget.findDevice(0x31B2, 0x0111, GeneratedDevices.KIWI_EARS_ALLEGRO_MINI.productName))
         assertEquals(DeviceTarget.ECHO_A, DeviceTarget.findDevice(0x3302, 0x12C5, null))
         assertNull(DeviceTarget.findDevice(0x35D8, 0x011D, null))
         assertNull(DeviceTarget.findDevice(0x31B2, 0x0111, null))
+        assertEquals(DeviceTarget.JCALLY_JM12, DeviceTarget.findDevice(0x31B2, 0x0111, "KT02H20 HIFI Audio"))
+        assertEquals(DeviceTarget.ALLEGRO_MINI, DeviceTarget.findDevice(0x31B2, 0x0111, "Kiwi Ears-Allegro Mini"))
+        for (other in listOf("KT02H20", "kt02h20 hifi audio", "Kiwi Ears-Allegro PRO", "")) assertNull(DeviceTarget.findDevice(0x31B2, 0x0111, other), other)
+        assertNull(DeviceTarget.findDevice(0x31B2, 0x0112, "KT02H20 HIFI Audio")); assertNull(DeviceTarget.find(0x31B2, 0x0111))
         // Every identity of the records resolves to its own target, and no two records resolve to one target.
         val targets = GeneratedDevices.USB_IDS.map { u -> DeviceTarget.findDevice(u.vendorId, u.productId, u.productName) ?: error("${u.recordId} is not recognised") }
-        assertEquals(10, targets.toSet().size)
+        assertEquals(13, targets.toSet().size)
+        assertEquals(DeviceTarget.MOONDROP_DUSK, DeviceTarget.findDevice(0x35D8, 0x1499, "DUSK-SP")); assertNull(DeviceTarget.findDevice(0x35D8, 0x1499, null))
     }
 }
