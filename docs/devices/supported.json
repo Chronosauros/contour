@@ -35,7 +35,7 @@
     "id": "fiio-ja11",
     "name": "FiiO JadeAudio JA11",
     "url": "https://contoureq.app/devices/fiio-ja11/",
-    "soundbloomsSlug": null,
+    "soundbloomsSlug": "fiio-ja11",
     "since": "1.7.0",
     "dongle": true
   },
@@ -83,7 +83,7 @@
     "id": "moondrop-dusk",
     "name": "Moondrop DUSK-SP",
     "url": "https://contoureq.app/devices/moondrop-dusk/",
-    "soundbloomsSlug": null,
+    "soundbloomsSlug": "moondrop-dusk-sp",
     "since": "1.7.0",
     "dongle": true
   },

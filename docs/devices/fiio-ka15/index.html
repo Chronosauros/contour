@@ -32,16 +32,27 @@
       "name": "FiiO KA15 EQ app for Android - Contour EQ",
       "description": "Free, open-source Android app that reads and writes the FiiO KA15's 10-band EQ and preamp in USER1-3, plus its DAC settings. Tested on hardware.",
       "inLanguage": "en",
-      "dateModified": "2026-11-09",
+      "dateModified": "2026-11-11",
       "isPartOf": {
         "@id": "https://contoureq.app/#website"
       },
-      "about": {
-        "@id": "https://contoureq.app/#app"
-      }
+      "breadcrumb": {
+        "@id": "https://contoureq.app/devices/fiio-ka15/#breadcrumb"
+      },
+      "about": [
+        {
+          "@id": "https://contoureq.app/#app"
+        },
+        {
+          "@type": "Thing",
+          "name": "FiiO KA15",
+          "sameAs": "https://soundblooms.com/dacs/fiio-ka15"
+        }
+      ]
     },
     {
       "@type": "BreadcrumbList",
+      "@id": "https://contoureq.app/devices/fiio-ka15/#breadcrumb",
       "itemListElement": [
         {
           "@type": "ListItem",
@@ -97,8 +108,10 @@
 </script>
 <style>
 /*
-  Look = the install page and the guide (same tokens, font, column, hero and footer), which follow the Contour app
-  (android/.../ui/Theme.kt). 1 dp = 1 CSS px. Colors: only Palette roles (light here, dark under prefers-color-scheme).
+  Look = the install page (/install/: wide column, compact header, sunken well, the drawn bars and filter glyphs of its table),
+  same tokens, font and footer, which follow the Contour app (android/.../ui/Theme.kt). 1 dp = 1 CSS px.
+  Colors: only Palette roles (light here, dark under prefers-color-scheme). The rules of the .dv blocks are copies of
+  site_template.html (the install page); this file has no markers, it is plain CSS.
   Generated per device by gen_device_pages.py from this template.
 */
 @font-face{
@@ -143,7 +156,7 @@
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth;scroll-padding-top:16px}
 @media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}*{transition:none!important}}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font);font-size:16px;line-height:1.5;font-weight:400;overflow-x:hidden;font-optical-sizing:auto}
-.wrap{max-width:720px;margin:0 auto;padding:0 16px}
+.wrap{max-width:1380px;margin:0 auto;padding:0 16px}
 a{color:var(--text);text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:3px;overflow-wrap:anywhere}
 h1,h2,h3{margin:0}
 p{margin:0 0 .75em}
@@ -161,47 +174,11 @@ code{font-family:inherit;font-feature-settings:"tnum";background:var(--sunken);p
 .top a{white-space:nowrap}
 @media (max-width:389px){.top{column-gap:12px}.top > a{font-size:16px}}
 
-/* hero */
-.hero{padding:24px 0 8px}
-.hero img.icon{width:88px;height:88px;border-radius:var(--r-card);display:block;margin-bottom:20px;box-shadow:var(--lift-card)}
-.hero h1{font-size:38px;font-weight:700;letter-spacing:-.01em;line-height:1.1;text-transform:uppercase}
-.hero .lede{color:var(--text-dim);margin:12px 0 18px;max-width:34em;font-size:17px}
 .ver{display:inline-flex;align-items:center;gap:10px;background:var(--surface);color:var(--text-dim);border-radius:999px;box-shadow:var(--lift-card);padding:10px 14px 10px 16px;margin:0 0 24px;font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;font-feature-settings:"tnum";line-height:1.3}
 .ver .dot{order:2;width:8px;height:8px;border-radius:50%;background:var(--led-on);flex:none}
-.cta{display:flex;flex-wrap:wrap;gap:var(--gap)}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:58px;padding:12px 22px;border-radius:var(--r-btn);border:0;font:inherit;font-size:17px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;line-height:1.2;text-align:center;text-decoration:none;cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent;transition:box-shadow .12s}
 .btn-primary{background:var(--accent);color:var(--on-accent);box-shadow:var(--lift-hero)}
-.btn-tonal{background:var(--surface2);color:var(--text);box-shadow:var(--lift-raised)}
 .btn-primary:active{box-shadow:var(--lift-hero-held)}
-.btn-tonal:active{box-shadow:var(--lift-raised-held)}
-.cta .btn{flex:1 1 220px}
-
-/* sections */
-section.plain{margin:32px 0}
-section.plain > h2{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--text-dim);padding:0 6px;margin-bottom:12px}
-.note{color:var(--text-dim);font-size:15px;margin:16px 6px 0}
-ul.plain-list{margin:0 0 .75em;padding-left:1.2em}
-ul.plain-list li{margin:6px 0}
-ul.plain-list li::marker{color:var(--text-mute)}
-
-/* facts = one raised card, a two-column table (label | value); stacked on narrow screens */
-.facts-card{background:var(--surface);border-radius:var(--r-card);box-shadow:var(--lift-card);padding:6px 20px}
-table.facts{border-collapse:collapse;width:100%;font-size:15px}
-table.facts th,table.facts td{text-align:left;vertical-align:top;padding:12px 0;border-bottom:1px solid var(--surface2)}
-table.facts tr:last-child th,table.facts tr:last-child td{border-bottom:0}
-table.facts th{width:34%;padding-right:16px;color:var(--text-dim);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;line-height:1.7}
-table.facts td{overflow-wrap:anywhere;font-feature-settings:"tnum"}
-
-/* question and answer: plain visible text */
-.qa{margin:0 0 20px}
-.qa h3{font-size:18px;font-weight:700;letter-spacing:-.015em;line-height:1.3;margin:0 0 4px}
-.qa p{margin:0;color:var(--text-dim)}
-ol.plain-list{margin:0 0 .75em;padding-left:1.4em}
-ol.plain-list li{margin:8px 0}
-ol.plain-list li::marker{color:var(--text-mute);font-weight:600}
-.more{margin:6px 0 0}
-.links-block p{margin:0 0 .75em}
-.links-block h2{margin-top:28px}
 
 footer.fv{display:block;padding:clamp(56px,9vw,88px) 6px 72px;color:var(--text-dim);font-size:14px;line-height:1.5}
 footer.fv p{margin:0}
@@ -216,21 +193,179 @@ footer.fv p{margin:0}
 @media (max-width:480px){.fv-legal{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}}
 .fv-note{max-width:46em;margin-top:2px;font-size:12.5px;line-height:1.5;color:var(--text-dim)}
 
-@media (max-width:480px){
-  .hero h1{font-size:32px}
-  .facts-card{padding:4px 16px}
-  table.facts,table.facts tbody,table.facts tr,table.facts th,table.facts td{display:block;width:100%}
-  table.facts tr{padding:10px 0;border-bottom:1px solid var(--surface2)}
-  table.facts tr:last-child{border-bottom:0}
-  table.facts th,table.facts td{padding:0;border-bottom:0}
-  table.facts th{margin-bottom:2px}
+/* ---- the /install/ look (copies from site_template.html) ---- */
+.dv{
+  --dv-ink:color-mix(in srgb, var(--accent) 68%, var(--text));
+  --dv-off:color-mix(in srgb, var(--text) 15%, transparent);
+  --dv-hair:color-mix(in srgb, var(--text) 11%, transparent);
+  --dv-sec:color-mix(in srgb, var(--text) 72%, var(--sunken));
+  --dv-px:18px;
+}
+@media (prefers-color-scheme: dark){
+  .dv{--dv-ink:var(--accent);--dv-off:color-mix(in srgb, var(--text) 17%, transparent);--dv-hair:color-mix(in srgb, var(--text) 10%, transparent)}
+}
+.dv .dv-defs{position:absolute;width:0;height:0;overflow:hidden}
+
+/* header: compact, icon beside the title; the version pill and the button on the right */
+.dv .dv-head{display:grid;grid-template-columns:auto minmax(0,1fr) auto;column-gap:20px;align-items:center;padding:20px 0 22px}
+.dv .dv-icon{display:block;width:64px;height:64px;border-radius:16px;box-shadow:var(--lift-card)}
+.dv .dv-head h1{font-size:34px;font-weight:700;letter-spacing:-.01em;line-height:1.1;text-transform:uppercase}
+.dv .dv-lede{color:var(--text-dim);margin:6px 0 0;max-width:46em;font-size:16px;line-height:1.45}
+.dv .dv-side{display:flex;align-items:center;gap:16px}
+.dv .dv-side .ver{margin:0;white-space:nowrap}
+.dv .dv-side .btn{flex:none;min-height:52px;padding:10px 24px}
+
+/* the sunken well */
+.dv .dv-well{background:var(--sunken);border-radius:var(--r-card);box-shadow:var(--sink);padding:6px 8px 8px}
+.dv :where(th,td){display:block;min-width:0;padding:0;border:0;text-align:left;vertical-align:baseline;font-size:inherit;font-weight:inherit;letter-spacing:normal;text-transform:none;white-space:normal;color:inherit}
+
+/* the drawn capabilities: band bars, filter glyphs, legend, tags */
+.dv .dv-hr{align-items:start;padding-top:14px;padding-bottom:12px;border-bottom:1px solid var(--dv-hair);border-radius:0}
+.dv .dv-hr th{color:var(--dv-sec);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap;line-height:1.3}
+.dv .dv-h-filt{display:flex;flex-direction:column;gap:6px}
+.dv .dv-leg{display:grid;grid-template-columns:repeat(7,28px);column-gap:4px;font-size:10px;font-weight:600;letter-spacing:.04em;color:var(--dv-sec)}
+.dv .dv-leg abbr{text-decoration:none;text-align:center;cursor:default}
+.dv .dv-tag{display:inline-block;background:var(--surface);color:var(--dv-sec);border-radius:var(--r-tag);padding:2px 7px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;line-height:1.3;white-space:nowrap}
+.dv .dv-bands{display:flex;align-items:center;gap:12px}
+.dv .dv-bars{display:flex;align-items:center;gap:3px}
+.dv .dv-bars i{display:block;width:4px;height:20px;border-radius:2px;background:var(--dv-off)}
+.dv .dv-bars i.on{background:var(--dv-ink)}
+.dv .dv-n{font-size:17px;font-weight:600;font-feature-settings:"tnum";min-width:1.3em}
+.dv .dv-w{display:none}
+.dv .dv-filt{display:flex;align-items:center;gap:4px}
+.dv .dv-g{display:block;flex:none;width:28px;height:20px;fill:none;stroke:var(--dv-off);stroke-width:1.9px;stroke-linecap:round;stroke-linejoin:round}
+.dv .dv-g.on{stroke:var(--dv-ink)}
+.dv .dv-g *{vector-effect:non-scaling-stroke}
+.dv .dv-g .dv-ph{stroke-dasharray:2 2.6;opacity:.55}
+.dv .dv-mem{font-size:15px;font-weight:500}
+.dv .dv-set{font-size:15px;line-height:1.4;color:var(--dv-sec)}
+.dv .dv-set.empty{color:var(--text-mute)}
+.dv .dv-pre{display:none}
+.dv .dv-ro{display:inline-block;background:var(--surface);color:var(--dv-sec);border-radius:var(--r-tag);padding:1px 7px;margin-left:4px;font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;line-height:1.4;white-space:nowrap;vertical-align:1px}
+
+/* the facts well: capability strip (the device's row of the install table, no name column), hairline, facts table.
+   The well is a size container: the strip and the table change layout with the width of the well, not of the window. */
+.dv .dv-facts{container-type:inline-size}
+.dv .dv-in{--df-cols:220px minmax(0,1fr)}
+.dv .dv-strip,.dv .dv-strip thead,.dv .dv-strip tbody{display:block;width:100%;border:0}
+.dv .dv-strip{--st-cols:104px 220px 130px minmax(0,1fr);--st-gap:14px}
+.dv .dv-strip tr{display:grid;grid-template-columns:var(--st-cols);column-gap:var(--st-gap);align-items:center;padding:0 var(--dv-px)}
+.dv .dv-st{min-height:56px;padding-top:12px;padding-bottom:12px}
+.dv .dv-strip-tag{margin:10px var(--dv-px) 0}
+.dv .dv-rule{display:block;height:1px;margin:14px var(--dv-px) 0;border:0;background:var(--dv-hair)}
+.dv table.facts,.dv table.facts tbody{display:block;width:100%;border:0}
+.dv table.facts tr{display:grid;grid-template-columns:var(--df-cols);column-gap:20px;align-items:baseline;position:relative;padding:13px var(--dv-px)}
+.dv table.facts tr::after{content:"";position:absolute;left:var(--dv-px);right:var(--dv-px);bottom:0;height:1px;background:var(--dv-hair);pointer-events:none}
+.dv table.facts tr:last-child::after{display:none}
+.dv table.facts th{color:var(--text-dim);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;line-height:1.7}
+.dv table.facts td{font-size:15px;line-height:1.5;overflow-wrap:anywhere;font-feature-settings:"tnum"}
+@container (max-width:719px){
+  .dv .dv-strip{--st-cols:108px 220px minmax(0,1fr)}
+  .dv .dv-h-set{display:none}
+  .dv .dv-set{grid-column:1 / -1;font-size:14px;margin-top:2px}
+  .dv .dv-pre{display:inline}
+}
+@container (max-width:519px){
+  .dv .dv-in{--dv-px:12px;--df-cols:minmax(0,1fr)}
+  .dv .dv-strip{--st-cols:74px auto minmax(0,1fr);--st-gap:10px}
+  .dv .dv-hr{padding-top:10px;padding-bottom:10px}
+  .dv .dv-hr th{font-size:11px;letter-spacing:.06em;white-space:normal}
+  .dv .dv-h-mem{text-align:right}
+  .dv .dv-hl{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .dv .dv-h-filt{gap:0}
+  .dv .dv-leg{grid-template-columns:repeat(7,21px);column-gap:2px;font-size:9px;letter-spacing:.02em}
+  .dv .dv-bands{gap:.3em}
+  .dv .dv-bars{display:none}
+  .dv .dv-n{font-size:14.5px;min-width:0}
+  .dv .dv-w{display:inline;font-size:14.5px;font-weight:600;white-space:nowrap}
+  .dv .dv-filt{gap:2px}
+  .dv .dv-g{width:21px;height:15px}
+  .dv .dv-mem{text-align:right;font-size:14.5px}
+  .dv .dv-st{min-height:0;padding-top:16px;padding-bottom:16px}
+  .dv table.facts tr{row-gap:2px;padding-top:11px;padding-bottom:11px}
+}
+@container (max-width:319px){
+  .dv .dv-strip{--st-cols:56px auto minmax(0,1fr)}
+  .dv .dv-g{width:19px}
+  .dv .dv-leg{grid-template-columns:repeat(7,19px)}
+}
+
+/* layout of the blocks below the header */
+.dv .dv-main{display:grid;gap:36px;margin-top:6px}
+.dv .dv-aside > section + .dv-tiles{margin-top:22px}
+.dv .dv-block{margin-top:48px}
+.dv .dv-h2{font-size:22px;font-weight:700;letter-spacing:-.015em;line-height:1.2;text-transform:uppercase;margin:0 0 14px;text-wrap:balance}
+.dv .dv-sub{font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;line-height:1.3;color:var(--text-dim);margin:26px 6px 10px}
+.dv .dv-h2 + .dv-sub{margin-top:4px}
+.dv .dv-list{margin:0;padding:0 6px 0 calc(6px + 1.2em);color:var(--text-dim);max-width:46rem}
+.dv .dv-list li{margin:8px 0}
+.dv .dv-list li::marker{color:var(--text-mute)}
+.dv .dv-steps{color:var(--text)}
+.dv .dv-text{max-width:46rem}
+.dv .dv-text p{margin:0 0 .85em}
+.dv .dv-two{display:grid;gap:48px 32px}
+.dv .dv-qs{display:grid;gap:24px 32px}
+.dv .qa{max-width:46rem}
+.dv .qa h3{font-size:18px;font-weight:700;letter-spacing:-.015em;line-height:1.3;margin:0 0 4px}
+.dv .qa p{margin:0;color:var(--text-dim)}
+.dv .dv-more{margin:18px 0 0;max-width:46rem;color:var(--text-dim)}
+
+/* raised tiles: the specs link, the more link, the other devices */
+.dv .dv-tiles{display:grid;gap:8px}
+.dv .dv-tile,.dv .dv-dev{position:relative;display:block;background:var(--surface);color:var(--text);border-radius:var(--r-row);box-shadow:var(--lift-card);text-decoration:none;font-size:17px;font-weight:650;letter-spacing:-.01em;line-height:1.35;padding:14px 20px 15px;transition:box-shadow .14s}
+.dv a.dv-tile:hover,.dv .dv-dev:hover,.dv .dv-dev:focus-within,.dv .dv-tile-more:hover,.dv .dv-tile-more:focus-within{box-shadow:var(--lift-raised)}
+.dv a.dv-tile:focus-visible,.dv .dv-tile-more a:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.dv .dv-dev-a{display:block;color:inherit;text-decoration:none}
+.dv .dv-dev-a::after{content:"";position:absolute;inset:0;border-radius:var(--r-row)}
+.dv .dv-dev-a:focus-visible{outline:none}
+.dv .dv-dev:has(.dv-dev-a:focus-visible){outline:3px solid var(--accent);outline-offset:3px}
+.dv .dv-tile-more{font-size:15px;font-weight:400;letter-spacing:0;color:var(--text-dim);line-height:1.45}
+.dv .dv-tile-more a{color:var(--text);font-size:17px;font-weight:650;letter-spacing:-.01em;text-decoration:none}
+.dv .dv-tile-more a::after{content:"";position:absolute;inset:0;border-radius:var(--r-row)}
+.dv .dv-tile-more a:focus-visible{outline:none}
+.dv .dv-tile-more:has(a:focus-visible){outline:3px solid var(--accent);outline-offset:3px}
+.dv .dv-tile-pre{display:block;margin-bottom:3px}
+.dv .dv-devs{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:8px}
+.dv .dv-devs li{display:block;margin:0}
+.dv .dv-dev{height:100%;padding:14px 18px 15px}
+.dv .dv-dev .dv-brand{display:block;font-size:13px;font-weight:400;letter-spacing:0;line-height:1.3;color:var(--text-dim)}
+.dv .dv-dev .dv-model{display:flex;flex-wrap:wrap;align-items:center;gap:2px 8px;font-size:17px;font-weight:650;letter-spacing:-.01em;line-height:1.3}
+.dv .dv-dev .dv-tag{background:var(--surface2)}
+.dv .dv-dev .dv-meta{display:block;margin-top:6px;font-size:13px;font-weight:400;letter-spacing:0;line-height:1.3;color:var(--text-dim)}
+.dv .dv-all{margin:18px 6px 0}
+
+@media (min-width:960px){
+  .dv .dv-two{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dv .dv-qs{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media (min-width:1180px){
+  .dv .dv-main{grid-template-columns:minmax(0,8fr) minmax(0,4fr);column-gap:32px;align-items:start}
+  .dv .dv-aside{position:sticky;top:16px}
+}
+@media (max-width:1179px){
+  .dv .dv-head{grid-template-columns:auto minmax(0,1fr)}
+  .dv .dv-side{grid-column:1 / -1;margin-top:14px}
+  .dv .dv-head h1{font-size:30px}
+}
+@media (max-width:719px){
+  .dv .dv-head{grid-template-columns:auto minmax(0,1fr);column-gap:14px;padding:16px 0 18px}
+  .dv .dv-icon{width:52px;height:52px;border-radius:14px}
+  .dv .dv-head h1{font-size:26px}
+  .dv .dv-title{display:contents}
+  .dv .dv-lede{grid-column:1 / -1;margin-top:12px;font-size:16px}
+  .dv .dv-side{margin-top:14px;gap:12px;flex-wrap:wrap}
+  .dv .dv-side .btn{flex:1 1 220px;white-space:nowrap}
+  .dv .dv-well{padding:4px}
+  .dv .dv-block{margin-top:40px}
+  .dv .dv-h2{font-size:20px}
+  .dv .dv-devs{grid-template-columns:repeat(auto-fill,minmax(160px,1fr))}
 }
 @media print{
   :root{--bg:#EFECE8;--surface:#FAF8F5;--surface2:#E7E3DE;--text:#1D1B19;--text-dim:#6E6963;--text-mute:#9A948D;--sunken:#E6E2DD;--accent:#F07A3A}
   html{scroll-behavior:auto}
   body{background:var(--surface);color:var(--text)}
   *{box-shadow:none!important}
-  .cta{display:none!important}
+  .dv-side .btn{display:none!important}
 }
 </style>
 <script>window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };</script>
@@ -241,102 +376,143 @@ footer.fv p{margin:0}
 
 <p class="top"><span class="lockup"><a href="/">Contour</a><a class="by" href="https://soundblooms.com/" rel="noopener" target="_blank" aria-label="by Soundblooms"><span class="by-word" aria-hidden="true">by</span><span class="sb-mark" aria-hidden="true">sound<span class="sb-face"><i class="sb-band"></i><span class="sb-eyes" data-eyes="calm"><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i><i><svg class="sb-arc" viewBox="0 0 22 17" fill="none" aria-hidden="true"><path d="M3,13 Q11,2.6 19,13" stroke="currentColor" stroke-width="4.6" stroke-linecap="round"/></svg></i></span></span>blooms</span></a></span> <a href="/guide/">Guide</a> <a href="/install/#dacs">Devices</a> <a href="/install/">Install</a> <a class="lang-switch" href="/zh/devices/" hreflang="zh-CN" lang="zh-CN">中文</a></p>
 
-<header class="hero">
-  <img class="icon" src="/images/icon-512.png" width="88" height="88" alt="Contour app icon">
-  <h1>FiiO KA15 EQ app for Android</h1>
-  <p class="lede">Contour EQ is a free, open-source Android app that reads and writes the parametric EQ stored inside the FiiO KA15. The EQ stays in the dongle, so it works in every app and on every device you plug it into.</p>
-  <p class="ver"><span class="dot" aria-hidden="true"></span><span>Stable 1.7.0</span></p>
-  <div class="cta">
+<main class="dv">
+<svg class="dv-defs" width="0" height="0" aria-hidden="true" focusable="false"><defs><symbol id="dv-g-peak" viewBox="0 0 28 20"><path d="M1 14 C8 14 9 5 14 5 C19 5 20 14 27 14"/></symbol><symbol id="dv-g-low_shelf" viewBox="0 0 28 20"><path d="M1 6 H8 C13 6 15 14 20 14 H27"/></symbol><symbol id="dv-g-high_shelf" viewBox="0 0 28 20"><path d="M1 14 H8 C13 14 15 6 20 6 H27"/></symbol><symbol id="dv-g-low_pass" viewBox="0 0 28 20"><path d="M1 6 H12 C18 6 19 12 27 17"/></symbol><symbol id="dv-g-high_pass" viewBox="0 0 28 20"><path d="M1 17 C9 12 10 6 16 6 H27"/></symbol><symbol id="dv-g-band_pass" viewBox="0 0 28 20"><path d="M1 17 C8 17 9 5 14 5 C19 5 20 17 27 17"/></symbol><symbol id="dv-g-all_pass" viewBox="0 0 28 20"><path d="M1 10 H27"/><path class="dv-ph" d="M1 16 C10 16 11 4 20 4 H27"/></symbol></defs></svg>
+<header class="dv-head">
+  <img class="dv-icon" src="/images/icon-512.png" width="64" height="64" alt="Contour app icon">
+  <div class="dv-title">
+    <h1>FiiO KA15 EQ app for Android</h1>
+    <p class="dv-lede">Contour EQ is a free, open-source Android app that reads and writes the parametric EQ stored inside the FiiO KA15. The EQ stays in the dongle, so it works in every app and on every device you plug it into.</p>
+  </div>
+  <div class="dv-side">
+    <p class="ver"><span class="dot" aria-hidden="true"></span><span>Stable 1.7.0</span></p>
     <a class="btn btn-primary" href="/install/">Install Contour</a>
   </div>
 </header>
 
-<section class="plain" id="facts">
-  <h2>What Contour does on the KA15</h2>
-  <div class="facts-card">
-    <table class="facts">
-      <tbody>
-        <tr><th scope="row">Supported since</th><td>Contour 1.3.2</td></tr>
-        <tr><th scope="row">USB ID (VID:PID)</th><td>2972:0104</td></tr>
-        <tr><th scope="row">Chip / protocol</th><td>FiiO</td></tr>
-        <tr><th scope="row">EQ</th><td>Read and write to USER1, USER2 and USER3; every send is read back from the DAC. Slot names are read and written, and a slot can be renamed</td></tr>
-        <tr><th scope="row">Bands</th><td>10</td></tr>
-        <tr><th scope="row">Filter types</th><td>PEAK, LOW SHELF, HIGH SHELF, BAND PASS, LOW PASS, HIGH PASS, ALL PASS</td></tr>
-        <tr><th scope="row">Gain</th><td>-12 to +12 dB</td></tr>
-        <tr><th scope="row">Q</th><td>0.1 to 10 (shelves up to 7.07)</td></tr>
-        <tr><th scope="row">Frequency</th><td>20 Hz to 20 kHz</td></tr>
-        <tr><th scope="row">Preamp</th><td>-24 to 0 dB, whole dB</td></tr>
-        <tr><th scope="row">Where the EQ is kept</th><td>In the USER slot you pick: USER1, USER2 or USER3, named after the profile (up to 7 letters and digits). The EQ and the slot name stay after unplugging.</td></tr>
-        <tr><th scope="row">DAC page</th><td>Since 1.6.0: VOLUME, VOLUME STEPS, BALANCE, FILTER, OUTPUT, DRE, BRIGHTNESS, SCREEN OFF, ROTATION and LANGUAGE; USB AUDIO is shown, read-only. FACTORY RESET saves a copy of your USER slots, their names and the settings on the phone first.</td></tr>
-        <tr><th scope="row">Tested</th><td>By the developer on hardware and on a test rig, October 2026, firmware 1.1.6.</td></tr>
-      </tbody>
-    </table>
+<div class="dv-main">
+<section id="facts" aria-labelledby="facts-h">
+  <h2 class="dv-h2" id="facts-h">What Contour does on the KA15</h2>
+  <div class="dv-well dv-facts">
+    <div class="dv-in">
+
+        <table class="dv-strip" role="table" aria-labelledby="facts-h">
+          <thead role="rowgroup">
+            <tr class="dv-hr" role="row">
+              <th scope="col" class="dv-c dv-h-bands" role="columnheader">Bands</th>
+              <th scope="col" class="dv-c dv-h-filt" role="columnheader"><span class="dv-hl">Filter types</span><span class="dv-leg"><abbr title="Peak">PK</abbr><abbr title="Low shelf">LS</abbr><abbr title="High shelf">HS</abbr><abbr title="Low pass">LP</abbr><abbr title="High pass">HP</abbr><abbr title="Band pass">BP</abbr><abbr title="All pass">AP</abbr></span></th>
+              <th scope="col" class="dv-c dv-h-mem" role="columnheader">Kept in the DAC</th>
+              <th scope="col" class="dv-c dv-h-set" role="columnheader">DAC settings in the app</th>
+            </tr>
+          </thead>
+          <tbody role="rowgroup">
+            <tr class="dv-st" role="row">
+              <td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span><span class="dv-n">10</span><span class="dv-w"> bands</span></td>
+              <td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Peak"><title>Peak</title><use href="#dv-g-peak"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Low shelf"><title>Low shelf</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="High shelf"><title>High shelf</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Low pass"><title>Low pass</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="High pass"><title>High pass</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Band pass"><title>Band pass</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="All pass"><title>All pass</title><use href="#dv-g-all_pass"/></svg></td>
+              <td class="dv-c dv-mem" role="cell">3 slots</td>
+              <td class="dv-c dv-set" role="cell"><span class="dv-pre">DAC settings: </span>Volume, Volume steps, Balance, Filter, Output, DRE, Brightness, Screen off, Rotation, Language</td>
+            </tr>
+          </tbody>
+        </table>
+      <hr class="dv-rule">
+      <table class="facts" role="table" aria-labelledby="facts-h">
+        <tbody role="rowgroup">
+          <tr role="row"><th scope="row" role="rowheader">Supported since</th><td role="cell">Contour 1.3.2</td></tr>
+          <tr role="row"><th scope="row" role="rowheader">USB ID (VID:PID)</th><td role="cell">2972:0104</td></tr>
+          <tr role="row"><th scope="row" role="rowheader">Chip / protocol</th><td role="cell">FiiO</td></tr>
+          <tr role="row"><th scope="row" role="rowheader">EQ</th><td role="cell">Read and write to USER1, USER2 and USER3; every send is read back from the DAC. Slot names are read and written, and a slot can be renamed</td></tr>
+          <tr role="row"><th scope="row" role="rowheader">Bands</th><td role="cell">10</td></tr>
+          <tr role="row"><th scope="row" role="rowheader">Filter types</th><td role="cell">PEAK, LOW SHELF, HIGH SHELF, BAND PASS, LOW PASS, HIGH PASS, ALL PASS</td></tr>
+          <tr role="row"><th scope="row" role="rowheader">Gain</th><td role="cell">-12 to +12 dB</td></tr>
+          <tr role="row"><th scope="row" role="rowheader">Q</th><td role="cell">0.1 to 10 (shelves up to 7.07)</td></tr>
+          <tr role="row"><th scope="row" role="rowheader">Frequency</th><td role="cell">20 Hz to 20 kHz</td></tr>
+          <tr role="row"><th scope="row" role="rowheader">Preamp</th><td role="cell">-24 to 0 dB, whole dB</td></tr>
+          <tr role="row"><th scope="row" role="rowheader">Where the EQ is kept</th><td role="cell">In the USER slot you pick: USER1, USER2 or USER3, named after the profile (up to 7 letters and digits). The EQ and the slot name stay after unplugging.</td></tr>
+          <tr role="row"><th scope="row" role="rowheader">DAC page</th><td role="cell">Since 1.6.0: VOLUME, VOLUME STEPS, BALANCE, FILTER, OUTPUT, DRE, BRIGHTNESS, SCREEN OFF, ROTATION and LANGUAGE; USB AUDIO is shown, read-only. FACTORY RESET saves a copy of your USER slots, their names and the settings on the phone first.</td></tr>
+          <tr role="row"><th scope="row" role="rowheader">Tested</th><td role="cell">By the developer on hardware and on a test rig, October 2026, firmware 1.1.6.</td></tr>
+        </tbody>
+      </table>
+    </div>
   </div>
 </section>
 
-<section class="plain" id="not-done">
-  <h2>What Contour does not do on the KA15</h2>
-  <ul class="plain-list">
-    <li>Firmware updates.</li>
-    <li>Changing USB AUDIO. The DAC page shows it, but Contour does not change it.</li>
-  </ul>
-</section>
+<aside class="dv-aside">
+  <section id="not-done" aria-labelledby="not-done-h">
+    <h2 class="dv-h2" id="not-done-h">What Contour does not do on the KA15</h2>
+    <ul class="dv-list">
+      <li>Firmware updates.</li>
+      <li>Changing USB AUDIO. The DAC page shows it, but Contour does not change it.</li>
+    </ul>
+  </section>
+  <div class="dv-tiles">
+    <a class="dv-tile" href="https://soundblooms.com/dacs/fiio-ka15" rel="noopener" target="_blank">KA15 specs and prices on soundblooms.com</a>
+    <div class="dv-tile dv-tile-more"><span class="dv-tile-pre">How Contour and FiiO Control compare on the KA15 and the other FiiO and SnowSky DACs: </span><a href="/fiio-snowsky/">Contour EQ or FiiO Control</a>.</div>
+  </div>
+</aside>
+</div>
 
-<section class="plain" id="vendor-app">
-  <h2>Contour EQ and FiiO Control</h2>
-  <p>FiiO's own tools for the KA15 are the FiiO Control app and FiiO's web app. FiiO's app shows the values the KA15 stores, so its shelf Q and preamp look higher than what the KA15 plays. Since 1.3.3 Contour compensates both, so the curve and the preamp it shows are what the KA15 plays. FiiO's tools do not offer a factory reset for the KA15; Contour's DAC page has FACTORY RESET, which saves a copy of your slots and settings first. Contour runs on the Android phone the dongle is plugged into, keeps your profiles in a library on the phone and needs no internet or account.</p>
-</section>
-
-<section class="plain" id="steps">
-  <h2>Using Contour with the KA15</h2>
-  <ol class="plain-list">
+<div class="dv-two dv-block">
+<section id="steps">
+  <h2 class="dv-h2">Using Contour with the KA15</h2>
+  <ul class="dv-list dv-steps">
     <li>Pick USER1, USER2 or USER3 above HOLD TO SEND. Contour writes the profile to that slot and names the slot after it. Long-press a slot to rename it without changing its EQ.</li>
     <li>The KA15 answers only while audio is streaming to it, so Contour plays a silent stream to it while it reads or writes. Your music keeps playing.</li>
     <li>If the KA15 stops answering after a save, unplug it and plug it back in.</li>
-  </ol>
-  <p class="more">Everything else works the same on every DAC: <a href="/guide/">How to use Contour</a>.</p>
-</section>
-
-<section class="plain" id="questions">
-  <h2>Questions about the KA15</h2>
-  <div class="qa">
-    <h3>Is there an EQ app for the FiiO KA15 on Android?</h3>
-    <p>Yes. Contour EQ reads and writes the KA15's 10-band EQ and preamp in its USER slots from an Android phone. It is free and open source (Apache 2.0). FiiO's own tools for this DAC are the FiiO Control app and FiiO's web app.</p>
-  </div>
-  <div class="qa">
-    <h3>Does the EQ work on a PC or an iPhone?</h3>
-    <p>Yes. The EQ is stored in the KA15, so it plays on every device you plug the dongle into, PCs, Macs and iPhones included. You need an Android phone only to change it with Contour.</p>
-  </div>
-  <div class="qa">
-    <h3>Can Contour update the KA15's firmware?</h3>
-    <p>No. Contour does not update firmware. It reads and writes the EQ, the preamp, the slot names and the settings on the DAC page, and shows the firmware version at the top of the DAC page.</p>
-  </div>
-  <div class="qa">
-    <h3>Do I need a driver or root?</h3>
-    <p>No. Android supports USB audio dongles out of the box, and Contour talks to the KA15 over USB after you allow it in Android's permission prompt. No root, no extra driver.</p>
-  </div>
-</section>
-
-<section class="plain links-block" id="other-devices">
-  <p><a href="https://soundblooms.com/dacs/fiio-ka15" rel="noopener" target="_blank">KA15 specs and prices on soundblooms.com</a></p>
-  <p>How Contour and FiiO Control compare on the KA15 and the other FiiO and SnowSky DACs: <a href="/fiio-snowsky/">Contour EQ or FiiO Control</a>.</p>
-  <h2>Other DACs Contour supports</h2>
-  <ul class="plain-list">
-    <li><a href="/devices/crinear-protocol-micro/">CrinEar Protocol Micro</a></li>
-    <li><a href="/devices/crinear-protocol-max/">CrinEar Protocol Max</a></li>
-    <li><a href="/devices/fiio-k13-r2r/">FiiO K13 R2R</a></li>
-    <li><a href="/devices/fiio-ja11/">FiiO JadeAudio JA11</a></li>
-    <li><a href="/devices/snowsky-melody/">SnowSky Melody</a></li>
-    <li><a href="/devices/snowsky-tiny-a/">SnowSky Tiny A</a></li>
-    <li><a href="/devices/trn-black-pearl/">TRN Black Pearl</a></li>
-    <li><a href="/devices/moondrop-dawn-pro-2/">Moondrop Dawn Pro 2</a></li>
-    <li><a href="/devices/moondrop-echo-a/">Moondrop Echo-A</a></li>
-    <li><a href="/devices/moondrop-dusk/">Moondrop DUSK-SP</a></li>
-    <li><a href="/devices/kiwi-ears-allegro-mini/">Kiwi Ears Allegro Mini</a></li>
-    <li><a href="/devices/jcally-jm12/">JCally JM12</a></li>
   </ul>
-  <p><a href="/install/#dacs">All supported devices</a></p>
+  <p class="dv-more">Everything else works the same on every DAC: <a href="/guide/">How to use Contour</a>.</p>
 </section>
+
+<section id="vendor-app" class="dv-text">
+  <h2 class="dv-h2">Contour EQ and FiiO Control</h2>
+  <p>FiiO's own tools for the KA15 are the FiiO Control app and FiiO's web app. FiiO's app shows the values the KA15 stores, so its shelf Q and preamp look higher than what the KA15 plays. Since 1.3.3 Contour compensates both, so the curve and the preamp it shows are what the KA15 plays. FiiO's tools do not offer a factory reset for the KA15; Contour's DAC page has FACTORY RESET, which saves a copy of your slots and settings first. Contour runs on the Android phone the dongle is plugged into, keeps your profiles in a library on the phone and needs no internet or account.</p>
+</section>
+</div>
+
+<section id="questions" class="dv-block">
+  <h2 class="dv-h2">Questions about the KA15</h2>
+  <div class="dv-qs">
+    <div class="qa">
+      <h3>Is there an EQ app for the FiiO KA15 on Android?</h3>
+      <p>Yes. Contour EQ reads and writes the KA15's 10-band EQ and preamp in its USER slots from an Android phone. It is free and open source (Apache 2.0). FiiO's own tools for this DAC are the FiiO Control app and FiiO's web app.</p>
+    </div>
+    <div class="qa">
+      <h3>Does the EQ work on a PC or an iPhone?</h3>
+      <p>Yes. The EQ is stored in the KA15, so it plays on every device you plug the dongle into, PCs, Macs and iPhones included. You need an Android phone only to change it with Contour.</p>
+    </div>
+    <div class="qa">
+      <h3>Can Contour update the KA15's firmware?</h3>
+      <p>No. Contour does not update firmware. It reads and writes the EQ, the preamp, the slot names and the settings on the DAC page, and shows the firmware version at the top of the DAC page.</p>
+    </div>
+    <div class="qa">
+      <h3>Do I need a driver or root?</h3>
+      <p>No. Android supports USB audio dongles out of the box, and Contour talks to the KA15 over USB after you allow it in Android's permission prompt. No root, no extra driver.</p>
+    </div>
+  </div>
+</section>
+
+<section id="other-devices" class="dv-block">
+  <h2 class="dv-h2">Other DACs Contour supports</h2>
+  <h3 class="dv-sub">Same chip / protocol: FiiO</h3>
+  <ul class="dv-devs">
+    <li class="dv-dev"><a class="dv-dev-a" href="/devices/fiio-k13-r2r/"><span class="dv-brand">FiiO</span> <span class="dv-model"><span class="dv-mn">K13 R2R</span> <span class="dv-tag">Desktop DAC</span></span></a><span class="dv-meta">10 bands, FiiO</span></li>
+    <li class="dv-dev"><a class="dv-dev-a" href="/devices/fiio-ja11/"><span class="dv-brand">FiiO</span> <span class="dv-model"><span class="dv-mn">JadeAudio JA11</span></span></a><span class="dv-meta">5 bands, FiiO</span></li>
+    <li class="dv-dev"><a class="dv-dev-a" href="/devices/snowsky-melody/"><span class="dv-brand">SnowSky</span> <span class="dv-model"><span class="dv-mn">Melody</span></span></a><span class="dv-meta">10 bands, FiiO</span></li>
+    <li class="dv-dev"><a class="dv-dev-a" href="/devices/snowsky-tiny-a/"><span class="dv-brand">SnowSky</span> <span class="dv-model"><span class="dv-mn">Tiny A</span></span></a><span class="dv-meta">10 bands, FiiO</span></li>
+  </ul>
+  <h3 class="dv-sub">Other chips</h3>
+  <ul class="dv-devs">
+    <li class="dv-dev"><a class="dv-dev-a" href="/devices/crinear-protocol-micro/"><span class="dv-brand">CrinEar</span> <span class="dv-model"><span class="dv-mn">Protocol Micro</span></span></a><span class="dv-meta">8 bands, WalkPlay</span></li>
+    <li class="dv-dev"><a class="dv-dev-a" href="/devices/crinear-protocol-max/"><span class="dv-brand">CrinEar</span> <span class="dv-model"><span class="dv-mn">Protocol Max</span></span></a><span class="dv-meta">10 bands, WalkPlay</span></li>
+    <li class="dv-dev"><a class="dv-dev-a" href="/devices/trn-black-pearl/"><span class="dv-brand">TRN</span> <span class="dv-model"><span class="dv-mn">Black Pearl</span></span></a><span class="dv-meta">10 bands, WalkPlay</span></li>
+    <li class="dv-dev"><a class="dv-dev-a" href="/devices/moondrop-dawn-pro-2/"><span class="dv-brand">Moondrop</span> <span class="dv-model"><span class="dv-mn">Dawn Pro 2</span></span></a><span class="dv-meta">8 bands, Moondrop</span></li>
+    <li class="dv-dev"><a class="dv-dev-a" href="/devices/moondrop-echo-a/"><span class="dv-brand">Moondrop</span> <span class="dv-model"><span class="dv-mn">Echo-A</span></span></a><span class="dv-meta">8 bands, WalkPlay</span></li>
+    <li class="dv-dev"><a class="dv-dev-a" href="/devices/moondrop-dusk/"><span class="dv-brand">Moondrop</span> <span class="dv-model"><span class="dv-mn">DUSK-SP</span></span></a><span class="dv-meta">9 bands, Moondrop FreeDSP (gen 1)</span></li>
+    <li class="dv-dev"><a class="dv-dev-a" href="/devices/kiwi-ears-allegro-mini/"><span class="dv-brand">Kiwi Ears</span> <span class="dv-model"><span class="dv-mn">Allegro Mini</span></span></a><span class="dv-meta">5 bands, KT Micro</span></li>
+    <li class="dv-dev"><a class="dv-dev-a" href="/devices/jcally-jm12/"><span class="dv-brand">JCally</span> <span class="dv-model"><span class="dv-mn">JM12</span></span></a><span class="dv-meta">5 bands, KT Micro</span></li>
+  </ul>
+  <p class="dv-all"><a href="/install/#dacs">All supported devices</a></p>
+</section>
+</main>
 
 <footer class="fv">
   <p class="fv-sentence">Contour is free and made by one person. Find a DAC for it on <a href="https://soundblooms.com/dacs" rel="noopener" target="_blank">Soundblooms</a>, or ask for yours on <a href="https://discord.gg/msgvnUG7js" rel="noopener" target="_blank">Discord</a>.</p>
