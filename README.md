@@ -52,50 +52,67 @@ Thirteen DACs from seven makers. Every one of them was tested on real hardware b
 
 ### EQ limits
 
-| DAC | Bands | Filters | Gain | Preamp |
-|---|---|---|---|---|
-| CrinEar Protocol Micro | 8 | PK, LS, HS, LP, HP | -10 to +10 dB | -30 to 0 dB, whole dB |
-| CrinEar Protocol Max | 10 | PK, LS, HS | -10 to +10 dB | -30 to 0 dB, whole dB |
-| FiiO KA15 | 10 | PK, LS, HS, LP, HP, BP, AP | -12 to +12 dB | -24 to 0 dB, whole dB |
-| FiiO K13 R2R | 10 | PK, LS, HS, LP, HP, BP, AP | -24 to +12 dB | -24 to +12 dB |
-| SnowSky Melody | 10 | PK, LS, HS, LP, HP, BP, AP | -12 to +12 dB | -12 to +12 dB, whole dB |
-| SnowSky Tiny A | 10 | PK, LS, HS, LP, HP, BP, AP | -12 to +12 dB | -12 to +12 dB, whole dB |
-| TRN Black Pearl | 10 | PK, LS, HS | -10 to +10 dB | -30 to 0 dB, whole dB |
-| Moondrop Dawn Pro 2 | 8 | PK, LS, HS, LP, HP | -18 to +12 dB | pre-gain, stored with the profile |
-| Moondrop Echo-A | 8 | PK, LS, HS, LP, HP | -10 to +10 dB | up to 0 dB |
-| Kiwi Ears Allegro Mini | 5 | PK | -12 to +12 dB | none |
+<!-- hw-limits:start -->
+
+| DAC | Bands | Filters | Gain | Q | Frequency | Preamp |
+|---|---|---|---|---|---|---|
+| CrinEar Protocol Micro | 8 | PK, LS, HS, LP, HP | -10 to +10 dB | 0.1 to 10 | 20 Hz to 20 kHz | -30 to 0 dB, whole dB |
+| CrinEar Protocol Max | 10 | PK, LS, HS, LP, HP | -12 to +12 dB | 0.1 to 10 (shelves up to 7.07) | 20 Hz to 20 kHz | -30 to 0 dB, whole dB |
+| FiiO KA15 | 10 | PK, LS, HS, LP, HP, BP, AP | -12 to +12 dB | 0.1 to 10 (shelves up to 7.07) | 20 Hz to 20 kHz | -24 to 0 dB, whole dB |
+| FiiO K13 R2R | 10 | PK, LS, HS, LP, HP, BP, AP | -24 to +12 dB | 0.1 to 10 | 20 Hz to 20 kHz | -24 to +12 dB |
+| FiiO JadeAudio JA11 | 5 | PK, LS, HS, LP, HP | -12 to +12 dB | 0.1 to 10 | 20 Hz to 20 kHz | -12 to +12 dB |
+| SnowSky Melody | 10 | PK, LS, HS, LP, HP, BP, AP | -12 to +12 dB | 0.1 to 10 | 20 Hz to 20 kHz | -12 to +12 dB, whole dB |
+| SnowSky Tiny A | 10 | PK, LS, HS, LP, HP, BP, AP | -12 to +12 dB | 0.1 to 10 | 20 Hz to 20 kHz | -12 to +12 dB, whole dB |
+| TRN Black Pearl | 10 | PK, LS, HS | -10 to +10 dB | 0.1 to 10 | 20 Hz to 20 kHz | -30 to 0 dB, whole dB |
+| Moondrop Dawn Pro 2 | 8 | PK, LS, HS, LP, HP | -18 to +12 dB | 0.1 to 10 | 20 Hz to 20 kHz | pre-gain, stored with the profile |
+| Moondrop Echo-A | 8 | PK, LS, HS, LP, HP | -10 to +10 dB | 0.1 to 10 | 20 Hz to 20 kHz | up to 0 dB |
+| Moondrop DUSK-SP | 9 | PK, LS, HS | -12 to +12 dB | 0.2 to 10 (shelves up to 5.02 at 12 dB of boost or cut) | 20 Hz to 20 kHz | none |
+| Kiwi Ears Allegro Mini | 5 | PK | -12 to +12 dB | 0.1 to 10 | 40 Hz to 20 kHz | none |
+| JCally JM12 | 5 | PK, LS, HS | -12 to +12 dB (shelves -6 to +6 dB) | 0.2 to 10 (shelves 0.7 to 1.0) | 20 Hz to 20 kHz | none |
+
+<!-- hw-limits:end -->
 
 PK = PEAK, LS = LOW SHELF, HS = HIGH SHELF, LP = LOW PASS, HP = HIGH PASS, BP = BAND PASS, AP = ALL PASS.
-Q is 0.1 to 10 and frequency 20 Hz to 20 kHz on every DAC, with two exceptions: KA15 shelves go up to Q 7.07, and
-the Allegro Mini starts at 40 Hz. The pass filters on the Micro, KA15, K13, Melody and Tiny A arrived in 1.6.0.
+The pass filters on the Micro, KA15, K13, Melody and Tiny A arrived in 1.6.0.
 
 ### Slots, settings and testing
 
-| DAC | USB ID | Chip / protocol | Where the EQ goes | DAC page | Tested |
+<!-- hw-slots:start -->
+
+| DAC | USB ID | Chip / protocol | Kept in the DAC | DAC page | Tested |
 |---|---|---|---|---|---|
-| CrinEar Protocol Micro | `3302:C20F` | WalkPlay | DAC memory | - | developer + test rig |
-| CrinEar Protocol Max | `3302:43CC` | WalkPlay | DAC memory | - | developer + test rig |
-| FiiO KA15 | `2972:0104` | FiiO | USER1 to USER3, named by Contour | yes, with factory reset | developer |
-| FiiO K13 R2R | `2972:0120` | FiiO | USER1 to USER10 | - | developer + test rig |
-| SnowSky Melody | `2972:0126` | FiiO | USER1 to USER3 | yes, with factory reset | developer + test rig |
-| SnowSky Tiny A | `2972:0147` | FiiO | USER1 to USER3 | yes | developer + test rig |
-| TRN Black Pearl | `3302:43E8` | WalkPlay | DAC memory | yes | developer + test rig |
-| Moondrop Dawn Pro 2 | `35D8:011D` | Moondrop | active PEQ bank | read-only | developer + test rig |
-| Moondrop Echo-A | `3302:12C5` | WalkPlay | DAC memory | - | developer + test rig |
-| Kiwi Ears Allegro Mini | `31B2:0111` | KT Micro | DAC memory | EQ switch and GLOBAL GAIN | developer + test rig |
+| CrinEar Protocol Micro | `3302:C20F` | WalkPlay | 1 EQ | - | developer + test rig |
+| CrinEar Protocol Max | `3302:43CC` | WalkPlay | 1 EQ | yes | developer + test rig |
+| FiiO KA15 | `2972:0104` | FiiO | 3 slots | yes | developer + test rig |
+| FiiO K13 R2R | `2972:0120` | FiiO | 10 slots | - | developer + test rig |
+| FiiO JadeAudio JA11 | `2972:0102` | FiiO | 1 EQ | yes | developer + test rig |
+| SnowSky Melody | `2972:0126` | FiiO | 3 slots | yes | developer + test rig |
+| SnowSky Tiny A | `2972:0147` | FiiO | 3 slots | yes | developer + test rig |
+| TRN Black Pearl | `3302:43E8` | WalkPlay | 1 EQ | yes | developer + test rig |
+| Moondrop Dawn Pro 2 | `35D8:011D` | Moondrop | PEQ bank | read-only | developer + test rig |
+| Moondrop Echo-A | `3302:12C5` | WalkPlay | 1 EQ | - | developer + test rig |
+| Moondrop DUSK-SP | `35D8:1499` | Moondrop FreeDSP (gen 1) | 1 EQ | yes | developer |
+| Kiwi Ears Allegro Mini | `31B2:0111` | KT Micro | 1 EQ | yes | developer + test rig |
+| JCally JM12 | `31B2:0111` | KT Micro | 1 EQ | yes | developer + test rig |
+
+<!-- hw-slots:end -->
 
 What the DAC pages hold:
 
-- **KA15:** VOLUME, VOLUME STEPS, BALANCE, FILTER, OUTPUT, DRE, BRIGHTNESS, SCREEN OFF, ROTATION and LANGUAGE (USB AUDIO
-  shown, read-only).
-- **Melody:** VOLUME, VOLUME STEPS, BALANCE, FILTER, GAIN, OUTPUT, DRE, IN-LINE MIC, LIGHT and BUTTONS (USB AUDIO
-  shown, read-only).
-- **Tiny A:** VOLUME, VOLUME STEPS, BALANCE, IN-LINE MIC and LIGHT (USB AUDIO read-only).
-- **Black Pearl:** FILTER (FAST-LL, FAST-PC, SLOW-LL, SLOW-PC, NON-OS), OUTPUT (CLASS H, CLASS AB), GAIN (LOW,
-  HIGH) and BALANCE (up to 15 steps to either side), since 1.6.4.
-- **Dawn Pro 2:** EQ INDEX, GLOBAL GAIN and PRE GAIN, read-only (the DAC ignores a GLOBAL GAIN write).
-- **Allegro Mini:** the EQ switch (OFF / ON) and GLOBAL GAIN from -18 to +3 dB in 1.5 dB steps; HOLD TO SEND leaves
-  the switch where it is.
+<!-- dac-pages:start -->
+
+- **Protocol Max:** Since 1.7.0: FILTER (FAST-LL, FAST-PC, SLOW-LL, SLOW-PC, NON-OS), OUTPUT (CLASS H, CLASS AB), BALANCE, up to 15 steps to either side, and MIC GAIN, -15 to +15 dB. Each change is read back and stays after unplugging. There is no GAIN row: the Max's Eco / Boost switch sets the gain.
+- **KA15:** Since 1.6.0: VOLUME, VOLUME STEPS, BALANCE, FILTER, OUTPUT, DRE, BRIGHTNESS, SCREEN OFF, ROTATION and LANGUAGE; USB AUDIO is shown, read-only. FACTORY RESET saves a copy of your USER slots, their names and the settings on the phone first.
+- **JadeAudio JA11:** Since 1.7.0: VOLUME (0 to 60) and IN-LINE MIC (OFF / ON); USB AUDIO is shown, read-only. Each change is read back. An IN-LINE MIC change makes the JA11 reconnect on USB, so Contour reads it once the JA11 is back.
+- **Melody:** Since 1.6.0: VOLUME, VOLUME STEPS, BALANCE, FILTER, GAIN, OUTPUT, DRE, IN-LINE MIC, LIGHT and BUTTONS; USB AUDIO is shown, read-only. FACTORY RESET saves a copy of your USER slots, their names and the settings on the phone first.
+- **Tiny A:** Since 1.6.0: VOLUME, VOLUME STEPS, BALANCE, IN-LINE MIC and LIGHT; USB AUDIO is shown, read-only.
+- **Black Pearl:** Since 1.6.4: FILTER (FAST-LL, FAST-PC, SLOW-LL, SLOW-PC, NON-OS), OUTPUT (CLASS H, CLASS AB), GAIN (LOW, HIGH) and BALANCE, up to 15 steps to either side. Each change is read back and stays after unplugging.
+- **Dawn Pro 2:** EQ INDEX, GLOBAL GAIN and PRE GAIN, read-only. The DAC ignores a GLOBAL GAIN write.
+- **DUSK-SP:** Since 1.7.0: PRESET, six buttons for CUSTOM EQ and the cable's five presets (DUSK-DEFAULT, DUSK-V, DUSK-HARMAN, DUSK-BASS+, DUSK-DIFFUSE-TILTED). A tap switches the cable at once and is read back, and the EQ page shows the curve of the preset you picked, from the values Crinacle, who co-tuned the DUSK, published. The choice lasts until the cable is unplugged.
+- **Allegro Mini:** Since 1.6.0: the EQ switch (OFF / ON) and GLOBAL GAIN from -18 to +3 dB in 1.5 dB steps. Each change is read back and stays after unplugging. HOLD TO SEND leaves the switch where it is.
+- **JM12:** Since 1.7.0: the EQ switch (OFF / ON) and GLOBAL GAIN from -18 to +3 dB in 1.5 dB steps. Each change is saved and read back once the JM12 is back on USB. A send turns the EQ switch ON if it is OFF.
+
+<!-- dac-pages:end -->
 
 FACTORY RESET on the KA15 and Melody first saves a copy of the USER slots, their names and the settings on the
 phone, then resets the DAC, shows what changed and offers WRITE THE SAVED COPY BACK. After a reset you unplug the
@@ -166,6 +183,15 @@ writes Q x 1.41 and the PEAK plays as set. The K13 has no DAC page yet.
 </details>
 
 <details>
+<summary><b>FiiO JadeAudio JA11</b></summary>
+
+USB name `JadeAudio JA11`. The JA11 has one user slot, USER1: Contour always writes the profile there and makes it
+the active one, so there is no slot to pick, and the JA11's own presets stay as they are. After each save the JA11
+drops off USB for about two seconds and comes back on its own; Android may ask for USB access again. BAND PASS and
+ALL PASS are not offered (BAND PASS plays flat).
+</details>
+
+<details>
 <summary><b>SnowSky Melody</b></summary>
 
 Pick USER1, USER2 or USER3 above HOLD TO SEND; Contour writes the profile to that slot, checks it and makes it the
@@ -212,6 +238,17 @@ yet.
 </details>
 
 <details>
+<summary><b>Moondrop DUSK-SP</b></summary>
+
+A DSP cable with 2-pin IEM plugs, USB name `DUSK-SP`. Contour writes the profile to its CUSTOM EQ and never writes
+over the cable's five Moondrop presets. After each send the cable restarts, which takes about a second. After every
+plug-in it plays its DUSK-DEFAULT preset while your CUSTOM EQ stays stored: the button at the bottom of the EQ page
+then shows the preset that is playing, and a tap on it opens the DAC page, where CUSTOM EQ switches back; a send
+switches back too. Tested on the developer's own cable but not measured on the test rig, which cannot take 2-pin
+plugs, so the sound was checked by ear.
+</details>
+
+<details>
 <summary><b>Kiwi Ears Allegro Mini</b></summary>
 
 USB name `Kiwi Ears-Allegro Mini`. A profile with more bands, other filter types or a preamp has to be changed
@@ -219,6 +256,16 @@ before it can be sent; Contour says why. The DAC works out its filters as if the
 assumes the usual 48 kHz USB stream and writes the frequency converted for it (a player that forces 44.1 kHz
 shifts every band about 8% down). The Allegro Mini drops off USB for about a second after each save, and Contour
 waits for it.
+</details>
+
+<details>
+<summary><b>JCally JM12</b></summary>
+
+USB name `KT02H20 HIFI Audio`, on the same USB ID as the Allegro Mini; Contour tells them apart by the name. A new
+JM12 comes with its EQ switched off; the first send switches it on. After each save it drops off USB for about one
+to three seconds and comes back on its own; if it doesn't, Contour asks you to unplug it and plug it back in. Like
+the Allegro Mini, it works out its filters as if the stream ran at 24 kHz, so Contour writes the frequencies
+converted for the usual 48 kHz stream.
 </details>
 
 Contour is unofficial and not affiliated with CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears or JCally. Other WalkPlay, FiiO,
@@ -241,7 +288,7 @@ gets a third page, **DAC**, in front of them.
   only then saves it to the DAC's memory. The button then shows ON DAC, and the profile is saved. HOLD TO SEND,
   its caption and the slot picker sit in a fixed footer, and messages appear under the header, so they never
   cover the button. A send that is interrupted leaves SEND INTERRUPTED, and the DAC is read again when you plug it back in.
-- **DAC** (KA15, Melody, Tiny A, Black Pearl, Dawn Pro 2, Allegro Mini): the DAC's own settings, only the ones that DAC has
+- **DAC** (Protocol Max, KA15, JadeAudio JA11, Melody, Tiny A, Black Pearl, Dawn Pro 2, DUSK-SP, Allegro Mini, JM12): the DAC's own settings, only the ones that DAC has
   (VOLUME, BALANCE, FILTER and the rest); USB AUDIO (UAC) is only shown. The header shows the sample rate and
   the firmware. **FACTORY RESET** (KA15, Melody) first reads the USER slots, their names and the settings and
   saves them on the phone, then resets the DAC, shows what changed and offers WRITE THE SAVED COPY BACK.
@@ -331,6 +378,6 @@ The WalkPlay and FiiO protocols and the biquad coefficient maths are ported from
 component and its licence is listed in `THIRD_PARTY_NOTICES.md`; attributions are in `NOTICE`. In the app,
 all of this is under **ABOUT & LICENCES** at the bottom of the Library.
 
-Contour is an unofficial project, not affiliated with or endorsed by CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears or any other brand. CrinEar,
-Protocol Micro, Protocol Max, FiiO, KA15, K13, SnowSky, Melody, Tiny A, TRN, Black Pearl, Moondrop, Dawn Pro 2, Echo-A, Kiwi Ears, Allegro Mini, KT Micro, WalkPlay and other product names belong to their owners
+Contour is an unofficial project, not affiliated with or endorsed by CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears, JCally or any other brand. CrinEar,
+Protocol Micro, Protocol Max, FiiO, JadeAudio, KA15, K13, JA11, SnowSky, Melody, Tiny A, TRN, Black Pearl, Moondrop, Dawn Pro 2, Echo-A, DUSK-SP, Kiwi Ears, Allegro Mini, JCally, JM12, KT Micro, WalkPlay and other product names belong to their owners
 and are used only to say what Contour works with.
