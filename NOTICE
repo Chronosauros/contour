@@ -1,6 +1,8 @@
 Contour
 Copyright 2026 Chronosaur
 
+macOS port by: nu11p0t4t0
+
 Licensed under the Apache License, Version 2.0 (see LICENSE).
 
 This product includes the WalkPlay HID PEQ protocol and the biquad coefficient maths ported from

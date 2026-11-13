@@ -57,6 +57,10 @@ Other:
 - com.google.guava:listenablefuture 1.0 (an empty placeholder artifact), (c) Google
 - org.jspecify:jspecify 1.0.0, (c) the JSpecify authors
 
+macOS desktop port:
+- org.hid4java:hid4java 0.8.0, (c) 2014-2023 Gary Rowe, MIT License (USB HID communication on macOS via libhidapi)
+- org.jetbrains.compose.* 1.7.3 and org.jetbrains.skiko:skiko-awt 0.8.18, (c) JetBrains s.r.o., Apache License 2.0
+
 ## 2. Code and knowledge Contour builds on
 
 devicePEQ, https://github.com/jeromeof/devicePEQ, commit 0617f382e76629792a5933e6933e4b396a756a93.
