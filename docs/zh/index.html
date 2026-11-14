@@ -274,7 +274,7 @@ footer.fv p{margin:0}
 /* hero air (14.11.2026, 17 DACs): the hero grows with its column instead of clipping it or sliding it under the top bar; on desktop the headline keeps clear air under the top bar, the last line keeps the same air above the next section as the other sections, and short screens no longer squeeze the gaps between the blocks; from 1200 px wide a tile column is never narrower than its longest name */
 @media (min-width:821px){.hero-text{padding-top:calc(clamp(64px,8vw,96px) + clamp(32px,3.6vw,64px));padding-bottom:clamp(72px,8vw,120px)}}
 @media (min-width:1200px){.devs-list{grid-template-columns:repeat(5,minmax(max-content,1fr))}}
-@media (min-width:821px) and (max-height:940px){.hero .sub{margin-top:16px}.hero .intro{margin-top:8px}.hero .devs{margin-top:20px}.hero .devs-list{margin-top:8px}.hero .devs-soon{margin-top:10px}.hero .cta{margin-top:22px}.hero .cta-note{margin-top:8px}}
+@media (min-width:821px) and (max-height:940px){.hero-text{padding-top:calc(clamp(64px,8vw,96px) + 24px)}.hero .sub{margin-top:12px}.hero .intro{margin-top:6px}.hero .devs{margin-top:16px}.hero .devs-list{margin-top:8px}.hero .devs-soon{margin-top:8px}.hero .cta{margin-top:18px}.hero .cta-note{margin-top:6px}}
 /* zh: Chinese system fonts after the site font (no CJK web font), Chinese line-height, no positive letter-spacing */
 :root{--font:"Google Sans Flex","Google Sans","Google Sans Text","PingFang SC","Hiragino Sans GB","Microsoft YaHei","Noto Sans SC","Noto Sans CJK SC","Source Han Sans SC",system-ui,sans-serif}
 body,.intro,footer{line-height:1.7}
@@ -441,6 +441,29 @@ body,.intro,footer{line-height:1.7}
   </div>
 </footer>
 
+<script>
+/* hero fit (14.11.2026, owner: a smaller headline on low windows): on a desktop window where the hero buttons would end below the first screen, the headline shrinks just enough for every button to fit, never below 88 px; taller windows and phones keep the size from the CSS */
+(function(){
+  var hero = document.querySelector(".hero");
+  var txt = hero && hero.querySelector(".hero-text"), mega = hero && hero.querySelector(".mega"), cta = hero && hero.querySelector(".cta");
+  if (!txt || !mega || !cta) return;
+  var MIN = 88, AIR = 24, raf = 0;
+  function fit(){
+    mega.style.removeProperty("--mega");
+    if (window.innerWidth < 821) return;
+    for (var i = 0; i < 3; i++){
+      var over = hero.offsetTop + txt.offsetTop + cta.offsetTop + cta.offsetHeight - (window.innerHeight - AIR);
+      if (over <= 0) return;
+      var f = parseFloat(getComputedStyle(mega).fontSize), nf = Math.max(MIN, f - over / (mega.offsetHeight / f));
+      if (nf > f - 0.5) return;
+      mega.style.setProperty("--mega", nf.toFixed(1) + "px");
+    }
+  }
+  fit();
+  window.addEventListener("resize", function(){ cancelAnimationFrame(raf); raf = requestAnimationFrame(fit); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+})();
+</script>
 <script src="/shared/cube-motion.js"></script>
 <script>
 (function(){
