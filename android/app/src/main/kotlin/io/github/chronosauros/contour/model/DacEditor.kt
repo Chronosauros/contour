@@ -3,7 +3,9 @@ package io.github.chronosauros.contour.model
 import androidx.compose.runtime.snapshotFlow
 import io.github.chronosauros.contour.core.DacImport
 import io.github.chronosauros.contour.core.Profile
+import io.github.chronosauros.contour.R
 import io.github.chronosauros.contour.core.native.FamilyState
+import io.github.chronosauros.contour.ui.UiText
 import io.github.chronosauros.contour.usb.DacSnapshot
 import io.github.chronosauros.contour.usb.DeviceController
 import io.github.chronosauros.contour.usb.DeviceController.SlotContent
@@ -48,13 +50,19 @@ class DacEditor(private val model: AppModel, private val device: DeviceControlle
         return when (val r = s.importExact()) {
             is DacImport.Ready -> {
                 val name = c.name ?: c.label ?: (s.familyState as? FamilyState.Dusk)?.importName
-                val p = model.create(r.eq.bands, r.eq.preampDb, name = name, sub = "FROM DAC", open = navigate)
+                val p = model.create(r.eq.bands, r.eq.preampDb, name = name, sub = model.names.fromDac, open = navigate)
                 val n = r.eq.bands.size
-                model.showOnGraph("FROM DAC${name?.let { " $it" }.orEmpty()}: $n FILTER${if (n == 1) "" else "S"}" + (r.warning?.let { " - $it" } ?: ""))
+                val warning = r.warning?.let { UiText.Core(it) }
+                model.showOnGraph(when {
+                    name != null && warning != null -> UiText.plural(R.plurals.from_dac_notice_name_warning, n, name, n, warning)
+                    name != null -> UiText.plural(R.plurals.from_dac_notice_name, n, name, n)
+                    warning != null -> UiText.plural(R.plurals.from_dac_notice_warning, n, n, warning)
+                    else -> UiText.plural(R.plurals.from_dac_notice, n, n)
+                })
                 p.id
             }
             is DacImport.Rejected -> {
-                model.notice = "FROM DAC: ${r.issues.joinToString("; ")}"
+                model.notice = Notice(UiText.res(R.string.from_dac_rejected, s.refusalText(r)))
                 null
             }
         }
@@ -63,6 +71,7 @@ class DacEditor(private val model: AppModel, private val device: DeviceControlle
     /** Puts [c] on the graph: the profile [find] gives (or a new one made from [s]) becomes current and is linked to its slot. */
     private fun open(c: SlotContent, s: DacSnapshot?, navigate: Boolean): Boolean {
         val id = find(c, savedToo = (s?.familyState as? FamilyState.Dusk)?.onCustom != false) ?: create(c, s, navigate) ?: return false
+        nameAfterSlot(id, c)
         model.choose(id, navigate)
         c.slot?.let { device.setLink(it, id, c.fingerprint) }
         return true
@@ -98,7 +107,18 @@ class DacEditor(private val model: AppModel, private val device: DeviceControlle
      * slot's profile is known. It never creates a profile: a slot with none stays a record until it is tapped.
      */
     private fun scanRead(s: DacSnapshot) {
-        device.contentOf(s)?.let { find(it) }
+        device.contentOf(s)?.let { c -> find(c)?.let { nameAfterSlot(it, c) } }
+    }
+
+    /**
+     * A profile made FROM DAC before its slot was known (a SnowSky read right after plug-in gives no slot) got a default name
+     * (PROFILE 4). Once a read names the slot (TEAPROOG), the profile takes that name, so sending it back later does not write
+     * the default name over the slot's own (Tiny A, 07.11.2026). A name the person chose is never changed.
+     */
+    private fun nameAfterSlot(id: String, c: SlotContent) {
+        val name = c.name ?: return
+        val p = model.byId(id) ?: return
+        if (p.name != name && p.subtitle == model.names.fromDac && model.isDefaultName(p.name)) model.rename(id, name)
     }
 
     /**

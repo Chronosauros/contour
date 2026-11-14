@@ -1,0 +1,641 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- THE TRANSLATION FILE OF THE CHINESE EDITION ("cn" build type, package io.github.chronosauros.contour.cn). It replaces src/main/res/values/strings.xml for that build only: every key of the
+     main file is here. Simplified Chinese written by Opus and reviewed by a second model; terms follow the glossary of contoureq.app (zh). Generated from main + the translation table, keep keys and %1$s %2$d arguments. -->
+<resources>
+    <!-- Name of the app under its icon. The cn edition replaces this file (src/cn/res/values/strings.xml) -->
+    <string name="app_name">Contour</string>
+    <!-- Whether the messages of :core (English) are shown from the resources below (core_*) instead of as they are. False here: the English build shows the text of :core exactly as it is -->
+    <bool name="translate_core_text">true</bool>
+    <!-- What stands between the items of a list of notes ("a; b; c"); the quotes keep the space -->
+    <string name="list_separator">"；"</string>
+
+    <!-- Import report (a file or the clipboard fitted to the connected DAC): notes joined by the list separator -->
+    <string name="import_preserved_send_blocked">已原样保留；无法写入：%1$s</string>
+    <plurals name="import_empty_filters_skipped">
+        <item quantity="one">已跳过 %d 个空滤波器</item>
+        <item quantity="other">已跳过 %d 个空滤波器</item>
+    </plurals>
+    <plurals name="import_disabled_filters_skipped">
+        <item quantity="one">已跳过 %d 个停用的滤波器</item>
+        <item quantity="other">已跳过 %d 个停用的滤波器</item>
+    </plurals>
+    <plurals name="import_unsupported_filters_dropped">
+        <item quantity="one">已舍弃 %d 个不支持的滤波器</item>
+        <item quantity="other">已舍弃 %d 个不支持的滤波器</item>
+    </plurals>
+    <plurals name="import_bands_over_dropped">
+        <item quantity="one">频段超过 %2$d 个，已舍弃多出的 %1$d 个</item>
+        <item quantity="other">频段超过 %2$d 个，已舍弃多出的 %1$d 个</item>
+    </plurals>
+    <plurals name="import_bands_clamped">
+        <item quantity="one">已将 %d 个频段舍入或限制到设备范围内</item>
+        <item quantity="other">已将 %d 个频段舍入或限制到设备范围内</item>
+    </plurals>
+    <string name="import_preamp_kept">前置增益 %1$s dB 超出设备范围，已原样保留；改为范围内的值之前无法写入</string>
+
+    <!-- Importing an EQ text from a file (picked, opened with Contour or shared to it): errors and the notice after it -->
+    <string name="import_error_unreadable">无法读取该文件。</string>
+    <string name="import_error_not_content">Contour 只能打开通过系统分享或文件选择器传入的文件（content://），无法直接打开文件路径。</string>
+    <string name="import_error_too_big">该文件超过 EQ 文本的大小上限（256 KB）。</string>
+    <string name="import_error_no_filters">该文件中没有找到 EQ 滤波器。Contour 可以读取来自 squig.link、graph.hangout.audio、AutoEQ 和 Equalizer APO 的 .txt 文件。</string>
+    <string name="import_nothing">没有可导入的内容</string>
+    <string name="import_nothing_report">没有可导入的内容（%1$s）</string>
+    <plurals name="import_imported">
+        <item quantity="one">已导入 %d 个滤波器</item>
+        <item quantity="other">已导入 %d 个滤波器</item>
+    </plurals>
+    <plurals name="import_imported_report">
+        <item quantity="one">已导入 %1$d 个滤波器（%2$s）</item>
+        <item quantity="other">已导入 %1$d 个滤波器（%2$s）</item>
+    </plurals>
+
+    <!-- Names a new profile starts with (stored in the profile when it is made) -->
+    <string name="seed_bass_boost">低频增强</string>
+    <string name="seed_softer_vocals">柔和人声</string>
+    <string name="seed_treble_boost">高频增强</string>
+    <!-- %1$d = the number of the new profile (PROFILE 4) -->
+    <string name="profile_default_name">配置 %1$d</string>
+    <!-- The headphones line (under the name in the Library) of a profile made from what the DAC holds -->
+    <string name="profile_from_dac">来自 DAC</string>
+
+    <!-- The typed preamp value is refused (shown under the number editor) -->
+    <string name="preamp_enter_number">请输入数字</string>
+    <string name="preamp_enter_in_range">请输入上方范围内的数值</string>
+    <!-- %1$s = the reason (a sentence), %2$s = the closest value the DAC takes (-3) -->
+    <string name="preamp_refusal_nearest">%1$s最接近的允许值：%2$s。</string>
+
+    <!-- Profile made from what the DAC holds (FROM DAC): the line on the graph for a moment. %1$s = the slot name when it has one, then the number of filters, then a warning of the DAC -->
+    <plurals name="from_dac_notice">
+        <item quantity="one">来自 DAC：%1$d 个滤波器</item>
+        <item quantity="other">来自 DAC：%1$d 个滤波器</item>
+    </plurals>
+    <plurals name="from_dac_notice_name">
+        <item quantity="one">来自 DAC %1$s：%2$d 个滤波器</item>
+        <item quantity="other">来自 DAC %1$s：%2$d 个滤波器</item>
+    </plurals>
+    <plurals name="from_dac_notice_warning">
+        <item quantity="one">来自 DAC：%1$d 个滤波器（%2$s）</item>
+        <item quantity="other">来自 DAC：%1$d 个滤波器（%2$s）</item>
+    </plurals>
+    <plurals name="from_dac_notice_name_warning">
+        <item quantity="one">来自 DAC %1$s：%2$d 个滤波器（%3$s）</item>
+        <item quantity="other">来自 DAC %1$s：%2$d 个滤波器（%3$s）</item>
+    </plurals>
+    <!-- Snackbar when what the DAC holds cannot be made into a profile. %1$s = the reason -->
+    <string name="from_dac_rejected">来自 DAC：%1$s</string>
+    <!-- Reason shown in a release when what the DAC holds cannot be opened exactly (also the detail line of FROM DAC in the NEW PROFILE sheet) -->
+    <string name="dac_import_not_exact">DAC 中的这组 EQ 使用了 Contour 无法精确编辑的滤波器，仅供查看。</string>
+
+    <!-- What a failed USB operation says in a release (a review build shows the technical reason instead) -->
+    <string name="failure_no_answer">DAC 没有响应。请重新插拔 DAC 后再试。</string>
+    <string name="failure_mismatch">DAC 回读的内容与写入的不一致。请重新写入。</string>
+    <string name="failure_gone">DAC 已被拔下或更换。请插上 DAC 后再试。</string>
+    <string name="failure_slot">DAC 切换到了非预期的存储位。请再试一次。</string>
+    <string name="failure_generic">无法与 DAC 通信。请重新插拔 DAC 后再试。</string>
+    <!-- A note with a send that was verified -->
+    <string name="failure_note_slot_name">EQ 已写入 DAC，但 DAC 没有确认存储位名称。</string>
+    <string name="failure_note_small_difference">EQ 已写入 DAC，但 DAC 回读时报告了细微差异。</string>
+
+    <!-- A DAC operation failed (shown under the controls, native DACs). %1$s = the reason (one of the sentences above) -->
+    <string name="error_switch_failed">切换失败：%1$s</string>
+    <string name="error_rename_failed">重命名失败：%1$s</string>
+    <string name="error_read_failed">读取失败：%1$s</string>
+    <string name="error_test_write_failed">测试写入失败：%1$s</string>
+    <string name="error_restore_flat_failed">恢复平直曲线失败：%1$s</string>
+
+    <!-- Why a send or an A/B switch did not happen (the details sheet of FAILED - HOLD TO RETRY, the line under the controls) -->
+    <string name="send_reason_unknown">原因未知</string>
+    <string name="reason_no_dac">未检测到 DAC</string>
+    <string name="reason_no_permission">没有 USB 权限</string>
+    <string name="reason_dac_busy">DAC 正忙</string>
+    <string name="reason_dac_detached">DAC 已断开</string>
+    <string name="reason_dac_state_unknown">DAC 状态未知</string>
+    <!-- %1$s = the DAC\'s name -->
+    <string name="ab_unavailable">%1$s 不支持 A/B</string>
+    <string name="ab_blocked">无法进行 A/B：DAC 中有一个频段不符合该 DAC 的滤波器格式，因此无法恢复 A。未做任何更改。</string>
+    <!-- A send that ended at SAVE (the DAC leaves the bus) and could not be proven in time. %1$d = seconds waited -->
+    <string name="reason_not_confirmed_timeout">未确认：DAC 在 %1$d 秒内没有重新连接；请拔下后重新插上，然后点击读取</string>
+    <string name="reason_not_confirmed_permission">未确认：%1$d 秒内未获得 USB 权限，无法访问 DAC；请拔下后重新插上，然后点击读取</string>
+    <!-- A KT Micro DAC (Kiwi Ears Allegro Mini, JCally JM12) is back on USB after SAVE but does not answer its reads -->
+    <string name="reason_not_confirmed_silent">未确认：DAC 已重新连上 USB，但没有响应；请拔下后重新插上，然后点击读取</string>
+
+    <!-- Factory reset: why it stopped (shown in the FACTORY RESET STOPPED sheet) -->
+    <string name="reset_failure_busy_nothing_sent">Contour 仍在操作 DAC，未发送任何指令。</string>
+    <string name="reset_failure_no_dac">未检测到 DAC，未发送任何指令。</string>
+    <string name="reset_failure_no_permission">没有 USB 权限，未发送任何指令。</string>
+    <string name="reset_failure_not_replugged">未检测到 DAC 被重新插拔。请重新插拔 DAC，然后写回备份。</string>
+    <string name="reset_failure_not_replugged_kept">未检测到 DAC 被重新插拔。请重新插拔 DAC，然后写回备份；备份已保留。</string>
+    <string name="reset_failure_read_after">恢复出厂设置后无法读取 DAC。请重新插拔 DAC 后再读取一次。</string>
+    <string name="reset_failure_not_connected_kept">DAC 未连接。请插上后再试一次；备份已保留。</string>
+    <string name="reset_failure_busy_kept">Contour 仍在操作 DAC。请稍后再试；备份已保留。</string>
+    <string name="reset_failure_copy_inexact_names">无法完整准确地备份 DAC（有存储位名称包含空格或特殊字符）。</string>
+    <string name="reset_failure_copy_inexact">无法完整准确地备份 DAC。</string>
+    <string name="reset_failure_copy_unsaved">无法将 DAC 备份保存到手机上。</string>
+
+    <!-- The status pill of the Library: what the DAC link is (the pill is as wide as CLEAR EQ for NO DAC) -->
+    <string name="status_busy">忙碌中</string>
+    <string name="status_tap_to_connect">点击连接</string>
+    <string name="status_no_dac">无 DAC</string>
+    <string name="status_connected">已连接</string>
+    <!-- Button that sets the EQ back to one flat band (Tune header, EDIT PROFILE sheet) -->
+    <string name="action_clear_eq">清空 EQ</string>
+
+    <!-- Names of the band values and the preamp (the row label, the slider\'s accessibility name, the number editor title) -->
+    <string name="param_freq">频率</string>
+    <string name="param_gain">增益</string>
+    <string name="param_q">Q</string>
+    <string name="param_preamp">前置增益</string>
+    <!-- Accessibility name of a value slider. %1$s = FREQ, GAIN, Q or PREAMP -->
+    <string name="slider_description">%1$s 滑块</string>
+
+    <!-- The big button at the foot of Tune (hold it to send the EQ to the DAC) -->
+    <string name="hold_send">按住写入</string>
+    <string name="hold_saving">正在写入 DAC</string>
+    <string name="hold_on_dac">已写入 DAC · 可安全拔出</string>
+    <string name="hold_failed">写入失败 · 按住重试</string>
+    <string name="hold_tap_to_connect">点击连接</string>
+    <string name="hold_tap_to_read">点击读取 DAC</string>
+    <string name="hold_no_dac">未检测到 DAC</string>
+    <string name="hold_choose_slot">请选择存储位</string>
+
+    <!-- Tune: header and empty state -->
+    <string name="tune_title">调音</string>
+    <!-- Two lines: the first is the title of the empty page, the second says what to do -->
+    <string name="tune_no_profile">未选择配置\n滑动到配置库，选择或新建一个配置。</string>
+    <!-- Small orange line under the profile name while the DAC plays this profile -->
+    <string name="tune_on_dac_marker">已写入 DAC</string>
+    <!-- Accessibility names of the UNDO and REDO buttons -->
+    <string name="tune_undo">撤销</string>
+    <string name="tune_redo">重做</string>
+    <!-- Accessibility names of the + and - cells at the end of the band strip -->
+    <string name="tune_add_band">添加频段</string>
+    <string name="tune_delete_band">删除所选频段</string>
+
+    <!-- Filter types (the type bar, the accessibility names of its icons) -->
+    <string name="filter_peak">峰值</string>
+    <string name="filter_low_shelf">低架</string>
+    <string name="filter_high_shelf">高架</string>
+    <string name="filter_high_pass">高通</string>
+    <string name="filter_low_pass">低通</string>
+    <string name="filter_band_pass">带通</string>
+    <string name="filter_all_pass">全通</string>
+
+    <!-- The preamp bar: MANUAL / AUTO switch (and slider), and its text when the EQ is invalid -->
+    <string name="tune_preamp_auto">自动</string>
+    <string name="tune_preamp_invalid_eq">EQ 无效</string>
+    <!-- %1$s = why AUTO cannot work (a sentence about the DAC) -->
+    <string name="tune_auto_preamp_refusal">自动前置增益：%1$s</string>
+    <!-- %1$s = PREAMP or PRE GAIN (the DAC\'s name for it), %2$s = the value without its unit (-3) -->
+    <string name="tune_preamp_outside_range">%1$s %2$s dB 超出设备范围。点击数值输入新值，或切换为自动。</string>
+
+    <!-- A send that did not finish stays on the page until a send is verified or it is tapped away. %1$s = the reason -->
+    <string name="tune_send_interrupted_read_again">写入中断：已重新读取 DAC，当前显示的是 DAC 中实际保存的内容，EQ 可能只写入了一部分。点击关闭。（%1$s）</string>
+    <string name="tune_send_interrupted">写入中断：DAC 中的 EQ 可能只写入了一部分。请重新插上 DAC，Contour 会再次读取。点击关闭。（%1$s）</string>
+    <!-- Under the controls when HOLD TO SEND is blocked. %1$s = the first problem of the EQ -->
+    <string name="tune_send_blocked">无法写入：%1$s（已保存的数值没有改变）</string>
+
+    <!-- The chosen USER slot of a DAC that stores no names: its label, then the profile last sent there. %1$s = USER1, %2$s = the profile name -->
+    <string name="tune_slot_remembered">%1$s：%2$s</string>
+    <!-- Slot label when the DAC\'s record has none. %1$d = the slot number -->
+    <string name="tune_slot_fallback_label">存储位 %1$d</string>
+    <!-- Small word under the chosen slot number (the row shows only numbers: USER1-10) -->
+    <string name="tune_slot_user">USER</string>
+    <!-- Renaming a USER slot (long press). %1$s = the slot label, %2$d = the longest name -->
+    <string name="tune_rename_title">重命名 %1$s</string>
+    <string name="tune_rename_field_label">名称（最多 %1$d 个字符，仅限 A-Z、0-9）</string>
+    <string name="action_rename">重命名</string>
+    <string name="action_cancel">取消</string>
+
+    <!-- Notes about the 1.6 family DACs under the controls -->
+    <string name="tune_returned_note">已写入 EQ 序号 %1$d。DAC 原先在 EQ 序号 %2$d。</string>
+    <string name="tune_return_to_index">切回序号 %1$d</string>
+    <string name="tune_allegro_note" formatted="false">Contour 按 48 kHz 采样率为这台 DAC 计算 EQ；在 44.1 kHz 下，每个频段的频率听起来约低 8%。</string>
+    <string name="tune_verifying_save">已写入。正在等待 DAC 重新连接，然后回读校验。</string>
+
+    <!-- The A/B button on the graph: EQ off is B, the pill says what is kept -->
+    <string name="tune_ab">A/B</string>
+    <string name="tune_ab_eq_off">EQ 关闭</string>
+    <string name="tune_ab_preamp_kept">保留前置增益</string>
+
+    <!-- Shell: while the library loads or when it cannot -->
+    <string name="app_loading_library">正在加载配置库…</string>
+    <string name="app_library_load_error">无法读取配置库。你的文件没有被改动。</string>
+    <string name="app_retry_loading">重新加载</string>
+    <!-- Strip at the top of the screen while a save or a delete is being written -->
+    <string name="app_not_saved">未保存 · 请检查存储空间</string>
+    <string name="app_saving_delete">正在删除…</string>
+
+    <!-- Words of buttons used on several screens -->
+    <string name="action_undo">撤销</string>
+    <string name="action_retry">重试</string>
+    <string name="action_ok">确定</string>
+
+    <!-- Page bar at the bottom: the three pages and their accessibility names -->
+    <string name="page_dac">DAC</string>
+    <string name="page_eq">EQ</string>
+    <string name="page_library">配置库</string>
+    <string name="page_description_dac">DAC 页</string>
+    <string name="page_description_tune">调音页</string>
+    <string name="page_description_library">配置库页</string>
+
+    <!-- Snackbars of the Library (profile names are the person\'s own words) -->
+    <string name="library_no_saved_version">还没有已保存版本</string>
+    <string name="library_already_saved">与已保存版本相同</string>
+    <string name="library_deleted">已删除“%1$s”</string>
+    <string name="library_archived">已归档“%1$s”</string>
+    <string name="library_restored_to_saved">已恢复为已保存版本</string>
+    <string name="library_saved">已保存</string>
+    <!-- The dialog behind the SAVE ALL swipe of the new-profile card -->
+    <string name="library_save_all_title">保存全部配置？</string>
+    <string name="library_save_all_text">将把所有配置的当前内容设为新的已保存版本，并替换之前的已保存版本。此操作无法撤销，确定继续吗？</string>
+    <string name="library_save_all">全部保存</string>
+    <!-- %d = how many (the English wording is "PROFILES" for one as well) -->
+    <plurals name="library_profiles_saved">
+        <item quantity="one">已保存 %d 个配置</item>
+        <item quantity="other">已保存 %d 个配置</item>
+    </plurals>
+
+    <!-- Dialog when a .txt is opened with Contour or shared to it -->
+    <string name="incoming_title">导入 EQ 文件？</string>
+    <string name="incoming_title_cannot">无法导入</string>
+    <string name="incoming_import">导入</string>
+    <!-- Name used when the file has none -->
+    <string name="incoming_default_name">新配置</string>
+    <!-- %1$s = the profile name, %2$d = how many filters, %3$s = the import report (what had to be changed to fit the DAC) -->
+    <plurals name="incoming_summary">
+        <item quantity="one">%1$s：%2$d 个滤波器。将作为新配置添加，其他配置不受影响。</item>
+        <item quantity="other">%1$s：%2$d 个滤波器。将作为新配置添加，其他配置不受影响。</item>
+    </plurals>
+    <plurals name="incoming_summary_report">
+        <item quantity="one">%1$s：%2$d 个滤波器（%3$s）。将作为新配置添加，其他配置不受影响。</item>
+        <item quantity="other">%1$s：%2$d 个滤波器（%3$s）。将作为新配置添加，其他配置不受影响。</item>
+    </plurals>
+
+    <!-- Library: the buttons behind a swipe (the label under the icon) and their accessibility names -->
+    <string name="library_action_archive">归档</string>
+    <string name="library_action_archive_description">归档配置</string>
+    <string name="library_action_delete">删除</string>
+    <string name="library_action_delete_description">删除配置</string>
+    <string name="library_action_unarchive">取消归档</string>
+    <string name="library_action_unarchive_description">取消归档配置</string>
+    <string name="library_action_save">保存</string>
+    <string name="library_action_save_description">保存配置</string>
+    <string name="library_action_restore">恢复</string>
+    <string name="library_action_restore_description">将配置恢复为已保存版本</string>
+    <string name="library_action_save_all">全部保存</string>
+    <string name="library_action_save_all_description">保存全部配置</string>
+    <!-- Header of the collapsible list of archived profiles (a count follows it) -->
+    <string name="library_archive_header">已归档</string>
+    <!-- Small orange line under the curve of a profile the DAC holds -->
+    <string name="library_on_dac">已写入 DAC</string>
+    <!-- Two switch cards at the foot of the Library (label over the value, OFF | ON beside it) -->
+    <string name="usb_attach_label">插上 DAC 时打开 Contour</string>
+    <string name="haptics_label">触感反馈</string>
+    <string name="switch_on">开</string>
+    <string name="switch_off">关</string>
+    <!-- Link at the foot of the Library to the about, privacy and licences screen. %1$s = the app version -->
+    <string name="library_about_link">关于 · 隐私 · 开源许可 · %1$s</string>
+    <!-- Accessibility description of a profile row (%1$s = the profile\'s name) and of the empty card that creates one -->
+    <string name="library_row_new">新建配置；向左滑可保存全部配置</string>
+    <string name="library_row_archived">%1$s，已归档</string>
+    <string name="library_row_archived_edited">%1$s，已归档，已编辑</string>
+    <string name="library_row_normal">%1$s。向左滑：归档、删除。向右滑：保存、恢复为已保存版本。</string>
+    <string name="library_row_normal_edited">%1$s，已编辑。向左滑：归档、删除。向右滑：保存、恢复为已保存版本。</string>
+    <string name="library_row_create">新建配置</string>
+    <string name="library_row_select">选择配置</string>
+    <string name="library_row_edit">编辑配置</string>
+
+    <!-- About, privacy and licences screen -->
+    <string name="licences_title">关于、隐私与开源许可</string>
+    <string name="action_close">关闭</string>
+    <!-- Shown where a licence or the privacy file is not in the APK -->
+    <string name="licences_not_found">（当前版本未包含此内容）</string>
+    <!-- Four lines. %1$s = the app version, %2$s = the address of the source code -->
+    <string name="licences_about">Contour %1$s\n版权所有 2026 Chronosaur。采用 Apache License 2.0 许可。\n源代码：%2$s\n非官方应用：与 CrinEar 及应用中提到的任何其他品牌均无关联，也未获得其认可。</string>
+    <!-- Addresses (not translated, but a build can give another one): the source code, the privacy policy page and the way it is written on the link -->
+    <string name="source_code_url" translatable="false">https://github.com/Chronosauros/contour</string>
+    <string name="privacy_url" translatable="false">https://contoureq.app/zh/privacy/</string>
+    <string name="privacy_url_label" translatable="false">contoureq.app/zh/privacy</string>
+
+    <!-- Google Play board (shown once on GitHub, Obtainium, F-Droid and sideloaded installs; never in the Chinese edition). %1$s = the app version without the patch, e.g. 1.8 -->
+    <string name="play_beta_title">Contour %1$s is on Google Play.</string>
+    <!-- Three things that are new, one row each, next to an icon -->
+    <string name="play_beta_new_dacs">4 new DACs</string>
+    <string name="play_beta_new_haptics">Haptics you can feel</string>
+    <string name="play_beta_new_popup">Turn off the plug-in pop-up</string>
+    <string name="play_beta_text">Get it from Google Play and it stays up to date. Same app, same signature.</string>
+    <string name="play_beta_open">OPEN GOOGLE PLAY</string>
+    <string name="play_beta_not_now">NOT NOW</string>
+    <!-- Accessibility name of the Google Play logo on the board -->
+    <string name="play_beta_google_play_description">Google Play</string>
+    <!-- Where OPEN GOOGLE PLAY leads: the store page of the app -->
+    <string name="play_beta_play_url" translatable="false">https://play.google.com/store/apps/details?id=io.github.chronosauros.contour</string>
+
+    <!-- DAC Settings page. The names of the settings and of their options come from the device records and stay as the records have them -->
+    <string name="dac_settings_header">DAC 设置</string>
+    <!-- Value of a setting the DAC did not answer for -->
+    <string name="dac_no_reply">无响应</string>
+    <string name="dac_read_only">只读</string>
+    <!-- Balance: the side the sound moves to, like FiiO Control. %1$d = how far -->
+    <string name="dac_balance_center">居中</string>
+    <string name="dac_balance_left">左 %1$d</string>
+    <string name="dac_balance_right">右 %1$d</string>
+    <!-- The one small line at the foot of the page -->
+    <string name="dac_footer_tap_to_connect">点击连接</string>
+    <string name="dac_footer_reading">正在读取 DAC</string>
+    <!-- Snackbars. %1$s = the setting, %2$s = its value as the DAC reads it, %1$s of the others = the DAC\'s name -->
+    <string name="dac_not_sent_read_only">未发送：%1$s 在 Contour 中为只读</string>
+    <string name="dac_not_set_reads">设置失败：%1$s 回读为 %2$s</string>
+    <string name="dac_not_set_no_reply">设置失败：%1$s 无响应</string>
+    <string name="dac_not_set_busy">设置失败：%1$s 正忙</string>
+    <!-- The factory reset row of the page -->
+    <string name="dac_factory_reset">恢复出厂设置</string>
+    <string name="dac_factory_reset_detail">先备份，再恢复出厂</string>
+
+    <!-- EDIT PROFILE sheet -->
+    <string name="edit_title">编辑配置</string>
+    <string name="edit_name">名称</string>
+    <string name="edit_headphones">耳机</string>
+    <string name="edit_icon">图标</string>
+    <string name="edit_share">分享</string>
+    <string name="edit_save_txt">保存为 .txt</string>
+    <string name="edit_cannot_share">无法分享：EQ 无效，自动前置增益不可用</string>
+    <string name="edit_duplicate">创建副本</string>
+    <string name="edit_clear_note">只保留一个平直频段，前置增益设为自动。在 EQ 页点“撤销”可以找回原来的曲线。</string>
+    <!-- Accessibility names of the profile icons (the English words are the icon ids) -->
+    <string name="profile_icon_moon">月亮</string>
+    <string name="profile_icon_in_ear">入耳式耳机</string>
+    <string name="profile_icon_headphones">头戴式耳机</string>
+    <string name="profile_icon_wave">波浪</string>
+    <string name="profile_icon_leaf">叶子</string>
+    <string name="profile_icon_mountain">山</string>
+    <string name="profile_icon_sun">太阳</string>
+    <string name="profile_icon_flame">火焰</string>
+    <string name="profile_icon_drop">水滴</string>
+    <string name="profile_icon_star">星星</string>
+    <string name="profile_icon_bolt">闪电</string>
+    <string name="profile_icon_circle">圆形</string>
+    <string name="profile_icon_triangle">三角形</string>
+    <string name="profile_icon_note">音符</string>
+    <string name="profile_icon_speaker">扬声器</string>
+    <string name="profile_icon_snowflake">雪花</string>
+    <string name="profile_icon_coffee">咖啡</string>
+    <string name="profile_icon_eye">眼睛</string>
+    <string name="profile_icon_anchor">船锚</string>
+    <string name="profile_icon_spiral">螺旋</string>
+
+    <!-- NEW PROFILE sheet: four options, each a title and a line under it -->
+    <string name="new_title">新建配置</string>
+    <string name="new_flat">平直</string>
+    <string name="new_flat_detail">在 1 kHz 处添加一个平直频段，可拖动或继续添加</string>
+    <string name="new_paste">粘贴</string>
+    <string name="new_paste_empty">剪贴板中没有 APO、AutoEQ 或 EQ by Ear 文本</string>
+    <plurals name="new_paste_filters">
+        <item quantity="one">剪贴板中的 %d 个滤波器</item>
+        <item quantity="other">剪贴板中的 %d 个滤波器</item>
+    </plurals>
+    <!-- %2$s = the import report (what had to be changed to fit the DAC) -->
+    <plurals name="new_paste_filters_report">
+        <item quantity="one">剪贴板中的 %1$d 个滤波器（%2$s）</item>
+        <item quantity="other">剪贴板中的 %1$d 个滤波器（%2$s）</item>
+    </plurals>
+    <string name="new_open_file">打开文件</string>
+    <string name="new_open_file_reading">正在读取文件…</string>
+    <string name="new_open_file_detail">来自 squig.link、graph.hangout.audio 或 AutoEQ 的 .txt 文件</string>
+    <string name="new_from_dac">从 DAC 导入</string>
+    <!-- %1$s = the DAC\'s warning -->
+    <string name="new_from_dac_warning">警告：%1$s</string>
+    <string name="new_from_dac_detail">复制 DAC 当前保存的 EQ，数值可能有少量舍入。</string>
+    <string name="new_from_dac_connect">请先连接 DAC</string>
+
+    <!-- The number editor (FREQ, GAIN, Q, PREAMP). Ranges: the numbers are written in the code in a fixed format -->
+    <string name="value_auto_unavailable">EQ 无效，自动前置增益不可用。请先修改搁架滤波器的设置。</string>
+    <!-- %1$d = the band number, %2$s = FREQ, GAIN or Q -->
+    <string name="value_title_band">频段 %1$d · %2$s</string>
+    <string name="value_range_freq">20 至 20000 Hz</string>
+    <!-- %1$s = the lowest gain (-12.0), %2$s = the highest -->
+    <string name="value_range_gain">%1$s 至 +%2$s dB</string>
+    <string name="value_range_q">0.10 至 10.00</string>
+    <!-- A shelf of a DAC that was measured narrower: %1$s - %2$s = the lowest and the highest Q -->
+    <string name="value_range_q_shelf">%1$s 至 %2$s</string>
+    <!-- %1$s = the lowest preamp (-30), %2$s = the highest with its sign (+6 or 0) -->
+    <string name="value_range_preamp_whole">%1$s 至 %2$s dB，仅限整数 dB</string>
+    <!-- %3$s = the step (1 or 0.1) -->
+    <string name="value_range_preamp_step">%1$s 至 +%2$s dB，步进 %3$s</string>
+    <string name="value_enter_valid_number">请输入有效数字</string>
+    <!-- Under the preamp field of a DAC that keeps whole dB, when the typed fraction is saved rounded down. %1$s = the saved value with its unit, e.g. -4 dB -->
+    <string name="value_saved_as_whole_db">已保存为 %1$s：此 DAC 只保存整数 dB，因此 Contour 会向下取整（只会更小声，不会更响）。</string>
+    <!-- The button that flips the sign of the typed number -->
+    <string name="value_sign">+/-</string>
+    <string name="action_done">完成</string>
+
+    <!-- Sheet of a band (long press on its number) -->
+    <string name="band_title">频段 %1$d</string>
+    <string name="band_bypass">停用</string>
+    <string name="band_enable">启用</string>
+    <string name="band_delete">删除</string>
+
+    <!-- Details of FAILED - HOLD TO RETRY (the reason follows as its own text) -->
+    <string name="send_failed_title">写入失败</string>
+
+    <!-- FACTORY RESET sheet -->
+    <string name="reset_erase_note_walkplay">恢复出厂设置会把 EQ 恢复为厂商默认的平直频段和 0 dB，还可能清除更多内容。Contour 会先备份全部频段、前置增益和所有能读取的设置，之后可以帮你写回。</string>
+    <string name="reset_erase_note_fiio">恢复出厂设置可能会清除 USER 存储位及其名称，以及 DAC 的各项设置。Contour 会先备份这些内容，之后可以帮你写回。</string>
+    <string name="reset_keep_plugged_walkplay">在 Contour 提示恢复出厂完成之前，请勿拔下 DAC。</string>
+    <string name="reset_keep_plugged_fiio">请勿拔下 DAC，恢复出厂后 Contour 会提示你重新插拔。</string>
+    <string name="reset_confirm">备份并恢复出厂</string>
+    <!-- The step in progress -->
+    <string name="reset_step_copy">正在读取并备份 DAC</string>
+    <string name="reset_step_send">正在发送恢复出厂指令</string>
+    <string name="reset_step_replug">请重新插拔 DAC</string>
+    <string name="reset_step_wait">正在等待 DAC 重新连接</string>
+    <string name="reset_step_read">正在重新读取 DAC</string>
+    <string name="reset_replug_note">恢复出厂指令已发送。请现在重新插拔 DAC；Contour 检测到 DAC 重新连接后会继续。</string>
+    <string name="reset_do_not_unplug">请勿拔下 DAC。</string>
+    <string name="reset_stop_waiting">停止等待</string>
+    <!-- After the reset -->
+    <string name="reset_sent_title">已发送恢复出厂指令</string>
+    <string name="reset_unchanged">DAC 的读取结果与备份相同：恢复出厂可能没有执行，或者没有清除任何内容。</string>
+    <string name="reset_changed">恢复出厂后有以下变化：</string>
+    <!-- %1$s = the name of the file with the copy -->
+    <string name="reset_copy_saved_before">恢复出厂前的备份已保存在手机上（%1$s）。</string>
+    <string name="reset_copy_saved">DAC 备份已保存在手机上（%1$s）。</string>
+    <string name="reset_write_back">写回备份</string>
+    <string name="reset_restoring_title">正在写回备份</string>
+    <string name="reset_restoring_walkplay">依次写入频段、前置增益和设置。请勿拔下 DAC。</string>
+    <string name="reset_restoring_fiio">依次写入存储位名称、各存储位的 EQ 和设置。请勿拔下 DAC。</string>
+    <string name="reset_restored_title">备份已写回</string>
+    <string name="reset_restored_partial_title">备份未完全写回</string>
+    <string name="reset_restored_ok">所有存储位和设置的回读结果均与备份一致。</string>
+    <string name="reset_restored_partial">以下内容的回读结果与备份不一致：</string>
+    <string name="reset_stopped_title">恢复出厂已中止</string>
+    <string name="reset_stopped_sent">恢复出厂指令已经发送。</string>
+    <string name="reset_stopped_nothing_sent">未向 DAC 发送任何指令。</string>
+
+    <!-- Toast after SAVE .TXT (the system file dialog) -->
+    <string name="save_txt_saved">文件已保存</string>
+    <string name="save_txt_failed">无法保存文件</string>
+
+    <!-- ===== Messages of :core that reach the screen. :core stays English; when `translate_core_text` is true the app finds each message (or its pattern) and shows these instead.
+         The English words below equal the messages of :core exactly. %1$s, %2$s ... are the numbers and names that stand in the message (bands, Hz, dB, the DAC\'s name). ===== -->
+    <!-- Labels of HOLD TO SEND when the EQ cannot be sent, and the headline the graph shows for an EQ it cannot draw -->
+    <string name="core_label_read_dac_first">请先读取 DAC</string>
+    <string name="core_label_preamp_out_of_range">前置增益超出范围</string>
+    <string name="core_label_invalid_eq_edit_band">EQ 无效 · 请修改频段</string>
+    <string name="core_label_invalid_adjust_band_count">EQ 无效 · 请调整频段数量</string>
+    <string name="core_label_invalid_adjust_shelf">EQ 无效 · 请调整搁架增益或 Q</string>
+    <string name="core_label_invalid_adjust_preamp">EQ 无效 · 请调整前置增益</string>
+    <string name="core_label_invalid_adjust_frequency">EQ 无效 · 请调整频率</string>
+    <string name="core_label_invalid_adjust_gain">EQ 无效 · 请调整增益</string>
+    <string name="core_label_invalid_adjust_q">EQ 无效 · 请调整 Q</string>
+    <!-- A DAC Contour only reads -->
+    <string name="core_label_read_only">只读</string>
+    <!-- %1$s = how many bands the EQ has, %2$s = how many the DAC takes -->
+    <string name="core_label_bands_max">%1$s 个频段 · 最多 %2$s 个</string>
+    <!-- A band that is not allowed. %1$s = the band number, %2$s = the number (the value is shown in capitals). The "- EDIT BAND" form is used while it fits the button, else the short form -->
+    <string name="core_label_band_type_edit">频段 %1$s：类型不支持 · 请修改</string>
+    <string name="core_label_band_type">频段 %1$s：类型不支持</string>
+    <string name="core_label_band_freq_edit">频段 %1$s：频率 %2$s Hz · 请修改</string>
+    <string name="core_label_band_freq">频段 %1$s：频率 %2$s Hz</string>
+    <string name="core_label_band_gain_edit">频段 %1$s：增益 %2$s dB · 请修改</string>
+    <string name="core_label_band_gain">频段 %1$s：增益 %2$s dB</string>
+    <string name="core_label_band_q_edit">频段 %1$s：Q %2$s · 请修改</string>
+    <string name="core_label_band_q">频段 %1$s：Q %2$s</string>
+    <string name="core_label_band_shelf_q_edit">频段 %1$s：搁架 Q %2$s · 请修改</string>
+    <string name="core_label_band_shelf_q">频段 %1$s：搁架 Q %2$s</string>
+    <string name="core_label_band_peak_q_edit">频段 %1$s：峰值 Q %2$s · 请修改</string>
+    <string name="core_label_band_peak_q">频段 %1$s：峰值 Q %2$s</string>
+    <!-- What the DAC calls the preamp (the label of the row; PRE GAIN is Moondrop\'s name for it) -->
+    <string name="core_label_preamp">前置增益</string>
+    <string name="core_label_pre_gain">前置增益</string>
+
+    <!-- Why an EQ cannot be sent (the line "SEND BLOCKED: ..." under the controls, the report of an import) -->
+    <string name="core_issue_read_dac_first">请先读取 DAC</string>
+    <!-- %1$s = the DAC\'s name -->
+    <string name="core_issue_read_only">%1$s 在 Contour 中为只读</string>
+    <!-- %1$s = the band number, %2$s = the value, %3$s - %4$s = the range the DAC takes -->
+    <string name="core_issue_band_type_unsupported">频段 %1$s：类型不支持</string>
+    <string name="core_issue_band_freq_outside">频段 %1$s：频率 %2$s Hz 不在 %3$s 至 %4$s Hz 范围内</string>
+    <string name="core_issue_band_gain_outside">频段 %1$s：增益 %2$s dB 不在 %3$s 至 %4$s dB 范围内</string>
+    <string name="core_issue_band_q_outside">频段 %1$s：Q %2$s 不在 %3$s 至 %4$s 范围内</string>
+    <string name="core_issue_band_shelf_q_outside">频段 %1$s：搁架 Q %2$s 不在 %3$s 至 %4$s 范围内</string>
+    <string name="core_issue_band_peak_q_outside">频段 %1$s：峰值 Q %2$s 不在 %3$s 至 %4$s 范围内</string>
+    <!-- A shelf of a DAC whose shelves were measured within narrower limits. %5$s = the DAC\'s name -->
+    <string name="core_issue_band_gain_outside_shelf">频段 %1$s：增益 %2$s dB 不在 %3$s 至 %4$s dB 范围内（%5$s 的搁架滤波器仅限已实测的范围）</string>
+    <string name="core_issue_band_q_outside_shelf">频段 %1$s：Q %2$s 不在 %3$s 至 %4$s 范围内（%5$s 的搁架滤波器仅限已实测的范围）</string>
+    <!-- A shelf whose gain and Q have no real response on the Moondrop DUSK-SP -->
+    <string name="core_issue_band_shelf_no_response">频段 %1$s：该搁架滤波器的增益和 Q 无法得到有效频响</string>
+    <!-- %2$s = the DAC\'s name, %3$s = the filter types it takes, written by the code in English ("PEAK bands", "PEAK, LOW_SHELF and HIGH_SHELF bands") -->
+    <string name="core_issue_band_takes_only">频段 %1$s：%2$s 只支持 %3$s</string>
+    <!-- KT Micro DACs (Kiwi Ears Allegro Mini, AD1, JCally JM12). %1$s = bands the DAC takes -->
+    <string name="core_issue_kt_bands_over">KT 最多支持 %1$s 个频段，不会自动截断</string>
+    <!-- %2$s = the filter type as the code names it (HIGH_PASS), %3$s = the DAC\'s name -->
+    <string name="core_issue_band_type_not_supported">频段 %1$s：%3$s 不支持 %2$s</string>
+    <string name="core_issue_band_hz_outside">频段 %1$s：%2$s Hz 不在 %3$s 至 %4$s Hz 范围内</string>
+    <string name="core_issue_band_db_outside">频段 %1$s：%2$s dB 不在 %3$s 至 %4$s dB 范围内</string>
+    <!-- %1$s = the preamp, %2$s..%3$s = the range the DAC takes -->
+    <string name="core_issue_pregain_outside">前置增益 %1$s 不在 %2$s 至 %3$s dB 范围内</string>
+    <string name="core_issue_preamp_range">前置增益 %1$s dB 不在 %2$s 至 %3$s dB 范围内</string>
+    <!-- %1$s = bands in the EQ, %2$s = the DAC\'s name, %3$s = bands the DAC takes -->
+    <string name="core_issue_bands_over">%1$s 个频段；%2$s 最多支持 %3$s 个，不会自动截断</string>
+    <string name="core_issue_enabled_bands_over">已启用 %1$s 个频段；%2$s 只有 %3$s 个</string>
+    <!-- %1$s = the DAC\'s name, %2$s = the band number -->
+    <string name="core_issue_band_unsafe_shelf">频段 %2$s（%1$s）无法安全实现。请降低提升量、提高搁架频率或调整 Q。</string>
+    <string name="core_issue_band_unsafe">频段 %2$s（%1$s）无法安全实现。请降低提升量，或者调整频率或 Q。</string>
+    <!-- AUTO preamp needs more than the DAC takes. %1$s = the dB it needs, %2$s = the lowest the DAC takes -->
+    <string name="core_issue_auto_needs">这个 EQ 需要 %1$s dB；在这台设备上 Contour 最低只支持 %2$s dB。请减少叠加的提升量。</string>
+    <!-- %1$s = the DAC\'s name -->
+    <string name="core_issue_auto_no_response">自动前置增益：无法算出有效的频响，不能写入 %1$s</string>
+    <!-- Note of a Moondrop Dawn Pro 2 that is on one of its own presets. %1$s = the EQ index it is on, %2$s = the index (or "7 or 9") Contour writes -->
+    <string name="core_note_dawn_bank">DAC 当前在 EQ 序号 %1$s，这是它自带的预设之一。请把 DAC 切换到 PEQ 模式（EQ 序号 %2$s）：“按住写入”会写入 DAC 当前所在的 EQ。</string>
+
+    <!-- ===== Words of the DAC Settings page that come from :core and the device records: row labels, section headers, option words. The key is core_setting_<word>; the English text is exactly what the code has.
+         Shown from here only where translate_core_text is true. Entries marked "keep as is" are a manufacturer's name or a standard: translate only where a Chinese term is the usual one. ===== -->
+    <string name="core_setting_volume">音量</string>
+    <string name="core_setting_volume_steps">音量档位</string>
+    <string name="core_setting_balance">声道平衡</string>
+    <string name="core_setting_in_line_mic">线控麦克风</string>
+    <string name="core_setting_light">指示灯</string>
+    <string name="core_setting_usb_audio">USB 音频</string>
+    <string name="core_setting_filter">数字滤波器</string>
+    <string name="core_setting_gain">增益</string>
+    <string name="core_setting_output">输出模式</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_dre">DRE</string>
+    <string name="core_setting_buttons">按键</string>
+    <string name="core_setting_brightness">亮度</string>
+    <string name="core_setting_screen_off">息屏时间</string>
+    <string name="core_setting_rotation">屏幕旋转</string>
+    <string name="core_setting_language">语言</string>
+    <string name="core_setting_mic_gain">麦克风增益</string>
+    <string name="core_setting_eq_index">EQ 序号</string>
+    <string name="core_setting_global_gain">全局增益</string>
+    <string name="core_setting_pre_gain">前置增益</string>
+    <string name="core_setting_preset">预设</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_eq">EQ</string>
+    <string name="core_setting_section_device">设备</string>
+    <string name="core_setting_section_screen">屏幕</string>
+    <string name="core_setting_section_sound">声音</string>
+    <string name="core_setting_off">关</string>
+    <string name="core_setting_on">开</string>
+    <string name="core_setting_high">高</string>
+    <string name="core_setting_low">低</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_class_ab">AB 类</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_class_h">H 类</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_mode_a">模式 A</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_mode_b">模式 B</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_uac_1">UAC 1.0</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_uac_2">UAC 2.0</string>
+    <string name="core_setting_min_phase_fast">最小相位快速滚降</string>
+    <string name="core_setting_lin_phase_fast">线性相位快速滚降</string>
+    <string name="core_setting_min_phase_slow">最小相位慢速滚降</string>
+    <string name="core_setting_lin_phase_slow">线性相位慢速滚降</string>
+    <string name="core_setting_non_oversampling">非过采样</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_min_f">MIN F</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_lin_f">LIN F</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_min_s">MIN S</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_lin_s">LIN S</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_nos">NOS</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_fast_ll">FAST-LL</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_fast_pc">FAST-PC</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_slow_ll">SLOW-LL</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_slow_pc">SLOW-PC</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_non_os">NON-OS</string>
+    <string name="core_setting_t_15s">15 秒</string>
+    <string name="core_setting_t_30s">30 秒</string>
+    <string name="core_setting_t_1min">1 分钟</string>
+    <string name="core_setting_t_2min">2 分钟</string>
+    <string name="core_setting_t_5min">5 分钟</string>
+    <string name="core_setting_t_10min">10 分钟</string>
+    <string name="core_setting_t_30min">30 分钟</string>
+    <string name="core_setting_chinese">中文</string>
+    <string name="core_setting_english">English</string>
+    <string name="core_setting_no_reply">无响应</string>
+    <!-- Firmware line of the page header. %1$s = the version (1.2.0, or 2.20 on a DAC with a two-part version) -->
+    <string name="core_setting_firmware">固件 %1$s</string>
+    <!-- Lines of the factory reset result and of the write-back list. %1$s = a setting\'s name, %2$s and %3$s = values -->
+    <string name="core_reset_diff_line">%1$s：%2$s → %3$s</string>
+    <string name="core_reset_restored">%1$s：已恢复</string>
+    <string name="core_reset_unchanged">%1$s：未变化</string>
+    <string name="core_reset_read_only">%1$s：只读，未写回</string>
+    <string name="core_reset_session_ended">%1$s：未恢复（与 DAC 的连接已断开）</string>
+    <string name="core_reset_no_reply">%1$s：未恢复（无响应）</string>
+    <string name="core_reset_reads">%1$s：未恢复（DAC 回读为 %2$s，备份为 %3$s）</string>
+</resources>

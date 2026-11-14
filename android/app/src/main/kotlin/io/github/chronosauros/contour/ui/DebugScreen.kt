@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.activity.compose.BackHandler
+import io.github.chronosauros.contour.ui.asString
 import io.github.chronosauros.contour.ui.kit.DacFeel
 import io.github.chronosauros.contour.ui.kit.FreqFeel
 import io.github.chronosauros.contour.ui.kit.GainFeel
@@ -94,7 +95,7 @@ fun DebugScreen(device: DeviceController, onClose: () -> Unit) {
                         device.link == Link.NO_DAC -> "DAC: not connected"
                         device.link == Link.NEEDS_PERMISSION -> "DAC: needs permission"
                         else -> "DAC: connected" + (snapshot?.firmware?.let { ", firmware $it" } ?: "")
-                    } + (device.error?.let { " - error: $it" } ?: ""),
+                    } + (device.error?.let { " - error: ${it.asString()}" } ?: ""),
                 )
                 if (device.protocol.isFamily) {
                     val verified = device.protocol.run { moondrop?.hardwareVerified == true || ktMicro?.hardwareVerified == true || gen1?.hardwareVerified == true || echo?.hardwareVerified == true } // Dawn Pro 2 and Allegro Mini since 25.10.2026

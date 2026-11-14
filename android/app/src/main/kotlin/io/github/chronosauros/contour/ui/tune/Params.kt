@@ -1,18 +1,24 @@
 package io.github.chronosauros.contour.ui.tune
 
+import androidx.annotation.StringRes
+import io.github.chronosauros.contour.R
 import io.github.chronosauros.contour.core.Band
 import io.github.chronosauros.contour.core.DeviceCapabilities
+import io.github.chronosauros.contour.ui.UiText
 import io.github.chronosauros.contour.ui.kit.Fmt
 import io.github.chronosauros.contour.ui.kit.Scale
 import io.github.chronosauros.contour.core.FilterType
 import io.github.chronosauros.contour.core.isShelf
 
 /** The typed / slid band values. [home] is the value with the stronger haptic tick (1 kHz, 0 dB, Q 1). */
-enum class Param(val label: String, val unit: String, val scale: Scale?, val home: Double) {
-    FREQ("FREQ", "Hz", Scale.FREQ, 1000.0),
-    GAIN("GAIN", "dB", Scale.GAIN, 0.0),
-    Q("Q", "", Scale.Q, 1.0),
-    PREAMP("PREAMP", "dB", null, 0.0);
+enum class Param(@StringRes val labelRes: Int, val unit: String, val scale: Scale?, val home: Double) {
+    FREQ(R.string.param_freq, "Hz", Scale.FREQ, 1000.0),
+    GAIN(R.string.param_gain, "dB", Scale.GAIN, 0.0),
+    Q(R.string.param_q, "", Scale.Q, 1.0),
+    PREAMP(R.string.param_preamp, "dB", null, 0.0);
+
+    /** The name of the value (FREQ, GAIN, Q, PREAMP) as the row, the slider and the number editor call it. */
+    val label: UiText get() = UiText.res(labelRes)
 
     fun of(b: Band): Double = when (this) {
         FREQ -> b.freqHz

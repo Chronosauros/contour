@@ -27,15 +27,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import io.github.chronosauros.contour.R
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
 import io.github.chronosauros.contour.ui.kit.pressStart
 import io.github.chronosauros.contour.usb.AttachOpen
 
 private val CARD = RoundedCornerShape(Radii.L)
 private val WELL_W = 132.dp
-private val OPTIONS = listOf("OFF", "ON")
 
 /**
  * OPEN CONTOUR WHEN A DAC IS PLUGGED IN ([AttachOpen]): a card in the language of the DAC Settings rows - the label over the value on
@@ -47,7 +48,7 @@ private val OPTIONS = listOf("OFF", "ON")
 fun UsbAttachRow(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var on by remember { mutableStateOf(AttachOpen.isOn(context)) }
-    OnOffRow(modifier, "OPEN CONTOUR WHEN A DAC IS PLUGGED IN", on, tag = "usb_attach") { want ->
+    OnOffRow(modifier, stringResource(R.string.usb_attach_label), on, tag = "usb_attach") { want ->
         AttachOpen.set(context, want)
         on = AttachOpen.isOn(context)
     }
@@ -61,7 +62,7 @@ fun UsbAttachRow(modifier: Modifier = Modifier) {
 fun HapticsRow(modifier: Modifier = Modifier) {
     val haptics = LocalHaptics.current
     var on by remember { mutableStateOf(haptics.enabled) }
-    OnOffRow(modifier, "HAPTIC FEEDBACK", on, tag = "haptics") { want ->
+    OnOffRow(modifier, stringResource(R.string.haptics_label), on, tag = "haptics") { want ->
         haptics.enabled = want
         on = haptics.enabled
     }
@@ -86,7 +87,7 @@ private fun OnOffRow(modifier: Modifier, label: String, on: Boolean, tag: String
                 label, style = Type.paramLabel, color = c.textDim,
                 maxLines = 1, softWrap = false, overflow = TextOverflow.Ellipsis,
             )
-            Text(if (on) "ON" else "OFF", style = Type.value, color = c.text, maxLines = 1)
+            Text(stringResource(if (on) R.string.switch_on else R.string.switch_off), style = Type.value, color = c.text, maxLines = 1)
         }
         Box(Modifier.width(WELL_W).fillMaxHeight().padding(Grid.INSET)) {
             OnOffWell(if (on) 1 else 0, tag) { i ->
@@ -105,11 +106,12 @@ private fun OnOffWell(value: Int, tag: String, onPick: (Int) -> Unit) {
     val well = RoundedCornerShape(Radii.M)
     val pill = RoundedCornerShape(Radii.S)
     val at by animateFloatAsState(value.toFloat(), label = "$tag-well")
+    val options = listOf(stringResource(R.string.switch_off), stringResource(R.string.switch_on))
     BoxWithConstraints(Modifier.fillMaxSize().clip(well).background(c.track).sink(well).padding(Grid.INSET)) {
-        val w = maxWidth / OPTIONS.size
+        val w = maxWidth / options.size
         Box(Modifier.offset(x = w * at).width(w).fillMaxHeight().lift(pill, Lift.RAISED).background(c.accent, pill))
         Row(Modifier.fillMaxSize()) {
-            OPTIONS.forEachIndexed { i, label ->
+            options.forEachIndexed { i, label ->
                 Box(
                     Modifier.weight(1f).fillMaxHeight().clip(pill).pressStart { if (i != value) haptics.segTap() }.clickable { onPick(i) }.testTag("${tag}_$i"),
                     contentAlignment = Alignment.Center,

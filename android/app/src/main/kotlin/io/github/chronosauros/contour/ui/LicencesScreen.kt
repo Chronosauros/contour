@@ -25,6 +25,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import io.github.chronosauros.contour.R
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -34,7 +36,6 @@ private val LICENCE_FILES = listOf("NOTICE", "THIRD_PARTY_NOTICES.md", "LICENSE"
 
 /** The repo-root PRIVACY.md, copied into assets/licences/ by the same build step (the one source of the in-app policy text). */
 private const val PRIVACY_FILE = "PRIVACY.md"
-private const val PRIVACY_URL = "https://contoureq.app/privacy/"
 
 /**
  * PRIVACY.md as blocks for the screen (heading?, text): a "#" line is a heading of its own, a blank line ends a paragraph,
@@ -63,15 +64,17 @@ private fun privacyBlocks(md: String): List<Pair<Boolean, String>> {
 fun LicencesScreen(onClose: () -> Unit) {
     BackHandler(onBack = onClose)
     val context = LocalContext.current
+    val notFound = stringResource(R.string.licences_not_found)
+    val privacyUrl = stringResource(R.string.privacy_url)
     val files = remember {
         LICENCE_FILES.map { name ->
             name to runCatching { context.assets.open("licences/$name").bufferedReader().use { it.readText() } }
-                .getOrDefault("(not found in this build)")
+                .getOrDefault(notFound)
         }
     }
     val privacy = remember {
         runCatching { context.assets.open("licences/$PRIVACY_FILE").bufferedReader().use { it.readText() } }
-            .getOrNull()?.let { privacyBlocks(it) } ?: listOf(false to "(not found in this build)")
+            .getOrNull()?.let { privacyBlocks(it) } ?: listOf(false to notFound)
     }
     val version = remember {
         runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull() ?: ""
@@ -85,15 +88,13 @@ fun LicencesScreen(onClose: () -> Unit) {
             ) {
                 item {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("ABOUT, PRIVACY & LICENCES", style = Type.rowName, modifier = Modifier.weight(1f))
-                        TextButton(onClick = onClose) { Text("CLOSE", style = Type.segment, color = pal.accent) }
+                        Text(stringResource(R.string.licences_title), style = Type.rowName, modifier = Modifier.weight(1f))
+                        TextButton(onClick = onClose) { Text(stringResource(R.string.action_close), style = Type.segment, color = pal.accent) }
                     }
                 }
                 item {
                     Text(
-                        "Contour $version\nCopyright 2026 Chronosaur. Licensed under the Apache License 2.0.\n" +
-                            "Source code: https://github.com/Chronosauros/contour\n" +
-                            "Unofficial - not affiliated with or endorsed by CrinEar or any other brand named in the app.",
+                        stringResource(R.string.licences_about, version, stringResource(R.string.source_code_url)),
                         style = MaterialTheme.typography.bodySmall,
                     )
                 }
@@ -105,10 +106,10 @@ fun LicencesScreen(onClose: () -> Unit) {
                     Box(
                         Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable {
                             // no INTERNET permission here: the browser fetches the page; no browser installed = nothing happens
-                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PRIVACY_URL))) }
+                            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(privacyUrl))) }
                         },
                         contentAlignment = Alignment.CenterStart,
-                    ) { Text("contoureq.app/privacy", style = Type.segment, color = pal.accent) }
+                    ) { Text(stringResource(R.string.privacy_url_label), style = Type.segment, color = pal.accent) }
                 }
                 item { HorizontalDivider() }
                 files.forEach { (name, text) ->

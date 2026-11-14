@@ -98,6 +98,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import io.github.chronosauros.contour.BuildConfig
+import io.github.chronosauros.contour.R
+import androidx.annotation.StringRes
+import androidx.compose.ui.res.stringResource
 import io.github.chronosauros.contour.core.Band
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.core.ShelfForm
@@ -143,6 +146,9 @@ private val ACTION_WIDTH = 96.dp
 /** At rest the card stops short of the right row edge; the strip behind it shows faint action icons (a hint to swipe left). The left edge has no such gap. */
 private val HINT_GAP = 22.dp
 private const val NEW_SLOT_ID = "library-new-slot"
+/** The index of SOFTER VOCALS among the first-run profiles ([io.github.chronosauros.contour.model.ProfileNames.seeds]) and the name it had before 1.6.1: the profile that hints the swipe. */
+private const val SEED_SOFTER_VOCALS = 1
+private const val LEGACY_HINT_NAME = "DUSK"
 private val SIDE = Grid.SIDE
 private val CARD = RoundedCornerShape(Radii.L)
 private val ON_DAC_RAIL = 5.dp
@@ -177,7 +183,7 @@ fun LibraryScreen(
     val prefs = remember { context.getSharedPreferences("ui", android.content.Context.MODE_PRIVATE) }
     var swiped by remember { mutableStateOf(prefs.getBoolean("swipeHintDone", false)) }
     var nudge by remember { mutableIntStateOf(0) }
-    val hintId = if (swiped) null else model.active.firstOrNull { it.name == "SOFTER VOCALS" || it.name == "DUSK" }?.id
+    val hintId = if (swiped) null else model.active.firstOrNull { it.name == model.names.seeds[SEED_SOFTER_VOCALS] || it.name == LEGACY_HINT_NAME }?.id
     LaunchedEffect(visible, hintId) {
         if (!visible || hintId == null) return@LaunchedEffect
         delay(900)
@@ -229,7 +235,7 @@ fun LibraryScreen(
                     Modifier.fillMaxWidth().height(Grid.ROW).padding(start = SIDE + 6.dp, end = SIDE + HINT_GAP),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("LIBRARY", style = Type.screenTitle, color = c.text)
+                    Text(stringResource(R.string.page_library), style = Type.screenTitle, color = c.text)
                     Spacer(Modifier.weight(1f))
                     DeviceStatus(device, actions::service)
                 }
@@ -240,15 +246,15 @@ fun LibraryScreen(
                 // (each step of a drag changes the list of profiles) recomposed every row of the Library behind it.
                 val rowActions = remember(p, actions) {
                     listOf(
-                        RowAction("ARCHIVE", "archive", Icons.Outlined.Archive) { actions.archive(p) },
-                        RowAction("DELETE", "delete", Icons.Outlined.Delete) { actions.delete(p) },
+                        RowAction(R.string.library_action_archive, "archive", Icons.Outlined.Archive, R.string.library_action_archive_description) { actions.archive(p) },
+                        RowAction(R.string.library_action_delete, "delete", Icons.Outlined.Delete, R.string.library_action_delete_description) { actions.delete(p) },
                     )
                 }
                 // owner 13.10.2026: SAVE first and on the full swipe, the mirror of ARCHIVE on the other side
                 val leftActions = remember(p, actions) {
                     listOf(
-                        RowAction("SAVE", "overwrite_sent", Icons.Outlined.Save, "Save profile") { actions.overwriteSent(p) },
-                        RowAction("RESTORE", "restore_sent", Icons.Outlined.Restore, "Restore profile to its saved version") { actions.restoreSent(p) },
+                        RowAction(R.string.library_action_save, "overwrite_sent", Icons.Outlined.Save, R.string.library_action_save_description) { actions.overwriteSent(p) },
+                        RowAction(R.string.library_action_restore, "restore_sent", Icons.Outlined.Restore, R.string.library_action_restore_description) { actions.restoreSent(p) },
                     )
                 }
                 SwipeRow(
@@ -277,7 +283,7 @@ fun LibraryScreen(
                 )
             }
             item(key = "empty-slot") {
-                val rowActions = remember(actions) { listOf(RowAction("SAVE ALL", "sync", Icons.Rounded.Sync, run = actions::syncAll)) }
+                val rowActions = remember(actions) { listOf(RowAction(R.string.library_action_save_all, "sync", Icons.Rounded.Sync, R.string.library_action_save_all_description, run = actions::syncAll)) }
                 SwipeRow(
                     p = null,
                     current = false,
@@ -304,7 +310,7 @@ fun LibraryScreen(
                             .testTag("archive_header"),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Text("ARCHIVE", style = Type.label, color = c.textDim)
+                        Text(stringResource(R.string.library_archive_header), style = Type.label, color = c.textDim)
                         Spacer(Modifier.width(10.dp))
                         Text("${archived.size}", style = Type.label, color = c.textMute)
                         Spacer(Modifier.weight(1f))
@@ -315,8 +321,8 @@ fun LibraryScreen(
                     items(archived, key = { it.id }) { p ->
                         val rowActions = remember(p, actions) {
                             listOf(
-                                RowAction("UNARCHIVE", "restore", Icons.Outlined.Unarchive) { actions.restore(p) },
-                                RowAction("DELETE", "delete", Icons.Outlined.Delete) { actions.delete(p) },
+                                RowAction(R.string.library_action_unarchive, "restore", Icons.Outlined.Unarchive, R.string.library_action_unarchive_description) { actions.restore(p) },
+                                RowAction(R.string.library_action_delete, "delete", Icons.Outlined.Delete, R.string.library_action_delete_description) { actions.delete(p) },
                             )
                         }
                         SwipeRow(
@@ -363,14 +369,15 @@ fun LibraryScreen(
                         .testTag("licences"),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text("ABOUT · PRIVACY · LICENCES · ${BuildConfig.VERSION_NAME}", style = Type.small, color = c.textMute)
+                    Text(stringResource(R.string.library_about_link, BuildConfig.VERSION_NAME), style = Type.small, color = c.textMute)
                 }
             }
         }
     }
 }
 
-class RowAction(val label: String, val tag: String, val icon: ImageVector, val description: String? = null, val run: () -> Unit)
+/** A button behind a swipe: [labelRes] under its icon, [descriptionRes] its accessibility action. */
+class RowAction(@StringRes val labelRes: Int, val tag: String, val icon: ImageVector, @StringRes val descriptionRes: Int, val run: () -> Unit)
 
 /** Which strip of a [SwipeRow] stands open: the left one (SAVE / RESTORE, a rightward drag) or the right one (ARCHIVE / DELETE, a leftward drag). */
 private enum class Side { NONE, LEFT, RIGHT }
@@ -488,6 +495,15 @@ private fun SwipeRow(
     val hasLeft = rememberUpdatedState(leftActions.isNotEmpty())
     val setOpen = rememberUpdatedState(onOpen)
     val name = p?.name ?: "empty_slot"
+    // the accessibility words of the row (the semantics block below is not composable)
+    val rowDescription = when {
+        p == null -> stringResource(R.string.library_row_new)
+        dim -> stringResource(if (edited) R.string.library_row_archived_edited else R.string.library_row_archived, p.name)
+        else -> stringResource(if (edited) R.string.library_row_normal_edited else R.string.library_row_normal, p.name)
+    }
+    val tapLabel = stringResource(if (p == null) R.string.library_row_create else R.string.library_row_select)
+    val editLabel = stringResource(R.string.library_row_edit)
+    val actionDescriptions = (rowActions + leftActions).map { stringResource(it.descriptionRes) }
     val rowId = p?.id ?: NEW_SLOT_ID
     DisposableEffect(rowId, coords) { onDispose { coords.remove(rowId) } }
 
@@ -613,13 +629,11 @@ private fun SwipeRow(
             }
             .semantics(mergeDescendants = true) {
                 selected = current
-                contentDescription = if (p == null) "New profile; swipe left to save all profiles"
-                    else if (dim) "${p.name}, archived${if (edited) ", edited" else ""}" else "${p.name}${if (edited) ", edited" else ""}. Swipe left: archive, delete. Swipe right: save, restore to saved."
-                onClick(label = if (p == null) "Create profile" else "Select profile") { tap.value(); true }
-                if (p != null) onLongClick(label = "Edit profile") { longPress.value(); true }
-                customActions = (rowActions + leftActions).map { a ->
-                    CustomAccessibilityAction(if (p == null) "Save all profiles"
-                        else a.description ?: (a.label.lowercase().replaceFirstChar { it.uppercase() } + " profile")) {
+                contentDescription = rowDescription
+                onClick(label = tapLabel) { tap.value(); true }
+                if (p != null) onLongClick(label = editLabel) { longPress.value(); true }
+                customActions = (rowActions + leftActions).mapIndexed { index, a ->
+                    CustomAccessibilityAction(actionDescriptions[index]) {
                         setOpen.value(Side.NONE)
                         a.run()
                         true
@@ -717,7 +731,7 @@ private fun SwipeRow(
                     if (onDac) {
                         Spacer(Modifier.height(3.dp))
                         Text(
-                            "ON DAC",
+                            stringResource(R.string.library_on_dac),
                             style = Type.small,
                             color = c.accent,
                             maxLines = 1,
@@ -789,7 +803,7 @@ private fun ActionsLayer(
             }
             actions.forEachIndexed { i, a ->
                 Text(
-                    a.label,
+                    stringResource(a.labelRes),
                     style = Type.segment,
                     color = if (i == n - 1) c.bg else c.text,
                     maxLines = 1,

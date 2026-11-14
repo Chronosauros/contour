@@ -26,12 +26,14 @@ import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import io.github.chronosauros.contour.core.Band
 import io.github.chronosauros.contour.core.Dsp
+import io.github.chronosauros.contour.R
 import io.github.chronosauros.contour.core.ShelfForm
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
 import io.github.chronosauros.contour.usb.DeviceController
@@ -49,22 +51,24 @@ private val LED_ON = Color(0xFF46D17A)
 fun DeviceStatus(device: DeviceController, onService: () -> Unit, modifier: Modifier = Modifier) {
     val haptics = LocalHaptics.current
     val p = pal
-    val label = when {
-        device.busy -> "BUSY"
-        device.tapToConnect -> "TAP TO CONNECT"
-        device.link == Link.NO_DAC -> "NO DAC"
-        else -> "CONNECTED"
-    }
+    val noDac = !device.busy && !device.tapToConnect && device.link == Link.NO_DAC
+    val label = stringResource(when {
+        device.busy -> R.string.status_busy
+        device.tapToConnect -> R.string.status_tap_to_connect
+        noDac -> R.string.status_no_dac
+        else -> R.string.status_connected
+    })
     val on = device.link == Link.CONNECTED
     val shape = RoundedCornerShape(Radii.M)
     val textMeasurer = rememberTextMeasurer()
+    val clearEq = stringResource(R.string.action_clear_eq)
     val compactWidth = with(LocalDensity.current) {
-        textMeasurer.measure("CLEAR EQ", style = Type.segment).size.width.toDp()
+        textMeasurer.measure(clearEq, style = Type.segment).size.width.toDp()
     } + 32.dp
     Box(
         modifier
             .height(Grid.ROW - Grid.INSET * 2)
-            .then(if (label == "NO DAC") Modifier.width(compactWidth) else Modifier.widthIn(min = compactWidth))
+            .then(if (noDac) Modifier.width(compactWidth) else Modifier.widthIn(min = compactWidth))
             .lift(shape, Lift.RAISED)
             .clip(shape)
             .background(p.surface)

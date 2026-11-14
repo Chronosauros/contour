@@ -67,6 +67,9 @@ class FiioCodec(val config: FiioConfig) {
         fun slotName(text: String, length: Int = NAME_LENGTH): String =
             java.text.Normalizer.normalize(text.replace('ł', 'l').replace('Ł', 'L'), java.text.Normalizer.Form.NFD)
                 .uppercase().filter { it in 'A'..'Z' || it in '0'..'9' }.take(length)
+        /** [text] can name a USER slot: every letter is Latin (accents are dropped by [slotName]). A name in another script
+         * (Chinese, Cyrillic...) would lose its letters - "配置 4" would become "4" over the slot's own name - so it is not written. */
+        fun nameFitsSlot(text: String): Boolean = text.none { it.isLetter() && Character.UnicodeScript.of(it.code) != Character.UnicodeScript.LATIN }
         /** SnowSky name reply ([FiioConfig.nameBySlotId]): LEN says 9, the frame carries the slot id plus a 9-byte field
          * (8 name bytes, then one stale byte), like the KA15's LEN 8 with IDX + 9 bytes. */
         private const val SLOT_NAME_REPLY_LEN = 9

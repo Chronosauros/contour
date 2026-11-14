@@ -613,6 +613,17 @@ class NativeFiioTest {
         assertEquals("BAND 1: GAIN 13 DB - EDIT BAND", DeviceTarget.blockLabel(DeviceTarget.KA15.issues(profile(listOf(peak().copy(gainDb = 13.0))))))
     }
 
+    @Test fun `a profile name in another script never becomes a USER slot name`() {
+        // Tiny A 07.11.2026: the Chinese edition's default name 配置 4 renamed the owner's slot TEAPROOG to "4"
+        assertFalse(FiioCodec.nameFitsSlot("配置 4"))
+        assertFalse(FiioCodec.nameFitsSlot("低频增强"))
+        assertFalse(FiioCodec.nameFitsSlot("Профиль 2"))
+        assertTrue(FiioCodec.nameFitsSlot("TEAPROOG"))
+        assertTrue(FiioCodec.nameFitsSlot("Bass boost 2"))
+        assertTrue(FiioCodec.nameFitsSlot("Żółć"))
+        assertEquals("ZOLC", FiioCodec.slotName("Żółć", 8))
+    }
+
     /** LS 100 Hz +6 dB Q 3 peaks at +11.09 dB in the Q form the FiiO DACs play (+7.16 dB in the slope form): AUTO is -12 dB, and the register is that plus the DAC's own preamp offset. */
     @Test fun `FiiO AUTO uses the Q form the DAC plays - K13 R2R (offset 0) writes register minus 12, KA15 and JA11 (offset 12) write register 0`() {
         val p = Profile("p", "p", bands = listOf(Band("ls", FilterType.LOW_SHELF, 100.0, 6.0, 3.0)), preampDb = null, createdAt = 0, updatedAt = 0)

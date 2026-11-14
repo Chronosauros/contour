@@ -102,6 +102,9 @@ import io.github.chronosauros.contour.ui.tune.TuneScreen
 import io.github.chronosauros.contour.usb.DeviceController
 import io.github.chronosauros.contour.usb.Link
 import io.github.chronosauros.contour.usb.ResetUi
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
+import io.github.chronosauros.contour.R
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.filterNotNull
@@ -111,8 +114,7 @@ import kotlinx.coroutines.launch
 private val BAR_H = Grid.ROW
 private val BAR_EDGE = Grid.SIDE
 
-private class UndoVisuals(override val message: String) : SnackbarVisuals {
-    override val actionLabel = "UNDO"
+private class UndoVisuals(override val message: String, override val actionLabel: String) : SnackbarVisuals {
     override val withDismissAction = false
     override val duration = SnackbarDuration.Indefinite
 }
@@ -141,9 +143,9 @@ fun ContourApp(
         Box(Modifier.fillMaxSize().background(pal.bg).padding(24.dp), contentAlignment = Alignment.Center) {
             androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 if (model.loadError) {
-                    Text("LIBRARY COULD NOT BE READ. YOUR FILES WERE NOT CHANGED.", color = pal.text)
-                    AppButton("RETRY LOADING", { model.load() })
-                } else Text("LOADING LIBRARY…", color = pal.text)
+                    Text(stringResource(R.string.app_library_load_error), color = pal.text)
+                    AppButton(stringResource(R.string.app_retry_loading), { model.load() })
+                } else Text(stringResource(R.string.app_loading_library), color = pal.text)
             }
         }
         return
@@ -240,10 +242,10 @@ fun ContourApp(
             }
         }
 
-        fun undoable(text: String, onUndo: () -> Unit, onGone: () -> Unit) {
+        fun undoable(text: UiText, onUndo: () -> Unit, onGone: () -> Unit) {
             snackbar.currentSnackbarData?.dismiss()
             scope.launch {
-                val v = UndoVisuals(text)
+                val v = UndoVisuals(text.resolve(context), context.getString(R.string.action_undo))
                 val timer = launch {
                     while (snackbar.currentSnackbarData?.visuals !== v) delay(50)
                     delay(5000)
@@ -255,15 +257,15 @@ fun ContourApp(
             }
         }
 
-        fun toast(text: String) {
+        fun toast(text: UiText) {
             snackbar.currentSnackbarData?.dismiss()
-            scope.launch { snackbar.showSnackbar(text, duration = SnackbarDuration.Short) }
+            scope.launch { snackbar.showSnackbar(text.resolve(context), duration = SnackbarDuration.Short) }
         }
 
         // Library RESTORE / SAVE: nothing to do says so; a change can be taken back with UNDO. True when something changed.
-        fun sentChange(r: AppModel.SentChange, done: String): Boolean = when (r) {
-            AppModel.SentChange.NoCheckpoint -> { toast("NO SAVED VERSION YET"); false }
-            AppModel.SentChange.AlreadyThere -> { toast("ALREADY SAVED"); false }
+        fun sentChange(r: AppModel.SentChange, done: UiText): Boolean = when (r) {
+            AppModel.SentChange.NoCheckpoint -> { toast(UiText.res(R.string.library_no_saved_version)); false }
+            AppModel.SentChange.AlreadyThere -> { toast(UiText.res(R.string.library_already_saved)); false }
             is AppModel.SentChange.Changed -> { undoable(done, onUndo = r.undo, onGone = {}); true }
         }
 
@@ -274,14 +276,14 @@ fun ContourApp(
             if (notice != null) {
                 model.notice = null
                 snackbar.currentSnackbarData?.dismiss()
-                // A bare "IMPORTED n FILTERS" stays 4 s instead of 10; a line with an import report (" - ...") has to be readable, so it keeps the long time.
-                scope.launch { snackbar.showSnackbar(notice, duration = if (" - " in notice) SnackbarDuration.Long else SnackbarDuration.Short) }
+                // A bare "IMPORTED n FILTERS" stays 4 s instead of 10; a line with an import report has to be readable, so it keeps the long time ([Notice.long]).
+                scope.launch { snackbar.showSnackbar(notice.text.resolve(context), duration = if (notice.long) SnackbarDuration.Long else SnackbarDuration.Short) }
             }
         }
 
         val recentlyDeleted = model.recentlyDeleted
         LaunchedEffect(recentlyDeleted?.id) {
-            if (recentlyDeleted != null) undoable("DELETED ${recentlyDeleted.name}",
+            if (recentlyDeleted != null) undoable(UiText.res(R.string.library_deleted, recentlyDeleted.name),
                 onUndo = { model.undoDelete(recentlyDeleted.id) },
                 onGone = { model.finishDelete(recentlyDeleted.id) })
         }
@@ -296,11 +298,11 @@ fun ContourApp(
                 }
                 override fun archive(p: Profile) {
                     model.setArchived(p.id, true)
-                    undoable("ARCHIVED ${p.name}", onUndo = { model.setArchived(p.id, false) }, onGone = {})
+                    undoable(UiText.res(R.string.library_archived, p.name), onUndo = { model.setArchived(p.id, false) }, onGone = {})
                 }
                 override fun restore(p: Profile) { model.setArchived(p.id, false) }
-                override fun restoreSent(p: Profile): Boolean = sentChange(model.restoreSent(p.id), "RESTORED TO SAVED")
-                override fun overwriteSent(p: Profile): Boolean = sentChange(model.overwriteSent(p.id), "SAVED")
+                override fun restoreSent(p: Profile): Boolean = sentChange(model.restoreSent(p.id), UiText.res(R.string.library_restored_to_saved))
+                override fun overwriteSent(p: Profile): Boolean = sentChange(model.overwriteSent(p.id), UiText.res(R.string.library_saved))
                 override fun delete(p: Profile) {
                     model.delete(p.id)
                 }
@@ -384,8 +386,8 @@ fun ContourApp(
                         .background(pal.surface2, RoundedCornerShape(Radii.L)).padding(start = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(if (model.saveError) "NOT SAVED - CHECK STORAGE" else "SAVING DELETE…", style = Type.label, modifier = Modifier.weight(1f))
-                    if (model.saveError) TextButton(onClick = { model.retrySave() }) { Text("RETRY", style = Type.segment, color = pal.accent) }
+                    Text(stringResource(if (model.saveError) R.string.app_not_saved else R.string.app_saving_delete), style = Type.label, modifier = Modifier.weight(1f))
+                    if (model.saveError) TextButton(onClick = { model.retrySave() }) { Text(stringResource(R.string.action_retry), style = Type.segment, color = pal.accent) }
                 }
             }
             if (service) DebugScreen(device) { service = false }
@@ -399,11 +401,9 @@ fun ContourApp(
                 containerColor = pal.surface2,
                 titleContentColor = pal.text,
                 textContentColor = pal.textDim,
-                title = { Text("SAVE ALL PROFILES?", style = Type.rowName) },
+                title = { Text(stringResource(R.string.library_save_all_title), style = Type.rowName) },
                 text = {
-                    Text("You are about to save all current profiles as their SAVED versions. " +
-                        "This replaces their previous saved versions. " +
-                        "There is no Undo button. Are you sure?")
+                    Text(stringResource(R.string.library_save_all_text))
                 },
                 confirmButton = {
                     TextButton(
@@ -415,15 +415,15 @@ fun ContourApp(
                             if (count > 0) {
                                 snackbar.currentSnackbarData?.dismiss()
                                 scope.launch {
-                                    snackbar.showSnackbar("$count PROFILES SAVED", duration = SnackbarDuration.Short)
+                                    snackbar.showSnackbar(context.resources.getQuantityString(R.plurals.library_profiles_saved, count, count), duration = SnackbarDuration.Short)
                                 }
                             }
                         },
-                    ) { Text("SAVE ALL", style = Type.segment, color = pal.accent) }
+                    ) { Text(stringResource(R.string.library_save_all), style = Type.segment, color = pal.accent) }
                 },
                 dismissButton = {
                     TextButton(onClick = { confirmSync = false }, modifier = Modifier.testTag("sync_all_cancel")) {
-                        Text("CANCEL", style = Type.segment, color = pal.textDim)
+                        Text(stringResource(R.string.action_cancel), style = Type.segment, color = pal.textDim)
                     }
                 },
                 modifier = Modifier.testTag("sync_all_dialog"),
@@ -471,24 +471,25 @@ private fun IncomingDialog(model: AppModel, incoming: Incoming, onAnswer: (impor
         containerColor = pal.surface2,
         titleContentColor = pal.text,
         textContentColor = pal.textDim,
-        title = { Text(if (ok) "IMPORT EQ FILE?" else "CANNOT IMPORT", style = Type.rowName) },
+        title = { Text(stringResource(if (ok) R.string.incoming_title else R.string.incoming_title_cannot), style = Type.rowName) },
         text = {
             Text(
                 if (eq != null && ok) {
                     val n = eq.bands.size
-                    "${incoming.name ?: "New profile"}: $n filter${if (n == 1) "" else "s"}" + (report?.let { " - $it" } ?: "") +
-                        ". It is added as a new profile; your other profiles stay as they are."
-                } else incoming.error ?: (report ?: ImportFile.NO_FILTERS),
+                    val name = incoming.name ?: stringResource(R.string.incoming_default_name)
+                    if (report == null) pluralStringResource(R.plurals.incoming_summary, n, name, n)
+                    else pluralStringResource(R.plurals.incoming_summary_report, n, name, n, report.asString())
+                } else (incoming.error ?: report ?: ImportFile.NO_FILTERS).asString(),
             )
         },
         confirmButton = {
             TextButton(onClick = { onAnswer(ok) }, modifier = Modifier.testTag("import_confirm")) {
-                Text(if (ok) "IMPORT" else "OK", style = Type.segment, color = pal.accent)
+                Text(stringResource(if (ok) R.string.incoming_import else R.string.action_ok), style = Type.segment, color = pal.accent)
             }
         },
         dismissButton = if (ok) { {
             TextButton(onClick = { onAnswer(false) }, modifier = Modifier.testTag("import_cancel")) {
-                Text("CANCEL", style = Type.segment, color = pal.textDim)
+                Text(stringResource(R.string.action_cancel), style = Type.segment, color = pal.textDim)
             }
         } } else null,
         modifier = Modifier.testTag("import_dialog"),
@@ -505,7 +506,7 @@ private fun PageBar(pager: PagerState, pages: List<Int>, onPage: (Int) -> Unit, 
     val c = pal
     val haptics = LocalHaptics.current
     val n = pages.size
-    val name = when (pages.getOrNull(pager.settledPage)) { Page.DAC -> "page dac"; Page.TUNE -> "page tune"; else -> "page library" }
+    val name = stringResource(when (pages.getOrNull(pager.settledPage)) { Page.DAC -> R.string.page_description_dac; Page.TUNE -> R.string.page_description_tune; else -> R.string.page_description_library })
     val track = RoundedCornerShape(Radii.L)
     val knob = RoundedCornerShape(Radii.M)
     val pos = (pager.currentPage + pager.currentPageOffsetFraction).coerceIn(0f, (n - 1).toFloat())
@@ -539,9 +540,9 @@ private fun PageBar(pager: PagerState, pages: List<Int>, onPage: (Int) -> Unit, 
             val none = remember { MutableInteractionSource() }
             pages.forEachIndexed { i, page ->
                 val (label, icon, tag) = when (page) {
-                    Page.DAC -> Triple("DAC", Icons.Outlined.Tune, "page_bar_dac")
-                    Page.TUNE -> Triple("EQ", Icons.Outlined.GraphicEq, "page_bar_tune")
-                    else -> Triple("LIBRARY", Icons.Outlined.LibraryMusic, "page_bar_library")
+                    Page.DAC -> Triple(stringResource(R.string.page_dac), Icons.Outlined.Tune, "page_bar_dac")
+                    Page.TUNE -> Triple(stringResource(R.string.page_eq), Icons.Outlined.GraphicEq, "page_bar_tune")
+                    else -> Triple(stringResource(R.string.page_library), Icons.Outlined.LibraryMusic, "page_bar_library")
                 }
                 // on the knob (onAccent) when the pager is on its page, dim (textDim) a whole page away
                 PageHalf(

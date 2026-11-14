@@ -14,6 +14,8 @@ import io.github.chronosauros.contour.core.isPass
 import io.github.chronosauros.contour.core.Preamp
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.core.DeviceTarget
+import io.github.chronosauros.contour.R
+import io.github.chronosauros.contour.ui.UiText
 import java.util.UUID
 import kotlin.math.ln
 import kotlin.math.sqrt
@@ -35,6 +37,17 @@ object Page {
     const val DAC = 2
 }
 
+/** A one-line message for the snackbar. [long]: it carries a report the person has to be able to read, so it stays longer than a bare message. */
+class Notice(val text: UiText, val long: Boolean = false)
+
+/**
+ * The words a new profile starts with, given by the app shell from the resources of the build: the three first-run profiles, the name of the n-th new profile, and the headphones line of a
+ * profile made from what the DAC holds. They are stored in the profile when it is made, so a library keeps its names whatever the words of the build become later.
+ */
+class ProfileNames(val seeds: List<String>, val profile: (Int) -> String, val fromDac: String) {
+    init { require(seeds.size == 3) }
+}
+
 /**
  * The library and the editing state: every profile (active and archived) in the saved order, the current
  * one, the selected band. Every edit replaces the profile (immutable [Profile]) and schedules a debounced
@@ -46,7 +59,7 @@ object Page {
  * [restoreSent] / [overwriteSent] do the same or replace it for any row).
  * A touch on Tune ([beginGesture] .. [endGesture]) is one step however many values the drag went through.
  */
-class AppModel(private val store: ProfileStore, private val scope: CoroutineScope, private val beforeLoad: () -> Unit = {}) {
+class AppModel(private val store: ProfileStore, private val scope: CoroutineScope, val names: ProfileNames, private val beforeLoad: () -> Unit = {}) {
     var protocol by mutableStateOf(DeviceTarget.MICRO)
     val maxBands: Int get() = protocol.caps.bands
     fun shownPreamp(p: Profile): Double = protocol.shownPreamp(p)
@@ -69,11 +82,11 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     var pageRequest by mutableStateOf<Int?>(null)
 
     /** A one-line message for the snackbar (what an import from a file did); the shell shows it once and clears it. */
-    var notice by mutableStateOf<String?>(null)
+    var notice by mutableStateOf<Notice?>(null)
 
     /** A short line shown on the Tune graph for a moment, then faded (a profile made from the DAC); a new line restarts it. */
-    var graphNotice by mutableStateOf<Pair<String, Long>?>(null)
-    fun showOnGraph(text: String) { graphNotice = text to System.nanoTime() }
+    var graphNotice by mutableStateOf<Pair<UiText, Long>?>(null)
+    fun showOnGraph(text: UiText) { graphNotice = text to System.nanoTime() }
 
     val current: Profile? by derivedStateOf { profiles.firstOrNull { it.id == currentId } }
     val active: List<Profile> by derivedStateOf { profiles.filter { !it.archived } }
@@ -164,8 +177,8 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
                         // A previous launch may have written one or two seed files then failed. Keep their
                         // ids and finish only missing roles; unrelated pre-state libraries are never seeded.
                         val now = System.currentTimeMillis()
-                        val seeds = EXAMPLES.mapIndexed { i, (name, icon, bands) ->
-                            Profile(newId(), name, "", icon, bands.map { it.copy(id = bandId()) }, null, now, now + i)
+                        val seeds = EXAMPLES.mapIndexed { i, (icon, bands) ->
+                            Profile(newId(), names.seeds[i], "", icon, bands.map { it.copy(id = bandId()) }, null, now, now + i)
                         }
                         for (seed in seeds) if (list.none { it.name == seed.name }) {
                             store.save(seed)
@@ -210,7 +223,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     private fun isOriginalSeed(p: Profile): Boolean {
         if (p.archived || p.preampDb != null) return false
         val shape = p.bands.map { it.copy(id = "") }
-        return EXAMPLES.any { (name, icon, bands) -> p.name == name && p.subtitle == "" && p.icon == icon && shape == bands }
+        return EXAMPLES.withIndex().any { (i, example) -> p.name == names.seeds[i] && p.subtitle == "" && p.icon == example.first && shape == example.second }
     }
 
     fun newId(): String = UUID.randomUUID().toString().substring(0, 13)
@@ -563,13 +576,14 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     }
 
     /** Why [preampAccepted] says no for [db] (the planner's own refusal text where it has one), or null when it takes it. */
-    fun preampRefusal(bands: List<Band>, db: Double): String? {
+    fun preampRefusal(bands: List<Band>, db: Double): UiText? {
         if (preampAccepted(bands, db)) return null
-        if (!db.isFinite()) return "Enter a number"
+        if (!db.isFinite()) return UiText.res(R.string.preamp_enter_number)
         val wp = protocol.usesWalkPlayRules
-        val base = (if (wp) protocol.preampRefusal(bands, db) ?: protocol.preampRefusal(bands, Preamp.floorTo(db)) else null) ?: "Enter a value within the range above"
+        val reason = if (wp) protocol.preampRefusal(bands, db) ?: protocol.preampRefusal(bands, Preamp.floorTo(db)) else null
+        val base: UiText = reason?.let { UiText.Core(it) } ?: UiText.res(R.string.preamp_enter_in_range)
         val near = if (!wp) null else nearestAcceptedPreamp(bands, db)
-        return if (near == null) base else "$base Nearest accepted: ${if (near == Math.rint(near)) near.toLong().toString() else near.toString()}."
+        return if (near == null) base else UiText.res(R.string.preamp_refusal_nearest, base, if (near == Math.rint(near)) near.toLong().toString() else near.toString())
     }
 
     /** The 0.1 dB step closest to [db] that [preampAccepted] takes, or null within 40 dB. */
@@ -581,9 +595,9 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     }
 
     /** Why the device would not take the STORED [db] as it is (the planner's own rule, no rounding of it), or null. */
-    fun storedPreampRefusal(bands: List<Band>, db: Double): String? =
-        protocol.preampRefusal(bands, db)
-            ?: if (!protocol.usesWalkPlayRules && !(db.isFinite() && db in protocol.preampMin..protocol.preampMax)) "Enter a value within the range above" else null
+    fun storedPreampRefusal(bands: List<Band>, db: Double): UiText? =
+        protocol.preampRefusal(bands, db)?.let { UiText.Core(it) }
+            ?: if (!protocol.usesWalkPlayRules && !(db.isFinite() && db in protocol.preampMin..protocol.preampMax)) UiText.res(R.string.preamp_enter_in_range) else null
 
     fun rename(id: String, name: String) = update(id) {
         it.copy(name = name.trim().take(NAME_MAX).ifEmpty { it.name })
@@ -595,10 +609,13 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
 
     // ---- library ------------------------------------------------------------------------------------
 
+    /** [name] is one this build gives a new profile by itself (PROFILE 4), not one the person chose. */
+    fun isDefaultName(name: String): Boolean = (1..profiles.size + 100).any { names.profile(it) == name }
+
     private fun nextDefaultName(): String {
         var n = active.size + 1
-        while (profiles.any { it.name == "PROFILE $n" }) n++
-        return "PROFILE $n"
+        while (profiles.any { it.name == names.profile(n) }) n++
+        return names.profile(n)
     }
 
     /**
@@ -714,9 +731,9 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         /** The first-run library (since 1.6.1): three general profiles, no headphone names (band ids are given when seeded).
          *  Whole-dB shelf gains stay on the Micro's preamp grid; the Allegro Mini, PEAK only, takes SOFTER VOCALS alone. */
         private val EXAMPLES = listOf(
-            Triple("BASS BOOST", "speaker", listOf(Band("", FilterType.LOW_SHELF, 105.0, 5.0, 0.7))),
-            Triple("SOFTER VOCALS", "leaf", listOf(Band("", FilterType.PEAK, 3196.0, -3.0, 0.85), Band("", FilterType.PEAK, 6001.0, -1.2, 2.06))),
-            Triple("TREBLE BOOST", "sun", listOf(Band("", FilterType.HIGH_SHELF, 7000.0, 4.0, 0.7))),
+            "speaker" to listOf(Band("", FilterType.LOW_SHELF, 105.0, 5.0, 0.7)),
+            "leaf" to listOf(Band("", FilterType.PEAK, 3196.0, -3.0, 0.85), Band("", FilterType.PEAK, 6001.0, -1.2, 2.06)),
+            "sun" to listOf(Band("", FilterType.HIGH_SHELF, 7000.0, 4.0, 0.7)),
         )
     }
 }

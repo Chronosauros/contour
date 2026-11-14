@@ -8,6 +8,16 @@ plugins {
 
 providers.gradleProperty("contour.buildRoot").orNull?.let { layout.buildDirectory.set(file("$it/app")) }
 
+// Review tool, NOT a release: -Pcontour.cnPreview=true turns the "perf" build into a preview of the Chinese edition with the simulated DAC (`--es simulate`), for screenshots without hardware:
+// the words of src/cn/res replace the English ones (perf gets that folder as resources), the package is io.github.chronosauros.contour.cn.perf (it must end in ".perf": MainActivity.reviewBuild
+// looks at the suffix) and the launcher name is "Contour CN Private". Without the property perf is exactly what it always was. Build it in its own build root, never beside the release:
+//   mac-build.sh <android dir> contour-cn-preview :app:assemblePerf -Pcontour.cnPreview=true
+val cnPreview = providers.gradleProperty("contour.cnPreview").orNull == "true"
+
+// The Chinese edition's own fix number on top of the stable version: a fix of the cn edition alone (translation, a cn-only bug) ships as
+// versionCode = stable x 100 + CN_FIX and versionName <stable>-cn.<CN_FIX>; back to 0 with every new stable version.
+val CN_FIX = 0
+
 // Release signing, maintainer only: -Pcontour.signing=<file.properties> with storeFile (relative to that file),
 // storePassword, keyAlias and keyPassword. Without it the release APK comes out unsigned - sign it with your own key.
 val signingFile = providers.gradleProperty("contour.signing").orNull?.let { file(it) }
@@ -51,9 +61,9 @@ android {
         // Review hooks in MainActivity work only here and in debug builds. Signed with the build machine's debug key.
         create("perf") {
             initWith(getByName("release"))
-            applicationIdSuffix = ".perf"
-            versionNameSuffix = "-perf"
-            manifestPlaceholders["perfLabel"] = "Contour Private"
+            applicationIdSuffix = if (cnPreview) ".cn.perf" else ".perf"
+            versionNameSuffix = if (cnPreview) "-cn-perf" else "-perf"
+            manifestPlaceholders["perfLabel"] = if (cnPreview) "Contour CN Private" else "Contour Private"
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += "release"
         }
@@ -67,6 +77,16 @@ android {
             manifestPlaceholders["betaLabel"] = "Contour Beta"
             matchingFallbacks += "release"
         }
+        // "cn": the Chinese edition, never published on Google Play. The release build under its own package (io.github.chronosauros.contour.cn), the release signature and the release code
+        // (R8, not debuggable, the simulator stub of src/release/kotlin); its words are src/cn/res/values/strings.xml, which replaces the English ones of src/main (and turns
+        // `translate_core_text` on, so the messages of :core are shown from resources too). The launcher name is app_name there.
+        //   android/wsl-build.sh :app:assembleCn  ->  io.github.chronosauros.contour.cn, versionCode = stable x 100 (see onVariants below)
+        create("cn") {
+            initWith(getByName("release"))
+            applicationIdSuffix = ".cn"
+            versionNameSuffix = if (CN_FIX > 0) "-cn.$CN_FIX" else "-cn"
+            matchingFallbacks += "release"
+        }
     }
 
     // The simulated DAC of the review builds (`--es simulate`, MainActivity) is src/perf/kotlin: perf compiles it as its own source set and debug is given the same folder. Release and beta
@@ -74,6 +94,9 @@ android {
     sourceSets {
         getByName("debug").kotlin.srcDir("src/perf/kotlin")
         getByName("beta").kotlin.srcDir("src/release/kotlin")
+        getByName("cn").kotlin.srcDir("src/release/kotlin")
+        // Review preview of the Chinese edition (see cnPreview above): a build type's resources beat main's, so these words win
+        if (cnPreview) getByName("perf").res.srcDir("src/cn/res")
     }
 
     // No AGP dependency-info block in the APK signature (it is encrypted for Google Play only; F-Droid rejects it).
@@ -171,6 +194,11 @@ androidComponents {
     onVariants { variant ->
         variant.sources.assets?.addGeneratedSourceDirectory(copyLicences, CopyLicences::outputDir)
         variant.sources.res?.addGeneratedSourceDirectory(generateUsbDeviceFilter, GenerateUsbDeviceFilter::outputDir)
+        // The Chinese build has its own line of version numbers: stable versionCode x 100 (+ a fix of the translation alone), so a corrected translation can be released without a new stable
+        // version; it is a different package, so it never competes with the stable app's codes.
+        if (variant.buildType == "cn") {
+            variant.outputs.forEach { output -> output.versionCode.set(android.defaultConfig.versionCode!! * 100 + CN_FIX) }
+        }
     }
 }
 

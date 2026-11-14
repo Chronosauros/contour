@@ -7,6 +7,8 @@ import android.provider.OpenableColumns
 import androidx.core.content.IntentCompat
 import io.github.chronosauros.contour.core.ApoText
 import io.github.chronosauros.contour.core.ImportedEq
+import io.github.chronosauros.contour.R
+import io.github.chronosauros.contour.ui.UiText
 import java.io.ByteArrayOutputStream
 
 /**
@@ -17,7 +19,7 @@ import java.io.ByteArrayOutputStream
 data class Incoming(
     val name: String?,
     val eq: ImportedEq?,
-    val error: String?,
+    val error: UiText?,
     /** Where it came from, to read it again after the Activity is recreated while the dialog is open: a content URI, or the shared text with its subject. */
     val uri: String? = null,
     val text: String? = null,
@@ -29,10 +31,10 @@ object ImportFile {
     /** An EQ text is a few KB; anything bigger is not one. */
     const val MAX_BYTES = 256 * 1024
 
-    const val UNREADABLE = "Could not read that file."
-    const val NOT_CONTENT = "Contour only opens files handed over by the system (content://), not file paths."
-    const val TOO_BIG = "That file is too big for an EQ text (over 256 KB)."
-    const val NO_FILTERS = "No EQ filters found in that file. Contour reads .txt from squig.link, graph.hangout.audio, AutoEQ and Equalizer APO."
+    val UNREADABLE: UiText get() = UiText.res(R.string.import_error_unreadable)
+    val NOT_CONTENT: UiText get() = UiText.res(R.string.import_error_not_content)
+    val TOO_BIG: UiText get() = UiText.res(R.string.import_error_too_big)
+    val NO_FILTERS: UiText get() = UiText.res(R.string.import_error_no_filters)
 
     /** UTF-8 (a BOM is dropped); the UTF-16 files Windows Notepad can save are read too. */
     fun decode(bytes: ByteArray): String {
@@ -45,7 +47,7 @@ object ImportFile {
     }
 
     /** The file's text, or null with the reason in the second value. Blocking: call off the main thread. */
-    private fun read(resolver: ContentResolver, uri: Uri): Pair<String?, String?> = try {
+    private fun read(resolver: ContentResolver, uri: Uri): Pair<String?, UiText?> = try {
         resolver.openInputStream(uri)?.use { input ->
             val out = ByteArrayOutputStream()
             val chunk = ByteArray(8192)
@@ -114,12 +116,12 @@ object ImportFile {
         val raw = incoming.eq ?: return false
         val (eq, report) = Importer.fit(raw, model.protocol)
         if (eq.bands.isEmpty()) {
-            model.notice = "NOTHING TO IMPORT" + (report?.let { " - $it" } ?: "")
+            model.notice = Notice(if (report == null) UiText.res(R.string.import_nothing) else UiText.res(R.string.import_nothing_report, report), long = report != null)
             return false
         }
         model.create(eq.bands, eq.preampDb, name = incoming.name)
         val n = eq.bands.size
-        model.notice = "IMPORTED $n FILTER${if (n == 1) "" else "S"}" + (report?.let { " - $it" } ?: "")
+        model.notice = Notice(if (report == null) UiText.plural(R.plurals.import_imported, n, n) else UiText.plural(R.plurals.import_imported_report, n, n, report), long = report != null)
         return true
     }
 }

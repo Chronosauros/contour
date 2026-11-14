@@ -60,6 +60,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -90,6 +91,9 @@ import io.github.chronosauros.contour.model.AppModel
 import io.github.chronosauros.contour.model.Page
 import io.github.chronosauros.contour.model.DacEditor
 import io.github.chronosauros.contour.model.Sender
+import io.github.chronosauros.contour.R
+import io.github.chronosauros.contour.ui.UiText
+import io.github.chronosauros.contour.ui.asString
 import io.github.chronosauros.contour.ui.AppButton
 import io.github.chronosauros.contour.ui.Grid
 import io.github.chronosauros.contour.ui.Lift
@@ -176,7 +180,7 @@ fun TuneScreen(model: AppModel, device: DeviceController, sender: Sender, editor
             Header(model, p, sender, actions, false)
             Box(Modifier.fillMaxWidth().weight(1f).testTag("tune_empty"), contentAlignment = Alignment.Center) {
                 Text(
-                    "NO PROFILE\nSwipe to the Library to choose or create one.",
+                    stringResource(R.string.tune_no_profile),
                     textAlign = TextAlign.Center,
                     color = pal.textDim,
                 )
@@ -277,11 +281,11 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
         if (model.protocol.hasPreamp) PreampRow(model, p, sender, actions)
         // AUTO that needs more than the device takes: it stays AUTO (MANUAL does not swap in -30) and says why.
         if (p.preampDb == null) model.protocol.autoRefusal(p.bands)?.let {
-            Text("AUTO PREAMP: $it", color = pal.textDim, style = Type.small)
+            Text(stringResource(R.string.tune_auto_preamp_refusal, UiText.Core(it).asString()), color = pal.textDim, style = Type.small)
         }
         p.preampDb?.let { db ->
             if (!model.protocol.preampFits(p.bands, db)) {
-                Text("${model.protocol.preampLabel} ${Param.PREAMP.number(db, model.protocol.preampStep == 1.0)} dB is outside the device range. Tap the number to type a new value, or switch to AUTO.", color = pal.textDim, style = Type.small)
+                Text(stringResource(R.string.tune_preamp_outside_range, UiText.Core(model.protocol.preampLabel).asString(), Param.PREAMP.number(db, model.protocol.preampStep == 1.0)), color = pal.textDim, style = Type.small)
             }
         }
         // FiiO KA15 (read, USER1-3 writes, slot names and rename tested on a Pixel 04.10.2026): why a send is blocked,
@@ -289,8 +293,7 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
         // A send that did not finish stays on the page, DAC or no DAC, until a send is verified or it is tapped away.
         device.interruptedSend?.let { why ->
             Text(
-                if (device.interruptedReadAgain) "SEND INTERRUPTED - the DAC was read again and shows what it holds now; it may hold a partial EQ. Tap to dismiss. ($why)"
-                else "SEND INTERRUPTED - the DAC may hold a partial EQ. Plug it back in; it will be read again. Tap to dismiss. ($why)",
+                stringResource(if (device.interruptedReadAgain) R.string.tune_send_interrupted_read_again else R.string.tune_send_interrupted, why.asString()),
                 color = pal.text, style = Type.small,
                 modifier = Modifier.fillMaxWidth().clickable { device.dismissInterruptedSend() }.padding(vertical = 8.dp).testTag("send_interrupted"),
             )
@@ -300,8 +303,8 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
             // KA15, K13 R2R, Melody and Tiny A: read, write and persistence confirmed on hardware (FiioConfig.hardwareVerified)
             if (Proven.channel == BuildChannel.PERF && device.protocol.fiio != null && !device.hardwareVerified) Text("Native beta recipe: not hardware tested. Readback verifies registers, not audio/persistence.", color = pal.textDim, style = Type.small)
             FamilyNotes(device)
-            if (!device.protocol.readOnly) device.sendIssues(p).firstOrNull()?.let { Text("SEND BLOCKED: $it (saved values unchanged)", color = pal.textDim, style = Type.small) }
-            if (device.protocol.native) device.error?.let { Text(it, color = pal.textDim, style = Type.small) }
+            if (!device.protocol.readOnly) device.sendIssues(p).firstOrNull()?.let { Text(stringResource(R.string.tune_send_blocked, UiText.Core(it).asString()), color = pal.textDim, style = Type.small) }
+            if (device.protocol.native) device.error?.let { Text(it.asString(), color = pal.textDim, style = Type.small) }
         }
     }
 }
@@ -322,7 +325,7 @@ private fun TuneFoot(model: AppModel, p: Profile, device: DeviceController, send
         val remembered = if (slots && numbered) device.chosenSlot?.let { slot -> device.slotName(slot)?.let { slot to it } } else null
         remembered?.let { (slot, name) ->
             Text(
-                "${device.protocol.fiio?.slotLabels?.get(slot) ?: "SLOT $slot"}: $name",
+                stringResource(R.string.tune_slot_remembered, device.protocol.fiio?.slotLabels?.get(slot) ?: stringResource(R.string.tune_slot_fallback_label, slot), name),
                 color = pal.text,
                 style = Type.small.copy(lineHeightStyle = androidx.compose.ui.text.style.LineHeightStyle(
                     androidx.compose.ui.text.style.LineHeightStyle.Alignment.Center, androidx.compose.ui.text.style.LineHeightStyle.Trim.Both)),
@@ -360,10 +363,10 @@ private fun FamilyNotes(device: DeviceController) {
                 "LOW PASS, HIGH PASS".takeUnless { MoondropCatalog.PASS_FILTERS_VERIFIED },
             )
             if (review && held.isNotEmpty()) Text("Not verified on hardware yet: ${held.joinToString(", ")}.", color = dim, style = Type.small)
-            (device.snapshot?.familyState as? FamilyState.Dawn)?.bankNotice?.let { Text(it, color = dim, style = Type.small) }
+            (device.snapshot?.familyState as? FamilyState.Dawn)?.bankNotice?.let { Text(UiText.Core(it).asString(), color = dim, style = Type.small) }
             device.returnIndex?.let { index ->
-                Text("Sent to EQ index ${target.moondrop?.writableIndex}. The DAC was on EQ index $index.", color = dim, style = Type.small)
-                AppButton("RETURN TO INDEX $index", { device.returnToPreviousIndex() }, Modifier.fillMaxWidth().testTag("return_index"), enabled = !device.busy)
+                Text(stringResource(R.string.tune_returned_note, target.moondrop?.writableIndex ?: 0, index), color = dim, style = Type.small)
+                AppButton(stringResource(R.string.tune_return_to_index, index), { device.returnToPreviousIndex() }, Modifier.fillMaxWidth().testTag("return_index"), enabled = !device.busy)
             }
         }
         // DUSK-SP (Moondrop gen 1): no text here at all (owner 11.11.2026): the foot button names the cable's preset ([Sender.presetFoot]) and the presets are buttons on the DAC page.
@@ -371,10 +374,10 @@ private fun FamilyNotes(device: DeviceController) {
         // Allegro Mini: verified on the phone 25.10.2026. The DSP designs its filters for 24 kHz and plays them at the stream rate, so Contour writes for a 48 kHz stream (owner decision 25.10.2026).
         // The line follows the model's offered types: the Allegro Mini takes PEAK bands only, the JCally JM12 also low and high shelves.
         else -> Text(if (review) "${target.caps.bands} ${if (target.caps.types == setOf(FilterType.PEAK)) "PEAK bands" else "bands: peak, low shelf and high shelf"}, no preamp. Contour assumes this DAC plays at 48 kHz; at 44.1 kHz every band sounds about 8 % lower. After SAVE the DAC reconnects; the send counts only after Contour has read it back."
-            else "Contour tunes this DAC for 48 kHz; at 44.1 kHz every band sounds about 8 % lower.",
+            else stringResource(R.string.tune_allegro_note),
             color = dim, style = Type.small)
     }
-    if (device.verifyingSave) Text("Saved. Waiting for the DAC to reconnect, then reading it back.", color = dim, style = Type.small)
+    if (device.verifyingSave) Text(stringResource(R.string.tune_verifying_save), color = dim, style = Type.small)
 }
 
 @Composable
@@ -404,16 +407,16 @@ private fun Header(model: AppModel, p: Profile?, sender: Sender, actions: TuneAc
                         autoSize = TextAutoSize.StepBased(minFontSize = 17.sp, maxFontSize = Type.profileTitle.fontSize, stepSize = 1.sp),
                     )
                     // The profile on screen is what the DAC plays. The line is always there (invisible when not), so the header keeps its height.
-                    Text("ON DAC", style = Type.small, color = c.accent, maxLines = 1,
+                    Text(stringResource(R.string.tune_on_dac_marker), style = Type.small, color = c.accent, maxLines = 1,
                         modifier = Modifier.alpha(if (onDac) 1f else 0f).testTag("on_dac_marker"))
                 }
             }
         } else {
-            Text("TUNE", style = Type.profileTitle, color = c.text, modifier = Modifier.weight(1f).padding(start = 6.dp))
+            Text(stringResource(R.string.tune_title), style = Type.profileTitle, color = c.text, modifier = Modifier.weight(1f).padding(start = 6.dp))
         }
         if (p != null) {
-            HistoryButton(Icons.AutoMirrored.Rounded.Undo, "undo", model.canUndo(p)) { sender.leaveAb { model.undo() } }
-            HistoryButton(Icons.AutoMirrored.Rounded.Redo, "redo", model.canRedo(p)) { sender.leaveAb { model.redo() } }
+            HistoryButton(Icons.AutoMirrored.Rounded.Undo, "undo", stringResource(R.string.tune_undo), model.canUndo(p)) { sender.leaveAb { model.undo() } }
+            HistoryButton(Icons.AutoMirrored.Rounded.Redo, "redo", stringResource(R.string.tune_redo), model.canRedo(p)) { sender.leaveAb { model.redo() } }
             Spacer(Modifier.width(4.dp))
         }
         val canClear = p != null && !model.isClear(p) && !sender.bypassed
@@ -446,7 +449,7 @@ private fun ClearEqButton(available: Boolean, enabled: Boolean, onClick: () -> U
         contentAlignment = Alignment.Center,
     ) {
         Text(
-            "CLEAR EQ",
+            stringResource(R.string.action_clear_eq),
             style = Type.segment,
             color = ink,
             maxLines = 1,
@@ -456,7 +459,7 @@ private fun ClearEqButton(available: Boolean, enabled: Boolean, onClick: () -> U
 
 /** UNDO / REDO in the header: bright when there is a step to take, dimmed (a reject tick) when not. */
 @Composable
-private fun HistoryButton(icon: androidx.compose.ui.graphics.vector.ImageVector, name: String, enabled: Boolean, onClick: () -> Unit) {
+private fun HistoryButton(icon: androidx.compose.ui.graphics.vector.ImageVector, name: String, description: String, enabled: Boolean, onClick: () -> Unit) {
     val c = pal
     val haptics = LocalHaptics.current
     Box(
@@ -467,7 +470,7 @@ private fun HistoryButton(icon: androidx.compose.ui.graphics.vector.ImageVector,
             .testTag("history_$name"),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, name, tint = if (enabled) c.text else c.textMute, modifier = Modifier.size(26.dp))
+        Icon(icon, description, tint = if (enabled) c.text else c.textMute, modifier = Modifier.size(26.dp))
     }
 }
 
@@ -492,7 +495,7 @@ private fun SlotRow(device: DeviceController, p: Profile, sender: Sender, editor
     // The slot playing now reads bright, the others dimmed (unknown right after a SnowSky plug-in: all bright).
     val playing = device.playingSlot
     var renaming by remember { mutableStateOf<Int?>(null) }
-    renaming?.let { slot -> RenameSlotDialog(fiio.slotLabels[slot] ?: "SLOT $slot", names[slot].orEmpty(), fiio.nameLength, { renaming = null }) { device.renameSlot(slot, it) } }
+    renaming?.let { slot -> RenameSlotDialog(fiio.slotLabels[slot] ?: stringResource(R.string.tune_slot_fallback_label, slot), names[slot].orEmpty(), fiio.nameLength, { renaming = null }) { device.renameSlot(slot, it) } }
     val named = device.slotNames
     val slots = fiio.userSlots.sorted()
     val numbers = !named && slots.size > 5
@@ -523,7 +526,7 @@ private fun SlotRow(device: DeviceController, p: Profile, sender: Sender, editor
         Row(Modifier.fillMaxSize()) {
             slots.forEach { slot ->
                 val sel = slot == target
-                val label = fiio.slotLabels[slot] ?: "SLOT $slot"
+                val label = fiio.slotLabels[slot] ?: stringResource(R.string.tune_slot_fallback_label, slot)
                 val text = when {
                     named -> names[slot]?.takeIf { it.isNotBlank() } ?: label
                     numbers -> label.removePrefix("USER")
@@ -549,7 +552,7 @@ private fun SlotRow(device: DeviceController, p: Profile, sender: Sender, editor
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(text, style = Type.segment, color = if (sel) ink else if (playing != null && slot != playing) c.textDim else c.text, maxLines = 1)
-                    if (numbers && sel) Text("USER", style = Type.small, color = ink, maxLines = 1)
+                    if (numbers && sel) Text(stringResource(R.string.tune_slot_user), style = Type.small, color = ink, maxLines = 1)
                     // Another slot holds the profile on screen: a short orange line under its name.
                     if (!sel && device.holds(slot, p)) Box(Modifier.padding(top = 4.dp).width(18.dp).height(3.dp).background(c.accent, RoundedCornerShape(2.dp)))
                 }
@@ -568,12 +571,12 @@ private fun RenameSlotDialog(label: String, current: String, length: Int, onDism
         containerColor = pal.surface2,
         titleContentColor = pal.text,
         textContentColor = pal.textDim,
-        title = { Text("RENAME $label", style = Type.rowName) },
+        title = { Text(stringResource(R.string.tune_rename_title, label), style = Type.rowName) },
         text = {
             androidx.compose.material3.OutlinedTextField(
                 value = name,
                 onValueChange = { name = FiioCodec.slotName(it, length) },
-                label = { Text("NAME, UP TO $length: A-Z 0-9") },
+                label = { Text(stringResource(R.string.tune_rename_field_label, length)) },
                 singleLine = true,
                 keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
                     capitalization = androidx.compose.ui.text.input.KeyboardCapitalization.Characters,
@@ -588,10 +591,10 @@ private fun RenameSlotDialog(label: String, current: String, length: Int, onDism
                 enabled = name.isNotEmpty() && name != current,
                 onClick = { onDismiss(); onRename(name) },
                 modifier = Modifier.testTag("slot_rename_confirm"),
-            ) { Text("RENAME", style = Type.segment, color = if (name.isNotEmpty() && name != current) pal.accent else pal.textMute) }
+            ) { Text(stringResource(R.string.action_rename), style = Type.segment, color = if (name.isNotEmpty() && name != current) pal.accent else pal.textMute) }
         },
         dismissButton = {
-            androidx.compose.material3.TextButton(onClick = onDismiss) { Text("CANCEL", style = Type.segment, color = pal.textDim) }
+            androidx.compose.material3.TextButton(onClick = onDismiss) { Text(stringResource(R.string.action_cancel), style = Type.segment, color = pal.textDim) }
         },
     )
 }
@@ -607,7 +610,7 @@ private fun GraphNotice(model: AppModel, modifier: Modifier) {
         if (model.graphNotice === notice) model.graphNotice = null
     }
     Text(
-        notice.first,
+        notice.first.asString(),
         style = Type.label,
         color = pal.text,
         textAlign = TextAlign.Center,
@@ -642,8 +645,8 @@ private fun BandStrip(model: AppModel, bands: BandFlags, actions: TuneActions, e
         val numbers = plan.numbersDp.dp
         Row(Modifier.fillMaxSize().clip(well).background(c.track).sink(well)) {
             BandNumbers(model, bands, actions, enabled, plan.cellDp.dp, plan.scroll, numbers, Modifier.width(numbers))
-            if (showPlus) PmCell(Icons.Rounded.Add, "add band", enabled, "chip_add") { haptics.tap(); model.addBand() }
-            PmCell(Icons.Rounded.Remove, "delete selected band", canDelete, "chip_remove") { haptics.tap(); model.deleteBand(model.selectedBand) }
+            if (showPlus) PmCell(Icons.Rounded.Add, stringResource(R.string.tune_add_band), enabled, "chip_add") { haptics.tap(); model.addBand() }
+            PmCell(Icons.Rounded.Remove, stringResource(R.string.tune_delete_band), canDelete, "chip_remove") { haptics.tap(); model.deleteBand(model.selectedBand) }
         }
     }
 }
@@ -746,7 +749,7 @@ private fun TypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
     }
     val c = pal
     val haptics = LocalHaptics.current
-    val types = listOf(FilterType.PEAK to "PEAK", FilterType.LOW_SHELF to "LOW SHELF", FilterType.HIGH_SHELF to "HIGH SHELF")
+    val types = listOf(FilterType.PEAK to R.string.filter_peak, FilterType.LOW_SHELF to R.string.filter_low_shelf, FilterType.HIGH_SHELF to R.string.filter_high_shelf)
         .filter { it.first in model.protocol.caps.types }
     val well = RoundedCornerShape(Radii.L)
     val pill = RoundedCornerShape(Radii.M)
@@ -787,7 +790,7 @@ private fun TypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
                         .testTag("type_${t.name.lowercase()}"),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, style = Type.segment, color = if (sel && t in model.protocol.caps.types) c.onAccent else c.text, maxLines = 1)
+                    Text(stringResource(label), style = Type.segment, color = if (sel && t in model.protocol.caps.types) c.onAccent else c.text, maxLines = 1)
                 }
             }
         }
@@ -809,9 +812,9 @@ private val TYPE_ICON_PATHS = mapOf(
 
 /** The type bar of a DAC that offers pass filters: icons only, the chosen cell widens to show its name. */
 private val PASS_TYPES = listOf(
-    FilterType.PEAK to "PEAK", FilterType.LOW_SHELF to "LOW SHELF", FilterType.HIGH_SHELF to "HIGH SHELF",
-    FilterType.HIGH_PASS to "HIGH PASS", FilterType.LOW_PASS to "LOW PASS",
-    FilterType.BAND_PASS to "BAND PASS", FilterType.ALL_PASS to "ALL PASS",
+    FilterType.PEAK to R.string.filter_peak, FilterType.LOW_SHELF to R.string.filter_low_shelf, FilterType.HIGH_SHELF to R.string.filter_high_shelf,
+    FilterType.HIGH_PASS to R.string.filter_high_pass, FilterType.LOW_PASS to R.string.filter_low_pass,
+    FilterType.BAND_PASS to R.string.filter_band_pass, FilterType.ALL_PASS to R.string.filter_all_pass,
 )
 private val TYPE_ICON_W = 30.dp
 private val TYPE_ICON_H = 20.dp
@@ -853,7 +856,7 @@ private fun PassTypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
             .padding(Grid.INSET),
     ) {
         val total = maxWidth
-        val name = cells.getOrNull(idx)?.second.orEmpty()
+        val name = cells.getOrNull(idx)?.second?.let { stringResource(it) }.orEmpty()
         // The chosen cell must hold icon, gap, the whole name and its padding: weight so that it does, never an ellipsis.
         val chosen = remember(name, total, density, cells.size) {
             val text = with(density) { measurer.measure(name, Type.segment, maxLines = 1, softWrap = false).size.width.toDp() }
@@ -891,10 +894,10 @@ private fun PassTypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
                     contentAlignment = Alignment.Center,
                 ) {
                     Row(Modifier.wrapContentWidth(unbounded = true), verticalAlignment = Alignment.CenterVertically) {
-                        FilterIcon(t, label, color)
+                        FilterIcon(t, stringResource(label), color)
                         if (labelAlpha > 0f) {
                             Spacer(Modifier.width(TYPE_ICON_GAP))
-                            Text(label, style = Type.segment, color = color, maxLines = 1, softWrap = false, modifier = Modifier.alpha(labelAlpha))
+                            Text(stringResource(label), style = Type.segment, color = color, maxLines = 1, softWrap = false, modifier = Modifier.alpha(labelAlpha))
                         }
                     }
                 }
@@ -949,7 +952,7 @@ private fun ParamRow(param: Param, value: Double, enabled: Boolean, scale: io.gi
                 .testTag("value_${param.name.lowercase()}"),
             contentAlignment = Alignment.CenterStart,
         ) {
-            StackedValue(param.label, param.number(value), param.unit, c.text)
+            StackedValue(param.label.asString(), param.number(value), param.unit, c.text)
         }
         RelSlider(param, value, onChange, Modifier.weight(1f).fillMaxHeight().padding(Grid.INSET), enabled = live, scale = scale, owner = bandId)
     }
@@ -991,7 +994,7 @@ private fun PreampRow(model: AppModel, p: Profile, sender: Sender, actions: Tune
         ) {
             // AUTO: a computed value, dimmed; manual: bright
             StackedValue(
-                model.protocol.preampLabel, // PREAMP; the Moondrop manufacturer's name for the same register is PRE GAIN
+                UiText.Core(model.protocol.preampLabel).asString(), // PREAMP; the Moondrop manufacturer's name for the same register is PRE GAIN
                 db?.let { Param.PREAMP.number(it, model.protocol.preampStep == 1.0) } ?: "--", // -4, not -4.0, on a whole-dB DAC
                 if (db != null) Param.PREAMP.unit else "",
                 if (auto) c.textDim else c.text,
@@ -1071,7 +1074,7 @@ private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, v
         BoxWithConstraints(Modifier.weight(1f).fillMaxHeight().clip(shape).background(c.track).sink(shape).then(gesture)) {
             if (!valid || db == null) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("INVALID EQ", style = Type.segment, color = c.textDim, maxLines = 1)
+                    Text(stringResource(R.string.tune_preamp_invalid_eq), style = Type.segment, color = c.textDim, maxLines = 1)
                 }
                 return@BoxWithConstraints
             }
@@ -1098,7 +1101,7 @@ private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, v
                 .clickable(enabled = valid) { switchTo(!auto) }
                 .testTag("preamp_auto"),
             contentAlignment = Alignment.Center,
-        ) { Text("AUTO", style = Type.segment, color = if (auto) c.onAccent else c.textDim, maxLines = 1) }
+        ) { Text(stringResource(R.string.tune_preamp_auto), style = Type.segment, color = if (auto) c.onAccent else c.textDim, maxLines = 1) }
     }
 }
 
@@ -1129,11 +1132,11 @@ private fun AbButton(sender: Sender, p: Profile, modifier: Modifier) {
             horizontalArrangement = Arrangement.Center,
         ) {
             if (bypassed) {
-                Text("EQ OFF", style = Type.small, color = c.textDim, maxLines = 1, softWrap = false)
+                Text(stringResource(R.string.tune_ab_eq_off), style = Type.small, color = c.textDim, maxLines = 1, softWrap = false)
                 Spacer(Modifier.width(10.dp))
-                Text("PREAMP KEPT", style = Type.segment, color = c.text, maxLines = 1, softWrap = false)
+                Text(stringResource(R.string.tune_ab_preamp_kept), style = Type.segment, color = c.text, maxLines = 1, softWrap = false)
             } else {
-                Text("A/B", style = Type.segment, color = c.onAccent, maxLines = 1, softWrap = false)
+                Text(stringResource(R.string.tune_ab), style = Type.segment, color = c.onAccent, maxLines = 1, softWrap = false)
             }
         }
     }

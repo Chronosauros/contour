@@ -52,5 +52,30 @@ object ProfileIcons {
     )
     private val MAP = ALL.toMap()
 
+    /** The accessibility name of an icon of the picker (the English words are the icon ids). */
+    @androidx.annotation.StringRes
+    fun descriptionRes(name: String): Int = when (name) {
+        "moon" -> io.github.chronosauros.contour.R.string.profile_icon_moon
+        "in-ear" -> io.github.chronosauros.contour.R.string.profile_icon_in_ear
+        "headphones" -> io.github.chronosauros.contour.R.string.profile_icon_headphones
+        "wave" -> io.github.chronosauros.contour.R.string.profile_icon_wave
+        "leaf" -> io.github.chronosauros.contour.R.string.profile_icon_leaf
+        "mountain" -> io.github.chronosauros.contour.R.string.profile_icon_mountain
+        "sun" -> io.github.chronosauros.contour.R.string.profile_icon_sun
+        "flame" -> io.github.chronosauros.contour.R.string.profile_icon_flame
+        "drop" -> io.github.chronosauros.contour.R.string.profile_icon_drop
+        "star" -> io.github.chronosauros.contour.R.string.profile_icon_star
+        "bolt" -> io.github.chronosauros.contour.R.string.profile_icon_bolt
+        "circle" -> io.github.chronosauros.contour.R.string.profile_icon_circle
+        "triangle" -> io.github.chronosauros.contour.R.string.profile_icon_triangle
+        "note" -> io.github.chronosauros.contour.R.string.profile_icon_note
+        "speaker" -> io.github.chronosauros.contour.R.string.profile_icon_speaker
+        "snowflake" -> io.github.chronosauros.contour.R.string.profile_icon_snowflake
+        "coffee" -> io.github.chronosauros.contour.R.string.profile_icon_coffee
+        "eye" -> io.github.chronosauros.contour.R.string.profile_icon_eye
+        "anchor" -> io.github.chronosauros.contour.R.string.profile_icon_anchor
+        else -> io.github.chronosauros.contour.R.string.profile_icon_spiral
+    }
+
     fun of(name: String): ImageVector = MAP[name] ?: Icons.Outlined.Circle
 }

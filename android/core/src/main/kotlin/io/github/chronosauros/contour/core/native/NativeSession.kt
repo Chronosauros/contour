@@ -197,9 +197,11 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
         return NativeState.Fiio(c, raw, names = names)
     }
     private fun readName(c: FiioCodec, slot: Int) = c.parseName(fiioReply(c, c.queryName(slot)), slot)
-    /** After a verified save the USER slot takes the profile's name. A name that does not read back is a note,
-     * never a failed save: the EQ is already on the DAC. */
+    /** After a verified save the USER slot takes the profile's name, unless the name is in another script than Latin
+     * ([FiioCodec.nameFitsSlot]): then the slot keeps its own. A name that does not read back is a note, never a failed save:
+     * the EQ is already on the DAC. */
     private fun nameAfterSave(c: FiioCodec, back: NativeState.Fiio, slot: Int, profileName: String): Pair<NativeState.Fiio, String?> {
+        if (!FiioCodec.nameFitsSlot(profileName)) return back to null
         val name = FiioCodec.slotName(profileName, c.config.nameLength)
         if (name.isEmpty() || back.names[slot] == name) return back to null
         return try {

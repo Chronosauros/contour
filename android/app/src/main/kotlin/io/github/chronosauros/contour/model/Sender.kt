@@ -6,12 +6,15 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import io.github.chronosauros.contour.core.Profile
+import io.github.chronosauros.contour.R
 import io.github.chronosauros.contour.core.native.FamilyState
+import io.github.chronosauros.contour.ui.UiText
 import io.github.chronosauros.contour.usb.DeviceController
 import io.github.chronosauros.contour.usb.DacSnapshot
 import io.github.chronosauros.contour.usb.Link
 import io.github.chronosauros.contour.usb.SendOutcome
 import io.github.chronosauros.contour.usb.UsbLog
+import io.github.chronosauros.contour.usb.refused
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Job
@@ -60,8 +63,10 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
     /** Profile id of the last failed send and its reason (FAILED - HOLD TO RETRY; tap = details). */
     var failedId by mutableStateOf<String?>(null)
         private set
-    var failure by mutableStateOf<String?>(null)
+    var failure by mutableStateOf<UiText?>(null)
         private set
+    /** The failed send ended at SAVE and could not be proven in time ([SendOutcome.notConfirmed]). */
+    private var failureNotConfirmed = false
     /** When it failed (epoch ms): a profile edited later shows HOLD TO SEND again. */
     var failedAt = 0L
         private set
@@ -146,7 +151,7 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
         abJob = abScope.launch(start = CoroutineStart.LAZY) {
             try {
                 val r = device.switchAb(!bypassed)
-                if (!r.verified) fail(p.id, r.reason ?: "UNKNOWN")
+                if (!r.verified) fail(p.id, r)
             } finally {
                 if (abJob === currentCoroutineContext()[Job]) abBusy = false
             }
@@ -157,7 +162,7 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
     private suspend fun restoreAb(): Boolean {
         if (!bypassed) return true // detach resets B without writing to a replacement device
         val r = device.switchAb(false)
-        if (!r.verified) abProfileId?.let { fail(it, r.reason ?: "UNKNOWN") }
+        if (!r.verified) abProfileId?.let { fail(it, r) }
         return r.verified
     }
 
@@ -184,7 +189,7 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
 
     /** HOLD TO SEND: writes a snapshot of [p], reads it back and compares. */
     fun send(p: Profile) {
-        if (busy) return fail(p.id, "DAC BUSY")
+        if (busy) return fail(p.id, refused(R.string.reason_dac_busy, "DAC BUSY"))
         sendingId = p.id
         sendProgress = 0f
         failedId = null
@@ -200,24 +205,25 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
                     sendingId = null
                 } else {
                     sendingId = null
-                    fail(p.id, r.reason ?: "UNKNOWN")
+                    fail(p.id, r)
                 }
             }
         }
     }
 
-    private fun fail(id: String, reason: String) {
+    private fun fail(id: String, outcome: SendOutcome) {
         failedAt = System.currentTimeMillis()
         failedId = id
-        failure = reason
-        UsbLog.line("HOLD TO SEND failed: $reason")
+        failure = outcome.reason ?: UiText.res(R.string.send_reason_unknown)
+        failureNotConfirmed = outcome.notConfirmed
+        UsbLog.line("HOLD TO SEND failed: ${outcome.log ?: "UNKNOWN"}")
     }
 
     /**
      * FAILED - HOLD TO RETRY applies to [p] until it is edited. A send that ended NOT VERIFIED (the DAC took longer to come back than the wait, e.g. while the system's
      * USB permission dialog was open) stops failing once a read of the DAC shows exactly [p]; a read-back that does not match leaves it failed.
      */
-    fun failedFor(p: Profile): Boolean = failedId == p.id && p.updatedAt <= failedAt && !(failure?.startsWith(DeviceController.NOT_VERIFIED) == true && isOnDac(p))
+    fun failedFor(p: Profile): Boolean = failedId == p.id && p.updatedAt <= failedAt && !(failureNotConfirmed && isOnDac(p))
 
     private companion object {
         const val PROGRESS_SETTLE_MS = 250L

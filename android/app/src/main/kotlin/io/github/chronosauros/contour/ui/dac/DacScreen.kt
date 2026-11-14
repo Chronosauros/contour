@@ -39,7 +39,14 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
+import android.content.Context
+import io.github.chronosauros.contour.R
+import io.github.chronosauros.contour.ui.CoreText
+import io.github.chronosauros.contour.ui.UiText
+import io.github.chronosauros.contour.ui.asString
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -90,14 +97,15 @@ private val FOOTER_H = 22.dp
  * ([DeviceController.dacIsPreview]) the controls move locally and nothing touches USB.
  */
 @Composable
-fun DacScreen(device: DeviceController, top: Dp, bottom: Dp, onNotSent: (String) -> Unit) {
+fun DacScreen(device: DeviceController, top: Dp, bottom: Dp, onNotSent: (UiText) -> Unit) {
+    val context = LocalContext.current
     val target = device.dacTarget ?: return // the DAC went away while the page was leaving
     val settings = target.settings
     val name = target.caps.name
     val preview = device.dacIsPreview
     // a review build names the gate ("not verified"); a release only says the setting is read only (owner 27.10.2026: no gating wording in stable)
     val review = Proven.channel == BuildChannel.PERF
-    val blocked = { label: String -> if (review) "Not sent - $label is not verified on $name yet" else "Not sent - $label is read only in Contour" }
+    val blocked = { label: String -> if (review) UiText.Plain("Not sent - $label is not verified on $name yet") else UiText.res(R.string.dac_not_sent_read_only, UiText.Core(label)) }
     val c = pal
     // Preview only: what the user moved, starting from the values this DAC showed on hardware (plus the header ids "rate" and "fw").
     val local = remember(preview, target) {
@@ -129,9 +137,9 @@ fun DacScreen(device: DeviceController, top: Dp, bottom: Dp, onNotSent: (String)
             writing = false
             when (outcome) {
                 SettingWriteOutcome.Verified -> Unit
-                is SettingWriteOutcome.Mismatch -> onNotSent("Not set - ${s.label} reads ${format(s, outcome.read)}")
-                SettingWriteOutcome.NoReply -> onNotSent("Not set - no reply from $name")
-                null -> onNotSent("Not set - $name is busy")
+                is SettingWriteOutcome.Mismatch -> onNotSent(UiText.res(R.string.dac_not_set_reads, UiText.Core(s.label), format(context, s, outcome.read)))
+                SettingWriteOutcome.NoReply -> onNotSent(UiText.res(R.string.dac_not_set_no_reply, name))
+                null -> onNotSent(UiText.res(R.string.dac_not_set_busy, name))
             }
         }
     }
@@ -158,7 +166,7 @@ fun DacScreen(device: DeviceController, top: Dp, bottom: Dp, onNotSent: (String)
                         autoSize = TextAutoSize.StepBased(minFontSize = 17.sp, maxFontSize = Type.profileTitle.fontSize, stepSize = 1.sp),
                     )
                     // DAC SETTINGS - 48 kHz - FW 1.2.0: a part the DAC did not answer is left out
-                    val header = (listOf("DAC SETTINGS") + target.info.mapNotNull { i -> valueOf(i.id)?.let(i.format) }).joinToString(" · ")
+                    val header = (listOf(stringResource(R.string.dac_settings_header)) + target.info.mapNotNull { i -> valueOf(i.id)?.let(i.format) }.map { CoreText.translate(context, it) }).joinToString(" · ")
                     Text(header, style = Type.small, color = c.textDim, maxLines = 1, modifier = Modifier.testTag("dac_header"))
                 }
             }
@@ -186,7 +194,7 @@ fun DacScreen(device: DeviceController, top: Dp, bottom: Dp, onNotSent: (String)
                 // A section's small caps header sits above its first row, after the gap that separates the groups.
                 val section = s.section
                 if (section != null) Text(
-                    section, style = Type.small, color = c.textDim, maxLines = 1,
+                    CoreText.translate(context, section), style = Type.small, color = c.textDim, maxLines = 1,
                     modifier = Modifier.padding(start = 6.dp, top = groupGap).testTag("dac_section_${section.lowercase()}"),
                 )
                 if (s.kind == SettingKind.CHOICE && s.inlineChoice) InlineChoice(
@@ -212,7 +220,7 @@ fun DacScreen(device: DeviceController, top: Dp, bottom: Dp, onNotSent: (String)
                 verified = device.resetEnabled,
                 proven = device.resetProven,
                 onTap = {
-                    if (!device.resetEnabled) onNotSent("Not sent - FACTORY RESET is not verified on $name yet")
+                    if (!device.resetEnabled) onNotSent(UiText.Plain("Not sent - FACTORY RESET is not verified on $name yet")) // review builds only: a release shows the row once the reset is proven
                     else device.askFactoryReset()
                 },
                 modifier = Modifier.padding(top = Grid.GROUP - Grid.GAP),
@@ -221,7 +229,7 @@ fun DacScreen(device: DeviceController, top: Dp, bottom: Dp, onNotSent: (String)
         choosing?.let { id -> settings.firstOrNull { it.id == id } }?.let { s ->
             val current = valueOf(s.id)
             ChoiceSheet(
-                s.label, s.options, current,
+                CoreText.translate(context, s.label), s.options.map { CoreText.translate(context, it) }, current,
                 onPick = { i ->
                     if (preview) local[s.id] = i
                     else if (s.writeEnabled && device.link == Link.CONNECTED) { if (i != current) send(s, i) }
@@ -233,9 +241,9 @@ fun DacScreen(device: DeviceController, top: Dp, bottom: Dp, onNotSent: (String)
         // The one small line at the bottom of the page.
         val line = when {
             device.writeTestLine != null -> device.writeTestLine
-            preview -> "PREVIEW - NOTHING IS SENT"
-            device.tapToConnect -> "TAP TO CONNECT"
-            device.link == Link.CONNECTED && device.settingsReading -> "READING THE DAC"
+            preview -> "PREVIEW - NOTHING IS SENT" // review hook only
+            device.tapToConnect -> stringResource(R.string.dac_footer_tap_to_connect)
+            device.link == Link.CONNECTED && device.settingsReading -> stringResource(R.string.dac_footer_reading)
             // a review build writes rows no unit has proven yet: the page keeps saying so
             device.link == Link.CONNECTED && settings.any { it.writeEnabled && !it.writeVerified } -> "WRITES NOT VERIFIED ON HARDWARE"
             else -> null
@@ -260,11 +268,11 @@ fun DacScreen(device: DeviceController, top: Dp, bottom: Dp, onNotSent: (String)
 }
 
 /** The text of a value: OFF / ON, the option, the raw number, CENTER / L n / R n. */
-private fun format(s: DacSetting, v: Int): String = when (s.kind) {
-    SettingKind.TOGGLE -> s.options.getOrElse(v) { "--" }
-    SettingKind.CHOICE -> s.shortOption(v)
+private fun format(context: Context, s: DacSetting, v: Int): String = when (s.kind) {
+    SettingKind.TOGGLE -> CoreText.translate(context, s.options.getOrElse(v) { "--" })
+    SettingKind.CHOICE -> CoreText.translate(context, s.shortOption(v))
     SettingKind.LEVEL -> s.valueText?.invoke(v) ?: if (s.scale > 1) "%.1f".format(java.util.Locale.ROOT, v.toDouble() / s.scale) else v.toString() // dB rows hold tenths (scale 10); a row with valueText words its own value
-    SettingKind.BALANCE -> if (v == 0) "CENTER" else if (v < 0) "L ${-v}" else "R $v" // the side the sound moves to, like FiiO Control
+    SettingKind.BALANCE -> if (v == 0) context.getString(R.string.dac_balance_center) else if (v < 0) context.getString(R.string.dac_balance_left, -v) else context.getString(R.string.dac_balance_right, v) // the side the sound moves to, like FiiO Control
 }
 
 /**
@@ -291,6 +299,7 @@ private fun SettingRow(
     s: DacSetting, value: Int?, shown: Shown, dim: Boolean, live: Boolean, max: Int,
     onMove: (Int) -> Unit, onCommit: (Int) -> Unit, onPick: (Int) -> Unit, onBlocked: () -> Unit, onOpen: () -> Unit, modifier: Modifier,
 ) {
+    val context = LocalContext.current
     val c = pal
     Row(
         modifier
@@ -304,11 +313,11 @@ private fun SettingRow(
     ) {
         Box(Modifier.width(VALUE_W - Grid.TEXT).fillMaxHeight().testTag("dac_value_${s.id}"), contentAlignment = Alignment.CenterStart) {
             when (shown) {
-                Shown.VALUE -> StackedValue(s.label, format(s, requireNotNull(value)), if (s.kind == SettingKind.LEVEL) s.unit else "", c.text, fit = s.kind == SettingKind.CHOICE)
+                Shown.VALUE -> StackedValue(CoreText.translate(context, s.label), format(context, s, requireNotNull(value)), if (s.kind == SettingKind.LEVEL) s.unit else "", c.text, fit = s.kind == SettingKind.CHOICE)
                 else -> androidx.compose.foundation.layout.Column(verticalArrangement = Arrangement.Center) {
-                    Text(s.label, style = Type.paramLabel, color = c.textDim, maxLines = 1)
+                    Text(CoreText.translate(context, s.label), style = Type.paramLabel, color = c.textDim, maxLines = 1)
                     Text(
-                        when (shown) { Shown.NO_REPLY -> "NO REPLY"; Shown.PENDING -> "..."; else -> "--" },
+                        when (shown) { Shown.NO_REPLY -> stringResource(R.string.dac_no_reply); Shown.PENDING -> "..."; else -> "--" },
                         style = if (shown == Shown.NO_REPLY) Type.segment else Type.value, color = c.textDim, maxLines = 1, softWrap = false,
                     )
                 }
@@ -348,8 +357,8 @@ private fun ResetRow(enabled: Boolean, verified: Boolean, proven: Boolean, onTap
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.Center) {
-            Text("FACTORY RESET", style = Type.paramLabel, color = c.textDim, maxLines = 1)
-            Text(if (!verified) "NOT VERIFIED YET" else if (!proven) "NOT VERIFIED · SAVES A COPY" else "SAVES A COPY, THEN RESETS", style = Type.segment, color = c.text, maxLines = 1, softWrap = false)
+            Text(stringResource(R.string.dac_factory_reset), style = Type.paramLabel, color = c.textDim, maxLines = 1)
+            Text(if (!verified) "NOT VERIFIED YET" else if (!proven) "NOT VERIFIED · SAVES A COPY" else stringResource(R.string.dac_factory_reset_detail), style = Type.segment, color = c.text, maxLines = 1, softWrap = false)
         }
     }
 }
@@ -357,6 +366,7 @@ private fun ResetRow(enabled: Boolean, verified: Boolean, proven: Boolean, onTap
 /** A choice with more options than fit side by side: a pressed-in well with the current option in full; a tap opens the list. */
 @Composable
 private fun ChoiceButton(s: DacSetting, value: Int?, onOpen: () -> Unit) {
+    val context = LocalContext.current
     val c = pal
     val haptics = LocalHaptics.current
     val well = RoundedCornerShape(Radii.M)
@@ -372,7 +382,7 @@ private fun ChoiceButton(s: DacSetting, value: Int?, onOpen: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            value?.let { s.options.getOrElse(it) { "--" } } ?: "--",
+            value?.let { CoreText.translate(context, s.options.getOrElse(it) { "--" }) } ?: "--",
             style = Type.segment, color = c.text, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
         )
         Icon(Icons.Outlined.ExpandMore, contentDescription = null, tint = c.textDim)
@@ -385,13 +395,14 @@ private fun ReadOnlyWell(s: DacSetting) {
     val c = pal
     val well = RoundedCornerShape(Radii.M)
     Box(Modifier.fillMaxSize().clip(well).background(c.track).testTag("dac_readonly_${s.id}"), contentAlignment = Alignment.Center) {
-        Text("READ ONLY", style = Type.small, color = c.textDim, maxLines = 1, softWrap = false)
+        Text(stringResource(R.string.dac_read_only), style = Type.small, color = c.textDim, maxLines = 1, softWrap = false)
     }
 }
 
 /** OFF | ON, or the 2-3 options: a pressed-in well with a raised orange pill on the chosen one (the filter type row's language). */
 @Composable
 private fun OptionWell(s: DacSetting, value: Int?, live: Boolean, onPick: (Int) -> Unit, onBlocked: () -> Unit) {
+    val context = LocalContext.current
     val c = pal
     val haptics = LocalHaptics.current
     val well = RoundedCornerShape(Radii.M)
@@ -420,7 +431,7 @@ private fun OptionWell(s: DacSetting, value: Int?, live: Boolean, onPick: (Int) 
                         .testTag("dac_option_${s.id}_$i"),
                     contentAlignment = Alignment.Center,
                 ) {
-                    Text(label, style = Type.segment, color = if (i == value) c.onAccent else c.text, maxLines = 1)
+                    Text(CoreText.translate(context, label), style = Type.segment, color = if (i == value) c.onAccent else c.text, maxLines = 1)
                 }
             }
         }
@@ -447,11 +458,12 @@ private fun DacSlider(s: DacSetting, value: Int?, min: Int, max: Int, centered: 
     val start = if (centered) 0 else (min + max) / 2
     val pos = if (value == null) 0f else ((value - min).toFloat() / (max - min)).coerceIn(0f, 1f)
     val signed = if (value == null) 0f else (value.toFloat() / max).coerceIn(-1f, 1f)
+    val description = stringResource(R.string.slider_description, CoreText.translate(LocalContext.current, s.label))
     Box(
         Modifier
             .fillMaxSize()
             .testTag("dac_slider_${s.id}")
-            .semantics { contentDescription = "${s.label} slider" }
+            .semantics { contentDescription = description }
             // a drag that starts at the screen edge (the volume slider reaches it) must not become the system back gesture (hardware 21.10.2026: start at x > 1200 of 1280)
             .systemGestureExclusion()
             .holdsPager(pagerLock)

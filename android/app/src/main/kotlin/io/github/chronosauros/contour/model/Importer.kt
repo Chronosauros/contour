@@ -11,6 +11,9 @@ import io.github.chronosauros.contour.core.DeviceTarget
 import io.github.chronosauros.contour.core.Preamp
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.core.WalkPlay
+import io.github.chronosauros.contour.R
+import io.github.chronosauros.contour.ui.UiText
+import io.github.chronosauros.contour.ui.coreTexts
 import kotlin.math.roundToLong
 
 internal fun round1(x: Double) = (x * 10).roundToLong() / 10.0
@@ -19,13 +22,14 @@ internal fun round2(x: Double) = (x * 100).roundToLong() / 100.0
 /** Import rules: device ranges, supported types, the selected device slot count. Returns the bands and a one-line report. */
 object Importer {
     /** [fitDevice] plus what the reader already did to the file (channel chosen, empty filters skipped), as one line. */
-    fun fit(eq: ImportedEq, protocol: DeviceTarget = DeviceTarget.MICRO): Pair<ImportedEq, String?> {
+    fun fit(eq: ImportedEq, protocol: DeviceTarget = DeviceTarget.MICRO): Pair<ImportedEq, UiText?> {
         val (fitted, note) = fitDevice(eq, protocol)
-        val report = (eq.notes + listOfNotNull(note)).joinToString("; ").ifEmpty { null }
+        val parts = eq.notes.map { UiText.Core(it) } + listOfNotNull(note)
+        val report = if (parts.isEmpty()) null else UiText.Joined(parts)
         return fitted to report
     }
 
-    private fun fitDevice(eq: ImportedEq, protocol: DeviceTarget): Pair<ImportedEq, String?> {
+    private fun fitDevice(eq: ImportedEq, protocol: DeviceTarget): Pair<ImportedEq, UiText?> {
         // Micro/Max: the 1.3.x clamp-and-drop fit.
         if (protocol.usesWalkPlayRules) return fitWalkPlay(eq, protocol)
         // FiiO KA15: preserve all file intent (including fractional preamp); import never truncates, clamps,
@@ -33,8 +37,9 @@ object Importer {
         // The one exception is a filter that does nothing (0 dB): the file import keeps those, so they must not be what blocks the send.
         val (settled, emptyNote) = settleEmpty(eq.bands, protocol)
         val issues = protocol.issues(Profile("import", "import", bands = settled, preampDb = eq.preampDb, createdAt = 0, updatedAt = 0)).takeIf { it.isNotEmpty() }
-        val note = issues?.joinToString("; ")?.let { "Preserved unchanged; send blocked: $it" }
-        return (if (settled == eq.bands) eq else eq.copy(bands = settled)) to listOfNotNull(emptyNote, note).joinToString("; ").ifEmpty { null }
+        val note = issues?.let { UiText.res(R.string.import_preserved_send_blocked, coreTexts(it)) }
+        val notes = listOfNotNull(emptyNote, note)
+        return (if (settled == eq.bands) eq else eq.copy(bands = settled)) to (if (notes.isEmpty()) null else UiText.Joined(notes))
     }
 
     /**
@@ -43,7 +48,7 @@ object Importer {
      * the DAC's frequency and Q range; and when the file still has more filters than the DAC has bands, 0 dB ones are left out, last first, only as many as it takes ([ApoText.dropEmptyToFit]).
      * Filters with gain are never touched. Returns the bands and a note when any filter was left out.
      */
-    private fun settleEmpty(bands: List<Band>, protocol: DeviceTarget): Pair<List<Band>, String?> {
+    private fun settleEmpty(bands: List<Band>, protocol: DeviceTarget): Pair<List<Band>, UiText?> {
         val caps = protocol.caps
         var left = 0
         val fitted = bands.mapNotNull { b ->
@@ -57,17 +62,17 @@ object Importer {
         return fits to emptyNote(left + over)
     }
 
-    private fun emptyNote(n: Int): String? = if (n == 0) null else "$n empty filter${if (n == 1) "" else "s"} skipped"
+    private fun emptyNote(n: Int): UiText? = if (n == 0) null else UiText.plural(R.plurals.import_empty_filters_skipped, n, n)
 
     /** Micro/Max rules: device ranges, supported types, the selected device slot count; the same rules for a writable Echo-A, held to its own caps. */
-    private fun fitWalkPlay(eq: ImportedEq, protocol: DeviceTarget): Pair<ImportedEq, String?> {
+    private fun fitWalkPlay(eq: ImportedEq, protocol: DeviceTarget): Pair<ImportedEq, UiText?> {
         val caps = protocol.caps
-        val notes = ArrayList<String>()
+        val notes = ArrayList<UiText>()
         var bands = eq.bands
         val unsupported = bands.count { it.type !in caps.types }
         if (unsupported > 0) {
             bands = bands.filter { it.type in caps.types }
-            notes += "$unsupported unsupported filter${if (unsupported > 1) "s" else ""} dropped"
+            notes += UiText.plural(R.plurals.import_unsupported_filters_dropped, unsupported, unsupported)
         }
         // The file import keeps the filters at 0 dB: they go first when the file has more filters than the DAC has bands.
         ApoText.dropEmptyToFit(bands, caps.bands).let { (fits, n) -> if (n > 0) { bands = fits; notes += emptyNote(n)!! } }
@@ -82,11 +87,11 @@ object Importer {
             }
             if (out.isNotEmpty()) {
                 bands = bands.filterIndexed { i, _ -> i !in out }
-                notes += "${out.size} disabled filter${if (out.size > 1) "s" else ""} skipped"
+                notes += UiText.plural(R.plurals.import_disabled_filters_skipped, out.size, out.size)
             }
         }
         if (bands.size > caps.bands) {
-            notes += "${bands.size - caps.bands} band${if (bands.size - caps.bands > 1) "s" else ""} over ${caps.bands} dropped"
+            notes += UiText.plural(R.plurals.import_bands_over_dropped, bands.size - caps.bands, bands.size - caps.bands, caps.bands)
             bands = bands.take(caps.bands)
         }
         var clamped = 0
@@ -100,15 +105,15 @@ object Importer {
             if (f != b.freqHz || g != b.gainDb || q != b.q) clamped++
             b.copy(freqHz = f, gainDb = g, q = q)
         }
-        if (clamped > 0) notes += "$clamped band${if (clamped > 1) "s" else ""} rounded or clamped to the device ranges"
+        if (clamped > 0) notes += UiText.plural(R.plurals.import_bands_clamped, clamped, clamped)
         // Nothing is clamped and nothing rounds up: the preamp goes down to 0.1 dB (quieter, never louder); only when that
         // would flip the planner's verdict is the exact file value kept. A refused value is refused with its number.
         val pre = eq.preampDb?.let { protocol.fitImportedPreamp(bands, it) }
         if (pre != null && !protocol.preampFits(bands, pre)) {
             val shown = if (pre == Math.rint(pre) && Math.abs(pre) < 1e15) pre.toLong().toString() else pre.toString()
-            notes += "preamp $shown dB is outside the device range and was kept; sending is blocked until it is replaced"
+            notes += UiText.res(R.string.import_preamp_kept, shown)
         }
-        return ImportedEq(bands, pre) to notes.joinToString("; ").ifEmpty { null }
+        return ImportedEq(bands, pre) to (if (notes.isEmpty()) null else UiText.Joined(notes))
     }
 
     /** APO / AutoEQ / squig.link / hangout text, else EQ by Ear JSON; null when nothing parseable. */

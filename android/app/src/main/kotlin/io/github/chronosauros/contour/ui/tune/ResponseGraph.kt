@@ -21,7 +21,9 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChangeIgnoreConsumed
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import io.github.chronosauros.contour.ui.UiText
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -90,6 +92,7 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
     val c = pal
     val haptics = LocalHaptics.current
     val pagerLock = LocalPagerLock.current
+    val context = LocalContext.current
     val nodePaint = remember { android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG) }
     // Every frame of a drag draws the same texts (the axis labels and a number per node): the cache must hold them all, or each one is laid out again
     // on every frame (the default of 8 entries is fewer than a 2-band profile needs).
@@ -314,7 +317,7 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
             drawPath(path, c.text.copy(alpha = ghostAlpha), style = Stroke(2.5.dp.toPx(), cap = StrokeCap.Round, join = StrokeJoin.Round))
         } else {
             val reasons = model.protocol.issues(profile).ifEmpty { listOfNotNull(response.exceptionOrNull()?.message) }
-            drawText(measurer, model.protocol.invalidEqHeadline(profile, reasons), Offset(pad, pad), Type.graph.copy(color = c.text))
+            drawText(measurer, UiText.Core(model.protocol.invalidEqHeadline(profile, reasons)).resolve(context), Offset(pad, pad), Type.graph.copy(color = c.text))
         }
 
         val r = NODE_RADIUS.toPx()

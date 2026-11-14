@@ -1,4 +1,640 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Every word the person reads in the app. Keys name their screen (tune_, library_, dac_, reset_, ...); core_* are the messages of :core that a build can show in its own words. -->
 <resources>
+    <!-- Name of the app under its icon. The cn edition replaces this file (src/cn/res/values/strings.xml) -->
     <string name="app_name">Contour</string>
+    <!-- Whether the messages of :core (English) are shown from the resources below (core_*) instead of as they are. False here: the English build shows the text of :core exactly as it is -->
+    <bool name="translate_core_text">false</bool>
+    <!-- What stands between the items of a list of notes ("a; b; c"); the quotes keep the space -->
+    <string name="list_separator">"; "</string>
+
+    <!-- Import report (a file or the clipboard fitted to the connected DAC): notes joined by the list separator -->
+    <string name="import_preserved_send_blocked">Preserved unchanged; send blocked: %1$s</string>
+    <plurals name="import_empty_filters_skipped">
+        <item quantity="one">%d empty filter skipped</item>
+        <item quantity="other">%d empty filters skipped</item>
+    </plurals>
+    <plurals name="import_disabled_filters_skipped">
+        <item quantity="one">%d disabled filter skipped</item>
+        <item quantity="other">%d disabled filters skipped</item>
+    </plurals>
+    <plurals name="import_unsupported_filters_dropped">
+        <item quantity="one">%d unsupported filter dropped</item>
+        <item quantity="other">%d unsupported filters dropped</item>
+    </plurals>
+    <plurals name="import_bands_over_dropped">
+        <item quantity="one">%1$d band over %2$d dropped</item>
+        <item quantity="other">%1$d bands over %2$d dropped</item>
+    </plurals>
+    <plurals name="import_bands_clamped">
+        <item quantity="one">%d band rounded or clamped to the device ranges</item>
+        <item quantity="other">%d bands rounded or clamped to the device ranges</item>
+    </plurals>
+    <string name="import_preamp_kept">preamp %1$s dB is outside the device range and was kept; sending is blocked until it is replaced</string>
+
+    <!-- Importing an EQ text from a file (picked, opened with Contour or shared to it): errors and the notice after it -->
+    <string name="import_error_unreadable">Could not read that file.</string>
+    <string name="import_error_not_content">Contour only opens files handed over by the system (content://), not file paths.</string>
+    <string name="import_error_too_big">That file is too big for an EQ text (over 256 KB).</string>
+    <string name="import_error_no_filters">No EQ filters found in that file. Contour reads .txt from squig.link, graph.hangout.audio, AutoEQ and Equalizer APO.</string>
+    <string name="import_nothing">NOTHING TO IMPORT</string>
+    <string name="import_nothing_report">NOTHING TO IMPORT - %1$s</string>
+    <plurals name="import_imported">
+        <item quantity="one">IMPORTED %d FILTER</item>
+        <item quantity="other">IMPORTED %d FILTERS</item>
+    </plurals>
+    <plurals name="import_imported_report">
+        <item quantity="one">IMPORTED %1$d FILTER - %2$s</item>
+        <item quantity="other">IMPORTED %1$d FILTERS - %2$s</item>
+    </plurals>
+
+    <!-- Names a new profile starts with (stored in the profile when it is made) -->
+    <string name="seed_bass_boost">BASS BOOST</string>
+    <string name="seed_softer_vocals">SOFTER VOCALS</string>
+    <string name="seed_treble_boost">TREBLE BOOST</string>
+    <!-- %1$d = the number of the new profile (PROFILE 4) -->
+    <string name="profile_default_name">PROFILE %1$d</string>
+    <!-- The headphones line (under the name in the Library) of a profile made from what the DAC holds -->
+    <string name="profile_from_dac">FROM DAC</string>
+
+    <!-- The typed preamp value is refused (shown under the number editor) -->
+    <string name="preamp_enter_number">Enter a number</string>
+    <string name="preamp_enter_in_range">Enter a value within the range above</string>
+    <!-- %1$s = the reason (a sentence), %2$s = the closest value the DAC takes (-3) -->
+    <string name="preamp_refusal_nearest">%1$s Nearest accepted: %2$s.</string>
+
+    <!-- Profile made from what the DAC holds (FROM DAC): the line on the graph for a moment. %1$s = the slot name when it has one, then the number of filters, then a warning of the DAC -->
+    <plurals name="from_dac_notice">
+        <item quantity="one">FROM DAC: %1$d FILTER</item>
+        <item quantity="other">FROM DAC: %1$d FILTERS</item>
+    </plurals>
+    <plurals name="from_dac_notice_name">
+        <item quantity="one">FROM DAC %1$s: %2$d FILTER</item>
+        <item quantity="other">FROM DAC %1$s: %2$d FILTERS</item>
+    </plurals>
+    <plurals name="from_dac_notice_warning">
+        <item quantity="one">FROM DAC: %1$d FILTER - %2$s</item>
+        <item quantity="other">FROM DAC: %1$d FILTERS - %2$s</item>
+    </plurals>
+    <plurals name="from_dac_notice_name_warning">
+        <item quantity="one">FROM DAC %1$s: %2$d FILTER - %3$s</item>
+        <item quantity="other">FROM DAC %1$s: %2$d FILTERS - %3$s</item>
+    </plurals>
+    <!-- Snackbar when what the DAC holds cannot be made into a profile. %1$s = the reason -->
+    <string name="from_dac_rejected">FROM DAC: %1$s</string>
+    <!-- Reason shown in a release when what the DAC holds cannot be opened exactly (also the detail line of FROM DAC in the NEW PROFILE sheet) -->
+    <string name="dac_import_not_exact">This EQ on the DAC uses filters Contour can\'t edit exactly, so it is only shown.</string>
+
+    <!-- What a failed USB operation says in a release (a review build shows the technical reason instead) -->
+    <string name="failure_no_answer">The DAC didn\'t answer. Unplug it, plug it back in and try again.</string>
+    <string name="failure_mismatch">The DAC reads back something different from what was sent. Send again.</string>
+    <string name="failure_gone">The DAC was unplugged or changed. Plug it in and try again.</string>
+    <string name="failure_slot">The DAC switched to a different slot than expected. Try again.</string>
+    <string name="failure_generic">Couldn\'t talk to the DAC. Unplug it, plug it back in and try again.</string>
+    <!-- A note with a send that was verified -->
+    <string name="failure_note_slot_name">The EQ is on the DAC, but the DAC didn\'t confirm the slot name.</string>
+    <string name="failure_note_small_difference">The EQ is on the DAC, but the DAC reported a small difference in what it read back.</string>
+
+    <!-- A DAC operation failed (shown under the controls, native DACs). %1$s = the reason (one of the sentences above) -->
+    <string name="error_switch_failed">switch failed: %1$s</string>
+    <string name="error_rename_failed">rename failed: %1$s</string>
+    <string name="error_read_failed">read failed: %1$s</string>
+    <string name="error_test_write_failed">test write failed: %1$s</string>
+    <string name="error_restore_flat_failed">restore flat failed: %1$s</string>
+
+    <!-- Why a send or an A/B switch did not happen (the details sheet of FAILED - HOLD TO RETRY, the line under the controls) -->
+    <string name="send_reason_unknown">Unknown reason</string>
+    <string name="reason_no_dac">NO DAC</string>
+    <string name="reason_no_permission">NO PERMISSION</string>
+    <string name="reason_dac_busy">DAC BUSY</string>
+    <string name="reason_dac_detached">DAC DETACHED</string>
+    <string name="reason_dac_state_unknown">DAC STATE UNKNOWN</string>
+    <!-- %1$s = the DAC\'s name -->
+    <string name="ab_unavailable">A/B unavailable on %1$s</string>
+    <string name="ab_blocked">A/B blocked: a band on the DAC does not fit its filter format, so A could not be restored. Nothing was changed.</string>
+    <!-- A send that ended at SAVE (the DAC leaves the bus) and could not be proven in time. %1$d = seconds waited -->
+    <string name="reason_not_confirmed_timeout">NOT CONFIRMED: the DAC did not come back within %1$d s; unplug it, plug it back in, then tap to read it</string>
+    <string name="reason_not_confirmed_permission">NOT CONFIRMED: the DAC was not let in: the USB permission was not given within %1$d s; unplug it, plug it back in, then tap to read it</string>
+    <!-- A KT Micro DAC (Kiwi Ears Allegro Mini, JCally JM12) is back on USB after SAVE but does not answer its reads -->
+    <string name="reason_not_confirmed_silent">NOT CONFIRMED: the DAC is back on USB but does not answer; unplug it, plug it back in, then tap to read it</string>
+
+    <!-- Factory reset: why it stopped (shown in the FACTORY RESET STOPPED sheet) -->
+    <string name="reset_failure_busy_nothing_sent">Contour is still working on the DAC. Nothing was sent.</string>
+    <string name="reset_failure_no_dac">NO DAC. Nothing was sent.</string>
+    <string name="reset_failure_no_permission">NO PERMISSION. Nothing was sent.</string>
+    <string name="reset_failure_not_replugged">The DAC was not unplugged and plugged back in. Unplug it, plug it in again, then write the saved copy back.</string>
+    <string name="reset_failure_not_replugged_kept">The DAC was not unplugged and plugged back in. Unplug it, plug it in again, then write the saved copy back; the copy is kept.</string>
+    <string name="reset_failure_read_after">The DAC could not be read after the reset. Unplug it, plug it back in and read it again.</string>
+    <string name="reset_failure_not_connected_kept">The DAC is not connected. Plug it in and try again; the copy is kept.</string>
+    <string name="reset_failure_busy_kept">Contour is still working on the DAC. Try again in a moment; the copy is kept.</string>
+    <string name="reset_failure_copy_inexact_names">The copy of the DAC cannot be written down exactly (a slot name with a space or an odd character).</string>
+    <string name="reset_failure_copy_inexact">The copy of the DAC cannot be written down exactly.</string>
+    <string name="reset_failure_copy_unsaved">The copy of the DAC could not be saved on the phone.</string>
+
+    <!-- The status pill of the Library: what the DAC link is (the pill is as wide as CLEAR EQ for NO DAC) -->
+    <string name="status_busy">BUSY</string>
+    <string name="status_tap_to_connect">TAP TO CONNECT</string>
+    <string name="status_no_dac">NO DAC</string>
+    <string name="status_connected">CONNECTED</string>
+    <!-- Button that sets the EQ back to one flat band (Tune header, EDIT PROFILE sheet) -->
+    <string name="action_clear_eq">CLEAR EQ</string>
+
+    <!-- Names of the band values and the preamp (the row label, the slider\'s accessibility name, the number editor title) -->
+    <string name="param_freq">FREQ</string>
+    <string name="param_gain">GAIN</string>
+    <string name="param_q">Q</string>
+    <string name="param_preamp">PREAMP</string>
+    <!-- Accessibility name of a value slider. %1$s = FREQ, GAIN, Q or PREAMP -->
+    <string name="slider_description">%1$s slider</string>
+
+    <!-- The big button at the foot of Tune (hold it to send the EQ to the DAC) -->
+    <string name="hold_send">HOLD TO SEND</string>
+    <string name="hold_saving">SAVING TO DAC</string>
+    <string name="hold_on_dac">ON DAC · SAFE TO UNPLUG</string>
+    <string name="hold_failed">FAILED - HOLD TO RETRY</string>
+    <string name="hold_tap_to_connect">TAP TO CONNECT</string>
+    <string name="hold_tap_to_read">TAP TO READ THE DAC</string>
+    <string name="hold_no_dac">NO DAC</string>
+    <string name="hold_choose_slot">CHOOSE A SLOT</string>
+
+    <!-- Tune: header and empty state -->
+    <string name="tune_title">TUNE</string>
+    <!-- Two lines: the first is the title of the empty page, the second says what to do -->
+    <string name="tune_no_profile">NO PROFILE\nSwipe to the Library to choose or create one.</string>
+    <!-- Small orange line under the profile name while the DAC plays this profile -->
+    <string name="tune_on_dac_marker">ON DAC</string>
+    <!-- Accessibility names of the UNDO and REDO buttons -->
+    <string name="tune_undo">undo</string>
+    <string name="tune_redo">redo</string>
+    <!-- Accessibility names of the + and - cells at the end of the band strip -->
+    <string name="tune_add_band">add band</string>
+    <string name="tune_delete_band">delete selected band</string>
+
+    <!-- Filter types (the type bar, the accessibility names of its icons) -->
+    <string name="filter_peak">PEAK</string>
+    <string name="filter_low_shelf">LOW SHELF</string>
+    <string name="filter_high_shelf">HIGH SHELF</string>
+    <string name="filter_high_pass">HIGH PASS</string>
+    <string name="filter_low_pass">LOW PASS</string>
+    <string name="filter_band_pass">BAND PASS</string>
+    <string name="filter_all_pass">ALL PASS</string>
+
+    <!-- The preamp bar: MANUAL / AUTO switch (and slider), and its text when the EQ is invalid -->
+    <string name="tune_preamp_auto">AUTO</string>
+    <string name="tune_preamp_invalid_eq">INVALID EQ</string>
+    <!-- %1$s = why AUTO cannot work (a sentence about the DAC) -->
+    <string name="tune_auto_preamp_refusal">AUTO PREAMP: %1$s</string>
+    <!-- %1$s = PREAMP or PRE GAIN (the DAC\'s name for it), %2$s = the value without its unit (-3) -->
+    <string name="tune_preamp_outside_range">%1$s %2$s dB is outside the device range. Tap the number to type a new value, or switch to AUTO.</string>
+
+    <!-- A send that did not finish stays on the page until a send is verified or it is tapped away. %1$s = the reason -->
+    <string name="tune_send_interrupted_read_again">SEND INTERRUPTED - the DAC was read again and shows what it holds now; it may hold a partial EQ. Tap to dismiss. (%1$s)</string>
+    <string name="tune_send_interrupted">SEND INTERRUPTED - the DAC may hold a partial EQ. Plug it back in; it will be read again. Tap to dismiss. (%1$s)</string>
+    <!-- Under the controls when HOLD TO SEND is blocked. %1$s = the first problem of the EQ -->
+    <string name="tune_send_blocked">SEND BLOCKED: %1$s (saved values unchanged)</string>
+
+    <!-- The chosen USER slot of a DAC that stores no names: its label, then the profile last sent there. %1$s = USER1, %2$s = the profile name -->
+    <string name="tune_slot_remembered">%1$s: %2$s</string>
+    <!-- Slot label when the DAC\'s record has none. %1$d = the slot number -->
+    <string name="tune_slot_fallback_label">SLOT %1$d</string>
+    <!-- Small word under the chosen slot number (the row shows only numbers: USER1-10) -->
+    <string name="tune_slot_user">USER</string>
+    <!-- Renaming a USER slot (long press). %1$s = the slot label, %2$d = the longest name -->
+    <string name="tune_rename_title">RENAME %1$s</string>
+    <string name="tune_rename_field_label">NAME, UP TO %1$d: A-Z 0-9</string>
+    <string name="action_rename">RENAME</string>
+    <string name="action_cancel">CANCEL</string>
+
+    <!-- Notes about the 1.6 family DACs under the controls -->
+    <string name="tune_returned_note">Sent to EQ index %1$d. The DAC was on EQ index %2$d.</string>
+    <string name="tune_return_to_index">RETURN TO INDEX %1$d</string>
+    <string name="tune_allegro_note" formatted="false">Contour tunes this DAC for 48 kHz; at 44.1 kHz every band sounds about 8 % lower.</string>
+    <string name="tune_verifying_save">Saved. Waiting for the DAC to reconnect, then reading it back.</string>
+
+    <!-- The A/B button on the graph: EQ off is B, the pill says what is kept -->
+    <string name="tune_ab">A/B</string>
+    <string name="tune_ab_eq_off">EQ OFF</string>
+    <string name="tune_ab_preamp_kept">PREAMP KEPT</string>
+
+    <!-- Shell: while the library loads or when it cannot -->
+    <string name="app_loading_library">LOADING LIBRARY…</string>
+    <string name="app_library_load_error">LIBRARY COULD NOT BE READ. YOUR FILES WERE NOT CHANGED.</string>
+    <string name="app_retry_loading">RETRY LOADING</string>
+    <!-- Strip at the top of the screen while a save or a delete is being written -->
+    <string name="app_not_saved">NOT SAVED - CHECK STORAGE</string>
+    <string name="app_saving_delete">SAVING DELETE…</string>
+
+    <!-- Words of buttons used on several screens -->
+    <string name="action_undo">UNDO</string>
+    <string name="action_retry">RETRY</string>
+    <string name="action_ok">OK</string>
+
+    <!-- Page bar at the bottom: the three pages and their accessibility names -->
+    <string name="page_dac">DAC</string>
+    <string name="page_eq">EQ</string>
+    <string name="page_library">LIBRARY</string>
+    <string name="page_description_dac">page dac</string>
+    <string name="page_description_tune">page tune</string>
+    <string name="page_description_library">page library</string>
+
+    <!-- Snackbars of the Library (profile names are the person\'s own words) -->
+    <string name="library_no_saved_version">NO SAVED VERSION YET</string>
+    <string name="library_already_saved">ALREADY SAVED</string>
+    <string name="library_deleted">DELETED %1$s</string>
+    <string name="library_archived">ARCHIVED %1$s</string>
+    <string name="library_restored_to_saved">RESTORED TO SAVED</string>
+    <string name="library_saved">SAVED</string>
+    <!-- The dialog behind the SAVE ALL swipe of the new-profile card -->
+    <string name="library_save_all_title">SAVE ALL PROFILES?</string>
+    <string name="library_save_all_text">You are about to save all current profiles as their SAVED versions. This replaces their previous saved versions. There is no Undo button. Are you sure?</string>
+    <string name="library_save_all">SAVE ALL</string>
+    <!-- %d = how many (the English wording is "PROFILES" for one as well) -->
+    <plurals name="library_profiles_saved">
+        <item quantity="one">%d PROFILES SAVED</item>
+        <item quantity="other">%d PROFILES SAVED</item>
+    </plurals>
+
+    <!-- Dialog when a .txt is opened with Contour or shared to it -->
+    <string name="incoming_title">IMPORT EQ FILE?</string>
+    <string name="incoming_title_cannot">CANNOT IMPORT</string>
+    <string name="incoming_import">IMPORT</string>
+    <!-- Name used when the file has none -->
+    <string name="incoming_default_name">New profile</string>
+    <!-- %1$s = the profile name, %2$d = how many filters, %3$s = the import report (what had to be changed to fit the DAC) -->
+    <plurals name="incoming_summary">
+        <item quantity="one">%1$s: %2$d filter. It is added as a new profile; your other profiles stay as they are.</item>
+        <item quantity="other">%1$s: %2$d filters. It is added as a new profile; your other profiles stay as they are.</item>
+    </plurals>
+    <plurals name="incoming_summary_report">
+        <item quantity="one">%1$s: %2$d filter - %3$s. It is added as a new profile; your other profiles stay as they are.</item>
+        <item quantity="other">%1$s: %2$d filters - %3$s. It is added as a new profile; your other profiles stay as they are.</item>
+    </plurals>
+
+    <!-- Library: the buttons behind a swipe (the label under the icon) and their accessibility names -->
+    <string name="library_action_archive">ARCHIVE</string>
+    <string name="library_action_archive_description">Archive profile</string>
+    <string name="library_action_delete">DELETE</string>
+    <string name="library_action_delete_description">Delete profile</string>
+    <string name="library_action_unarchive">UNARCHIVE</string>
+    <string name="library_action_unarchive_description">Unarchive profile</string>
+    <string name="library_action_save">SAVE</string>
+    <string name="library_action_save_description">Save profile</string>
+    <string name="library_action_restore">RESTORE</string>
+    <string name="library_action_restore_description">Restore profile to its saved version</string>
+    <string name="library_action_save_all">SAVE ALL</string>
+    <string name="library_action_save_all_description">Save all profiles</string>
+    <!-- Header of the collapsible list of archived profiles (a count follows it) -->
+    <string name="library_archive_header">ARCHIVE</string>
+    <!-- Small orange line under the curve of a profile the DAC holds -->
+    <string name="library_on_dac">ON DAC</string>
+    <!-- Two switch cards at the foot of the Library (label over the value, OFF | ON beside it) -->
+    <string name="usb_attach_label">OPEN CONTOUR WHEN A DAC IS PLUGGED IN</string>
+    <string name="haptics_label">HAPTIC FEEDBACK</string>
+    <string name="switch_on">ON</string>
+    <string name="switch_off">OFF</string>
+    <!-- Link at the foot of the Library to the about, privacy and licences screen. %1$s = the app version -->
+    <string name="library_about_link">ABOUT · PRIVACY · LICENCES · %1$s</string>
+    <!-- Accessibility description of a profile row (%1$s = the profile\'s name) and of the empty card that creates one -->
+    <string name="library_row_new">New profile; swipe left to save all profiles</string>
+    <string name="library_row_archived">%1$s, archived</string>
+    <string name="library_row_archived_edited">%1$s, archived, edited</string>
+    <string name="library_row_normal">%1$s. Swipe left: archive, delete. Swipe right: save, restore to saved.</string>
+    <string name="library_row_normal_edited">%1$s, edited. Swipe left: archive, delete. Swipe right: save, restore to saved.</string>
+    <string name="library_row_create">Create profile</string>
+    <string name="library_row_select">Select profile</string>
+    <string name="library_row_edit">Edit profile</string>
+
+    <!-- About, privacy and licences screen -->
+    <string name="licences_title">ABOUT, PRIVACY &amp; LICENCES</string>
+    <string name="action_close">CLOSE</string>
+    <!-- Shown where a licence or the privacy file is not in the APK -->
+    <string name="licences_not_found">(not found in this build)</string>
+    <!-- Four lines. %1$s = the app version, %2$s = the address of the source code -->
+    <string name="licences_about">Contour %1$s\nCopyright 2026 Chronosaur. Licensed under the Apache License 2.0.\nSource code: %2$s\nUnofficial - not affiliated with or endorsed by CrinEar or any other brand named in the app.</string>
+    <!-- Addresses (not translated, but a build can give another one): the source code, the privacy policy page and the way it is written on the link -->
+    <string name="source_code_url" translatable="false">https://github.com/Chronosauros/contour</string>
+    <string name="privacy_url" translatable="false">https://contoureq.app/privacy/</string>
+    <string name="privacy_url_label" translatable="false">contoureq.app/privacy</string>
+
+    <!-- Google Play board (shown once on GitHub, Obtainium, F-Droid and sideloaded installs; never in the Chinese edition). %1$s = the app version without the patch, e.g. 1.8 -->
+    <string name="play_beta_title">Contour %1$s is on Google Play.</string>
+    <!-- Three things that are new, one row each, next to an icon -->
+    <string name="play_beta_new_dacs">4 new DACs</string>
+    <string name="play_beta_new_haptics">Haptics you can feel</string>
+    <string name="play_beta_new_popup">Turn off the plug-in pop-up</string>
+    <string name="play_beta_text">Get it from Google Play and it stays up to date. Same app, same signature.</string>
+    <string name="play_beta_open">OPEN GOOGLE PLAY</string>
+    <string name="play_beta_not_now">NOT NOW</string>
+    <!-- Accessibility name of the Google Play logo on the board -->
+    <string name="play_beta_google_play_description">Google Play</string>
+    <!-- Where OPEN GOOGLE PLAY leads: the store page of the app -->
+    <string name="play_beta_play_url" translatable="false">https://play.google.com/store/apps/details?id=io.github.chronosauros.contour</string>
+
+    <!-- DAC Settings page. The names of the settings and of their options come from the device records and stay as the records have them -->
+    <string name="dac_settings_header">DAC SETTINGS</string>
+    <!-- Value of a setting the DAC did not answer for -->
+    <string name="dac_no_reply">NO REPLY</string>
+    <string name="dac_read_only">READ ONLY</string>
+    <!-- Balance: the side the sound moves to, like FiiO Control. %1$d = how far -->
+    <string name="dac_balance_center">CENTER</string>
+    <string name="dac_balance_left">L %1$d</string>
+    <string name="dac_balance_right">R %1$d</string>
+    <!-- The one small line at the foot of the page -->
+    <string name="dac_footer_tap_to_connect">TAP TO CONNECT</string>
+    <string name="dac_footer_reading">READING THE DAC</string>
+    <!-- Snackbars. %1$s = the setting, %2$s = its value as the DAC reads it, %1$s of the others = the DAC\'s name -->
+    <string name="dac_not_sent_read_only">Not sent - %1$s is read only in Contour</string>
+    <string name="dac_not_set_reads">Not set - %1$s reads %2$s</string>
+    <string name="dac_not_set_no_reply">Not set - no reply from %1$s</string>
+    <string name="dac_not_set_busy">Not set - %1$s is busy</string>
+    <!-- The factory reset row of the page -->
+    <string name="dac_factory_reset">FACTORY RESET</string>
+    <string name="dac_factory_reset_detail">SAVES A COPY, THEN RESETS</string>
+
+    <!-- EDIT PROFILE sheet -->
+    <string name="edit_title">EDIT PROFILE</string>
+    <string name="edit_name">NAME</string>
+    <string name="edit_headphones">HEADPHONES</string>
+    <string name="edit_icon">ICON</string>
+    <string name="edit_share">SHARE</string>
+    <string name="edit_save_txt">SAVE .TXT</string>
+    <string name="edit_cannot_share">Cannot share: AUTO preamp unavailable for invalid EQ</string>
+    <string name="edit_duplicate">DUPLICATE</string>
+    <string name="edit_clear_note">One flat band, preamp AUTO. UNDO on the EQ page brings the curve back.</string>
+    <!-- Accessibility names of the profile icons (the English words are the icon ids) -->
+    <string name="profile_icon_moon">moon</string>
+    <string name="profile_icon_in_ear">in-ear</string>
+    <string name="profile_icon_headphones">headphones</string>
+    <string name="profile_icon_wave">wave</string>
+    <string name="profile_icon_leaf">leaf</string>
+    <string name="profile_icon_mountain">mountain</string>
+    <string name="profile_icon_sun">sun</string>
+    <string name="profile_icon_flame">flame</string>
+    <string name="profile_icon_drop">drop</string>
+    <string name="profile_icon_star">star</string>
+    <string name="profile_icon_bolt">bolt</string>
+    <string name="profile_icon_circle">circle</string>
+    <string name="profile_icon_triangle">triangle</string>
+    <string name="profile_icon_note">note</string>
+    <string name="profile_icon_speaker">speaker</string>
+    <string name="profile_icon_snowflake">snowflake</string>
+    <string name="profile_icon_coffee">coffee</string>
+    <string name="profile_icon_eye">eye</string>
+    <string name="profile_icon_anchor">anchor</string>
+    <string name="profile_icon_spiral">spiral</string>
+
+    <!-- NEW PROFILE sheet: four options, each a title and a line under it -->
+    <string name="new_title">NEW PROFILE</string>
+    <string name="new_flat">FLAT</string>
+    <string name="new_flat_detail">One flat band at 1 kHz - drag it or add more</string>
+    <string name="new_paste">PASTE</string>
+    <string name="new_paste_empty">No APO, AutoEQ or EQ by Ear text on the clipboard</string>
+    <plurals name="new_paste_filters">
+        <item quantity="one">%d filter from the clipboard</item>
+        <item quantity="other">%d filters from the clipboard</item>
+    </plurals>
+    <!-- %2$s = the import report (what had to be changed to fit the DAC) -->
+    <plurals name="new_paste_filters_report">
+        <item quantity="one">%1$d filter from the clipboard - %2$s</item>
+        <item quantity="other">%1$d filters from the clipboard - %2$s</item>
+    </plurals>
+    <string name="new_open_file">OPEN FILE</string>
+    <string name="new_open_file_reading">Reading the file...</string>
+    <string name="new_open_file_detail">A .txt from squig.link, graph.hangout.audio or AutoEQ</string>
+    <string name="new_from_dac">FROM DAC</string>
+    <!-- %1$s = the DAC\'s warning -->
+    <string name="new_from_dac_warning">WARNING: %1$s</string>
+    <string name="new_from_dac_detail">Copies the EQ the DAC holds now. Small rounding is possible.</string>
+    <string name="new_from_dac_connect">Connect the DAC first</string>
+
+    <!-- The number editor (FREQ, GAIN, Q, PREAMP). Ranges: the numbers are written in the code in a fixed format -->
+    <string name="value_auto_unavailable">AUTO preamp unavailable for invalid EQ. Fix the shelf settings first.</string>
+    <!-- %1$d = the band number, %2$s = FREQ, GAIN or Q -->
+    <string name="value_title_band">BAND %1$d - %2$s</string>
+    <string name="value_range_freq">20 - 20 000 Hz</string>
+    <!-- %1$s = the lowest gain (-12.0), %2$s = the highest -->
+    <string name="value_range_gain">%1$s - +%2$s dB</string>
+    <string name="value_range_q">0.10 - 10.00</string>
+    <!-- A shelf of a DAC that was measured narrower: %1$s - %2$s = the lowest and the highest Q -->
+    <string name="value_range_q_shelf">%1$s - %2$s</string>
+    <!-- %1$s = the lowest preamp (-30), %2$s = the highest with its sign (+6 or 0) -->
+    <string name="value_range_preamp_whole">%1$s - %2$s dB, whole dB</string>
+    <!-- %3$s = the step (1 or 0.1) -->
+    <string name="value_range_preamp_step">%1$s - +%2$s dB, step %3$s</string>
+    <string name="value_enter_valid_number">Enter a valid number</string>
+    <!-- Under the preamp field of a DAC that keeps whole dB, when the typed fraction is saved rounded down. %1$s = the saved value with its unit, e.g. -4 dB -->
+    <string name="value_saved_as_whole_db">Saved as %1$s - this DAC keeps whole dB, so Contour rounds down (never louder).</string>
+    <!-- The button that flips the sign of the typed number -->
+    <string name="value_sign">+/-</string>
+    <string name="action_done">DONE</string>
+
+    <!-- Sheet of a band (long press on its number) -->
+    <string name="band_title">BAND %1$d</string>
+    <string name="band_bypass">BYPASS</string>
+    <string name="band_enable">ENABLE</string>
+    <string name="band_delete">DELETE</string>
+
+    <!-- Details of FAILED - HOLD TO RETRY (the reason follows as its own text) -->
+    <string name="send_failed_title">SEND FAILED</string>
+
+    <!-- FACTORY RESET sheet -->
+    <string name="reset_erase_note_walkplay">A factory reset puts the EQ back to the manufacturer\'s flat bands and 0 dB, and may erase more. Contour saves a copy of all bands, the preamp and every setting it can read first and offers to write them back afterwards.</string>
+    <string name="reset_erase_note_fiio">A factory reset may erase the USER slots with their names and the DAC\'s settings. Contour saves a copy of all of them first and offers to write them back afterwards.</string>
+    <string name="reset_keep_plugged_walkplay">Keep the DAC plugged in until Contour says the reset is done.</string>
+    <string name="reset_keep_plugged_fiio">Keep the DAC plugged in until Contour asks you to unplug it and plug it back in after the reset.</string>
+    <string name="reset_confirm">SAVE A COPY AND RESET</string>
+    <!-- The step in progress -->
+    <string name="reset_step_copy">READING THE DAC AND SAVING A COPY</string>
+    <string name="reset_step_send">SENDING THE RESET</string>
+    <string name="reset_step_replug">UNPLUG THE DAC AND PLUG IT BACK IN</string>
+    <string name="reset_step_wait">WAITING FOR THE DAC TO COME BACK</string>
+    <string name="reset_step_read">READING THE DAC AFTER THE RESET</string>
+    <string name="reset_replug_note">The reset was sent. Unplug the DAC now and plug it back in; Contour goes on when it sees it come back.</string>
+    <string name="reset_do_not_unplug">Do not unplug the DAC.</string>
+    <string name="reset_stop_waiting">STOP WAITING</string>
+    <!-- After the reset -->
+    <string name="reset_sent_title">RESET SENT</string>
+    <string name="reset_unchanged">The DAC reads the same as the saved copy: the reset may not have run, or it erased nothing.</string>
+    <string name="reset_changed">The reset changed:</string>
+    <!-- %1$s = the name of the file with the copy -->
+    <string name="reset_copy_saved_before">The copy from before the reset is saved on the phone (%1$s).</string>
+    <string name="reset_copy_saved">The copy of the DAC is saved on the phone (%1$s).</string>
+    <string name="reset_write_back">WRITE THE SAVED COPY BACK</string>
+    <string name="reset_restoring_title">WRITING THE SAVED COPY BACK</string>
+    <string name="reset_restoring_walkplay">Bands, preamp and settings, one after another. Do not unplug the DAC.</string>
+    <string name="reset_restoring_fiio">Slot names, slot EQs and settings, one after another. Do not unplug the DAC.</string>
+    <string name="reset_restored_title">SAVED COPY WRITTEN BACK</string>
+    <string name="reset_restored_partial_title">SAVED COPY NOT FULLY WRITTEN</string>
+    <string name="reset_restored_ok">Every slot and setting reads back as saved.</string>
+    <string name="reset_restored_partial">Something did not read back as saved:</string>
+    <string name="reset_stopped_title">FACTORY RESET STOPPED</string>
+    <string name="reset_stopped_sent">The reset command had been sent.</string>
+    <string name="reset_stopped_nothing_sent">Nothing was sent to the DAC.</string>
+
+    <!-- Toast after SAVE .TXT (the system file dialog) -->
+    <string name="save_txt_saved">FILE SAVED</string>
+    <string name="save_txt_failed">COULD NOT SAVE THE FILE</string>
+
+    <!-- ===== Messages of :core that reach the screen. :core stays English; when `translate_core_text` is true the app finds each message (or its pattern) and shows these instead.
+         The English words below equal the messages of :core exactly. %1$s, %2$s ... are the numbers and names that stand in the message (bands, Hz, dB, the DAC\'s name). ===== -->
+    <!-- Labels of HOLD TO SEND when the EQ cannot be sent, and the headline the graph shows for an EQ it cannot draw -->
+    <string name="core_label_read_dac_first">READ THE DAC FIRST</string>
+    <string name="core_label_preamp_out_of_range">PREAMP OUT OF RANGE</string>
+    <string name="core_label_invalid_eq_edit_band">INVALID EQ - EDIT BAND</string>
+    <string name="core_label_invalid_adjust_band_count">INVALID EQ - adjust band count</string>
+    <string name="core_label_invalid_adjust_shelf">INVALID EQ - adjust shelf gain or Q</string>
+    <string name="core_label_invalid_adjust_preamp">INVALID EQ - adjust preamp</string>
+    <string name="core_label_invalid_adjust_frequency">INVALID EQ - adjust frequency</string>
+    <string name="core_label_invalid_adjust_gain">INVALID EQ - adjust gain</string>
+    <string name="core_label_invalid_adjust_q">INVALID EQ - adjust Q</string>
+    <!-- A DAC Contour only reads -->
+    <string name="core_label_read_only">READ ONLY</string>
+    <!-- %1$s = how many bands the EQ has, %2$s = how many the DAC takes -->
+    <string name="core_label_bands_max">%1$s BANDS - MAX %2$s</string>
+    <!-- A band that is not allowed. %1$s = the band number, %2$s = the number (the value is shown in capitals). The "- EDIT BAND" form is used while it fits the button, else the short form -->
+    <string name="core_label_band_type_edit">BAND %1$s: TYPE UNSUPPORTED - EDIT BAND</string>
+    <string name="core_label_band_type">BAND %1$s: TYPE UNSUPPORTED</string>
+    <string name="core_label_band_freq_edit">BAND %1$s: FREQ %2$s HZ - EDIT BAND</string>
+    <string name="core_label_band_freq">BAND %1$s: FREQ %2$s HZ</string>
+    <string name="core_label_band_gain_edit">BAND %1$s: GAIN %2$s DB - EDIT BAND</string>
+    <string name="core_label_band_gain">BAND %1$s: GAIN %2$s DB</string>
+    <string name="core_label_band_q_edit">BAND %1$s: Q %2$s - EDIT BAND</string>
+    <string name="core_label_band_q">BAND %1$s: Q %2$s</string>
+    <string name="core_label_band_shelf_q_edit">BAND %1$s: SHELF Q %2$s - EDIT BAND</string>
+    <string name="core_label_band_shelf_q">BAND %1$s: SHELF Q %2$s</string>
+    <string name="core_label_band_peak_q_edit">BAND %1$s: PEAK Q %2$s - EDIT BAND</string>
+    <string name="core_label_band_peak_q">BAND %1$s: PEAK Q %2$s</string>
+    <!-- What the DAC calls the preamp (the label of the row; PRE GAIN is Moondrop\'s name for it) -->
+    <string name="core_label_preamp">PREAMP</string>
+    <string name="core_label_pre_gain">PRE GAIN</string>
+
+    <!-- Why an EQ cannot be sent (the line "SEND BLOCKED: ..." under the controls, the report of an import) -->
+    <string name="core_issue_read_dac_first">Read the DAC first</string>
+    <!-- %1$s = the DAC\'s name -->
+    <string name="core_issue_read_only">%1$s is read only in Contour</string>
+    <!-- %1$s = the band number, %2$s = the value, %3$s - %4$s = the range the DAC takes -->
+    <string name="core_issue_band_type_unsupported">Band %1$s: type unsupported</string>
+    <string name="core_issue_band_freq_outside">Band %1$s: freq %2$s Hz outside %3$s-%4$s Hz</string>
+    <string name="core_issue_band_gain_outside">Band %1$s: gain %2$s dB outside %3$s..%4$s dB</string>
+    <string name="core_issue_band_q_outside">Band %1$s: Q %2$s outside %3$s-%4$s</string>
+    <string name="core_issue_band_shelf_q_outside">Band %1$s: shelf Q %2$s outside %3$s-%4$s</string>
+    <string name="core_issue_band_peak_q_outside">Band %1$s: peak Q %2$s outside %3$s-%4$s</string>
+    <!-- A shelf of a DAC whose shelves were measured within narrower limits. %5$s = the DAC\'s name -->
+    <string name="core_issue_band_gain_outside_shelf">Band %1$s: gain %2$s dB outside %3$s..%4$s dB (a shelf on the %5$s is limited to what was measured)</string>
+    <string name="core_issue_band_q_outside_shelf">Band %1$s: Q %2$s outside %3$s-%4$s (a shelf on the %5$s is limited to what was measured)</string>
+    <!-- A shelf whose gain and Q have no real response on the Moondrop DUSK-SP -->
+    <string name="core_issue_band_shelf_no_response">Band %1$s: shelf gain/Q has no real response</string>
+    <!-- %2$s = the DAC\'s name, %3$s = the filter types it takes, written by the code in English ("PEAK bands", "PEAK, LOW_SHELF and HIGH_SHELF bands") -->
+    <string name="core_issue_band_takes_only">Band %1$s: %2$s takes %3$s only</string>
+    <!-- KT Micro DACs (Kiwi Ears Allegro Mini, AD1, JCally JM12). %1$s = bands the DAC takes -->
+    <string name="core_issue_kt_bands_over">KT supports %1$s bands; no truncation</string>
+    <!-- %2$s = the filter type as the code names it (HIGH_PASS), %3$s = the DAC\'s name -->
+    <string name="core_issue_band_type_not_supported">Band %1$s: %2$s is not supported by %3$s</string>
+    <string name="core_issue_band_hz_outside">Band %1$s: %2$s Hz outside %3$s-%4$s Hz</string>
+    <string name="core_issue_band_db_outside">Band %1$s: %2$s dB outside %3$s..%4$s dB</string>
+    <!-- %1$s = the preamp, %2$s..%3$s = the range the DAC takes -->
+    <string name="core_issue_pregain_outside">Pregain %1$s outside %2$s..%3$s dB</string>
+    <string name="core_issue_preamp_range">Preamp %1$s dB outside %2$s..%3$s dB range</string>
+    <!-- %1$s = bands in the EQ, %2$s = the DAC\'s name, %3$s = bands the DAC takes -->
+    <string name="core_issue_bands_over">%1$s bands; %2$s accepts %3$s; no truncation</string>
+    <string name="core_issue_enabled_bands_over">%1$s enabled bands; %2$s has %3$s</string>
+    <!-- %1$s = the DAC\'s name, %2$s = the band number -->
+    <string name="core_issue_band_unsafe_shelf">%1$s band %2$s cannot be represented safely. Reduce the boost, raise the shelf frequency or adjust Q.</string>
+    <string name="core_issue_band_unsafe">%1$s band %2$s cannot be represented safely. Reduce the boost or adjust frequency/Q.</string>
+    <!-- AUTO preamp needs more than the DAC takes. %1$s = the dB it needs, %2$s = the lowest the DAC takes -->
+    <string name="core_issue_auto_needs">this EQ needs %1$s dB; Contour supports down to %2$s dB for this device. Reduce the combined boosts.</string>
+    <!-- %1$s = the DAC\'s name -->
+    <string name="core_issue_auto_no_response">AUTO preamp: no finite response; cannot send to %1$s</string>
+    <!-- Note of a Moondrop Dawn Pro 2 that is on one of its own presets. %1$s = the EQ index it is on, %2$s = the index (or "7 or 9") Contour writes -->
+    <string name="core_note_dawn_bank">The DAC is on EQ index %1$s, one of its own presets. Switch the DAC to its PEQ mode (EQ index %2$s): HOLD TO SEND writes the EQ the DAC is on.</string>
+
+    <!-- ===== Words of the DAC Settings page that come from :core and the device records: row labels, section headers, option words. The key is core_setting_<word>; the English text is exactly what the code has.
+         Shown from here only where translate_core_text is true. Entries marked "keep as is" are a manufacturer's name or a standard: translate only where a Chinese term is the usual one. ===== -->
+    <string name="core_setting_volume">VOLUME</string>
+    <string name="core_setting_volume_steps">VOLUME STEPS</string>
+    <string name="core_setting_balance">BALANCE</string>
+    <string name="core_setting_in_line_mic">IN-LINE MIC</string>
+    <string name="core_setting_light">LIGHT</string>
+    <string name="core_setting_usb_audio">USB AUDIO</string>
+    <string name="core_setting_filter">FILTER</string>
+    <string name="core_setting_gain">GAIN</string>
+    <string name="core_setting_output">OUTPUT</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_dre">DRE</string>
+    <string name="core_setting_buttons">BUTTONS</string>
+    <string name="core_setting_brightness">BRIGHTNESS</string>
+    <string name="core_setting_screen_off">SCREEN OFF</string>
+    <string name="core_setting_rotation">ROTATION</string>
+    <string name="core_setting_language">LANGUAGE</string>
+    <string name="core_setting_mic_gain">MIC GAIN</string>
+    <string name="core_setting_eq_index">EQ INDEX</string>
+    <string name="core_setting_global_gain">GLOBAL GAIN</string>
+    <string name="core_setting_pre_gain">PRE GAIN</string>
+    <string name="core_setting_preset">PRESET</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_eq">EQ</string>
+    <string name="core_setting_section_device">DEVICE</string>
+    <string name="core_setting_section_screen">SCREEN</string>
+    <string name="core_setting_section_sound">SOUND</string>
+    <string name="core_setting_off">OFF</string>
+    <string name="core_setting_on">ON</string>
+    <string name="core_setting_high">HIGH</string>
+    <string name="core_setting_low">LOW</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_class_ab">CLASS AB</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_class_h">CLASS H</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_mode_a">MODE A</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_mode_b">MODE B</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_uac_1">UAC 1.0</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_uac_2">UAC 2.0</string>
+    <string name="core_setting_min_phase_fast">MINIMUM PHASE FAST</string>
+    <string name="core_setting_lin_phase_fast">LINEAR PHASE FAST</string>
+    <string name="core_setting_min_phase_slow">MINIMUM PHASE SLOW</string>
+    <string name="core_setting_lin_phase_slow">LINEAR PHASE SLOW</string>
+    <string name="core_setting_non_oversampling">NON OVER-SAMPLING</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_min_f">MIN F</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_lin_f">LIN F</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_min_s">MIN S</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_lin_s">LIN S</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_nos">NOS</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_fast_ll">FAST-LL</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_fast_pc">FAST-PC</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_slow_ll">SLOW-LL</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_slow_pc">SLOW-PC</string>
+    <!-- keep as is unless a Chinese term is standard -->
+    <string name="core_setting_non_os">NON-OS</string>
+    <string name="core_setting_t_15s">15 S</string>
+    <string name="core_setting_t_30s">30 S</string>
+    <string name="core_setting_t_1min">1 MIN</string>
+    <string name="core_setting_t_2min">2 MIN</string>
+    <string name="core_setting_t_5min">5 MIN</string>
+    <string name="core_setting_t_10min">10 MIN</string>
+    <string name="core_setting_t_30min">30 MIN</string>
+    <string name="core_setting_chinese">CHINESE</string>
+    <string name="core_setting_english">ENGLISH</string>
+    <string name="core_setting_no_reply">no reply</string>
+    <!-- Firmware line of the page header. %1$s = the version (1.2.0, or 2.20 on a DAC with a two-part version) -->
+    <string name="core_setting_firmware">FW %1$s</string>
+    <!-- Lines of the factory reset result and of the write-back list. %1$s = a setting\'s name, %2$s and %3$s = values -->
+    <string name="core_reset_diff_line">%1$s: %2$s -> %3$s</string>
+    <string name="core_reset_restored">%1$s: restored</string>
+    <string name="core_reset_unchanged">%1$s: unchanged</string>
+    <string name="core_reset_read_only">%1$s: read only, not written back</string>
+    <string name="core_reset_session_ended">%1$s: not restored (the DAC session ended)</string>
+    <string name="core_reset_no_reply">%1$s: NOT restored: no reply</string>
+    <string name="core_reset_reads">%1$s: NOT restored: the DAC reads %2$s, saved %3$s</string>
 </resources>

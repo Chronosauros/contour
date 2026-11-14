@@ -11,6 +11,9 @@ import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.core.DeviceProtocol
 import io.github.chronosauros.contour.core.DeviceTarget
 import io.github.chronosauros.contour.core.WalkPlay
+import io.github.chronosauros.contour.R
+import io.github.chronosauros.contour.ui.UiText
+import io.github.chronosauros.contour.ui.coreTexts
 import io.github.chronosauros.contour.core.native.FamilyDevices
 import io.github.chronosauros.contour.core.native.FamilyState
 import io.github.chronosauros.contour.core.native.FiioMelodyExchange
@@ -68,16 +71,15 @@ data class DacSnapshot(
     val shownPreamp: Double? get() = if (familyState != null) familyState.preampDb else if (nativeState != null) nativeState.preamp else preampDb?.toDouble()
     fun matches(profile: Profile): Boolean = familyState?.matches(profile) ?: nativeState?.matches(profile)
         ?: requireNotNull(protocol).matches(profile, bands.map { it.registers }, requireNotNull(preampDb))
-    /** What the DAC holds as an EQ Contour can open. A state it cannot open exactly names the reason only in a review build; a release says it in one plain sentence. */
-    fun importExact(): DacImport = importRaw().let { r ->
-        if (r is DacImport.Rejected && Proven.channel != BuildChannel.PERF) DacImport.Rejected(listOf(NOT_EXACT)) else r
-    }
-    private fun importRaw(): DacImport = familyState?.let { s -> runCatching<DacImport> { DacImport.Ready(s.importExact()) }
+    /** What the DAC holds as an EQ Contour can open; what the screens say about a state it cannot open exactly is [refusalText]. */
+    fun importExact(): DacImport = familyState?.let { s -> runCatching<DacImport> { DacImport.Ready(s.importExact()) }
         .getOrElse { DacImport.Rejected(listOf(it.message ?: "The DAC state cannot be imported exactly")) } }
         ?: nativeState?.let { s -> runCatching<DacImport> { DacImport.Ready(s.importExact()) }
         .getOrElse { DacImport.Rejected(listOf(it.message ?: "Native state cannot be imported exactly")) } }
         ?: requireNotNull(protocol).importExact(bands, requireNotNull(preampDb))
-    private companion object { const val NOT_EXACT = "This EQ on the DAC uses filters Contour can't edit exactly, so it is only shown." }
+    /** A state Contour cannot open exactly names the reason only in a review build; a release says it in one plain sentence. */
+    fun refusalText(r: DacImport.Rejected): UiText =
+        if (Proven.channel != BuildChannel.PERF) UiText.res(R.string.dac_import_not_exact) else coreTexts(r.issues)
 }
 
 /**

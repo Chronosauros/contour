@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.DeviceFontFamilyName
 import androidx.compose.ui.text.font.Font
@@ -60,18 +61,20 @@ import io.github.chronosauros.contour.R
  * review hook `--es sheet playbeta` shows it on demand). To be removed a week after 1.8.0 or in the next update (Desk task 5c4e1cad).
  */
 object PlayBeta {
-    /** The store page itself (production release, 1.8.0): Google Play opens it in the Play Store app when it is installed. */
-    const val PLAY_URL = "https://play.google.com/store/apps/details?id=io.github.chronosauros.contour"
+    /** The store page itself (production release, 1.8.0): Google Play opens it in the Play Store app when it is installed. The address is the resource `play_beta_play_url`. */
     private const val PLAY_STORE = "com.android.vending"
     private const val KEY_SHOWN = "playStoreBoardShown"
 
     /** True when the board should show now: marks it shown at once. */
     fun takeShowing(context: Context, prefs: SharedPreferences): Boolean {
-        if (reviewBuild(context) || fromPlay(context)) return false
+        if (reviewBuild(context) || chineseBuild() || fromPlay(context)) return false
         if (prefs.getBoolean(KEY_SHOWN, false)) return false
         prefs.edit().putBoolean(KEY_SHOWN, true).apply()
         return true
     }
+
+    /** The Chinese edition ("cn" build type) points to Google Play, which is not there: never shown. */
+    private fun chineseBuild(): Boolean = BuildConfig.BUILD_TYPE == "cn"
 
     private fun reviewBuild(context: Context): Boolean =
         context.packageName.endsWith(".perf") || (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
@@ -120,32 +123,33 @@ fun PlayBetaBoard(onClose: () -> Unit) {
                 contentAlignment = Alignment.Center,
             ) {
                 // the arrow's mass sits left of its box: 2 dp to the right centres it to the eye
-                Image(painterResource(R.drawable.ic_google_play), contentDescription = "Google Play", Modifier.padding(start = 2.dp).size(width = 27.dp, height = 29.dp))
+                Image(painterResource(R.drawable.ic_google_play), contentDescription = stringResource(R.string.play_beta_google_play_description), Modifier.padding(start = 2.dp).size(width = 27.dp, height = 29.dp))
             }
         }
         Spacer(Modifier.height(24.dp))
         BasicText(
-            "Contour $version is on Google Play.", Modifier.fillMaxWidth(), style = Type.screenTitle.copy(color = pal.text), maxLines = 1,
+            stringResource(R.string.play_beta_title, version), Modifier.fillMaxWidth(), style = Type.screenTitle.copy(color = pal.text), maxLines = 1,
             autoSize = TextAutoSize.StepBased(minFontSize = 20.sp, maxFontSize = Type.screenTitle.fontSize, stepSize = 1.sp),
         )
         Spacer(Modifier.height(20.dp))
-        NewRow(Icons.Rounded.Usb, "4 new DACs")
+        NewRow(Icons.Rounded.Usb, stringResource(R.string.play_beta_new_dacs))
         Spacer(Modifier.height(11.dp))
-        NewRow(Icons.Rounded.Vibration, "Haptics you can feel")
+        NewRow(Icons.Rounded.Vibration, stringResource(R.string.play_beta_new_haptics))
         Spacer(Modifier.height(11.dp))
-        NewRow(Icons.Rounded.PowerSettingsNew, "Turn off the plug-in pop-up")
+        NewRow(Icons.Rounded.PowerSettingsNew, stringResource(R.string.play_beta_new_popup))
         Spacer(Modifier.height(20.dp))
         Text(
-            "Get it from Google Play and it stays up to date. Same app, same signature.",
+            stringResource(R.string.play_beta_text),
             Modifier.fillMaxWidth(), style = Type.value.copy(fontSize = 16.sp, lineHeight = 24.sp), color = pal.textDim,
         )
         Spacer(Modifier.height(24.dp))
-        AppButton("OPEN GOOGLE PLAY", {
-            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(PlayBeta.PLAY_URL)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+        val playUrl = stringResource(R.string.play_beta_play_url)
+        AppButton(stringResource(R.string.play_beta_open), {
+            runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(playUrl)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             onClose()
         }, Modifier.fillMaxWidth().testTag("play_beta_join"), primary = true)
         Spacer(Modifier.height(Grid.GAP))
-        AppButton("NOT NOW", onClose, Modifier.fillMaxWidth().testTag("play_beta_later"))
+        AppButton(stringResource(R.string.play_beta_not_now), onClose, Modifier.fillMaxWidth().testTag("play_beta_later"))
     }
 }
 

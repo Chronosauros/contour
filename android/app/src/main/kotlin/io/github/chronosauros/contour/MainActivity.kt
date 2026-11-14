@@ -34,6 +34,7 @@ import io.github.chronosauros.contour.model.DacEditor
 import io.github.chronosauros.contour.model.ImportFile
 import io.github.chronosauros.contour.model.Incoming
 import io.github.chronosauros.contour.model.Page
+import io.github.chronosauros.contour.model.ProfileNames
 import io.github.chronosauros.contour.model.ProfileStore
 import io.github.chronosauros.contour.model.Sender
 import io.github.chronosauros.contour.ui.ContourApp
@@ -103,7 +104,7 @@ class MainActivity : ComponentActivity() {
             }
             // the dialog has already created an empty file: never leave it behind
             if (!ok) withContext(Dispatchers.IO) { runCatching { DocumentsContract.deleteDocument(resolver, uri) } }
-            Toast.makeText(app, if (ok) "FILE SAVED" else "COULD NOT SAVE THE FILE", Toast.LENGTH_SHORT).show()
+            Toast.makeText(app, app.getString(if (ok) R.string.save_txt_saved else R.string.save_txt_failed), Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -116,7 +117,12 @@ class MainActivity : ComponentActivity() {
         applyChannelExtra(intent)
         // Backup failure blocks loading and all writes; retry loading retries the copy first.
         val appContext = applicationContext
-        model = processModel ?: AppModel(ProfileStore(filesDir), persistenceScope) {
+        val names = ProfileNames(
+            listOf(R.string.seed_bass_boost, R.string.seed_softer_vocals, R.string.seed_treble_boost).map { appContext.getString(it) },
+            { n -> appContext.getString(R.string.profile_default_name, n) },
+            appContext.getString(R.string.profile_from_dac),
+        )
+        model = processModel ?: AppModel(ProfileStore(filesDir), persistenceScope, names) {
             Backup.beforeV1(appContext)
         }.also { processModel = it; it.load() }
         device = DeviceController(this, lifecycleScope)

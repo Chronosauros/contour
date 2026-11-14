@@ -35,6 +35,7 @@ import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
@@ -50,6 +51,9 @@ import androidx.compose.ui.unit.dp
 import android.os.SystemClock
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.model.Sender
+import io.github.chronosauros.contour.R
+import io.github.chronosauros.contour.ui.UiText
+import io.github.chronosauros.contour.ui.asString
 import io.github.chronosauros.contour.ui.Lift
 import io.github.chronosauros.contour.ui.Type
 import io.github.chronosauros.contour.ui.kit.LiftGuard
@@ -156,11 +160,12 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
     val v = rememberUpdatedState(value)
     val change = rememberUpdatedState(onChange)
     val shape = RoundedCornerShape(Radii.M)
+    val description = stringResource(R.string.slider_description, param.label.asString())
     Box(
         modifier
             .testTag("slider_${param.name.lowercase()}")
             .semantics {
-                contentDescription = "${param.label} slider"
+                contentDescription = description
                 progressBarRangeInfo = ProgressBarRangeInfo(value.toFloat(), scale.min.toFloat()..scale.max.toFloat())
                 if (!enabled) disabled()
                 setProgress { requested ->
@@ -221,50 +226,49 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
     }
 }
 
+/** What HOLD TO SEND is: the touch handler and the colours go by the kind, never by the words of the label. */
+enum class HoldKind { TAP_TO_CONNECT, SAVING, NO_DAC, READ_ONLY, CHOOSE_SLOT, PRESET, TAP_TO_READ, BLOCKED, FAILED, ON_DAC, SEND }
+
 /**
- * What HOLD TO SEND shows for [p] now, and why. [eqBlocked] is the state the touch handler keys on (the EQ cannot be sent),
+ * What HOLD TO SEND shows for [p] now, and why. [kind] says what the button is and [eqBlocked] is the state the touch handler keys on (the EQ cannot be sent),
  * [issues] the full list behind it; the [label] is only how that is worded and never decides what a touch does.
  */
 data class HoldView(
-    val label: String, val eqBlocked: Boolean = false, val issues: List<String> = emptyList(),
-    /** The DUSK-SP foot names the cable's preset ([Sender.presetFoot]): not a send control, a tap opens the DAC page; [onDac] = the bank is the profile on screen (the orange style, else the neutral one). */
-    val preset: Boolean = false, val onDac: Boolean = false,
+    val kind: HoldKind, val label: UiText, val eqBlocked: Boolean = false, val issues: List<String> = emptyList(),
+    /** [HoldKind.PRESET] only: the bank is the profile on screen (the orange style, else the neutral one). */
+    val onDac: Boolean = false,
 )
 
 fun holdView(p: Profile, device: DeviceController, sender: Sender): HoldView {
     // A write that ended at SAVE (Allegro Mini) is not proven until the DAC is back and read: saving, or TAP TO CONNECT when the system needs a tap to let it in again.
-    if (device.verifyingSave) return if (device.tapToConnect) HoldView("TAP TO CONNECT") else HoldView(SAVING_LABEL)
+    if (device.verifyingSave) return if (device.tapToConnect) HoldView(HoldKind.TAP_TO_CONNECT, UiText.res(R.string.hold_tap_to_connect)) else HoldView(HoldKind.SAVING, UiText.res(R.string.hold_saving))
     // A send, the DAC following a slot tap, the connect read, a rename: every DAC transfer the user can see (not the background scan alone).
-    if (sender.sendingId == p.id || device.transferring) return HoldView(SAVING_LABEL)
+    // (SAVING: white, an orange fill grows - a send: the frames written, [Sender.sendProgress]; the rest: a time ramp.)
+    if (sender.sendingId == p.id || device.transferring) return HoldView(HoldKind.SAVING, UiText.res(R.string.hold_saving))
     // Something to connect -> TAP TO CONNECT; nothing attached -> NO DAC (owner, 14.10.2026).
-    if (device.tapToConnect) return HoldView("TAP TO CONNECT")
-    if (device.link == Link.NO_DAC) return HoldView("NO DAC")
+    if (device.tapToConnect) return HoldView(HoldKind.TAP_TO_CONNECT, UiText.res(R.string.hold_tap_to_connect))
+    if (device.link == Link.NO_DAC) return HoldView(HoldKind.NO_DAC, UiText.res(R.string.hold_no_dac))
     // A read-only DAC (the Echo-A until its write flag is set) is read, never written: no hold, no send.
-    if (device.protocol.readOnly) return HoldView(FamilyDevices.READ_ONLY_LABEL, eqBlocked = true, issues = device.sendIssues(p))
+    if (device.protocol.readOnly) return HoldView(HoldKind.READ_ONLY, UiText.Core(FamilyDevices.READ_ONLY_LABEL), eqBlocked = true, issues = device.sendIssues(p))
     // A slot DAC with no slot chosen yet (a SnowSky right after plug-in, a stock preset): a tap on a slot chooses where HOLD TO SEND writes.
-    if (device.slotPicker && device.chosenSlot == null) return HoldView("CHOOSE A SLOT", eqBlocked = true)
+    if (device.slotPicker && device.chosenSlot == null) return HoldView(HoldKind.CHOOSE_SLOT, UiText.res(R.string.hold_choose_slot), eqBlocked = true)
     // DUSK-SP: until a profile is picked, imported or edited after the last read or send, the foot names the cable's preset instead of offering a send (this is the foot label logic of that cable)
-    sender.presetFoot(p)?.let { return HoldView(it, preset = true, onDac = sender.isOnDac(p)) }
+    sender.presetFoot(p)?.let { return HoldView(HoldKind.PRESET, UiText.Plain(it), onDac = sender.isOnDac(p)) } // the preset's own name (CUSTOM EQ, DUSK-DEFAULT): the maker's words
     val issues = device.sendIssues(p)
     // A FiiO DAC whose state is not read yet: a tap reads it, not a dead READ THE DAC FIRST (owner, 14.10.2026).
-    if (issues.singleOrNull() == "Read the DAC first") return HoldView(TAP_TO_READ_LABEL)
+    if (issues.singleOrNull() == FamilyDevices.READ_FIRST) return HoldView(HoldKind.TAP_TO_READ, UiText.res(R.string.hold_tap_to_read))
     if (issues.isNotEmpty()) {
         // Native DACs (FiiO) say which band or the preamp is out of range; Micro and Max keep the generic wording.
-        val label = if (device.protocol.native) DeviceTarget.blockLabel(issues) else "INVALID EQ - EDIT BAND"
-        return HoldView(label, eqBlocked = true, issues = issues)
+        val label = if (device.protocol.native) UiText.Core(DeviceTarget.blockLabel(issues)) else UiText.res(R.string.core_label_invalid_eq_edit_band)
+        return HoldView(HoldKind.BLOCKED, label, eqBlocked = true, issues = issues)
     }
-    return HoldView(when {
-        sender.failedFor(p) -> "FAILED - HOLD TO RETRY"
+    return when {
+        sender.failedFor(p) -> HoldView(HoldKind.FAILED, UiText.res(R.string.hold_failed))
         // Answers "can I unplug now?" (owner, 14.10.2026): only once nothing runs on the DAC. Still holdable to send again.
-        !device.busy && !device.scanning && playsOnDac(device, sender, p) -> ON_DAC_LABEL
-        else -> "HOLD TO SEND"
-    })
+        !device.busy && !device.scanning && playsOnDac(device, sender, p) -> HoldView(HoldKind.ON_DAC, UiText.res(R.string.hold_on_dac))
+        else -> HoldView(HoldKind.SEND, UiText.res(R.string.hold_send))
+    }
 }
-
-const val ON_DAC_LABEL = "ON DAC · SAFE TO UNPLUG"
-const val TAP_TO_READ_LABEL = "TAP TO READ THE DAC"
-/** The label while the DAC is written or read for the user: white, an orange fill grows (a send: the frames written, [Sender.sendProgress]; the rest: a time ramp). */
-const val SAVING_LABEL = "SAVING TO DAC"
 
 private const val HOLD_MS = 700
 
@@ -286,19 +290,19 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
     val scope = rememberCoroutineScope()
     val fill = remember { Animatable(0f) }
     val view = holdView(p, device, sender)
-    val label = view.label
-    val labelNow = rememberUpdatedState(label)
+    val label = view.label.asString()
+    val kindNow = rememberUpdatedState(view.kind)
     val eqBlockedNow = rememberUpdatedState(view.eqBlocked)
-    val presetNow = rememberUpdatedState(view.preset)
+    val presetNow = rememberUpdatedState(view.kind == HoldKind.PRESET)
     val presets = rememberUpdatedState(onPresets)
     // The full issue list goes to the USB log once per block, so a logcat capture shows why a send is blocked.
     LaunchedEffect(view.issues) { device.logSendBlock(view.issues) }
     val profile = rememberUpdatedState(p)
     val details = rememberUpdatedState(onDetails)
     // White while it can send and orange fills it as it is held; orange once the profile is on the DAC (as the slot pill, owner 14.10.2026).
-    val saving = label == SAVING_LABEL
-    val white = label == "HOLD TO SEND" || saving
-    val orange = label == ON_DAC_LABEL || (view.preset && view.onDac)
+    val saving = view.kind == HoldKind.SAVING
+    val white = view.kind == HoldKind.SEND || saving
+    val orange = view.kind == HoldKind.ON_DAC || (view.kind == HoldKind.PRESET && view.onDac)
     // The fill of the saving state, never backwards within one continuous period: a send follows its real frame progress; any other
     // transfer ramps to 85 % over its expected time (chained transfers extend it), then to 100 % when it ends.
     val shown = remember { Animatable(0f) }
@@ -324,7 +328,7 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
             shown.animateTo(TRANSFER_RAMP_TO, tween(left, easing = LinearEasing))
         }
     }
-    val flat = label == "NO DAC"
+    val flat = view.kind == HoldKind.NO_DAC
     val shape = RoundedCornerShape(Radii.L)
     Box(
         modifier
@@ -356,19 +360,20 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
                         return@awaitEachGesture
                     }
                     // A slot tap is reading the DAC: no send until it is done.
-                    if (device.busy && labelNow.value != SAVING_LABEL) { haptics.reject(); return@awaitEachGesture }
-                    when (labelNow.value) {
-                        SAVING_LABEL -> return@awaitEachGesture
-                        "NO DAC" -> {
+                    if (device.busy && kindNow.value != HoldKind.SAVING) { haptics.reject(); return@awaitEachGesture }
+                    when (kindNow.value) {
+                        HoldKind.SAVING -> return@awaitEachGesture
+                        HoldKind.NO_DAC -> {
                             if (waitUp() && !device.connect()) haptics.reject()
                             return@awaitEachGesture
                         }
-                        "TAP TO CONNECT", TAP_TO_READ_LABEL -> {
+                        HoldKind.TAP_TO_CONNECT, HoldKind.TAP_TO_READ -> {
                             if (waitUp() && !device.connect()) haptics.reject()
                             return@awaitEachGesture
                         }
+                        else -> Unit
                     }
-                    val failed = labelNow.value.startsWith("FAILED")
+                    val failed = kindNow.value == HoldKind.FAILED
                     // The whole build-up is ONE composition built now (owner 14.11.2026): a later vibrate() would cut it, so nothing ticks per frame.
                     haptics.holdStart(HOLD_MS)
                     val job: Job = scope.launch {
