@@ -20,9 +20,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -53,7 +55,10 @@ import io.github.chronosauros.contour.ui.Type
 import io.github.chronosauros.contour.ui.kit.LiftGuard
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
 import io.github.chronosauros.contour.ui.kit.LocalPagerLock
+import io.github.chronosauros.contour.ui.kit.QFeel
 import io.github.chronosauros.contour.ui.kit.Scale
+import io.github.chronosauros.contour.ui.kit.FreqFeel
+import io.github.chronosauros.contour.ui.kit.GainFeel
 import io.github.chronosauros.contour.ui.kit.detectHorizontalDragWithEnds
 import io.github.chronosauros.contour.ui.kit.holdsPager
 import io.github.chronosauros.contour.ui.lift
@@ -89,10 +94,12 @@ internal fun ratioLerp(a: Float, b: Float, s: Float): Float = a * (b / a).pow(s)
  * adjustable), easing gently into 1.25 at a normal 0.6 dp/ms (-10 to +10 dB in about 160 dp) and 1.5 at a quick
  * 1.2 dp/ms. Replaces 26.09's fill-relative gain (0.1 - 2.2 of the track over 0.25 - 1.8 dp/ms).
  */
-internal class BandDrag(private val param: Param, initial: Double) {
-    private val scale = param.scale!!
+internal class BandDrag(private val param: Param, initial: Double, private val scale: Scale = param.scale!!) {
     private var raw = initial
     private var speed = 0f
+
+    /** The smoothed finger speed in dp per ms; [io.github.chronosauros.contour.ui.kit.GainFeel] takes it (owner 14.11.2026). */
+    val speedDp: Float get() = speed
 
     /** The last [move] pushed past an end of the scale. */
     var pastEnd = false
@@ -133,13 +140,16 @@ internal class BandDrag(private val param: Param, initial: Double) {
 
 /**
  * A tall horizontal slider with RELATIVE drag: touch-down never moves the value, the drag moves it by the
- * distance travelled, scaled by finger speed ([BandDrag]). The value is the light fill in a pressed-in track;
- * at the minimum the fill is a square nub. Quantized; haptic ticks at the scale marks, a strong one at the
- * param's home value, a reject tick when pushed past an end. Lifting the finger off a value keeps that value
- * ([LiftGuard]). Horizontal drags inside it never reach the pager.
+ * distance moved, scaled by finger speed ([BandDrag]). The value is the light fill in a pressed-in track;
+ * at the minimum the fill is a square nub. Quantized; haptics: GAIN by [GainFeel], FREQ by [FreqFeel], Q by [QFeel] (owner 14.11.2026, haptics design).
+ * Lifting the finger off a value keeps that value ([LiftGuard]). Horizontal drags inside it never reach the pager.
+ *
+ * [scale] is the connected DAC's range: the drag stops at its ends and ticks at its marks (1.6.5 dragged on the default scale whatever the DAC, so GAIN
+ * stopped at +-10 dB on a DAC that takes -24..+12, and a value beyond +-10 jumped to it at the first touch). [owner] names what the value belongs to
+ * (the band): when it changes under a finger - another finger picked another band - the drag in progress ends instead of writing into the new one.
  */
 @Composable
-fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, scale: Scale = param.scale!!) {
+fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true, scale: Scale = param.scale!!, owner: Any? = null) {
     val haptics = LocalHaptics.current
     val pagerLock = LocalPagerLock.current
     val p = pal
@@ -162,35 +172,34 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
                 }
             }
             .then(if (enabled) Modifier.holdsPager(pagerLock) else Modifier)
-            .pointerInput(param, enabled, scale.min, scale.max) {
+            .pointerInput(param, enabled, scale.min, scale.max, owner) {
                 if (!enabled) return@pointerInput
                 val guard = LiftGuard<Double>(density, param.name)
-                var drag = BandDrag(param, v.value)
-                var atEnd = false
-                var ticked = 0.0 // the value the haptics last spoke for
+                var drag = BandDrag(param, v.value, scale)
+                // Drag haptics by parameter: [GainFeel], [FreqFeel], [QFeel] (rounds 1, 2 and 4 of the haptics design, 14.11.2026).
+                val gainFeel = if (param == Param.GAIN) GainFeel(haptics, scale) else null
+                val freqFeel = if (param == Param.FREQ) FreqFeel(haptics, scale) else null
+                val qFeel = if (param == Param.Q) QFeel(haptics, scale) else null
                 detectHorizontalDragWithEnds(
+                    onDown = { if (gainFeel != null || freqFeel != null || qFeel != null) haptics.grab() },
                     onStart = { down ->
-                        drag = BandDrag(param, v.value)
-                        atEnd = false
-                        ticked = v.value
+                        drag = BandDrag(param, v.value, scale)
+                        gainFeel?.start(v.value)
+                        freqFeel?.start(v.value)
+                        qFeel?.start(v.value)
                         guard.start(down.uptimeMillis, down.position, v.value)
                     },
                     onEnd = { up -> if (up != null) guard.release(up)?.let { change.value(it) } },
                 ) { ch, dx ->
                     ch.consume()
                     val next = drag.move(dx / density, ch.uptimeMillis - ch.previousUptimeMillis)
-                    if (drag.pastEnd) {
-                        if (!atEnd) haptics.reject()
-                        atEnd = true
-                    } else {
-                        atEnd = false
-                    }
                     if (next != v.value) change.value(next)
                     guard.move(ch.uptimeMillis, ch.position, next)
-                    if (next != ticked && !guard.settling(ch.uptimeMillis)) {
-                        val k = param.crossing(ticked, next)
-                        if (k > 0) haptics.crossing(k)
-                        ticked = next
+                    // no haptics while the finger lifts ([LiftGuard.settling])
+                    if (!guard.settling(ch.uptimeMillis)) {
+                        gainFeel?.move(next, drag.pastEnd, drag.speedDp)
+                        freqFeel?.move(next, drag.pastEnd, drag.speedDp)
+                        qFeel?.move(next, drag.pastEnd, drag.speedDp)
                     }
                 }
             }
@@ -216,7 +225,11 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
  * What HOLD TO SEND shows for [p] now, and why. [eqBlocked] is the state the touch handler keys on (the EQ cannot be sent),
  * [issues] the full list behind it; the [label] is only how that is worded and never decides what a touch does.
  */
-data class HoldView(val label: String, val eqBlocked: Boolean = false, val issues: List<String> = emptyList())
+data class HoldView(
+    val label: String, val eqBlocked: Boolean = false, val issues: List<String> = emptyList(),
+    /** The DUSK-SP foot names the cable's preset ([Sender.presetFoot]): not a send control, a tap opens the DAC page; [onDac] = the bank is the profile on screen (the orange style, else the neutral one). */
+    val preset: Boolean = false, val onDac: Boolean = false,
+)
 
 fun holdView(p: Profile, device: DeviceController, sender: Sender): HoldView {
     // A write that ended at SAVE (Allegro Mini) is not proven until the DAC is back and read: saving, or TAP TO CONNECT when the system needs a tap to let it in again.
@@ -230,6 +243,8 @@ fun holdView(p: Profile, device: DeviceController, sender: Sender): HoldView {
     if (device.protocol.readOnly) return HoldView(FamilyDevices.READ_ONLY_LABEL, eqBlocked = true, issues = device.sendIssues(p))
     // A slot DAC with no slot chosen yet (a SnowSky right after plug-in, a stock preset): a tap on a slot chooses where HOLD TO SEND writes.
     if (device.slotPicker && device.chosenSlot == null) return HoldView("CHOOSE A SLOT", eqBlocked = true)
+    // DUSK-SP: until a profile is picked, imported or edited after the last read or send, the foot names the cable's preset instead of offering a send (this is the foot label logic of that cable)
+    sender.presetFoot(p)?.let { return HoldView(it, preset = true, onDac = sender.isOnDac(p)) }
     val issues = device.sendIssues(p)
     // A FiiO DAC whose state is not read yet: a tap reads it, not a dead READ THE DAC FIRST (owner, 14.10.2026).
     if (issues.singleOrNull() == "Read the DAC first") return HoldView(TAP_TO_READ_LABEL)
@@ -257,14 +272,15 @@ private const val HOLD_MS = 700
 private const val TRANSFER_RAMP_TO = 0.85f
 
 /**
- * HOLD TO SEND: hold 700 ms, a shade fills left to right with a rising haptic texture and the button sinks
- * towards the page, a click at full, then send and verify. The only place in the app (besides the service
+ * HOLD TO SEND: hold 700 ms, a shade fills left to right while the haptics draw a bow (one composition built at the touch-down,
+ * [io.github.chronosauros.contour.ui.kit.Haptics.holdStart]) and the button sinks towards the page, a click and a fall at full (the shot), then send and verify, a thud when the
+ * DAC confirms it (owner 14.11.2026). The only place in the app (besides the service
  * screen) that writes to the DAC. White while it can send (orange fills it as it is held) and while it saves (the orange fill
  * follows the real write progress), orange once the profile is on the DAC; grey for FAILED / TAP TO CONNECT;
  * flat grey (no shadow) for NO DAC.
  */
 @Composable
-fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: () -> Unit, modifier: Modifier = Modifier) {
+fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: () -> Unit, onPresets: () -> Unit = {}, modifier: Modifier = Modifier) {
     val haptics = LocalHaptics.current
     val c = pal
     val scope = rememberCoroutineScope()
@@ -273,6 +289,8 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
     val label = view.label
     val labelNow = rememberUpdatedState(label)
     val eqBlockedNow = rememberUpdatedState(view.eqBlocked)
+    val presetNow = rememberUpdatedState(view.preset)
+    val presets = rememberUpdatedState(onPresets)
     // The full issue list goes to the USB log once per block, so a logcat capture shows why a send is blocked.
     LaunchedEffect(view.issues) { device.logSendBlock(view.issues) }
     val profile = rememberUpdatedState(p)
@@ -280,12 +298,20 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
     // White while it can send and orange fills it as it is held; orange once the profile is on the DAC (as the slot pill, owner 14.10.2026).
     val saving = label == SAVING_LABEL
     val white = label == "HOLD TO SEND" || saving
-    val orange = label == ON_DAC_LABEL
+    val orange = label == ON_DAC_LABEL || (view.preset && view.onDac)
     // The fill of the saving state, never backwards within one continuous period: a send follows its real frame progress; any other
     // transfer ramps to 85 % over its expected time (chained transfers extend it), then to 100 % when it ends.
     val shown = remember { Animatable(0f) }
     val sending = sender.sendingId == p.id
     LaunchedEffect(saving) { if (!saving) shown.snapTo(0f) }
+    // The end of a send this button started (owner 14.11.2026): the thud when the DAC confirmed it, the failure pattern when it did not - once per send.
+    var sendAwaited by remember { mutableStateOf(false) }
+    LaunchedEffect(sending, sendAwaited) {
+        if (sendAwaited && !sending) {
+            sendAwaited = false
+            if (sender.failedId == p.id) haptics.fail() else haptics.land()
+        }
+    }
     LaunchedEffect(saving, sending, sender.sendProgress) {
         if (saving && sending && sender.sendProgress > shown.value) shown.animateTo(sender.sendProgress, tween(150))
     }
@@ -324,6 +350,11 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
                     val heldSlot = device.destinationSlot()
                     down.consume()
                     if (eqBlockedNow.value) { haptics.reject(); return@awaitEachGesture }
+                    // the DUSK-SP preset foot sends nothing: a tap (hold or not) opens the DAC page, where the presets are
+                    if (presetNow.value) {
+                        if (waitUp()) { haptics.tap(); presets.value() }
+                        return@awaitEachGesture
+                    }
                     // A slot tap is reading the DAC: no send until it is done.
                     if (device.busy && labelNow.value != SAVING_LABEL) { haptics.reject(); return@awaitEachGesture }
                     when (labelNow.value) {
@@ -338,17 +369,14 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
                         }
                     }
                     val failed = labelNow.value.startsWith("FAILED")
+                    // The whole build-up is ONE composition built now (owner 14.11.2026): a later vibrate() would cut it, so nothing ticks per frame.
+                    haptics.holdStart(HOLD_MS)
                     val job: Job = scope.launch {
                         fill.snapTo(0f)
-                        var lastTick = 0f
-                        fill.animateTo(1f, tween(HOLD_MS, easing = LinearEasing)) {
-                            if (value - lastTick >= 0.08f) {
-                                lastTick = value
-                                haptics.texture(0.15f + 0.5f * value)
-                            }
-                        }
+                        fill.animateTo(1f, tween(HOLD_MS, easing = LinearEasing))
                     }
                     var finished = false
+                    var holdLive = true // the build-up still plays: a cancelled gesture must stop it, a finished one must not cut the release
                     try {
                         val done = withTimeoutOrNull(HOLD_MS.toLong() + 20) {
                             while (true) {
@@ -367,19 +395,33 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
                         }
                         if (done == null) {
                             job.cancel()
-                            haptics.click()
-                            if (heldSlot == device.destinationSlot()) sender.send(profile.value) else haptics.reject()
+                            holdLive = false
+                            // Decide first, then one haptic (the old click was cut by the reject that followed it): the shot when the send goes, the failure pattern when it cannot.
+                            val goes = heldSlot == device.destinationSlot()
+                            if (goes && !sender.busy) {
+                                haptics.release()
+                                sender.send(profile.value)
+                                // the end of this send (verified or failed) is felt once the Sender says so, below
+                                if (sender.sendingId == profile.value.id) sendAwaited = true
+                            } else {
+                                if (goes) sender.send(profile.value) // busy: records the failure the label shows
+                                sendAwaited = false // this gesture has had its failure haptic: the failedId it just set must not play a second one
+                                haptics.fail()
+                            }
                             scope.launch { fill.animateTo(0f, tween(250)) }
                             waitUp()
                         } else {
                             val quick = (fill.value < 0.3f)
                             job.cancel()
+                            holdLive = false
+                            haptics.holdCancel(fill.value)
                             scope.launch { fill.animateTo(0f, tween(150)) }
                             if (quick && failed && done == true) details.value()
                         }
                         finished = true
                     } finally {
                         job.cancel()
+                        if (holdLive) haptics.holdCancel(fill.value)
                         if (!finished) scope.launch { fill.snapTo(0f) }
                     }
                 }

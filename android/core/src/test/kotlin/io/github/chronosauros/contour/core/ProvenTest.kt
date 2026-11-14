@@ -7,6 +7,8 @@ import io.github.chronosauros.contour.core.native.WalkPlayProfiles
 import io.github.chronosauros.contour.core.native.WalkPlayReset
 import io.github.chronosauros.contour.core.native.WalkPlaySettings
 import kotlin.test.Test
+import kotlin.test.assertContentEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertTrue
@@ -73,9 +75,9 @@ class ProvenTest {
             assertTrue(ProtocolMicro.echoAPositivePreampOn); assertEquals(ProtocolMicro.VENDOR_PREAMP_MAX_DB, ProtocolMicro.ECHO_A_PREAMP_MAX_EFFECTIVE_DB)
             assertEquals(ProtocolMicro.VENDOR_PREAMP_MAX_DB, WalkPlayProfiles.echoA.preampMaxDb)
         }
-        // the Max keeps both off in every build, and the TRN its preamp at 0 dB: they are not the Micro's features (the TRN has its own pass-filter flag: TrnDawnPassFilterTest)
+        // the Max and the TRN keep the preamp at 0 dB in every build: it is not the Micro's feature (the TRN has its own pass-filter flag: TrnDawnPassFilterTest; the Max's candidates are ProtocolMax.CANDIDATES_VERIFIED's)
         review {
-            assertFalse(FilterType.LOW_PASS in DeviceProtocol.MAX.caps.types); assertEquals(0, DeviceProtocol.TRN.preampMax); assertEquals(0, DeviceProtocol.MAX.preampMax)
+            assertEquals(0, DeviceProtocol.TRN.preampMax); assertEquals(0, DeviceProtocol.MAX.preampMax)
         }
     }
 
@@ -137,22 +139,54 @@ class ProvenTest {
         }
     }
 
-    @Test fun `the four TRN DAC Filter tab rows are released and the mics are not, so the Micro and the Echo-A have no page in a release`() {
+    @Test fun `the Max's LOW PASS, HIGH PASS, +-12 dB and wrapped Q30 shelf boost are proven (the phone run of 10 November 2026) and offered in every build, and off when the flag is off`() {
+        val max = DeviceProtocol.MAX
+        val hsBoost = Band("hs", FilterType.HIGH_SHELF, 10000.0, 9.0, 0.71)   // its biquad overflows signed Q30
+        val pk12 = Band("pk", FilterType.PEAK, 1000.0, 12.0, 1.0)
+        val lp = Band("lp", FilterType.LOW_PASS, 9000.0, 0.0, 0.71)
+        // the flag off: what a release offered before the phone run (PEAK and the shelves at +-10 dB, an overflowing shelf refused), as the narrowed caps say
+        val off = ProtocolMax.capabilities(passFilters = false, wideGain = false, wrapQ30 = false)
+        assertEquals(setOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF), off.types)
+        assertEquals(-10.0, off.gainMinDb); assertEquals(10.0, off.gainMaxDb); assertFalse(off.wrapQ30); assertEquals(Math.sqrt(2.0), off.shelfQScale)
+        for (b in listOf(hsBoost, pk12, lp)) assertTrue(max.plan(listOf(b), null, off) is DevicePlan.Rejected, b.type.name)
+        assertTrue(ProtocolMax.CANDIDATES_VERIFIED)
+        for (channel in listOf<(() -> Unit) -> Unit>({ b -> release { b() } }, { b -> review { b() } })) channel {
+            assertTrue(ProtocolMax.candidatesOn)
+            assertTrue(setOf(FilterType.LOW_PASS, FilterType.HIGH_PASS).all { it in max.caps.types }); assertEquals(max.caps.types, DeviceTarget.MAX.caps.types)
+            assertEquals(-12.0, max.caps.gainMinDb); assertEquals(12.0, max.caps.gainMaxDb); assertTrue(max.caps.wrapQ30)
+            assertEquals(Math.sqrt(2.0), max.caps.shelfQScale)
+            for (b in listOf(pk12, lp)) assertTrue(max.plan(listOf(b), null) is DevicePlan.Ready, b.type.name)
+            // the boost goes out wrapped to int32 exactly as the quantizer and the byte split of devicePEQ make it, the register Q is the intended Q x sqrt2, and the read-back compares registers only
+            val plan = max.plan(listOf(hsBoost), null) as DevicePlan.Ready
+            val report = WalkPlay.bandWriteReport(plan.bands[0], 0)
+            assertContentEquals(WalkPlay.computeIir(10000.0, 9.0, 0.71, WalkPlay.TYPE_HSQ, 96000.0, wrapQ30 = true), report.copyOfRange(8, 28))
+            assertEquals(Math.round(0.71 * Math.sqrt(2.0) * 256).toInt(), plan.bands[0].registers().q256)
+            assertTrue(max.matches(plan, plan.bands.map { it.registers() }, plan.preampDb))
+            // the other WalkPlay DACs never wrap
+            assertFailsWith<WalkPlay.Q30Overflow> { WalkPlay.bandWriteReport(plan.bands[0].copy(wrapQ30 = false), 0) }
+            assertFalse(DeviceProtocol.TRN.caps.wrapQ30); assertFalse(DeviceProtocol.MICRO.caps.wrapQ30)
+        }
+    }
+
+    @Test fun `the four TRN DAC Filter tab rows are released and the mics are not, so the Micro and the Echo-A have no page in a release and the Max has FILTER, WORK MODE and BALANCE`() {
         val trn = WalkPlayProfiles.trn
         val tabRows = listOf("dac-filter", "work-mode", "gain-mode", "balance")
         release {
             assertEquals(tabRows, WalkPlaySettings.offered(trn).map { it.id })
-            for (p in listOf(WalkPlayProfiles.micro, WalkPlayProfiles.echoA, WalkPlayProfiles.max)) assertEquals(emptyList(), WalkPlaySettings.offered(p).map { it.id }, p.id)
+            for (p in listOf(WalkPlayProfiles.micro, WalkPlayProfiles.echoA)) assertEquals(emptyList(), WalkPlaySettings.offered(p).map { it.id }, p.id)
+            // the Max: FILTER, WORK MODE and BALANCE verified on a phone (WORK MODE kept after an unplug, run 22-phone); its MIC GAIN row (vendor parity, written with the flash save 01 01 00) verified by the Mac run 2026-11-11-crinear-protocol-max-23 (MAX_MIC_VERIFIED); it has no gain row (the unit's physical Eco / Boost switch wins after every replug)
+            assertEquals(listOf("dac-filter", "work-mode", "balance", "mic"), WalkPlaySettings.offered(WalkPlayProfiles.max).map { it.id })
             assertEquals(WalkPlaySettings.offered(trn), DeviceTarget.TRN.settings)
             assertTrue(DeviceTarget.TRN.settings.all { it.writeVerified && it.writeEnabled })
             assertTrue(WalkPlaySettings.of(trn).single { it.id == "mic" }.let { !it.writeVerified && !it.writeEnabled })   // the mic stays read only: hidden here
-            assertTrue(DeviceTarget.MICRO.settings.isEmpty() && DeviceTarget.ECHO_A.settings.isEmpty() && DeviceTarget.MAX.settings.isEmpty())
+            assertTrue(DeviceTarget.MICRO.settings.isEmpty() && DeviceTarget.ECHO_A.settings.isEmpty()); assertEquals(listOf("dac-filter", "work-mode", "balance", "mic"), DeviceTarget.MAX.settings.map { it.id })
         }
         review {
             assertEquals(tabRows + "mic", WalkPlaySettings.offered(trn).map { it.id })
             assertEquals(listOf("mic"), WalkPlaySettings.offered(WalkPlayProfiles.micro).map { it.id })
             assertEquals(listOf("mic"), WalkPlaySettings.offered(WalkPlayProfiles.echoA).map { it.id })
-            assertEquals(emptyList(), WalkPlaySettings.offered(WalkPlayProfiles.max))
+            assertEquals(listOf("dac-filter", "work-mode", "balance", "mic"), WalkPlaySettings.offered(WalkPlayProfiles.max).map { it.id })   // the same four rows in a review build
+            assertTrue(WalkPlaySettings.offered(WalkPlayProfiles.max).all { it.writeEnabled })
             assertEquals(WalkPlaySettings.offered(trn), DeviceTarget.TRN.settings)
             val byId = DeviceTarget.TRN.settings.associateBy { it.id }
             for (id in tabRows) assertTrue(byId.getValue(id).writeEnabled, id)

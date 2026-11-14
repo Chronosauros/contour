@@ -1,0 +1,4 @@
+New DACs: SnowSky Retro Nano, FiiO JadeAudio JIEZI, Kiwi Ears AD1 and Tanchjim Space II, with filter, output, gain, balance and mic gain.
+FiiO JadeAudio JA11 and SnowSky Melody played 12 dB quieter with EQ on (thanks, randomaltthing). Turn the volume down before you send: AUTO and a manual PREAMP play up to 12 dB louder than in 1.7.0.
+New haptics: feel the hertz, the tenths of a dB and the send.
+New in the library: OPEN CONTOUR WHEN A DAC IS PLUGGED IN (thanks, -IAmThis-) and HAPTIC FEEDBACK.

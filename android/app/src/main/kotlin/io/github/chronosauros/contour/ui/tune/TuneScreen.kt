@@ -42,6 +42,8 @@ import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -52,7 +54,6 @@ import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.changedToDown
 import androidx.compose.ui.input.pointer.pointerInput
 import kotlin.math.ceil
-import kotlin.math.floor
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -86,6 +87,7 @@ import io.github.chronosauros.contour.core.Proven
 import io.github.chronosauros.contour.core.isPass
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.model.AppModel
+import io.github.chronosauros.contour.model.Page
 import io.github.chronosauros.contour.model.DacEditor
 import io.github.chronosauros.contour.model.Sender
 import io.github.chronosauros.contour.ui.AppButton
@@ -95,9 +97,12 @@ import io.github.chronosauros.contour.ui.Type
 import io.github.chronosauros.contour.ui.kit.LiftGuard
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
 import io.github.chronosauros.contour.ui.kit.LocalPagerLock
+import io.github.chronosauros.contour.ui.kit.PreampFeel
+import io.github.chronosauros.contour.ui.kit.pressStart
 import io.github.chronosauros.contour.ui.kit.detectHorizontalDragWithEnds
 import io.github.chronosauros.contour.ui.kit.holdsPager
 import io.github.chronosauros.contour.ui.kit.ProfileIcons
+import io.github.chronosauros.contour.ui.kit.SegmentTravel
 import io.github.chronosauros.contour.ui.lift
 import io.github.chronosauros.contour.ui.Radii
 import io.github.chronosauros.contour.ui.pal
@@ -124,6 +129,16 @@ private val ROW_H = Grid.ROW
 private val COMPACT_H = ROW_H - Grid.INSET * 2
 private val ROW_SHAPE = RoundedCornerShape(Radii.L)
 private val GRAPH_MIN = 200.dp
+private val BAND_PARAMS = listOf(Param.FREQ, Param.GAIN, Param.Q)
+
+/**
+ * What the band strip shows of a profile: how many bands it has and which are enabled. It is equal on every step of a FREQ / GAIN / Q drag, so the strip
+ * (a cell per band, laid out from the row width) is skipped then instead of being composed again with each new copy of the profile.
+ */
+@Immutable
+private data class BandFlags(val enabled: List<Boolean>) {
+    val size: Int get() = enabled.size
+}
 
 /** Tune: the current profile - graph, bands, the selected band's values, preamp, HOLD TO SEND. */
 @Composable
@@ -151,6 +166,8 @@ fun TuneScreen(model: AppModel, device: DeviceController, sender: Sender, editor
                 }
             }
         }
+    // The model outlives this page: a touch whose last finger never came up here (the page left composition under it) is closed when the page goes.
+    DisposableEffect(model) { onDispose { model.endGesture() } }
     if (p == null) {
         Column(
             gestures.padding(top = top, bottom = bottomPad).padding(horizontal = SIDE),
@@ -235,16 +252,23 @@ internal fun playsOnDac(device: DeviceController, sender: Sender, p: Profile?): 
 private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, sender: Sender, editor: DacEditor, actions: TuneActions, bandsEnabled: Boolean) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(GAP)) {
         Column(Modifier.alpha(if (sender.bypassed) 0.4f else 1f), verticalArrangement = Arrangement.spacedBy(GAP)) {
-            BandStrip(model, p, actions, bandsEnabled)
+            BandStrip(model, BandFlags(p.bands.map { it.enabled }), actions, bandsEnabled)
             val i = model.selectedBand
             val b = p.bands.getOrNull(i)
             if (b != null) {
                 TypeRow(model, b.type, bandsEnabled)
-                for (param in listOf(Param.FREQ, Param.GAIN, Param.Q)) {
-                    ParamRow(param, param.of(b), enabled = bandsEnabled, scale = param.scaleFor(model.protocol.caps)!!, onTap = { actions.value(param) },
-                        locked = b.type.isPass && param == Param.GAIN) { v ->
+                // One scale object per DAC range: a DAC with its own range gets a new Scale from every scaleFor call, and a row given a new object is
+                // never skipped (all three rows were recomposed on each step of a drag instead of the one being dragged).
+                val caps = model.protocol.caps
+                val scales = remember(caps, b.type) { BAND_PARAMS.map { it.scaleFor(caps, b.type)!! } }
+                // ids, not this pass's profile and band objects: a callback that holds those is a new one on every step of a drag, and its row is never skipped
+                val profileId = p.id
+                val bandId = b.id
+                BAND_PARAMS.forEachIndexed { k, param ->
+                    ParamRow(param, param.of(b), enabled = bandsEnabled, scale = scales[k], onTap = { actions.value(param) },
+                        locked = b.type.isPass && param == Param.GAIN, bandId = bandId) { v ->
                         if (!sender.bypassed && !sender.abBusy)
-                            model.transformBandIfCurrent(p.id, i, b.id) { current -> param.set(current, v) }
+                            model.transformBandIfCurrent(profileId, i, bandId) { current -> param.set(current, v) }
                     }
                 }
             }
@@ -257,7 +281,7 @@ private fun TuneControls(model: AppModel, p: Profile, device: DeviceController, 
         }
         p.preampDb?.let { db ->
             if (!model.protocol.preampFits(p.bands, db)) {
-                Text("${model.protocol.preampLabel} ${Param.PREAMP.number(db)} dB is outside the device range. Tap the number to type a new value, or switch to AUTO.", color = pal.textDim, style = Type.small)
+                Text("${model.protocol.preampLabel} ${Param.PREAMP.number(db, model.protocol.preampStep == 1.0)} dB is outside the device range. Tap the number to type a new value, or switch to AUTO.", color = pal.textDim, style = Type.small)
             }
         }
         // FiiO KA15 (read, USER1-3 writes, slot names and rename tested on a Pixel 04.10.2026): why a send is blocked,
@@ -292,8 +316,10 @@ private fun TuneFoot(model: AppModel, p: Profile, device: DeviceController, send
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(GAP)) {
         // The slot row says which slot is chosen (white) and whether this profile is on it (orange, as ON DAC) - no slot text.
         // K13 R2R: its ten slots show numbers and the DAC stores no names; the chosen slot's last verified profile is
-        // centred in the gap above the row (owner 14.10.2026).
-        val remembered = if (slots && !device.slotNames) device.chosenSlot?.let { slot -> device.slotName(slot)?.let { slot to it } } else null
+        // centred in the gap above the row (owner 14.10.2026). Only there: the caption belongs to the numbered row (the same rule as
+        // SlotRow's `numbers`), never to USER1-USER3 (owner 14.11.2026: "Tylko w K13 R2R tak miało być").
+        val numbered = !device.slotNames && (device.protocol.fiio?.userSlots?.size ?: 0) > 5
+        val remembered = if (slots && numbered) device.chosenSlot?.let { slot -> device.slotName(slot)?.let { slot to it } } else null
         remembered?.let { (slot, name) ->
             Text(
                 "${device.protocol.fiio?.slotLabels?.get(slot) ?: "SLOT $slot"}: $name",
@@ -308,8 +334,8 @@ private fun TuneFoot(model: AppModel, p: Profile, device: DeviceController, send
         }
         if (slots) SlotRow(device, p, sender, editor, sender.isOnDac(p),
             modifier = Modifier.padding(top = if (remembered != null) 0.dp else Grid.GROUP - GAP))
-        HoldToSend(p, device, sender, actions::sendDetails,
-            Modifier.padding(top = if (slots) 0.dp else Grid.GROUP - GAP).fillMaxWidth().height(ROW_H))
+        HoldToSend(p, device, sender, actions::sendDetails, onPresets = { model.pageRequest = Page.DAC },
+            modifier = Modifier.padding(top = if (slots) 0.dp else Grid.GROUP - GAP).fillMaxWidth().height(ROW_H))
     }
 }
 
@@ -340,8 +366,11 @@ private fun FamilyNotes(device: DeviceController) {
                 AppButton("RETURN TO INDEX $index", { device.returnToPreviousIndex() }, Modifier.fillMaxWidth().testTag("return_index"), enabled = !device.busy)
             }
         }
+        // DUSK-SP (Moondrop gen 1): no text here at all (owner 11.11.2026): the foot button names the cable's preset ([Sender.presetFoot]) and the presets are buttons on the DAC page.
+        target.gen1 != null -> Unit
         // Allegro Mini: verified on the phone 25.10.2026. The DSP designs its filters for 24 kHz and plays them at the stream rate, so Contour writes for a 48 kHz stream (owner decision 25.10.2026).
-        else -> Text(if (review) "${target.caps.bands} PEAK bands, no preamp. Contour assumes this DAC plays at 48 kHz; at 44.1 kHz every band sounds about 8 % lower. After SAVE the DAC reconnects; the send counts only after Contour has read it back."
+        // The line follows the model's offered types: the Allegro Mini takes PEAK bands only, the JCally JM12 also low and high shelves.
+        else -> Text(if (review) "${target.caps.bands} ${if (target.caps.types == setOf(FilterType.PEAK)) "PEAK bands" else "bands: peak, low shelf and high shelf"}, no preamp. Contour assumes this DAC plays at 48 kHz; at 44.1 kHz every band sounds about 8 % lower. After SAVE the DAC reconnects; the send counts only after Contour has read it back."
             else "Contour tunes this DAC for 48 kHz; at 44.1 kHz every band sounds about 8 % lower.",
             color = dim, style = Type.small)
     }
@@ -470,7 +499,9 @@ private fun SlotRow(device: DeviceController, p: Profile, sender: Sender, editor
     val well = RoundedCornerShape(Radii.L)
     val pill = RoundedCornerShape(Radii.M)
     val idx = slots.indexOf(target)
-    val at by animateFloatAsState(idx.coerceAtLeast(0).toFloat(), label = "slot")
+    val atState = animateFloatAsState(idx.coerceAtLeast(0).toFloat(), label = "slot")
+    val at by atState
+    SegmentTravel(atState, idx.coerceAtLeast(0))
     BoxWithConstraints(
         modifier
             .fillMaxWidth()
@@ -503,12 +534,14 @@ private fun SlotRow(device: DeviceController, p: Profile, sender: Sender, editor
                         .weight(1f)
                         .fillMaxHeight()
                         .clip(pill)
+                        .pressStart(enabled = sender.sendingId == null && !sender.abBusy && !device.connecting && !device.renaming) { if (!sel) haptics.segStart() }
                         .combinedClickable(
                             // DAC traffic never refuses a tap: the editor shows the slot at once and the DAC follows. Refused only while a send runs,
                             // during A/B, during the connect read and during a rename.
                             enabled = sender.sendingId == null && !sender.abBusy && !device.connecting && !device.renaming,
                             // A tap puts what the slot holds on the graph (also on the chosen slot: back from another profile).
-                            onClick = { haptics.segment(); sender.leaveAb { restored -> if (restored) editor.tapSlot(slot) } },
+                            // a new slot: the pair starts at the press ([pressStart]); the chosen one again only reads it back
+                            onClick = { if (sel) haptics.tap(); sender.leaveAb { restored -> if (restored) editor.tapSlot(slot) } },
                             onLongClick = if (named && !device.busy) ({ haptics.longPress(); renaming = slot }) else null,
                         )
                         .testTag("slot_$slot"),
@@ -597,18 +630,18 @@ private fun GraphNotice(model: AppModel, modifier: Modifier) {
  * like its ring on the graph.
  */
 @Composable
-private fun BandStrip(model: AppModel, p: Profile, actions: TuneActions, enabled: Boolean) {
+private fun BandStrip(model: AppModel, bands: BandFlags, actions: TuneActions, enabled: Boolean) {
     val c = pal
     val haptics = LocalHaptics.current
     val well = RoundedCornerShape(Radii.L)
-    val showPlus = p.bands.size < model.maxBands
+    val showPlus = bands.size < model.maxBands
     // "-" is muted while it is the only band and while sending or A/B is busy (when "+" is dead too)
-    val canDelete = enabled && p.bands.size > 1
+    val canDelete = enabled && bands.size > 1
     BoxWithConstraints(Modifier.fillMaxWidth().height(ROW_H)) {
-        val plan = BandStripPlan.plan(maxWidth.value.toDouble(), p.bands.size, showPlus)
+        val plan = BandStripPlan.plan(maxWidth.value.toDouble(), bands.size, showPlus)
         val numbers = plan.numbersDp.dp
         Row(Modifier.fillMaxSize().clip(well).background(c.track).sink(well)) {
-            BandNumbers(model, p, actions, enabled, plan.cellDp.dp, plan.scroll, numbers, Modifier.width(numbers))
+            BandNumbers(model, bands, actions, enabled, plan.cellDp.dp, plan.scroll, numbers, Modifier.width(numbers))
             if (showPlus) PmCell(Icons.Rounded.Add, "add band", enabled, "chip_add") { haptics.tap(); model.addBand() }
             PmCell(Icons.Rounded.Remove, "delete selected band", canDelete, "chip_remove") { haptics.tap(); model.deleteBand(model.selectedBand) }
         }
@@ -621,14 +654,14 @@ private fun BandStrip(model: AppModel, p: Profile, actions: TuneActions, enabled
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun BandNumbers(model: AppModel, p: Profile, actions: TuneActions, enabled: Boolean, cellW: Dp, scrolls: Boolean, view: Dp, modifier: Modifier) {
+private fun BandNumbers(model: AppModel, bands: BandFlags, actions: TuneActions, enabled: Boolean, cellW: Dp, scrolls: Boolean, view: Dp, modifier: Modifier) {
     val c = pal
     val haptics = LocalHaptics.current
     val density = LocalDensity.current
     val pill = RoundedCornerShape(Radii.M)
     val scroll = rememberScrollState()
     // the selected band stays in view with the inset on both sides: a band just added at the end, or one picked on the graph
-    LaunchedEffect(model.selectedBand, p.bands.size, cellW, scrolls, view) {
+    LaunchedEffect(model.selectedBand, bands.size, cellW, scrolls, view) {
         if (!scrolls) return@LaunchedEffect
         val start = with(density) { (cellW * model.selectedBand).toPx() }
         val end = with(density) { (Grid.INSET * 2 + cellW * (model.selectedBand + 1)).toPx() }
@@ -636,8 +669,10 @@ private fun BandNumbers(model: AppModel, p: Profile, actions: TuneActions, enabl
         if (start < scroll.value) scroll.animateScrollTo(start.toInt())
         else if (end > scroll.value + width) scroll.animateScrollTo(ceil(end - width).toInt())
     }
-    val at by animateFloatAsState(model.selectedBand.toFloat(), label = "band")
-    val selEnabled = p.bands.getOrNull(model.selectedBand)?.enabled == true
+    val atState = animateFloatAsState(model.selectedBand.toFloat(), label = "band")
+    val at by atState
+    SegmentTravel(atState, model.selectedBand)
+    val selEnabled = bands.enabled.getOrNull(model.selectedBand) == true
     Box(
         modifier
             .fillMaxHeight()
@@ -654,18 +689,19 @@ private fun BandNumbers(model: AppModel, p: Profile, actions: TuneActions, enabl
                 .background(c.accent, pill),
         )
         Row(Modifier.fillMaxHeight()) {
-            p.bands.forEachIndexed { i, b ->
+            bands.enabled.forEachIndexed { i, on ->
                 val sel = i == model.selectedBand
                 Box(
                     Modifier
                         .width(cellW)
                         .fillMaxHeight()
                         .clip(pill)
-                        .let { if (b.enabled) it else it.border(2.dp, if (sel) c.accent else c.textMute, pill) }
+                        .let { if (on) it else it.border(2.dp, if (sel) c.accent else c.textMute, pill) }
+                        .pressStart(enabled) { if (!sel) haptics.segStart() }
                         .combinedClickable(
                             enabled = enabled,
-                            // a first tap selects; a tap on the band that is already selected opens its sheet
-                            onClick = { haptics.tap(); if (sel) actions.band(i) else model.selectBand(i) },
+                            // a first tap selects (the pair starts at the press, [pressStart]); a tap on the band that is already selected opens its sheet
+                            onClick = { if (sel) { haptics.tap(); actions.band(i) } else model.selectBand(i) },
                             onLongClick = { haptics.longPress(); model.selectBand(i); actions.band(i) },
                         )
                         .testTag("chip_${i + 1}"),
@@ -674,7 +710,7 @@ private fun BandNumbers(model: AppModel, p: Profile, actions: TuneActions, enabl
                     Text(
                         "${i + 1}",
                         style = Type.chip,
-                        color = if (b.enabled) (if (sel) c.onAccent else c.text) else (if (sel) c.accent else c.textMute),
+                        color = if (on) (if (sel) c.onAccent else c.text) else (if (sel) c.accent else c.textMute),
                         maxLines = 1,
                     )
                 }
@@ -715,7 +751,11 @@ private fun TypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
     val well = RoundedCornerShape(Radii.L)
     val pill = RoundedCornerShape(Radii.M)
     val idx = types.indexOfFirst { it.first == type }.coerceAtLeast(0)
-    val at by animateFloatAsState(idx.toFloat(), label = "type")
+    val atState = animateFloatAsState(idx.toFloat(), label = "type")
+    val at by atState
+    SegmentTravel(atState, idx)
+    // a band of a type this DAC does not offer (made for another DAC) has no cell here: no pill, as on the icon bar - it sat under PEAK and said the band was one
+    val offered = types.any { it.first == type }
     BoxWithConstraints(
         Modifier
             .fillMaxWidth()
@@ -726,7 +766,7 @@ private fun TypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
             .padding(Grid.INSET),
     ) {
         val w = maxWidth / types.size
-        Box(
+        if (offered) Box(
             Modifier
                 .offset(x = w * at)
                 .width(w)
@@ -742,7 +782,8 @@ private fun TypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
                         .weight(1f)
                         .fillMaxHeight()
                         .clip(pill)
-                        .clickable(enabled = enabled) { if (!sel) { haptics.segment(); model.setType(t) } }
+                        .pressStart(enabled) { if (!sel) haptics.segStart() }
+                        .clickable(enabled = enabled) { if (!sel) model.setType(t) }
                         .testTag("type_${t.name.lowercase()}"),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -799,7 +840,9 @@ private fun PassTypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
     val well = RoundedCornerShape(Radii.L)
     val pill = RoundedCornerShape(Radii.M)
     val idx = cells.indexOfFirst { it.first == type }.coerceAtLeast(0)
-    val at by animateFloatAsState(idx.toFloat(), label = "type")
+    val atState = animateFloatAsState(idx.toFloat(), label = "type")
+    val at by atState
+    SegmentTravel(atState, idx)
     BoxWithConstraints(
         Modifier
             .fillMaxWidth()
@@ -842,7 +885,8 @@ private fun PassTypeRow(model: AppModel, type: FilterType, enabled: Boolean) {
                         .weight(weights[i].coerceAtLeast(0.01f))
                         .fillMaxHeight()
                         .clip(pill)
-                        .clickable(enabled = enabled && t in model.protocol.caps.types) { if (!sel) { haptics.segment(); model.setType(t) } }
+                        .pressStart(enabled && t in model.protocol.caps.types) { if (!sel) haptics.segStart() }
+                        .clickable(enabled = enabled && t in model.protocol.caps.types) { if (!sel) model.setType(t) }
                         .testTag("type_${t.name.lowercase()}"),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -883,7 +927,7 @@ internal val VALUE_W = 108.dp
 
 /** One value row: the label over the value (tap = type it), and the slider as tall as the card allows. */
 @Composable
-private fun ParamRow(param: Param, value: Double, enabled: Boolean, scale: io.github.chronosauros.contour.ui.kit.Scale, onTap: () -> Unit, locked: Boolean = false, onChange: (Double) -> Unit) {
+private fun ParamRow(param: Param, value: Double, enabled: Boolean, scale: io.github.chronosauros.contour.ui.kit.Scale, onTap: () -> Unit, locked: Boolean = false, bandId: String? = null, onChange: (Double) -> Unit) {
     val c = pal
     val live = enabled && !locked // a locked row (GAIN of a pass filter) is dimmed, not draggable, not tappable
     Row(
@@ -907,7 +951,7 @@ private fun ParamRow(param: Param, value: Double, enabled: Boolean, scale: io.gi
         ) {
             StackedValue(param.label, param.number(value), param.unit, c.text)
         }
-        RelSlider(param, value, onChange, Modifier.weight(1f).fillMaxHeight().padding(Grid.INSET), enabled = live, scale = scale)
+        RelSlider(param, value, onChange, Modifier.weight(1f).fillMaxHeight().padding(Grid.INSET), enabled = live, scale = scale, owner = bandId)
     }
 }
 
@@ -918,7 +962,7 @@ private const val PREAMP_DB_PER_DP = 0.08
 private const val PREAMP_SLOW = 0.25f
 
 /**
- * PREAMP: the value, and one bar that is both the MANUAL / AUTO switch and the manual slider ([PreampBar]).
+ * PREAMP: the value, a slider like FREQ / GAIN / Q and the AUTO chip beside it ([PreampBar]).
  * A tap on the value types it (manual only).
  */
 @Composable
@@ -948,7 +992,7 @@ private fun PreampRow(model: AppModel, p: Profile, sender: Sender, actions: Tune
             // AUTO: a computed value, dimmed; manual: bright
             StackedValue(
                 model.protocol.preampLabel, // PREAMP; the Moondrop manufacturer's name for the same register is PRE GAIN
-                db?.let { Param.PREAMP.number(it) } ?: "--",
+                db?.let { Param.PREAMP.number(it, model.protocol.preampStep == 1.0) } ?: "--", // -4, not -4.0, on a whole-dB DAC
                 if (db != null) Param.PREAMP.unit else "",
                 if (auto) c.textDim else c.text,
             )
@@ -957,27 +1001,16 @@ private fun PreampRow(model: AppModel, p: Profile, sender: Sender, actions: Tune
     }
 }
 
-/** MANUAL and AUTO side by side, both in [manual] and [auto] colour: drawn once under the pill and once, clipped to it, over it. */
-@Composable
-private fun PreampLabels(manual: Color, auto: Color, onManual: (() -> Unit)?, onAuto: (() -> Unit)?) {
-    Row(Modifier.fillMaxSize()) {
-        Box(
-            Modifier.weight(1f).fillMaxHeight().then(if (onManual != null) Modifier.clickable(onClick = onManual) else Modifier),
-            contentAlignment = Alignment.Center,
-        ) { Text("MANUAL", style = Type.segment, color = manual, maxLines = 1) }
-        Box(
-            Modifier.weight(1f).fillMaxHeight().then(if (onAuto != null) Modifier.clickable(onClick = onAuto) else Modifier),
-            contentAlignment = Alignment.Center,
-        ) { Text("AUTO", style = Type.segment, color = auto, maxLines = 1) }
-    }
-}
+/** The AUTO chip at the end of the PREAMP row. */
+private val PREAMP_CHIP_W = 84.dp
 
 /**
- * A pressed-in bar with a raised orange pill, the look of the PEAK / LOW SHELF row. AUTO: the pill sits under AUTO
- * and a tap on MANUAL switches. MANUAL: the bar becomes a slider like FREQ / GAIN / Q (a light fill from the left edge
- * to the value, MANUAL bright, AUTO dimmed), and a sideways drag adjusts (0.1 dB steps, a tick at every whole dB, a
- * strong one at 0 dB, a reject tick at the device limits; lifting the finger off a value keeps it, [LiftGuard]);
- * a tap on AUTO switches back.
+ * The PREAMP slider and the AUTO chip (owner's pick of 11.11.2026, after a user report that the old bar - MANUAL and AUTO
+ * inside the slider, AUTO a fixed half bar - looked out of proportion). The track is a slider like FREQ / GAIN / Q in both
+ * modes: a fill from the left edge to the value over the device range. MANUAL: bright and dragged sideways (steps on the
+ * DAC's grid, a tick at every whole dB, a strong one at 0 dB, a reject tick at the device limits; lifting the finger off a
+ * value keeps it, [LiftGuard]). AUTO: the computed value, dimmed, not draggable. The chip is raised orange while AUTO is on
+ * and pressed in while it is off; a tap toggles it.
  */
 @Composable
 private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, valid: Boolean, sender: Sender, modifier: Modifier) {
@@ -986,38 +1019,32 @@ private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, v
     val pagerLock = LocalPagerLock.current
     val prof = rememberUpdatedState(p)
     val shape = RoundedCornerShape(Radii.M)
-    val pill = shape // same corners as the slider fill: the pill is the whole bar height
     val adjustable = !auto && db != null && !sender.bypassed && !sender.abBusy
     val hs = model.protocol.shelfOffset(p.bands)
     val lo = model.protocol.preampMin - hs
     val hi = model.protocol.preampMax - hs
     val pos = if (db == null || hi <= lo) 0f else ((db - lo) / (hi - lo)).toFloat().coerceIn(0f, 1f)
-    val manual by animateFloatAsState(if (auto) 0f else 1f, label = "preamp-mode")
-    val switchTo = { toAuto: Boolean -> haptics.segment(); sender.leaveAb { model.setPreampAuto(toAuto) } }
-    BoxWithConstraints(
-        modifier
-            .testTag("preamp_bar")
-            .clip(shape)
-            .background(c.track)
-            .sink(shape)
-            .then(if (!adjustable) Modifier else Modifier.holdsPager(pagerLock).pointerInput(p.id) {
+    // AUTO sits at the right of the bar: switching to it moves right, back to MANUAL left (no sliding indicator: the pair is played on the tap)
+    val switchTo = { toAuto: Boolean -> sender.leaveAb { model.setPreampAuto(toAuto) } }
+    // the drag that moves a MANUAL preamp
+    val gesture = if (!adjustable) Modifier else Modifier.holdsPager(pagerLock).pointerInput(p.id) {
                     val guard = LiftGuard<Double>(density, "PREAMP")
                     var acc = 0.0
-                    var atEnd = false
                     var speed = 0f
-                    var ticked = 0.0 // the value the haptics last spoke for
+                    val feel = PreampFeel(haptics)
                     // A stored value the device would not take (a preserved import, or a HIGH SHELF edit that pushed it out)
                     // is never touched by a drag: the slider would snap it into range and unblock the send.
                     var blocked = false
                     detectHorizontalDragWithEnds(
+                        // the grab, unless the stored value is one the drag never touches (see [blocked])
+                        onDown = { prof.value.preampDb?.let { if (model.protocol.preampFits(prof.value.bands, it)) haptics.grab() } },
                         onStart = { down ->
                             prof.value.preampDb?.let { start ->
                                 blocked = !model.protocol.preampFits(prof.value.bands, start)
                                 if (blocked) { haptics.reject(); return@let }
                                 acc = start
-                                atEnd = false
                                 speed = 0f
-                                ticked = acc
+                                feel.start(start)
                                 guard.start(down.uptimeMillis, down.position, acc)
                             }
                         },
@@ -1033,72 +1060,45 @@ private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, v
                         speed = 0.6f * speed + 0.4f * (kotlin.math.abs(dx) / density / dt)
                         val rate = PREAMP_DB_PER_DP * ratioLerp(PREAMP_SLOW, 1f, speedRamp(speed))
                         val raw = acc + dx.toDp().value * rate
-                        if (raw < lo || raw > hi) {
-                            if (!atEnd) haptics.reject()
-                            atEnd = true
-                        } else {
-                            atEnd = false
-                        }
                         acc = raw.coerceIn(lo, hi)
                         val next = io.github.chronosauros.contour.core.Preamp.floorTo(acc, model.protocol.preampStep) // down: never louder than the finger
                         if (next != now) model.setPreamp(next)
                         guard.move(ch.uptimeMillis, ch.position, next)
-                        if (next != ticked && !guard.settling(ch.uptimeMillis)) {
-                            if (floor(next) != floor(ticked)) haptics.crossing(if (next == 0.0) 2 else 1)
-                            ticked = next
-                        }
-                    }
-                })
-    ) {
-        if (!valid) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                Text("INVALID EQ", style = Type.segment, color = c.textDim, maxLines = 1)
-            }
-            return@BoxWithConstraints
-        }
-        // the pill fills the bar's full height, as tall as the fill of the FREQ / GAIN / Q sliders above
-        val w = maxWidth
-        val half = w / 2
-        if (!auto) {
-            // MANUAL is a slider like FREQ / GAIN / Q (light fill from the left edge to the value); MANUAL reads at
-            // full strength, AUTO dimmed - a tap on AUTO switches back
-            val h = maxHeight
-            val fillW = h + (w - h) * pos
-            Box(Modifier.fillMaxSize()) {
-                PreampLabels(c.text, c.textMute, null, { switchTo(true) })
-                Box(
-                    Modifier
-                        .width(fillW)
-                        .fillMaxHeight()
-                        .lift(pill, Lift.RAISED)
-                        .background(c.fill, pill)
-                        .clip(pill),
-                ) {
-                    Box(Modifier.fillMaxHeight().wrapContentWidth(Alignment.Start, unbounded = true).width(w)) {
-                        PreampLabels(c.bg, c.bg.copy(alpha = 0.45f), null, null)
+                        if (!guard.settling(ch.uptimeMillis)) feel.move(next, lo, hi, raw < lo || raw > hi, speed)
                     }
                 }
+    Row(modifier.testTag("preamp_bar"), horizontalArrangement = Arrangement.spacedBy(GAP), verticalAlignment = Alignment.CenterVertically) {
+        BoxWithConstraints(Modifier.weight(1f).fillMaxHeight().clip(shape).background(c.track).sink(shape).then(gesture)) {
+            if (!valid || db == null) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("INVALID EQ", style = Type.segment, color = c.textDim, maxLines = 1)
+                }
+                return@BoxWithConstraints
             }
-            return@BoxWithConstraints
-        }
-        val x = half * (1f - manual)
-        val pillW = half + half * (pos * manual)
-        Box(Modifier.fillMaxSize()) {
-            PreampLabels(c.text, c.text, if (auto) ({ switchTo(false) }) else null, if (!auto) ({ switchTo(true) }) else null)
+            // the fill is the track's full height, as the fill of the FREQ / GAIN / Q sliders above
+            val fillW = maxHeight + (maxWidth - maxHeight) * pos
             Box(
                 Modifier
-                    .offset(x = x)
-                    .width(pillW)
+                    .width(fillW)
                     .fillMaxHeight()
-                    .lift(pill, Lift.RAISED)
-                    .background(c.accent, pill)
-                    .clip(pill),
-            ) {
-                Box(Modifier.fillMaxHeight().wrapContentWidth(Alignment.Start, unbounded = true).width(w).offset(x = -x)) {
-                    PreampLabels(c.onAccent, c.onAccent, null, null)
-                }
-            }
+                    .then(if (auto) Modifier else Modifier.lift(shape, Lift.RAISED))
+                    .background(if (auto) c.fill.copy(alpha = 0.28f) else c.fill, shape),
+            )
         }
+        // AUTO without a valid EQ has no value to switch to: the chip waits, as the old bar showed no switch then
+        Box(
+            Modifier
+                .width(PREAMP_CHIP_W)
+                .fillMaxHeight()
+                .then(
+                    if (auto) Modifier.lift(shape, Lift.RAISED).background(c.accent, shape).clip(shape)
+                    else Modifier.clip(shape).background(c.track).sink(shape),
+                )
+                .pressStart(valid) { haptics.segTap() }
+                .clickable(enabled = valid) { switchTo(!auto) }
+                .testTag("preamp_auto"),
+            contentAlignment = Alignment.Center,
+        ) { Text("AUTO", style = Type.segment, color = if (auto) c.onAccent else c.textDim, maxLines = 1) }
     }
 }
 
@@ -1113,7 +1113,9 @@ private fun AbButton(sender: Sender, p: Profile, modifier: Modifier) {
     Box(
         modifier.height(48.dp).widthIn(min = 72.dp)
             .clip(shape)
-            .clickable(enabled = enabled) { haptics.step(); sender.toggleAb(p) }
+            // A | B: no sliding indicator: the pair starts at the press and ends 120 ms later
+            .pressStart(enabled) { haptics.segTap() }
+            .clickable(enabled = enabled) { sender.toggleAb(p) }
             .padding(4.dp)
             .testTag("ab_toggle"),
         contentAlignment = Alignment.Center,

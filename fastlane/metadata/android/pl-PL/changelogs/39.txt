@@ -1,0 +1,6 @@
+Płynniejsza strona EQ: przeciąganie pasma kosztuje mniej pracy w każdej klatce, najbardziej z podłączonym DAC-iem.
+Poprawki:
+- Moondrop Dawn Pro 2: mocny, stromy shelf z preampem AUTO wywracał aplikację. Teraz pokazuje INVALID EQ.
+- Suwaki GAIN i FREQ mają zakres podłączonego DAC-a (FiiO K13 R2R: od -24 do +12 dB).
+- Import z większą liczbą filtrów niż pasm DAC-a najpierw pomija filtry OFF.
+- UNDO po usunięciu, arkusz pasma i pole NAME działają jak należy.

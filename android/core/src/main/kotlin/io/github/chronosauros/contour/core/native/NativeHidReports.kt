@@ -28,6 +28,17 @@ object NativeHidReports {
             }
             requireSameOwner(id, Kind.INPUT, Kind.OUTPUT)
         }
+        /**
+         * The session check of a Moondrop gen-1 cable (DUSK-SP): Input and Output report 1 are exactly [MoondropGen1Catalog.REPORT_BYTES] raw bytes (61 data bytes and the ID) and sit in one collection.
+         * The shape comes from [parseGen1]: the cable declares report 1 on the Consumer page, not a vendor page.
+         */
+        fun qualifyGen1() {
+            for (kind in listOf(Kind.OUTPUT, Kind.INPUT)) {
+                val have = rawSize(MoondropGen1Catalog.REPORT_ID, kind)
+                require(have == MoondropGen1Catalog.REPORT_BYTES) { "Moondrop gen-1 ${kind.name.lowercase()} report 1 is $have bytes with the ID; its protocol needs exactly ${MoondropGen1Catalog.REPORT_BYTES}" }
+            }
+            requireSameOwner(MoondropGen1Catalog.REPORT_ID, Kind.INPUT, Kind.OUTPUT)
+        }
         fun requireSameOwner(id: Int, a: Kind, b: Kind) {
             require(owners.getValue(Key(id, a)) == owners.getValue(Key(id, b))) { "Report kinds belong to different collections" }
         }
@@ -58,6 +69,7 @@ object NativeHidReports {
         DeviceTarget.Family.KT_MICRO -> 1 + KtMicroCodec.PAYLOAD_BYTES
         DeviceTarget.Family.MOONDROP -> 1 + if (kind == Kind.INPUT) MoondropCodec.MINIMUM_INPUT_PAYLOAD_BYTES else MoondropCodec.BAND_PAYLOAD_BYTES
         DeviceTarget.Family.WALKPLAY_READ_ONLY -> WalkPlay.REPORT_SIZE
+        DeviceTarget.Family.MOONDROP_GEN1 -> MoondropGen1Catalog.REPORT_BYTES
         DeviceTarget.Family.WALKPLAY -> error("${target.caps.name} is not opened through its HID report descriptor")
     }
 
@@ -75,6 +87,18 @@ object NativeHidReports {
         return Shape(sizes, owners.filterKeys { it in sizes })
     }
 
+    /**
+     * The descriptor of a Moondrop gen-1 cable (DUSK-SP), whose report 1 sits on the Consumer page 0x0C (usage 0x00), not on a vendor page: the reports of that page are the shape. Only the gen-1 check
+     * ([Shape.qualifyGen1]) asks for it; [parse] keeps its vendor-page rule for every other family.
+     */
+    fun parseGen1(descriptor: ByteArray): Shape {
+        val scan = scan(descriptor, false, consumerPage = true)
+        val sizes = scan.bits.filterKeys { it.id != 0 }.filterKeys { scan.vendors[it] == true }.mapValues { (_, b) ->
+            require(b % 8 == 0 && b / 8 in 1..1023) { "Unsupported report size" }; 1 + b / 8
+        }
+        return Shape(sizes, scan.owners.filterKeys { it in sizes })
+    }
+
     /** One declared report as the descriptor states it (diagnostics only; [bytes] counts the report ID, -1 = not whole bytes). */
     data class Declared(val id: Int, val kind: Kind, val bytes: Int, val owner: Int, val vendor: Boolean)
 
@@ -86,7 +110,8 @@ object NativeHidReports {
         }.sortedWith(compareBy({ it.id }, { it.kind.ordinal }))
     }
 
-    private fun scan(descriptor: ByteArray, undefinedDesktop: Boolean): Scan {
+    private fun scan(descriptor: ByteArray, undefinedDesktop: Boolean, consumerPage: Boolean = false): Scan {
+        fun pageIsVendor(page: Int) = page in 0xFF00..0xFFFF || consumerPage && page == 0x0C
         data class Global(val size: Int = 0, val count: Int = 0, val id: Int = 0, val page: Int = 0)
         var g = Global(); val stack = ArrayList<Global>(); val vendorStack = ArrayList<Boolean>()
         val ownerStack = ArrayList<Int>(); var nextOwner = 0
@@ -107,7 +132,7 @@ object NativeHidReports {
                 0xA4 -> stack.add(g)
                 0xB4 -> { require(stack.isNotEmpty()); g = stack.removeAt(stack.lastIndex) }
                 0x08 -> { usages++; usage = if (n <= 2) value else -1 }
-                0xA0 -> { ownerStack.add(ownerStack.firstOrNull() ?: ++nextOwner); vendorStack.add(g.page in 0xFF00..0xFFFF || vendorStack.lastOrNull() == true ||
+                0xA0 -> { ownerStack.add(ownerStack.firstOrNull() ?: ++nextOwner); vendorStack.add(pageIsVendor(g.page) || vendorStack.lastOrNull() == true ||
                     undefinedDesktop && vendorStack.isEmpty() && value == 1 && g.page == 0x01 && usages == 1 && usage == 0) }
                 0xC0 -> { require(ownerStack.isNotEmpty()); ownerStack.removeAt(ownerStack.lastIndex); vendorStack.removeAt(vendorStack.lastIndex) }
                 0x80, 0x90, 0xB0 -> {

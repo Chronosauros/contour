@@ -58,6 +58,13 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
     var lastSentId by mutableStateOf<String?>(null)
         private set
 
+    /**
+     * Counts what the person does to the EQ they will send: picking a profile in the Library, importing or creating one (all of them [choose] with the page opening) and every change of a band or the preamp
+     * (typed, dragged, undone). [Sender.presetFoot] compares it with the count at the last read or send of the DUSK-SP: until it moves, the foot button names the cable's preset instead of offering HOLD TO SEND.
+     */
+    var touches by mutableIntStateOf(0)
+        private set
+
     /** A page the UI should go to (set by the model or the review hooks, cleared by the pager). */
     var pageRequest by mutableStateOf<Int?>(null)
 
@@ -255,7 +262,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
             selectedBand = 0
             clampSelection()
         }
-        if (open) pageRequest = Page.TUNE
+        if (open) { pageRequest = Page.TUNE; touches++ }
         scheduleState()
     }
 
@@ -288,6 +295,7 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
             record(old.id, EqState(old))
             if (gestureOpen) gestureRecorded.add(old.id)
         }
+        if (t.bands != old.bands || t.preampDb != old.preampDb) touches++
         val next = t.copy(updatedAt = System.currentTimeMillis())
         profiles[i] = next
         scheduleSave(next, next.id)
@@ -351,6 +359,12 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
 
     /** The complete EQ drawn by a Library card, including its saved preamp for DAC matching. */
     fun savedProfile(p: Profile): Profile = history[p.id]?.sent?.let { p.copy(bands = it.bands, preampDb = it.preampDb) } ?: p
+
+    /**
+     * The EQ behind [savedProfile] as one object: the SAVED version, or [p] itself while it has none. It is the same object for as long as that EQ stands
+     * (an edit of the working copy does not replace it), so an answer that depends on the saved EQ alone can be kept between edits.
+     */
+    fun savedEqKey(p: Profile): Any = history[p.id]?.sent ?: p
 
     fun undo() {
         val p = current ?: return
@@ -600,7 +614,8 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         scheduleSave(p, p.id)
         currentId = p.id
         selectedBand = 0
-        if (open) pageRequest = Page.TUNE
+        // a new profile opened on Tune (import, NEW PROFILE) is a pick like a Library tap: the DUSK-SP foot turns to HOLD TO SEND
+        if (open) { pageRequest = Page.TUNE; touches++ }
         scheduleState()
         return p
     }
@@ -668,7 +683,9 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
             selectedBand = 0
             clampSelection()
         }
-        scheduleState()
+        // At once, not after the usual 400 ms: until state.json is written without the tombstone, a process that dies leaves the id listed as deleted with
+        // its file still there, and the next start deletes the profile the user has just brought back.
+        saveStateNow()
     }
 
     /** The file goes only after state.json with its tombstone is safely replaced. */

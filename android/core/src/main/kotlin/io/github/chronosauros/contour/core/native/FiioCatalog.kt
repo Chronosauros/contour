@@ -1,6 +1,7 @@
 package io.github.chronosauros.contour.core.native
 
 import io.github.chronosauros.contour.core.FilterType
+import io.github.chronosauros.contour.core.ShelfForm
 import io.github.chronosauros.contour.core.devices.GeneratedDevices
 
 /** Source rules are evidence, not transport authorisation or hardware support claims. */
@@ -28,6 +29,8 @@ data class FiioConfig(
     val constraintsRef: String,
     val upstreamExperimental: Boolean,
     val bestGuessProductName: Boolean,
+    // How the DAC builds a shelf (record `peq.shelfForm`): "q" for every FiiO DAC measured so far (the DAC builds the shelf from its registers, RBJ alpha = sin(w0)/(2Q)); the graph and AUTO follow it, the registers never do.
+    val shelfForm: ShelfForm,
     val capture: FiioCaptureIdentity?,
     val codecBlockers: List<String>,
     val evidenceCaveats: List<String>,
@@ -84,6 +87,10 @@ data class FiioConfig(
     // SnowSky firmware (Melody 1.20, Tiny A 1.10; PC probes 13.10.2026): the slot reply goes stale after band or preamp
     // traffic on a USER slot and SAVE answers without an AA echo, so these DACs take the [FiioMelodyExchange] path.
     val snowskyExchange: Boolean = false,
+    // Measured on the SnowSky RETRO NANO (13.11.2026, Mac): while the unit sits on its Close EQ slot it answers the preamp query (0x17) with one frame `bb 0b .. .. 18 01 00 .. ee`
+    // (command 0x18, one data byte 0) instead of a 0x17 reply. That frame, and only that frame, on the bypass slot of a model with this flag, reads as "no EQ active": the session
+    // takes the preamp as register 0 and reads no bands (nothing plays there). Any other DAC, slot or reply still has to be a 0x17 reply.
+    val bypassPreampAnswersAsCount: Boolean = false,
     // Short device name for messages on the [snowskyExchange] path ("Reconnect Melody").
     val shortName: String? = null,
     // SnowSky names (FiiO web app capture on the Tiny A, 14.10.2026): command 0x30 is addressed by the slot id (a0-a2),
@@ -133,7 +140,14 @@ object FiioCatalog {
     const val MELODY_PRODUCT_ID = GeneratedDevices.SNOWSKY_MELODY_PRODUCT_ID
     const val TINY_A_PRODUCT_ID = GeneratedDevices.SNOWSKY_TINY_A_PRODUCT_ID
 
-    /** Contour stable: the FiiO KA15, the K13 R2R, the SnowSky Melody and Tiny A, in this order (the oracle test takes the first two). A new
+    /** USB product ID of the FiiO JadeAudio JA11 (found by VID, PID and the exact USB name). */
+    const val JA11_PRODUCT_ID = GeneratedDevices.FIIO_JA11_PRODUCT_ID
+
+    /** USB product IDs of the SnowSky RETRO NANO (0A12:4007) and the FiiO JadeAudio JIEZI (2972:0151); both are found by VID, PID and the exact USB name. */
+    const val RETRO_NANO_PRODUCT_ID = GeneratedDevices.SNOWSKY_RETRO_NANO_PRODUCT_ID
+    const val JIEZI_PRODUCT_ID = GeneratedDevices.FIIO_JIEZI_PRODUCT_ID
+
+    /** Contour stable: the FiiO KA15, the K13 R2R, the SnowSky Melody and Tiny A, then the FiiO JA11, the SnowSky RETRO NANO and the FiiO JIEZI, in this order (the oracle test takes the first two). A new
      * FiiO-family record is generated as soon as it exists in devices/, but is part of the catalog only when it is listed here.
      */
     val rules: List<FiioConfig> = listOf(
@@ -141,6 +155,9 @@ object FiioCatalog {
         GeneratedDevices.FIIO_K13_R2R,
         GeneratedDevices.SNOWSKY_MELODY,
         GeneratedDevices.SNOWSKY_TINY_A,
+        GeneratedDevices.FIIO_JA11,
+        GeneratedDevices.SNOWSKY_RETRO_NANO,
+        GeneratedDevices.FIIO_JIEZI,
     )
 
     /** The SnowSky Melody and Tiny A by their exact USB identities (see DeviceTarget.find). */
@@ -152,6 +169,13 @@ object FiioCatalog {
 
     /** The K13 R2R by its exact USB identity from its record (see DeviceTarget.find). */
     val K13: FiioConfig = GeneratedDevices.FIIO_K13_R2R
+
+    /** The FiiO JadeAudio JA11, found by VID, PID and the exact USB name from its record (see DeviceTarget.findDevice); the app drives it with [FiioJa11.CONFIG]. */
+    val JA11: FiioConfig = GeneratedDevices.FIIO_JA11
+
+    /** The SnowSky RETRO NANO (0A12:4007) and the FiiO JadeAudio JIEZI, found by VID, PID and the exact USB name from their records (see DeviceTarget.findDevice); [FiioConfig.hardwareVerified] false until a unit has taken a write. */
+    val RETRO_NANO: FiioConfig = GeneratedDevices.SNOWSKY_RETRO_NANO
+    val JIEZI: FiioConfig = GeneratedDevices.FIIO_JIEZI
 
     /** Positive route solely for the captured exact VID/PID/name identity; the HID descriptor is still
      * required before any I/O. Every unknown PID/name returns null; no probing writes.

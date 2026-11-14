@@ -15,6 +15,8 @@ import io.github.chronosauros.contour.core.native.NativePort
 internal class WalkPlayPort(
     private val t: HidIo,
     device: DacHandle,
+    /** The report this port carries: 0x4B (WalkPlay and the 1.6 families), or 1 for the Moondrop gen-1 cable (DUSK-SP). */
+    private val reportId: Int = WalkPlay.REPORT_ID,
     private val tick: () -> Unit = {},
 ) : NativePort {
     override val deviceKey = device.key
@@ -37,7 +39,7 @@ internal class WalkPlayPort(
     }
 
     override fun send(id: Int, kind: NativeHidReports.Kind, payload: ByteArray) {
-        require(id == WalkPlay.REPORT_ID && kind == NativeHidReports.Kind.OUTPUT) { "Only WalkPlay output report 0x4B" }
+        require(id == reportId && kind == NativeHidReports.Kind.OUTPUT) { "Only output report 0x%02x".format(reportId) }
         if (firstSendMs == 0L) firstSendMs = SystemClock.elapsedRealtime()
         if (t.isNative) t.sendNative(id, kind, payload) else t.send(byteArrayOf(id.toByte()) + payload)
         lastSendEndMs = SystemClock.elapsedRealtime()
@@ -45,7 +47,7 @@ internal class WalkPlayPort(
     }
 
     override fun request(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean): ByteArray {
-        require(id == WalkPlay.REPORT_ID) { "Only WalkPlay report 0x4B" }
+        require(id == reportId) { "Only report 0x%02x".format(reportId) }
         val reply = if (t.isNative) t.requestNative(id, payload, matches)
         else t.requestOnce(byteArrayOf(id.toByte()) + payload) { it.size > 1 && it[0] == id.toByte() && matches(it.copyOfRange(1, it.size)) }
             .let { it.copyOfRange(1, it.size) }

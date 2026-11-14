@@ -58,12 +58,14 @@ object WalkPlayProfiles {
      */
     const val ECHO_A_HARDWARE_VERIFIED = true
 
-    private fun stable(id: String, protocol: DeviceProtocol) = protocol.data.let { d ->
-        WalkPlayProfile(id, d.name, d.vendorId, d.productId, protocol, d.types, d.schemeNo, true, usbName = d.usbName)
+    private fun stable(id: String, protocol: DeviceProtocol, hardwareVerified: Boolean = true) = protocol.data.let { d ->
+        WalkPlayProfile(id, d.name, d.vendorId, d.productId, protocol, d.types, d.schemeNo, hardwareVerified, usbName = d.usbName)
     }
     val micro = stable("micro", DeviceProtocol.MICRO)
     val max = stable("max", DeviceProtocol.MAX)
     val trn = stable("trn", DeviceProtocol.TRN)
+    /** The Tanchjim Space II: written and read back on a unit from the Mac (runs 2026-11-13-tanchjim-space-ii-01-mac to -04-mac-max) and from a phone (edge profile VERIFIED, a replug kept it, 13.11.2026), so it writes in every build. */
+    val space2 = stable("space-2", DeviceProtocol.SPACE_2)
     val echoA = GeneratedDevices.MOONDROP_ECHO_A.let { d ->
         // The Echo-A runs the Protocol Micro's code, so its record has to agree with that protocol on what the code takes from it.
         require(d.bands == DeviceProtocol.MICRO.caps.bands && d.schemeNo == DeviceProtocol.MICRO.data.schemeNo && d.reportId == WalkPlay.REPORT_ID) {
@@ -72,10 +74,10 @@ object WalkPlayProfiles {
         // The record gives bands, gain, Q and types; its frequency range is still "unknown" there (PendingRecords), and the preamp policy is the Micro's.
         val caps = DeviceCapabilities(d.name, d.vendorId, d.productId, d.bands, d.gainMinDb, d.gainMaxDb, d.qMin, d.qMax,
             PendingRecords.ECHO_A_FREQ_HZ.start, PendingRecords.ECHO_A_FREQ_HZ.endInclusive, d.types, DeviceProtocol.MICRO.caps.preampWholeDb,
-            coefficientRateHz = d.coefficientRateHz)
+            shelfForm = d.shelfForm, coefficientRateHz = d.coefficientRateHz)
         WalkPlayProfile("echo-a", d.name, d.vendorId, d.productId, DeviceProtocol.MICRO, d.types, d.schemeNo, ECHO_A_HARDWARE_VERIFIED, usbName = d.usbName, capsOverride = caps)
     }
-    val all = listOf(micro, max, trn, echoA)
+    val all = listOf(micro, max, trn, echoA, space2)
 
     fun find(vendorId: Int, productId: Int): WalkPlayProfile? = all.singleOrNull { it.vendorId == vendorId && it.productId == productId }
 
@@ -84,6 +86,7 @@ object WalkPlayProfiles {
         DeviceProtocol.MICRO -> micro
         DeviceProtocol.MAX -> max
         DeviceProtocol.TRN -> trn
+        DeviceProtocol.SPACE_2 -> space2
     }
 }
 
@@ -163,8 +166,8 @@ class WalkPlaySession(val profile: WalkPlayProfile, private val port: NativePort
     /** DacClient.read: version, bulk slot, every band, preamp; each reply only if the protocol's own predicate accepts it. */
     fun read(): WalkPlaySnapshot = io.guarded {
         val version = p.parseVersion(request(WalkPlay.versionRequest(), "version") { p.isReply(it, WalkPlay.CMD_VERSION) })
-        val slot = p.parseSlot(request(WalkPlay.slotRequest(), "slot") { p.isSlotReply(it) })
-        val bands = (0 until profile.bands).map { i -> p.parseBand(bandReply(i), i) }
+        val slot = p.parseSlot(request(WalkPlay.slotRequest(), "slot") { p.isSlotReply(it) }, profile.caps)
+        val bands = (0 until profile.bands).map { i -> p.parseBand(bandReply(i), i, profile.caps) }
         val preamp = p.parsePreamp(request(WalkPlay.preampRequest(), "preamp") { p.isReply(it, WalkPlay.CMD_GLOBAL_GAIN) })
         WalkPlaySnapshot(version, slot, bands, preamp)
     }
@@ -172,7 +175,7 @@ class WalkPlaySession(val profile: WalkPlayProfile, private val port: NativePort
     /** What the app would write for [eq]: the protocol's plan (the Micro's planner holds a band to this profile's own [WalkPlayProfile.caps]), narrowed to the types this profile offers. */
     fun plan(eq: Profile): DevicePlan {
         if (p == DeviceProtocol.MICRO) return ProtocolMicro.plan(eq, profile.caps, profile.preampMaxDb)
-        val plan = p.plan(eq)
+        val plan = p.plan(eq.bands, eq.preampDb, profile.caps)
         if (plan !is DevicePlan.Ready) return rename(plan as DevicePlan.Rejected)
         // A stock profile offers what its protocol offers now (the TRN's LOW PASS and HIGH PASS follow [io.github.chronosauros.contour.core.ProtocolTrn] and the gate); a widened one only its own types.
         val offered = if (profile.capsOverride == null) profile.types + p.caps.types else profile.types
@@ -186,7 +189,7 @@ class WalkPlaySession(val profile: WalkPlayProfile, private val port: NativePort
 
     /** The EQ a read holds, as the app imports it; rejected when it cannot be re-encoded exactly. */
     fun importExact(s: WalkPlaySnapshot): DacImport =
-        if (p == DeviceProtocol.MICRO) ProtocolMicro.importExact(s.bands, s.preampDb, profile.caps, profile.preampMaxDb) else p.importExact(s.bands, s.preampDb)
+        if (p == DeviceProtocol.MICRO) ProtocolMicro.importExact(s.bands, s.preampDb, profile.caps, profile.preampMaxDb) else p.importExact(s.bands, s.preampDb, profile.caps)
 
     /** Frames [writePlan] puts on the wire (requests and reports), for a progress bar: the read before (the whole state on Max and TRN,
      * version and slot on Micro), every report of the write sequence, the read-back. */
@@ -296,7 +299,13 @@ class WalkPlaySession(val profile: WalkPlayProfile, private val port: NativePort
         val frames = WalkPlaySettings.writeReports(s, value)
         lastSettingBefore = readValue(s)
         for (f in frames) { send(f); io.pause(SETTING_GAP_MS) }
-        if (save) { send(WalkPlaySettings.saveReport()); io.pause(SAVE_GAP_MS) }
+        if (save) {
+            // on a Max the save is allowed through the guard as the flash save after a mic write and nowhere else
+            val before = context
+            if (id == WalkPlaySettings.MIC) context = WalkPlayGuard.Context.MIC_SAVE
+            try { send(WalkPlaySettings.saveReport()) } finally { context = before }
+            io.pause(SAVE_GAP_MS)
+        }
         val back = readValue(s)
         WriteOutcome(back == value, false, if (back == value) null else "the DAC reads ${back ?: "nothing"}, wrote $value", back)
     }

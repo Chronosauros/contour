@@ -56,13 +56,16 @@ import io.github.chronosauros.contour.ui.Grid
 import io.github.chronosauros.contour.ui.Lift
 import io.github.chronosauros.contour.ui.Radii
 import io.github.chronosauros.contour.ui.Type
+import io.github.chronosauros.contour.ui.kit.DacFeel
 import io.github.chronosauros.contour.ui.kit.LiftGuard
+import io.github.chronosauros.contour.ui.kit.pressStart
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
 import io.github.chronosauros.contour.ui.kit.LocalPagerLock
 import io.github.chronosauros.contour.ui.kit.detectHorizontalDragWithEnds
 import io.github.chronosauros.contour.ui.kit.holdsPager
 import io.github.chronosauros.contour.ui.lift
 import io.github.chronosauros.contour.ui.pal
+import io.github.chronosauros.contour.ui.AppButton
 import io.github.chronosauros.contour.ui.sheets.ChoiceSheet
 import io.github.chronosauros.contour.ui.sink
 import io.github.chronosauros.contour.ui.tune.StackedValue
@@ -186,7 +189,12 @@ fun DacScreen(device: DeviceController, top: Dp, bottom: Dp, onNotSent: (String)
                     section, style = Type.small, color = c.textDim, maxLines = 1,
                     modifier = Modifier.padding(start = 6.dp, top = groupGap).testTag("dac_section_${section.lowercase()}"),
                 )
-                SettingRow(
+                if (s.kind == SettingKind.CHOICE && s.inlineChoice) InlineChoice(
+                    s, value, preview || writable, dim,
+                    onPick = { v -> if (preview) local[s.id] = v else send(s, v) },
+                    onBlocked = { onNotSent(blocked(s.label)) },
+                    modifier = Modifier.padding(top = if (section != null) 0.dp else groupGap),
+                ) else SettingRow(
                     s, value, shown, dim, preview || writable, levelMax,
                     onMove = { v -> if (preview) local[s.id] = v else pending[s.id] = v },
                     onCommit = { v -> if (!preview) { if (v == device.settingValues[s.id]?.value) pending.remove(s.id) else send(s, v) } },
@@ -257,6 +265,24 @@ private fun format(s: DacSetting, v: Int): String = when (s.kind) {
     SettingKind.CHOICE -> s.shortOption(v)
     SettingKind.LEVEL -> s.valueText?.invoke(v) ?: if (s.scale > 1) "%.1f".format(java.util.Locale.ROOT, v.toDouble() / s.scale) else v.toString() // dB rows hold tenths (scale 10); a row with valueText words its own value
     SettingKind.BALANCE -> if (v == 0) "CENTER" else if (v < 0) "L ${-v}" else "R $v" // the side the sound moves to, like FiiO Control
+}
+
+/**
+ * A choice whose options are few and picked all the time (the DUSK-SP presets, [DacSetting.inlineChoice]): every option is a full-width button on the page itself, the current one in the selected style;
+ * one tap picks it. No dropdown, no sheet, no row label (the buttons are the row).
+ */
+@Composable
+private fun InlineChoice(s: DacSetting, value: Int?, live: Boolean, dim: Boolean, onPick: (Int) -> Unit, onBlocked: () -> Unit, modifier: Modifier) {
+    Column(modifier.fillMaxWidth().alpha(if (dim) 0.4f else 1f).testTag("dac_inline_${s.id}"), verticalArrangement = Arrangement.spacedBy(Grid.GAP)) {
+        s.options.forEachIndexed { i, label ->
+            AppButton(
+                label,
+                { if (i != value) { if (live) onPick(i) else onBlocked() } },
+                Modifier.fillMaxWidth().testTag("dac_inline_${s.id}_$i"),
+                primary = i == value,
+            )
+        }
+    }
 }
 
 /** A row in the language of TuneScreen's ParamRow: the label over the value on the left, the control in a well on the right. */
@@ -385,8 +411,10 @@ private fun OptionWell(s: DacSetting, value: Int?, live: Boolean, onPick: (Int) 
                         .weight(1f)
                         .fillMaxHeight()
                         .clip(pill)
+                        // the pair: the start at the press, the end 120 ms later (the pick may reach the well late or not at all)
+                        .pressStart(live) { if (i != value) haptics.segTap() }
                         .clickable {
-                            if (live) { if (i != value) { haptics.segment(); onPick(i) } }
+                            if (live) { if (i != value) onPick(i) }
                             else if (i != value) { haptics.reject(); onBlocked() }
                         }
                         .testTag("dac_option_${s.id}_$i"),
@@ -431,14 +459,15 @@ private fun DacSlider(s: DacSetting, value: Int?, min: Int, max: Int, centered: 
             .pointerInput(min, max) {
                 val guard = LiftGuard<Int>(density, s.label)
                 var raw = 0.0
-                var ticked = 0
-                var atEnd = false
+                val feel = DacFeel(haptics, min, max, centered)
+                var speed = 0f // dp/ms, smoothed like BandDrag
                 detectHorizontalDragWithEnds(
+                    onDown = { if (applies.value) haptics.grab() },
                     onStart = { down ->
                         raw = (v.value ?: start).toDouble()
-                        ticked = raw.roundToInt()
-                        atEnd = false
-                        guard.start(down.uptimeMillis, down.position, ticked)
+                        speed = 0f
+                        feel.start(raw.roundToInt())
+                        guard.start(down.uptimeMillis, down.position, raw.roundToInt())
                         if (!applies.value) blocked.value()
                     },
                     // lifting the finger is the one moment a value is sent (a real DAC); the LiftGuard may take the last jitter back first
@@ -452,18 +481,13 @@ private fun DacSlider(s: DacSetting, value: Int?, min: Int, max: Int, centered: 
                     ch.consume()
                     if (!applies.value) return@detectHorizontalDragWithEnds
                     raw += dx.toDouble() * (max - min) / size.width.coerceAtLeast(1)
-                    if (raw < min || raw > max) {
-                        if (!atEnd) haptics.reject()
-                        atEnd = true
-                    } else atEnd = false
+                    val pastEnd = raw < min || raw > max
                     raw = raw.coerceIn(min.toDouble(), max.toDouble())
                     val next = raw.roundToInt()
                     if (next != v.value) move.value(next)
                     guard.move(ch.uptimeMillis, ch.position, next)
-                    if (next != ticked && !guard.settling(ch.uptimeMillis)) {
-                        if (centered && next == 0) haptics.crossing(2) else if (next % 10 == 0) haptics.crossing(1)
-                        ticked = next
-                    }
+                    speed = 0.6f * speed + 0.4f * (abs(dx) / density / (ch.uptimeMillis - ch.previousUptimeMillis).coerceAtLeast(1L))
+                    if (!guard.settling(ch.uptimeMillis)) feel.move(next, pastEnd, speed.coerceAtMost(1f))
                 }
             }
             .clip(shape)

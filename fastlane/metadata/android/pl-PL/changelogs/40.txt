@@ -1,0 +1,8 @@
+Nowe DAC-i: JCally JM12, FiiO JadeAudio JA11 i Moondrop DUSK-SP.
+CrinEar Protocol Max:
+- Półki grają tak, jak je widać (w 1.6.6 różnica do 2,2 dB).
+- LOW PASS, HIGH PASS i ±12 dB.
+- Strona DAC: FILTER, BALANCE, OUTPUT i MIC GAIN.
+PREAMP to suwak jak GAIN, z AUTO obok.
+Moondrop Dawn Pro 2: PREAMP kończy się na -30 dB, jak w innych DAC-ach.
+DAC, który trzyma pełne dB, pokazuje -4 zamiast -4.0. Dzięki, jtremblant.

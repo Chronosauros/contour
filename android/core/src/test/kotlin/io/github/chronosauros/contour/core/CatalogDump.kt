@@ -19,7 +19,7 @@ import kotlin.math.sqrt
  *  - for a fixed, documented set of profiles per device (see [profiles]): `DeviceTarget.issues` texts, the block label and
  *    the headline, the preamp policy answers, and the hex of every planned report - WalkPlay `DeviceProtocol.writeSequence`
  *    (plus the Micro A/B `temporaryBandSequence`), FiiO `FiioCodec.planOnExplicitSend` frames exactly as the app sends
- *    them (bands padded with `padToDeviceCount`, preamp = `effectivePreampDb()`), and the import read-back of each plan;
+ *    them (bands padded with `padToDeviceCount`, preamp = `effectivePreampDb(form)`), and the import read-back of each plan;
  *  - the factory flat plans, the TRN/Max/Micro read-side bounds (one-factor probes), the FiiO Q read-back slack, the SnowSky
  *    slot texts, per-slot select/save/name frames and the settings write frames.
  *
@@ -68,7 +68,11 @@ internal object CatalogDump {
         is DacInfo -> dacInfo(v)
         is Function<*> -> JsonPrimitive("<function>")
         else -> {
-            val fields = v.javaClass.declaredFields.filter { !Modifier.isStatic(it.modifiers) && !it.isSynthetic }.sortedBy { it.name }
+            // an optional field that is null (or an optional flag that is false) is left out, so a field added later for one device (DeviceCapabilities.shelfLimits, .wrapQ30) leaves every other device's entry as it was
+            val fields = v.javaClass.declaredFields.filter { !Modifier.isStatic(it.modifiers) && !it.isSynthetic }
+                .filter { f -> f.name != "shelfLimits" || run { f.isAccessible = true; f.get(v) != null } }
+                .filter { f -> f.name != "wrapQ30" || run { f.isAccessible = true; f.get(v) == true } }
+                .filter { f -> f.name != "bypassPreampAnswersAsCount" || run { f.isAccessible = true; f.get(v) == true } }.sortedBy { it.name }
             JsonObject(fields.associate { f -> f.isAccessible = true; f.name to toJson(f.get(v)) })
         }
     }
@@ -87,7 +91,7 @@ internal object CatalogDump {
 
     private fun dacSetting(x: DacSetting): JsonElement {
         val read = x.read
-        return obj(
+        val base = obj(
             "id" to s(x.id), "label" to s(x.label), "kind" to toJson(x.kind), "evidence" to toJson(x.evidence),
             "options" to strs(x.options), "shortOptions" to strs(x.shortOptions),
             "min" to toJson(x.min), "max" to toJson(x.max), "step" to toJson(x.step), "unit" to s(x.unit),
@@ -110,6 +114,8 @@ internal object CatalogDump {
             "maxRule" to (x.maxRule?.let { obj("settingId" to s(it.settingId), "maxima" to toJson(it.maxima)) } ?: JsonNull),
             "longChoice" to toJson(x.longChoice),
         )
+        // a row that makes the DAC leave the bus says so; an optional flag that is false stays out, so every other device's rows are as they were
+        return if (!x.reconnectsAfterWrite) base else JsonObject((base as JsonObject) + ("reconnectsAfterWrite" to toJson(true)))
     }
 
     private fun catching0(f: () -> String): String = try { f() } catch (e: Throwable) { "error ${e.javaClass.simpleName}: ${e.message}" }
@@ -140,7 +146,7 @@ internal object CatalogDump {
         "TRN" to Spec(10, -10.0, 10.0, 0.1, 10.0, 10.0 / sqrt(2.0), 20.0, 20000.0, THREE, -30.0, 0.0),
         "KA15" to Spec(10, -12.0, 12.0, 0.1, 10.0, 10.0 / sqrt(2.0), 20.0, 20000.0, THREE, -24.0, 0.0),
         "K13" to Spec(10, -24.0, 12.0, 0.1, 10.0 / sqrt(2.0), 10.0, 20.0, 20000.0, SEVEN, -24.0, 12.0),
-        "MELODY" to Spec(10, -12.0, 12.0, 0.1, 10.0, 10.0 / sqrt(2.0), 20.0, 20000.0, THREE, -12.0, 12.0),
+        "MELODY" to Spec(10, -12.0, 12.0, 0.1, 10.0, 10.0 / sqrt(2.0), 20.0, 20000.0, THREE, -24.0, 0.0),
         "TINY_A" to Spec(10, -12.0, 12.0, 0.1, 10.0, 10.0 / sqrt(2.0), 20.0, 20000.0, SEVEN, -12.0, 12.0),
     )
 
@@ -317,7 +323,7 @@ internal object CatalogDump {
     private fun fiioPlan(c: FiioConfig, profile: Profile, slot: Int): JsonElement = catching {
         val codec = FiioCodec(c)
         val padded = codec.padToDeviceCount(profile.bands)
-        val preamp = profile.effectivePreampDb()
+        val preamp = profile.effectivePreampDb(c.shelfForm)
         val plan = codec.planOnExplicitSend(profile.copy(bands = padded, preampDb = preamp), slot, true)
         obj(
             "status" to s("ready"), "targetSlot" to toJson(plan.targetSlot), "paddedBands" to toJson(padded.size), "preampDbSent" to num(preamp),
@@ -441,6 +447,18 @@ internal object CatalogDump {
         Triple(0x31B2, 0x0111, "Kiwi Ears-Allegro Mini"), Triple(0x31B2, 0x0111, "Kiwi Ears Allegro Mini"), Triple(0x31B2, 0x0111, "Kiwi Ears-Allegro PRO"),
         Triple(0x31B2, 0x0111, null), Triple(0x31B2, 0x0112, "Kiwi Ears-Allegro Mini"),
         Triple(0x3302, 0x12C5, null), Triple(0x3302, 0x12C5, "ECHO-A"), Triple(0x3302, 0x12C6, "ECHO-A"), Triple(0x0000, 0x0000, null),
+        // appended with the JCally JM12 (the same VID:PID as the Allegro Mini, told apart by the USB name)
+        Triple(0x31B2, 0x0111, "KT02H20 HIFI Audio"), Triple(0x31B2, 0x0111, "KT02H20 HiFi Audio"), Triple(0x31B2, 0x0111, "KT02H20"), Triple(0x31B2, 0x0112, "KT02H20 HIFI Audio"),
+        // appended with the FiiO JadeAudio JA11 (found by VID, PID and the exact USB name)
+        Triple(0x2972, 0x0102, "JadeAudio JA11"), Triple(0x2972, 0x0102, "JadeAudio JA11 "), Triple(0x2972, 0x0102, "JADEAUDIO JA11"), Triple(0x2972, 0x0102, null), Triple(0x2972, 0x0103, "JadeAudio JA11"),
+        // appended with the Moondrop DUSK-SP (found by VID, PID and the exact USB name; its sister cables MAY 1497 and FreeDSP 1496 are not in Contour)
+        Triple(0x35D8, 0x1499, "DUSK-SP"), Triple(0x35D8, 0x1499, "DUSK-SP "), Triple(0x35D8, 0x1499, "dusk-sp"), Triple(0x35D8, 0x1499, null), Triple(0x35D8, 0x1497, "DUSK-SP"), Triple(0x35D8, 0x1499, "MAY"),
+        // appended with the SnowSky RETRO NANO (VID 0A12, the generic Bluetooth-chip id) and the FiiO JIEZI (both found by VID, PID and the exact USB name)
+        Triple(0x0A12, 0x4007, "RETRO NANO"), Triple(0x0A12, 0x4007, "RETRO NANO "), Triple(0x0A12, 0x4007, "Retro Nano"), Triple(0x0A12, 0x4007, null), Triple(0x0A12, 0x4005, "RETRO NANO"), Triple(0x2972, 0x4007, "RETRO NANO"),
+        Triple(0x2972, 0x0151, "JadeAudio JIEZI"), Triple(0x2972, 0x0151, "JADEAUDIO JIEZI"), Triple(0x2972, 0x0151, null), Triple(0x2972, 0x0152, "JadeAudio JIEZI"), Triple(0x2972, 0x0151, "JadeAudio JA11"),
+        // appended with the Kiwi Ears AD1 (3302:20E3, the WalkPlay VID, a KT register DAC) and the Tanchjim Space II (3302:4381): both found by VID, PID and the exact USB name
+        Triple(0x3302, 0x20E3, "AD1"), Triple(0x3302, 0x20E3, "ad1"), Triple(0x3302, 0x20E3, null), Triple(0x3302, 0x20E4, "AD1"),
+        Triple(0x3302, 0x4381, "TANCHJIM-SPACE II"), Triple(0x3302, 0x4381, "TANCHJIM-SPACE PRO"), Triple(0x3302, 0x4381, null), Triple(0x3302, 0x4380, "TANCHJIM-SPACE II"),
     )
 
     private fun identity(): JsonElement {
@@ -472,7 +490,7 @@ internal object CatalogDump {
     private fun nameOf(t: DeviceTarget): String = when (t) {
         DeviceTarget.MICRO -> "MICRO"; DeviceTarget.MAX -> "MAX"; DeviceTarget.TRN -> "TRN"; DeviceTarget.KA15 -> "KA15"
         DeviceTarget.K13 -> "K13"; DeviceTarget.MELODY -> "MELODY"; DeviceTarget.TINY_A -> "TINY_A"
-        DeviceTarget.DAWN_PRO_2 -> "DAWN_PRO_2"; DeviceTarget.ALLEGRO_MINI -> "ALLEGRO_MINI"; DeviceTarget.ECHO_A -> "ECHO_A"
+        DeviceTarget.DAWN_PRO_2 -> "DAWN_PRO_2"; DeviceTarget.ALLEGRO_MINI -> "ALLEGRO_MINI"; DeviceTarget.JCALLY_JM12 -> "JCALLY_JM12"; DeviceTarget.ECHO_A -> "ECHO_A"; DeviceTarget.FIIO_JA11 -> "FIIO_JA11"; DeviceTarget.MOONDROP_DUSK -> "MOONDROP_DUSK"; DeviceTarget.RETRO_NANO -> "SNOWSKY_RETRO_NANO"; DeviceTarget.FIIO_JIEZI -> "FIIO_JIEZI"; DeviceTarget.KIWI_EARS_AD1 -> "KIWI_EARS_AD1"; DeviceTarget.SPACE_2 -> "TANCHJIM_SPACE_II"
         else -> "UNKNOWN"
     }
 
@@ -482,7 +500,14 @@ internal object CatalogDump {
     private val familySpecs: Map<String, Spec> = linkedMapOf(
         "DAWN_PRO_2" to Spec(8, -18.0, 12.0, 0.1, 10.0, 10.0, 20.0, 20000.0, listOf(FilterType.PEAK), -128.0, 0.0),
         "ALLEGRO_MINI" to Spec(5, -12.0, 12.0, 0.1, 10.0, 10.0, 40.0, 20000.0, listOf(FilterType.PEAK), 0.0, 0.0),
+        "JCALLY_JM12" to Spec(5, -12.0, 12.0, 0.1, 10.0, 10.0, 20.0, 20000.0, THREE, 0.0, 0.0),
         "ECHO_A" to Spec(8, -10.0, 10.0, 0.1, 10.0, 10.0, 20.0, 20000.0, listOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF, FilterType.LOW_PASS, FilterType.HIGH_PASS), -30.0, 0.0),
+        "FIIO_JA11" to Spec(5, -12.0, 12.0, 0.1, 10.0, 10.0, 20.0, 20000.0, listOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF, FilterType.LOW_PASS, FilterType.HIGH_PASS), -24.0, 0.0),
+        "MOONDROP_DUSK" to Spec(9, -12.0, 12.0, 0.2, 10.0, 10.0, 20.0, 20000.0, THREE, 0.0, 0.0),
+        "SNOWSKY_RETRO_NANO" to Spec(10, -12.0, 12.0, 0.25, 8.0, 8.0, 20.0, 20000.0, listOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF, FilterType.LOW_PASS, FilterType.HIGH_PASS), -12.0, 12.0),
+        "FIIO_JIEZI" to Spec(10, -12.0, 12.0, 0.1, 10.0, 10.0 / sqrt(2.0), 20.0, 20000.0, SEVEN, -12.0, 12.0),
+        "KIWI_EARS_AD1" to Spec(5, -12.0, 12.0, 0.2, 10.0, 1.0, 20.0, 20000.0, THREE, 0.0, 0.0),
+        "TANCHJIM_SPACE_II" to Spec(10, -12.0, 12.0, 0.1, 10.0, 10.0, 20.0, 20000.0, listOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF, FilterType.LOW_PASS, FilterType.HIGH_PASS), -30.0, 0.0),
     )
 
     private fun hexTrim(b: ByteArray): String = hex(b.copyOf(b.indexOfLast { it.toInt() != 0 } + 1))
@@ -575,7 +600,7 @@ internal object CatalogDump {
         )
         entries["profiles"] = JsonObject(profiles(familySpecs.getValue("DAWN_PRO_2")).associate { pr ->
             pr.name to familyProfile(t, pr) { p ->
-                val planned = MoondropCodec.planFor(model, p.bands, p.effectivePreampDb())
+                val planned = MoondropCodec.planFor(model, p.bands, p.effectivePreampDb(model.shelfForm))
                 if (planned.issues.isNotEmpty()) obj("status" to s("rejected"), "issues" to strs(planned.issues))
                 else obj("status" to s("ready"), "preGainDb" to toJson(planned.preGainDb),
                     "steps" to strs(MoondropCodec.writeSteps(model, planned.bands, planned.preGainDb).map { "${it.what}: ${hexTrim(it.payload)} +${it.delayAfterMs}" }))
@@ -584,18 +609,21 @@ internal object CatalogDump {
         return JsonObject(entries)
     }
 
-    private fun allegroJson(t: DeviceTarget): JsonElement {
+    private fun allegroJson(t: DeviceTarget): JsonElement = ktJson("ALLEGRO_MINI", t, KtMicroCatalog.models, "allegro-mini-read-232520.log")
+
+    /** A KT Micro model: its limits and codec constants, a read replayed from [log] and the plan of every profile of [familySpecs]. */
+    private fun ktJson(name: String, t: DeviceTarget, models: List<KtMicroCatalog.Model>, log: String): JsonElement {
         val model = requireNotNull(t.ktMicro)
-        val port = ReplayPort(benchResource("allegro-mini-read-232520.log"), null, "k")
+        val port = ReplayPort(benchResource(log), null, "k")
         val session = KtMicroSession(model, port)
         val snap = session.read()
-        val entries = familyBase("ALLEGRO_MINI", t)
+        val entries = familyBase(name, t)
         entries["model"] = obj(
             "config" to toJson(model),
             "nativeTypes" to toJson(model.nativeTypes), "bandCount" to toJson(model.bandCount),
             "limits" to obj("gain" to s("${d(model.minGainDb)}..${d(model.maxGainDb)}"), "q" to s("${d(model.minQ)}..${d(model.maxQ)}"),
                 "freq" to s("${d(model.minFrequencyHz)}..${d(model.maxFrequencyHz)}")),
-            "models" to strs(KtMicroCatalog.models.map { it.productName }),
+            "models" to strs(models.map { it.productName }),
             "codec" to obj("reportId" to toJson(KtMicroCodec.REPORT_ID), "eqEnableRegister" to toJson(KtMicroCodec.EQ_ENABLE_REGISTER), "eqOn" to toJson(KtMicroCodec.EQ_ON),
                 "eqOff" to toJson(KtMicroCodec.EQ_OFF), "digitalGainRegister" to toJson(KtMicroCodec.DIGITAL_GAIN_REGISTER),
                 "globalGainRegister" to toJson(KtMicroCodec.GLOBAL_GAIN_REGISTER), "save" to toJson(KtMicroCodec.SAVE)),
@@ -608,7 +636,7 @@ internal object CatalogDump {
             "digitalGain" to strs(listOf("left=${snap.digitalGain?.leftDb} right=${snap.digitalGain?.rightDb}")),
             "registerCount" to toJson(snap.registers.size),
         )
-        entries["profiles"] = JsonObject(profiles(familySpecs.getValue("ALLEGRO_MINI")).associate { pr ->
+        entries["profiles"] = JsonObject(profiles(familySpecs.getValue(name)).associate { pr ->
             pr.name to familyProfile(t, pr) { p ->
                 val plan = session.plan(p.copy(preampDb = 0.0), snap)
                 obj("status" to s("ready"), "reconnectAfterSave" to toJson(plan.reconnectAfterSave), "expectedEqControl" to toJson(plan.expectedEqControl),
@@ -643,13 +671,85 @@ internal object CatalogDump {
         return JsonObject(entries)
     }
 
+    /** The Tanchjim Space II (WalkPlay SchemeNo16 on the Max's code, found by its USB name): the family flags and the WalkPlay block (entry, reads, flat plan, every profile's plan). */
+    private fun space2Json(t: DeviceTarget): JsonElement {
+        val entries = familyBase("TANCHJIM_SPACE_II", t)
+        entries["walkplay"] = walkplayJson("TANCHJIM_SPACE_II", requireNotNull(t.walkplay), familySpecs.getValue("TANCHJIM_SPACE_II"))
+        return JsonObject(entries)
+    }
+
+    /** A FiiO-family DAC found by its USB name (the JA11, the RETRO NANO, the JIEZI): the family flags and the FiiO block (config, frames of every profile, settings frames). */
+    private fun fiioFamilyJson(name: String, t: DeviceTarget): JsonElement {
+        val c = requireNotNull(t.fiio)
+        val entries = familyBase(name, t)
+        entries["fiio"] = fiioJson(name, t, c, familySpecs.getValue(name))
+        return JsonObject(entries)
+    }
+
+    /**
+     * The Moondrop DUSK-SP (gen 1): the limits and codec constants, the owner's read of 11.11.2026 replayed through the session (the preset and the nine bands, over the control pipe), and the plan of every profile
+     * of [familySpecs]: the issues, and for a ready one the meta records and the frames of the write (every request of the 56, with its pause).
+     */
+    private fun duskJson(t: DeviceTarget): JsonElement {
+        val model = requireNotNull(t.gen1)
+        val shape = NativeHidReports.parseGen1(benchResource("dusk-descriptor.hex").trim().split(Regex("\\s+")).filter { it.isNotEmpty() }.map { it.toInt(16).toByte() }.toByteArray())
+        shape.qualifyGen1()
+        val port = ReplayPort(benchResource("dusk-read-20261111.log"), shape, "g")
+        val snap = MoondropGen1Session(model, port).read()
+        val entries = familyBase("MOONDROP_DUSK", t)
+        entries["model"] = obj(
+            "config" to toJson(model),
+            "types" to toJson(model.types), "bandCount" to toJson(model.bandCount),
+            "limits" to obj("gain" to s("${d(model.minGainDb)}..${d(model.maxGainDb)}"), "q" to s("${d(model.minQ)}..${d(model.maxQ)}"), "freq" to s("${d(model.minFrequencyHz)}..${d(model.maxFrequencyHz)}")),
+            "presets" to toJson(model.presetLabels), "customIndex" to toJson(model.customIndex), "stockPicker" to toJson(model.stockPicker),
+            "presetBands" to JsonObject(model.presetLabels.toSortedMap().keys.mapNotNull { i -> model.presetBands(i)?.let { b -> i.toString() to strs(b.map { "${it.type} ${d(it.freqHz)} Hz ${d(it.gainDb)} dB Q ${d(it.q)}" }) } }.toMap()),
+            "factoryBank" to strs(model.factoryFrequenciesHz.map { "$it Hz Q ${d(model.factoryQ)}" }),
+            "pacingMs" to obj("replyWait" to toJson(model.replyWaitMs), "writeGap" to toJson(model.writeGapMs), "afterCommit" to toJson(model.afterCommitMs), "afterSelect" to toJson(model.afterSelectMs)),
+            "codec" to obj("reportId" to toJson(MoondropGen1Codec.REPORT_ID), "payloadBytes" to toJson(MoondropGen1Codec.PAYLOAD_BYTES), "reportBytes" to toJson(model.reportBytes),
+                "presetCommand" to toJson(MoondropGen1Codec.CMD_PRESET), "bandReadCommand" to toJson(MoondropGen1Codec.CMD_BAND_READ), "writeCommand" to toJson(MoondropGen1Codec.CMD_WRITE),
+                "commit" to toJson(MoondropGen1Codec.COMMIT), "rates" to strs(MoondropGen1Codec.RATES.map { "${it.first}:${it.second}" }), "types" to toJson(MoondropGen1Codec.TYPES)),
+            "readQueries" to strs(MoondropGen1Codec.readQueries(model.bandCount).map { hexTrim(it.report) }),
+            "selectSteps" to JsonObject(model.presetLabels.toSortedMap().keys.associate { i -> i.toString() to strs(MoondropGen1Codec.selectSteps(i, model.afterSelectMs).map { "${hexTrim(it.report)} +${it.delayAfterMs}" }) }),
+        )
+        entries["benchRead"] = obj(
+            "sentFrames" to strs(port.sent),
+            "activeIndex" to toJson(snap.activeIndex), "onCustom" to toJson(snap.onCustom),
+            "bands" to strs(snap.bands.map { "${it.index} ${it.type} ${it.freqHz} Hz q256=${it.qRaw} gain=${it.gainDb} code=${it.nativeType}" }),
+        )
+        entries["profiles"] = JsonObject(profiles(familySpecs.getValue("MOONDROP_DUSK")).associate { pr ->
+            pr.name to familyProfile(t, pr) { p ->
+                val issues = MoondropGen1Codec.issues(model, p.bands)
+                if (issues.isNotEmpty()) obj("status" to s("rejected"), "issues" to strs(issues))
+                else {
+                    val planned = MoondropGen1Codec.plan(model, p.bands)
+                    obj("status" to s("ready"),
+                        "meta" to strs(planned.map { "${it.index} ${it.meta}" }),
+                        "steps" to strs(MoondropGen1Codec.writeSteps(model, planned).map { "${it.what}: ${hexTrim(it.report)} +${it.delayAfterMs}" }))
+                }
+            }
+        })
+        return JsonObject(entries)
+    }
+
     /** The families the 1.5 golden did not hold: appended after "targets", so every older section stays as it was. */
     private fun families(): JsonElement = obj(
         // The Dawn Pro 2 and the Allegro Mini are dumped as a review build sees them (their write path: plans, frames, issues); their release state is the "readOnlyInRelease"
         // flag. The Echo-A is dumped as a release sees it (read only), its writable variant is the "writableProfiles" section.
         "DAWN_PRO_2" to Proven.asChannel(BuildChannel.PERF) { dawnJson(DeviceTarget.DAWN_PRO_2) },
         "ALLEGRO_MINI" to Proven.asChannel(BuildChannel.PERF) { allegroJson(DeviceTarget.ALLEGRO_MINI) },
+        // The JM12 is dumped as a review build sees it, like the Allegro Mini, from a CONSTRUCTED read (see the log's header), after the Allegro Mini.
+        "JCALLY_JM12" to Proven.asChannel(BuildChannel.PERF) { ktJson("JCALLY_JM12", DeviceTarget.JCALLY_JM12, KtMicroCatalog.jm12Models, "jm12-read-constructed.log") },
         "ECHO_A" to Proven.asChannel(BuildChannel.RELEASE) { echoJson(DeviceTarget.ECHO_A) },
+        // The FiiO JA11 is dumped as a review build sees it (readOnlyInRelease says what a release does; its five types are offered in every build), after the Echo-A.
+        "FIIO_JA11" to Proven.asChannel(BuildChannel.PERF) { fiioFamilyJson("FIIO_JA11", DeviceTarget.FIIO_JA11) },
+        // The Moondrop DUSK-SP is dumped as a review build sees it (readOnlyInRelease says what a release does), after the FiiO JA11.
+        "MOONDROP_DUSK" to Proven.asChannel(BuildChannel.PERF) { duskJson(DeviceTarget.MOONDROP_DUSK) },
+        // The SnowSky RETRO NANO and the FiiO JIEZI (step 1, nothing measured on a unit): dumped as a review build sees them (a release has them read only), after the DUSK-SP.
+        "SNOWSKY_RETRO_NANO" to Proven.asChannel(BuildChannel.PERF) { fiioFamilyJson("SNOWSKY_RETRO_NANO", DeviceTarget.RETRO_NANO) },
+        "FIIO_JIEZI" to Proven.asChannel(BuildChannel.PERF) { fiioFamilyJson("FIIO_JIEZI", DeviceTarget.FIIO_JIEZI) },
+        // The Kiwi Ears AD1 and the Tanchjim Space II (read on a unit, nothing written): dumped as a review build sees them. The AD1's read is the JM12's constructed log: the unit answered the register reads with the same values.
+        "KIWI_EARS_AD1" to Proven.asChannel(BuildChannel.PERF) { ktJson("KIWI_EARS_AD1", DeviceTarget.KIWI_EARS_AD1, KtMicroCatalog.ad1Models, "jm12-read-constructed.log") },
+        "TANCHJIM_SPACE_II" to Proven.asChannel(BuildChannel.PERF) { space2Json(DeviceTarget.SPACE_2) },
     )
 
     /** The whole dump as pretty JSON text, LF line endings, one trailing newline. */

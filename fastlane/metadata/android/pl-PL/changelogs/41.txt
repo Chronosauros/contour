@@ -1,0 +1,4 @@
+Nowe DAC-i: SnowSky Retro Nano, FiiO JadeAudio JIEZI, Kiwi Ears AD1 i Tanchjim Space II z filtrem, wyjściem, gainem, balansem i gainem mikrofonu.
+FiiO JadeAudio JA11 i SnowSky Melody grały z EQ o 12 dB ciszej (dzięki, randomaltthing). Przed wysłaniem ścisz: AUTO i ręczny PREAMP grają do 12 dB głośniej niż w 1.7.0.
+Nowa haptyka: czujesz herce, dziesiąte części dB i wysyłkę.
+Nowe w bibliotece: OPEN CONTOUR WHEN A DAC IS PLUGGED IN (dzięki, -IAmThis-) i HAPTIC FEEDBACK.

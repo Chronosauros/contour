@@ -52,8 +52,8 @@ class TrnDawnPassFilterTest {
             // nothing else is widened: the TRN keeps its shelves and gets neither BP nor AP, the Dawn gets neither BP nor AP
             assertEquals(setOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF) + pass, DeviceProtocol.TRN.caps.types)
             assertTrue(FilterType.BAND_PASS !in DeviceTarget.DAWN_PRO_2.caps.types && FilterType.ALL_PASS !in DeviceTarget.DAWN_PRO_2.caps.types)
-            // the other WalkPlay DACs are not touched by the TRN flag
-            assertTrue(pass.none { it in DeviceProtocol.MAX.caps.types })
+            // the Max's LP and HP follow the Max's own flag (ProtocolMax.CANDIDATES_VERIFIED), not the TRN's
+            assertEquals(ProtocolMax.candidatesOn, pass.all { it in DeviceProtocol.MAX.caps.types })
         }
     }
 

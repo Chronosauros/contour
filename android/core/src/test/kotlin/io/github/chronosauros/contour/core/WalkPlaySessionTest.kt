@@ -31,6 +31,8 @@ class WalkPlaySessionTest {
         val silent = HashMap<Int, Int>()
         val ignoredBands = HashSet<Int>()
         var firmware = "0.6"
+        /** Byte d[3] of the preamp reply: 0 on the units Contour was tested on, 0x32 on a tester's Black Pearl on firmware 0.5 (09.11.2026). */
+        var gainHeader = 0x00
         private val lenByte = if (profile.protocol == DeviceProtocol.TRN) WalkPlay.TRN_BAND_LEN else WalkPlay.BAND_LEN
 
         init {
@@ -68,7 +70,7 @@ class WalkPlaySessionTest {
             events += "tx:${hex(b)}"
             val reply = when ((b[2].toInt() and 0xFF)) {
                 WalkPlay.CMD_VERSION -> report("4b 80 0c 00").also { firmware.toByteArray().copyInto(it, 4) }
-                WalkPlay.CMD_GLOBAL_GAIN -> report("4b 80 03 02 00").also { it[5] = preamp.toByte() }
+                WalkPlay.CMD_GLOBAL_GAIN -> report("4b 80 03 02").also { it[4] = gainHeader.toByte(); it[5] = preamp.toByte() }
                 WalkPlay.CMD_PEQ -> {
                     val index = b[5].toInt() and 0xFF // the bulk slot request is band 0's, byte for byte (zero padded)
                     val left = silent[index] ?: 0
@@ -220,6 +222,19 @@ class WalkPlaySessionTest {
         // the write ends with these four, then only the read-back requests follow
         assertEquals(readFrames(DeviceProtocol.TRN), tx.drop(commit + 4))
         assertEquals("pause:25", port.events[port.events.indexOf("tx:$band0") + 1]) // the proven 25 ms after each band frame
+    }
+
+    @Test fun `a TRN on firmware 0_5 with a stray byte in its preamp reply reads, sends and verifies`() {
+        // a tester's Black Pearl, 09.11.2026: the preamp reply was 4b 80 03 02 32 01 and the read before every send stopped there
+        val port = FakeDac(WalkPlayProfiles.trn).also { it.firmware = "0.5"; it.gainHeader = 0x32; it.preamp = 1 }
+        val session = WalkPlaySession(WalkPlayProfiles.trn, port)
+        val s = session.read()
+        assertEquals("0.5", s.firmware)
+        assertEquals(1, s.preampDb)
+        val out = session.write(eq(preamp = -4.0), explicitHold = true) // the DAC keeps answering with 0x32 before the gain
+        assertTrue(out.verified, out.reason)
+        assertEquals(-4, out.readback!!.preampDb)
+        assertTrue(hex(report("4b 01 03 02 00 fc")) in port.sentReports())
     }
 
     @Test fun `a missing band is asked for again on the TRN after three attempts, on the Micro the read fails`() {

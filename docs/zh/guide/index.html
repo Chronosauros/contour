@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Contour 使用指南</title>
-<meta name="description" content="如何使用 Contour：适用于 CrinEar Protocol、飞傲（FiiO）、雪漫天（SnowSky）、TRN、水月雨（Moondrop）和 Kiwi Ears USB 解码耳放（小尾巴）的 EQ（均衡器）管理应用。一部 6 分钟的视频，附完整文字说明。">
+<meta name="description" content="如何使用 Contour：适用于 CrinEar Protocol、飞傲（FiiO）、雪漫天（SnowSky）、TRN、水月雨（Moondrop）、Kiwi Ears、JCally 和天使吉米（Tanchjim）USB 解码耳放（小尾巴）的 EQ（均衡器）管理应用。一部 6 分钟的视频，附完整文字说明。">
 <link rel="canonical" href="https://contoureq.app/zh/guide/">
 <link rel="alternate" hreflang="en" href="https://contoureq.app/guide/">
 <link rel="alternate" hreflang="zh-CN" href="https://contoureq.app/zh/guide/">
@@ -13,7 +13,7 @@
 <meta property="og:url" content="https://contoureq.app/zh/guide/">
 <meta property="og:locale" content="zh_CN">
 <meta property="og:title" content="Contour 使用指南">
-<meta property="og:description" content="如何使用 Contour：适用于 CrinEar Protocol、飞傲（FiiO）、雪漫天（SnowSky）、TRN、水月雨（Moondrop）和 Kiwi Ears USB 解码耳放（小尾巴）的 EQ（均衡器）管理应用。一部 6 分钟的视频，附完整文字说明。">
+<meta property="og:description" content="如何使用 Contour：适用于 CrinEar Protocol、飞傲（FiiO）、雪漫天（SnowSky）、TRN、水月雨（Moondrop）、Kiwi Ears、JCally 和天使吉米（Tanchjim）USB 解码耳放（小尾巴）的 EQ（均衡器）管理应用。一部 6 分钟的视频，附完整文字说明。">
 <meta property="og:image" content="https://contoureq.app/media/guide-poster.jpg">
 <meta property="og:site_name" content="Contour">
 <meta property="og:image:width" content="1920">
@@ -21,7 +21,7 @@
 <meta property="og:image:alt" content="Contour 使用指南视频封面：Contour 应用的配置库（LIBRARY）界面，标题为“What Contour does”">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Contour 使用指南">
-<meta name="twitter:description" content="如何使用 Contour：适用于 CrinEar Protocol、飞傲（FiiO）、雪漫天（SnowSky）、TRN、水月雨（Moondrop）和 Kiwi Ears USB 解码耳放（小尾巴）的 EQ（均衡器）管理应用。一部 6 分钟的视频，附完整文字说明。">
+<meta name="twitter:description" content="如何使用 Contour：适用于 CrinEar Protocol、飞傲（FiiO）、雪漫天（SnowSky）、TRN、水月雨（Moondrop）、Kiwi Ears、JCally 和天使吉米（Tanchjim）USB 解码耳放（小尾巴）的 EQ（均衡器）管理应用。一部 6 分钟的视频，附完整文字说明。">
 <meta name="theme-color" content="#EFECE8" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#171615" media="(prefers-color-scheme: dark)">
 <meta name="color-scheme" content="light dark">
@@ -34,7 +34,7 @@
   "@context": "https://schema.org",
   "@type": "VideoObject",
   "name": "Contour 使用指南",
-  "description": "如何使用 Contour：适用于 CrinEar Protocol、飞傲（FiiO）、雪漫天（SnowSky）、TRN、水月雨（Moondrop）和 Kiwi Ears USB 解码耳放（小尾巴）的 EQ（均衡器）管理应用。一部 6 分钟的视频，附完整文字说明。",
+  "description": "如何使用 Contour：适用于 CrinEar Protocol、飞傲（FiiO）、雪漫天（SnowSky）、TRN、水月雨（Moondrop）、Kiwi Ears、JCally 和天使吉米（Tanchjim）USB 解码耳放（小尾巴）的 EQ（均衡器）管理应用。一部 6 分钟的视频，附完整文字说明。",
   "thumbnailUrl": "https://contoureq.app/media/guide-poster.jpg",
   "uploadDate": "2026-10-02",
   "duration": "PT6M21S",
@@ -165,13 +165,18 @@ td:last-child,th:last-child{padding-right:0}
 }
 
 /* footer */
-footer{padding:8px 6px 48px;color:var(--text-dim);font-size:14px}
-footer ul{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:6px}
-footer p{margin:0 0 8px}
-footer .footer-icons{margin:0 0 8px -11px}
-footer .footer-icons a{display:inline-flex;align-items:center;justify-content:center;width:44px;height:44px;opacity:.75}
-footer .footer-icons a:hover{opacity:1}
-footer .links{display:flex;flex-wrap:wrap;gap:6px 20px;margin:0 0 14px}
+footer.fv{display:block;padding:clamp(56px,9vw,88px) 6px 72px;color:var(--text-dim);font-size:14px;line-height:1.5}
+footer.fv p{margin:0}
+.fv a{color:var(--text);text-decoration:underline;text-decoration-color:var(--accent);text-decoration-thickness:2px;text-underline-offset:4px}
+.fv-sentence{max-width:21em;color:var(--text);font-size:clamp(25px,6.6vw,34px);font-weight:600;letter-spacing:-.02em;line-height:1.3;text-wrap:balance}
+.fv-sentence a{text-decoration-thickness:3px;text-underline-offset:6px;padding:.22em 0}
+@media (min-width:1000px){.fv-sentence{font-size:40px;max-width:23em}}
+.fv-quiet{margin-top:clamp(56px,9vw,96px)}
+.fv-legal{display:flex;flex-wrap:wrap;gap:0 22px;font-size:13px}
+.fv-legal > *{display:inline-flex;align-items:center;gap:.3em;min-height:44px}
+.fv .fv-legal a{color:var(--text-dim);text-decoration-thickness:1px;text-underline-offset:3px;text-decoration-color:color-mix(in srgb,var(--accent) 65%,transparent)}
+@media (max-width:480px){.fv-legal{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}}
+.fv-note{max-width:46em;margin-top:2px;font-size:12.5px;line-height:1.5;color:var(--text-dim)}
 
 @media (prefers-reduced-motion: reduce){*{transition:none!important}}
 @media print{
@@ -228,7 +233,7 @@ th{word-break:keep-all}
 <section class="plain" id="what-contour-does">
   <h2><a class="t" href="#what-contour-does" data-t="0">0:00</a><span>Contour 能做什么</span></h2>
   <div class="body">
-    <p>Contour 是一款 EQ（均衡器）管理应用，适用于 CrinEar Protocol Micro 和 Max、飞傲（FiiO）KA15 和 K13 R2R、雪漫天（SnowSky）Melody 和 Tiny A、TRN Black Pearl、水月雨（Moondrop）Dawn Pro 2 和 Echo-A，以及 Kiwi Ears Allegro Mini。EQ 保存在解码器内部，所以无论插到哪台设备上、用哪个应用播放，这份 EQ 都会生效。</p>
+    <p>Contour 是一款 EQ（均衡器）管理应用，适用于 CrinEar Protocol Micro 和 Max、飞傲（FiiO）KA15、K13 R2R、JadeAudio JA11 和 JIEZI、雪漫天（SnowSky）Melody、Tiny A 和 RETRO NANO、TRN Black Pearl、水月雨（Moondrop）Dawn Pro 2、Echo-A 和 DUSK-SP、Kiwi Ears Allegro Mini 和 AD1、JCally JM12，以及天使吉米（Tanchjim）SPACE II。EQ 保存在解码器内部，所以无论插到哪台设备上、用哪个应用播放，这份 EQ 都会生效。</p>
     <p>视频中使用的是 Protocol Micro，它有 8 个频段；各款解码器的频段和滤波器见下方<a href="#limits">参数范围与故障排查</a>。</p>
     <p>Contour 在 Android 手机上修改这份 EQ，无需账号，也无需联网。首次安装自带三个 EQ 配置，可以作为起点：低频增强（BASS BOOST）、柔和人声（SOFTER VOCALS）和高频增强（TREBLE BOOST）。</p>
   </div>
@@ -244,6 +249,7 @@ th{word-break:keep-all}
       <li><strong>已连接</strong>（CONNECTED），带绿点：可以开始使用了。</li>
     </ul>
     <p>提示：Android 询问是否打开 Contour 时，勾选“始终”，下次插上就会自动连接。</p>
+    <p>如果你不希望 Android 弹出这个询问，可以关闭配置库底部的“插上 DAC 时打开 Contour”（OPEN CONTOUR WHEN A DAC IS PLUGGED IN）开关，它默认是开启的。关闭后，插上解码器时请自己打开 Contour，再点按“点击连接”。</p>
   </div>
 </section>
 
@@ -254,10 +260,17 @@ th{word-break:keep-all}
     <p>“已写入 DAC”（ON DAC）表示这个配置现在保存在解码器内部。拔下解码器，到哪里都能用。配置库里也会给它标上“已写入 DAC”，所以你随时知道解码器里存的是哪个配置。</p>
     <p><strong>飞傲 KA15。</strong>KA15 有三个用户存储位。在“按住写入”上方那一行选择 USER1、USER2 或 USER3；这一行会显示每个存储位当前的名称。Contour 把配置写入所选存储位，并用配置名为存储位命名（最多 7 个字符，可以是字母或数字）。长按存储位可以重命名，不会改动其中的 EQ。读取或写入期间，Contour 会向 KA15 播放一段无声音频流，因为 KA15 只在有音频流输入时才会响应；你的音乐会照常播放。</p>
     <p><strong>飞傲 K13 R2R。</strong>K13 R2R 有十个用户存储位。在“按住写入”上方那一行选择 1 至 10 号存储位（选中的存储位会在编号下方显示 USER）；Contour 把配置写入该存储位，并将其设为当前生效的存储位。存储位保留各自的 USER 名称。K13 始终使用十个频段，频段较少的配置会用平直频段补满。一次写入大约需要五秒，因为 K13 每次写入后都需要短暂停顿，设置才能在关机后保留。K13 自身的 BYPASS（旁路）模式或自带预设，请在 K13 本机上切换。</p>
+    <p><strong>飞傲 JadeAudio JA11。</strong>它有 5 个频段，滤波器有峰值（PEAK）、低架（LOW SHELF）、高架（HIGH SHELF）、低通（LOW PASS）和高通（HIGH PASS），前置增益范围为 -24 至 0 dB，0 dB 即 JA11 关闭 EQ 时的音量。Contour 总是把配置写入它唯一的用户存储位 USER1，并将其设为当前生效的存储位，所以无需选择存储位；JA11 自带的预设保持不变。每次写入后，JA11 会从 USB 断开大约两秒，然后自动重新连接，Android 可能会再次询问是否允许 USB 访问：请允许。</p>
+    <p><strong>飞傲 JadeAudio JIEZI。</strong>它有三个用户存储位，始终使用十个频段。在“按住写入”上方那一行选择 USER1、USER2 或 USER3；Contour 把配置写入该存储位，回读校验后将其设为当前生效的存储位，频段较少的配置会用平直频段补满。存储位名称从 JIEZI 读取，你在 Contour 里为存储位起的名称也会写入解码器。</p>
     <p><strong>雪漫天 Melody 和 Tiny A。</strong>两者都有三个用户存储位。在“按住写入”上方那一行选择 USER1、USER2 或 USER3；Contour 把配置写入该存储位，校验后将其设为当前生效的存储位。它们始终使用十个频段，频段较少的配置会用平直频段补满。</p>
+    <p><strong>雪漫天 RETRO NANO。</strong>用法相同：USER1、USER2 或 USER3，十个频段；不过 Q 值范围是 0.25 至 8，存储位名称保存在 Contour 应用里。请在它的 USB 模式下使用：切换到蓝牙模式时它会离开 USB，Contour 就识别不到它。如果插上时它处于 Close EQ（关闭 EQ），Contour 会显示当前没有生效的 EQ，第一次写入会把它切换到你选择的存储位。</p>
+    <p><strong>天使吉米 SPACE II。</strong>它有 10 个频段，滤波器有峰值、低架、高架、低通和高通，前置增益范围为 -30 至 0 dB，只能取整数 dB。每次写入后，Contour 会回读校验每个频段和前置增益，全部一致才显示“已写入 DAC”。拔下后，EQ 依然保存在 SPACE II 里。</p>
     <p><strong>水月雨 Dawn Pro 2。</strong>它有 8 个频段和一个自定义 EQ，也就是水月雨应用（Moondrop Hub）使用的那个；Contour 把配置写入解码器当前启用的参数均衡（PEQ）组，回读校验，并且从不覆盖解码器自带的预设。自定义 EQ 需要在解码器上打开：据水月雨介绍，每次插上后它都处于关闭状态，同时按住两个音量键 2 秒即可开关。</p>
     <p><strong>水月雨 Echo-A。</strong>它有 8 个频段，滤波器有峰值（PEAK）、低架（LOW SHELF）、低通（LOW PASS）和高通（HIGH PASS）。高架（HIGH SHELF）由一个低架滤波器加前置增益组合而成，所以它的增益只能取整数 dB，Contour 也可能为此降低前置增益（例如从 -6 降到 -9 dB）。</p>
+    <p><strong>水月雨 DUSK-SP。</strong>这根 DSP 线材有 9 个频段，滤波器有峰值、低架和高架，没有前置增益。Contour 把配置写入它的 CUSTOM EQ（自定义 EQ），从不覆盖水月雨的五个预设。每次写入后，线材会重启，大约需要一秒，Android 可能会再次询问是否允许 USB 访问：请允许。每次插上后，线材播放的是 DUSK-DEFAULT 预设，你的 CUSTOM EQ 仍然保存在线材里。这时，在你选择或修改配置之前，EQ 页面底部的按钮会显示正在播放的预设；点按它打开 DAC 页，再点按 CUSTOM EQ 即可。写入配置后，线材也会切回 CUSTOM EQ。</p>
     <p><strong>Kiwi Ears Allegro Mini。</strong>它有 5 个频段，只支持峰值，没有前置增益。频段更多、含其他滤波类型或设有前置增益的配置，需要先修改才能写入；“按住写入”下方的红色提示会说明需要改什么。每次写入后，Allegro Mini 会从 USB 断开大约一秒，然后自动重新连接。这款解码器按 24 kHz 的音频流来计算滤波器，因此 Contour 假定使用常见的 48 kHz 音频流，写入按此换算后的频率。</p>
+    <p><strong>Kiwi Ears AD1。</strong>它有 5 个频段，滤波器有峰值、低架和高架，没有前置增益。搁架滤波器的增益范围为 -6 至 +6 dB，Q 值为 0.7 至 1.0。新的 AD1 出厂时 EQ 处于关闭状态，第一次写入时会把它打开。每次写入后，AD1 会从 USB 断开大约一秒，然后自动重新连接，Android 可能会再次询问是否允许 USB 访问：请允许。它按 24 kHz 的音频流来计算滤波器，因此 Contour 写入按常见的 48 kHz 音频流换算后的频率。</p>
+    <p><strong>JCally JM12。</strong>它有 5 个频段，滤波器有峰值、低架和高架，没有前置增益。搁架滤波器的增益范围为 -6 至 +6 dB，Q 值为 0.7 至 1.0。新的 JM12 出厂时 EQ 处于关闭状态，第一次写入时会把它打开。每次写入后，JM12 会从 USB 断开大约一秒，然后自动重新连接；如果没有重新连接，Contour 会提示你拔下再重新插上。和 Allegro Mini 一样，它按 24 kHz 的音频流来计算滤波器，因此 Contour 写入按常见的 48 kHz 音频流换算后的频率。</p>
     <p><strong>USER 存储位。</strong>在带 USER 存储位的解码器上，点按一个存储位，解码器就会切换到它，并显示其中的 EQ。如果这份 EQ 已经在你的配置库里，Contour 会打开对应的配置；如果没有，就把它添加为新配置。插上解码器后，Contour 会读取每个 USER 存储位，再切回原来正在使用的那个。在你按住“按住写入”之前，解码器上的任何内容都不会改变。</p>
   </div>
 </section>
@@ -273,7 +286,7 @@ th{word-break:keep-all}
 <section class="plain" id="filters">
   <h2><a class="t" href="#filters" data-t="114">1:54</a><span>滤波类型和滑块</span></h2>
   <div class="body">
-    <p>在曲线图下方选择滤波类型：峰值作用于所设频率附近，低架作用于该频率以下，高架作用于该频率以上。部分解码器还有高通（切除该频率以下）和低通（切除该频率以上），飞傲和雪漫天的解码器另有带通（BAND PASS）和全通（ALL PASS）。Contour 只显示你的解码器支持的类型。</p>
+    <p>在曲线图下方选择滤波类型：峰值作用于所设频率附近，低架作用于该频率以下，高架作用于该频率以上。部分解码器还有高通（切除该频率以下）和低通（切除该频率以上），飞傲 KA15、K13 R2R 和雪漫天的解码器另有带通（BAND PASS）和全通（ALL PASS）。Contour 只显示你的解码器支持的类型。</p>
     <p>频率（FREQ）、增益（GAIN）和 Q 三个滑块从当前位置开始移动，所以手指一碰，数值不会跳变。慢慢拖动可以微调，抬起手指后数值保持不变。</p>
     <p>前置增益（PREAMP）设为“自动”（AUTO）时，Contour 会把前置增益降低到刚好让提升的频段不削波。所有改动都会随时保存。</p>
   </div>
@@ -299,8 +312,8 @@ th{word-break:keep-all}
   <h2><a class="t" href="#exact-values" data-t="196">3:16</a><span>精确数值和前置增益</span></h2>
   <div class="body">
     <p>在频率滑块上快速一划，就能扫过整个频率范围。需要精确数值时，点按数字直接输入。</p>
-    <p>前置增益可在“自动”和“手动”（MANUAL）之间切换。在手动模式下，可以拖动或输入数值，范围是解码器的前置增益范围（见<a href="#limits">参数范围与故障排查</a>）；在只支持整数 dB 的解码器上，它按整数 dB 调整，所以你看到的数值就是解码器里保存的数值。写入后声音变小，是前置增益在为提升的频段留出余量。</p>
-    <p>写入解码器的每个数值都会向音量更小的方向取整，绝不会变得更响。如果自动模式需要的前置增益低于解码器的最低值，或者某个频段无法按你的设置精确保存（比如在 Protocol Max 上用高架大幅提升高音），“按住写入”会被锁定，并用一行红色提示说明原因。减小提升幅度后再写入即可。</p>
+    <p>前置增益和频率、增益、Q 一样是一个滑块，旁边有一个“自动”按钮，点按即可打开或关闭自动模式。打开自动时，滑块以较暗的颜色显示 Contour 算出的数值。关闭自动时，可以拖动滑块，或点按数值直接输入，范围是解码器的前置增益范围（见<a href="#limits">参数范围与故障排查</a>）；在只支持整数 dB 的解码器上，它按整数 dB 调整，显示为 -4 而不是 -4.0，所以你看到的数值就是解码器里保存的数值。写入后声音变小，是前置增益在为提升的频段留出余量。</p>
+    <p>写入解码器的每个数值都会向音量更小的方向取整，绝不会变得更响。如果自动模式需要的前置增益低于解码器的最低值，或者某个频段无法按你的设置精确保存（比如在 TRN Black Pearl 上用高架大幅提升高音），“按住写入”会被锁定，并用一行红色提示说明原因。减小提升幅度后再写入即可。</p>
   </div>
 </section>
 
@@ -346,9 +359,12 @@ th{word-break:keep-all}
   <h2>DAC 页与恢复出厂设置</h2>
   <p class="muted">视频中暂未介绍。</p>
   <div class="body">
-    <p>自带设置项的解码器，会在 EQ 和配置库旁边多出第三个页面：DAC 页。它只显示你的解码器具备的选项，顶部显示采样率和固件版本：飞傲 KA15 有音量（VOLUME）、音量档位（VOLUME STEPS）、声道平衡（BALANCE）、数字滤波器（FILTER）、输出模式（OUTPUT）、DRE、亮度（BRIGHTNESS）、息屏时间（SCREEN OFF）、屏幕旋转（ROTATION）和语言（LANGUAGE）；雪漫天 Melody 有音量、音量档位、声道平衡、数字滤波器、增益、输出模式、DRE、线控麦克风（IN-LINE MIC）、指示灯（LIGHT）和按键（BUTTONS）；雪漫天 Tiny A 有音量、音量档位、声道平衡、线控麦克风和指示灯。这些解码器上会显示 USB 音频（USB AUDIO，即 UAC），但不能在 Contour 里更改。</p>
-    <p>TRN Black Pearl 的 DAC 页有数字滤波器（FAST-LL、FAST-PC、SLOW-LL、SLOW-PC 或 NON-OS）、输出模式（H 类或 AB 类，即 CLASS H 或 CLASS AB）、增益（低或高，即 LOW 或 HIGH）和声道平衡（左右各最多 15 级），也就是 TRN 官方 WalkPlay 工具为它提供的设置项。每项更改都会从解码器回读校验，拔下后依然保留。TRN 的 WalkPlay 网页工具每次连接时都会把前置增益设为 0 dB，所以如果你用过它，之后请再从 Contour 写入一次配置。</p>
-    <p>水月雨 Dawn Pro 2 的 DAC 页显示 EQ 序号（EQ INDEX）、全局增益（GLOBAL GAIN）和前置增益（PRE GAIN），仅供查看。Kiwi Ears Allegro Mini 的 DAC 页有 EQ 开关（关或开，即 OFF 或 ON）和全局增益（-18 至 +3 dB，分级调节）；“按住写入”不会改变这个开关的状态。</p>
+    <p>自带设置项的解码器，会在 EQ 和配置库旁边多出第三个页面：DAC 页。它只显示你的解码器具备的选项，顶部显示采样率和固件版本：飞傲 KA15 有音量（VOLUME）、音量档位（VOLUME STEPS）、声道平衡（BALANCE）、数字滤波器（FILTER）、输出模式（OUTPUT）、DRE、亮度（BRIGHTNESS）、息屏时间（SCREEN OFF）、屏幕旋转（ROTATION）和语言（LANGUAGE）；雪漫天 Melody 有音量、音量档位、声道平衡、数字滤波器、增益、输出模式、DRE、线控麦克风（IN-LINE MIC）、指示灯（LIGHT）和按键（BUTTONS）；雪漫天 Tiny A 有音量、音量档位、声道平衡、线控麦克风和指示灯；飞傲 JadeAudio JA11 有音量（0 至 60）和线控麦克风；飞傲 JadeAudio JIEZI 有音量、声道平衡和线控麦克风，音量档位仅供查看。这些解码器上会显示 USB 音频（USB AUDIO，即 UAC），但不能在 Contour 里更改。在 JA11 上更改线控麦克风后，它会像写入后一样从 USB 短暂断开。</p>
+    <p>TRN Black Pearl 的 DAC 页有数字滤波器（FAST-LL、FAST-PC、SLOW-LL、SLOW-PC 或 NON-OS）、输出模式（H 类或 AB 类，即 CLASS H 或 CLASS AB）、增益（低或高，即 LOW 或 HIGH）和声道平衡（左右各最多 15 级），也就是 WalkPlay 网页工具为它提供的设置项。每项更改都会从解码器回读校验，拔下后依然保留。WalkPlay 网页工具每次连接时都会把前置增益设为 0 dB，所以如果你用过它，之后请再从 Contour 写入一次配置。</p>
+    <p>CrinEar Protocol Max 的 DAC 页有数字滤波器（与 Black Pearl 相同的五种）、输出模式（H 类或 AB 类）、声道平衡和麦克风增益（MIC GAIN，-15 至 +15 dB）。每项更改都会从解码器回读校验，拔下后依然保留。这里没有增益设置：增益由 Max 机身上的 Eco / Boost 开关决定，每次插上时都以开关为准。</p>
+    <p>天使吉米 SPACE II 的 DAC 页有数字滤波器、输出模式、增益和声道平衡（与 Black Pearl 相同），另有麦克风增益（-15 至 +15 dB）。每项更改都会从解码器回读校验，拔下后依然保留，增益也一样：SPACE II 机身上没有增益开关。它没有麦克风输入，所以麦克风增益不会带来任何听得出的变化。</p>
+    <p>水月雨 Dawn Pro 2 的 DAC 页显示 EQ 序号（EQ INDEX）、全局增益（GLOBAL GAIN）和前置增益（PRE GAIN），仅供查看。Kiwi Ears Allegro Mini 的 DAC 页有 EQ 开关（关或开，即 OFF 或 ON）和全局增益（-18 至 +3 dB，分级调节）；“按住写入”不会改变这个开关的状态。JCally JM12 和 Kiwi Ears AD1 也有这两项，全局增益分 15 级，每级 1.5 dB，范围 -18 至 +3 dB；在这两款解码器上，写入时如果 EQ 处于关闭状态，会自动把它打开。</p>
+    <p>水月雨 DUSK-SP 的 DAC 页以按钮列出线材的六个预设：CUSTOM EQ（保存 Contour 写入的内容），以及 DUSK-DEFAULT、DUSK-V、DUSK-HARMAN、DUSK-BASS+ 和 DUSK-DIFFUSE-TILTED。点按后线材会立即切换；下次插上后，它又会播放 DUSK-DEFAULT。</p>
     <p>飞傲 KA15 和雪漫天 Melody 的 DAC 页底部有“恢复出厂设置”（FACTORY RESET）。“备份并恢复出厂”（SAVE A COPY AND RESET）会先读取你的 USER 存储位、它们的名称和各项设置，保存在手机上，然后重置解码器，并显示有哪些变化。“写回备份”（WRITE THE SAVED COPY BACK）会把存储位和设置恢复回去。重置后，请拔下解码器再重新插上；在 Melody 上，Contour 会一直等你重新插上，没有时间限制，点按“停止等待”（STOP WAITING）即可结束。Tiny A 没有重置按钮，因为它会忽略这条命令。</p>
   </div>
 </section>
@@ -360,18 +376,25 @@ th{word-break:keep-all}
     <div class="tw"><table>
 <thead><tr><th>解码器</th><th>频段</th><th>滤波器</th><th>增益（dB）</th><th>前置增益（dB）</th></tr></thead><tbody>
 <tr><td>CrinEar Protocol Micro</td><td>8</td><td>PK、LS、HS（镜像）、LP、HP</td><td>-10&nbsp;至&nbsp;+10</td><td>-30&nbsp;至&nbsp;0，整数&nbsp;dB</td></tr>
-<tr><td>CrinEar Protocol Max</td><td>10</td><td>PK、LS、HS</td><td>-10&nbsp;至&nbsp;+10</td><td>-30&nbsp;至&nbsp;0，整数&nbsp;dB</td></tr>
+<tr><td>CrinEar Protocol Max</td><td>10</td><td>PK、LS、HS、LP、HP；搁架滤波器 Q 值最高 7.07</td><td>-12&nbsp;至&nbsp;+12</td><td>-30&nbsp;至&nbsp;0，整数&nbsp;dB</td></tr>
 <tr><td>飞傲 KA15</td><td>10</td><td>PK、LS、HS、LP、HP、BP、AP；搁架滤波器 Q 值最高 7.07</td><td>-12&nbsp;至&nbsp;+12</td><td>-24&nbsp;至&nbsp;0，整数&nbsp;dB</td></tr>
-<tr><td>飞傲 K13 R2R</td><td>10</td><td>PK、LS、HS、LP、HP、BP、AP</td><td>-24&nbsp;至&nbsp;+12</td><td>-24&nbsp;至&nbsp;+12</td></tr>
-<tr><td>雪漫天 Melody</td><td>10</td><td>PK、LS、HS、LP、HP、BP、AP</td><td>-12&nbsp;至&nbsp;+12</td><td>-12&nbsp;至&nbsp;+12，整数&nbsp;dB</td></tr>
-<tr><td>雪漫天 Tiny A</td><td>10</td><td>PK、LS、HS、LP、HP、BP、AP</td><td>-12&nbsp;至&nbsp;+12</td><td>-12&nbsp;至&nbsp;+12，整数&nbsp;dB</td></tr>
-<tr><td>TRN Black Pearl</td><td>10</td><td>PK、LS、HS</td><td>-10&nbsp;至&nbsp;+10</td><td>-30&nbsp;至&nbsp;0，整数&nbsp;dB</td></tr>
-<tr><td>水月雨 Dawn Pro 2</td><td>8</td><td>PK、LS、HS、LP、HP</td><td>-18&nbsp;至&nbsp;+12</td><td>-128&nbsp;至&nbsp;0</td></tr>
+<tr><td>飞傲 K13 R2R</td><td>10</td><td>PK、LS、HS、LP、HP、BP、AP；峰值滤波器 Q 值最高 7.07</td><td>-24&nbsp;至&nbsp;+12</td><td>-24&nbsp;至&nbsp;+12</td></tr>
+<tr><td>飞傲 JadeAudio JA11</td><td>5</td><td>PK、LS、HS、LP、HP</td><td>-12&nbsp;至&nbsp;+12</td><td>-24&nbsp;至&nbsp;0</td></tr>
+<tr><td>飞傲 JadeAudio JIEZI</td><td>10</td><td>PK、LS、HS、LP、HP、BP、AP；搁架滤波器 Q 值最高 7.07</td><td>-12&nbsp;至&nbsp;+12</td><td>-12&nbsp;至&nbsp;+12，整数&nbsp;dB</td></tr>
+<tr><td>雪漫天 Melody</td><td>10</td><td>PK、LS、HS、LP、HP、BP、AP；搁架滤波器 Q 值最高 7.07</td><td>-12&nbsp;至&nbsp;+12</td><td>-24&nbsp;至&nbsp;0，整数&nbsp;dB</td></tr>
+<tr><td>雪漫天 Tiny A</td><td>10</td><td>PK、LS、HS、LP、HP、BP、AP；搁架滤波器 Q 值最高 7.07</td><td>-12&nbsp;至&nbsp;+12</td><td>-12&nbsp;至&nbsp;+12，整数&nbsp;dB</td></tr>
+<tr><td>雪漫天 RETRO NANO</td><td>10</td><td>PK、LS、HS、LP、HP；Q 值 0.25 至 8</td><td>-12&nbsp;至&nbsp;+12</td><td>-12&nbsp;至&nbsp;+12，整数&nbsp;dB</td></tr>
+<tr><td>TRN Black Pearl</td><td>10</td><td>PK、LS、HS；搁架滤波器 Q 值最高 7.07</td><td>-10&nbsp;至&nbsp;+10</td><td>-30&nbsp;至&nbsp;0，整数&nbsp;dB</td></tr>
+<tr><td>天使吉米 SPACE II</td><td>10</td><td>PK、LS、HS、LP、HP</td><td>-12&nbsp;至&nbsp;+12</td><td>-30&nbsp;至&nbsp;0，整数&nbsp;dB</td></tr>
+<tr><td>水月雨 Dawn Pro 2</td><td>8</td><td>PK、LS、HS、LP、HP；搁架滤波器 Q 值最高 7.07</td><td>-18&nbsp;至&nbsp;+12</td><td>-30&nbsp;至&nbsp;0</td></tr>
 <tr><td>水月雨 Echo-A</td><td>8</td><td>PK、LS、HS（镜像）、LP、HP</td><td>-10&nbsp;至&nbsp;+10</td><td>-30&nbsp;至&nbsp;0，整数&nbsp;dB</td></tr>
+<tr><td>水月雨 DUSK-SP</td><td>9</td><td>PK、LS、HS；Q 值 0.2 至 10</td><td>-12&nbsp;至&nbsp;+12</td><td>无</td></tr>
 <tr><td>Kiwi Ears Allegro Mini</td><td>5</td><td>仅 PK；40 Hz 至 20 kHz</td><td>-12&nbsp;至&nbsp;+12</td><td>无</td></tr>
+<tr><td>Kiwi Ears AD1</td><td>5</td><td>PK、LS、HS；Q 值 0.2 至 10；搁架滤波器 -6 至 +6&nbsp;dB，Q 值 0.7 至 1.0</td><td>-12&nbsp;至&nbsp;+12</td><td>无</td></tr>
+<tr><td>JCally JM12</td><td>5</td><td>PK、LS、HS；Q 值 0.2 至 10；搁架滤波器 -6 至 +6&nbsp;dB，Q 值 0.7 至 1.0</td><td>-12&nbsp;至&nbsp;+12</td><td>无</td></tr>
 </tbody></table></div>
     <p class="muted">PK 峰值，LS / HS 低架 / 高架，LP / HP 低通 / 高通，BP 带通，AP 全通。</p>
-    <p>Micro 和 Echo-A 没有真正的高架滤波器，所以 Contour 会写入镜像的低架滤波器加前置增益，得到同样的曲线。Max、KA15、K13 R2R、Melody、Tiny A、Black Pearl 和 Dawn Pro 2 原生支持搁架滤波器，无需镜像。如果 KA15 在保存后不再响应，请拔下再重新插上。</p>
+    <p>Micro 和 Echo-A 没有真正的高架滤波器，所以 Contour 会写入镜像的低架滤波器加前置增益，得到同样的曲线。Max、KA15、K13 R2R、JA11、JIEZI、Melody、Tiny A、RETRO NANO、Black Pearl、SPACE II、Dawn Pro 2、DUSK-SP、AD1 和 JM12 原生支持搁架滤波器，无需镜像。如果 KA15 在保存后不再响应，请拔下再重新插上。</p>
     <ul>
       <li><strong>一直显示“未检测到 DAC”？</strong>不要用转接头或扩展坞，直接重新插上解码器。TRN Black Pearl 只有插着耳机时才会被识别。</li>
       <li><strong>写入失败？</strong>再按住一次按钮。通常是解码器松动了。</li>
@@ -388,17 +411,12 @@ th{word-break:keep-all}
   </div>
 </section>
 
-<footer>
-  <p class="links"><a href="/zh/">首页</a> <a href="/zh/install/">安装</a> <a href="https://github.com/Chronosauros/contour">源代码</a></p>
-  <ul>
-    <li><a href="https://soundblooms.com/" rel="noopener" target="_blank">Soundblooms</a>：我所有作品的大本营。</li>
-    <li>源代码：<a href="https://github.com/Chronosauros/contour">github.com/Chronosauros/contour</a></li>
-    <li>许可证：Apache 2.0</li>
-    <li>隐私：<a href="/zh/privacy/">隐私政策</a>。应用没有联网权限，没有统计分析，也没有账号；本网站会统计匿名访问量，不使用 Cookie。</li>
-  </ul>
-  <p class="footer-icons"><a href="https://github.com/Chronosauros" rel="noopener" target="_blank" aria-label="GitHub 主页" title="GitHub"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg></a><a href="https://www.reddit.com/user/T6_8K/" rel="noopener" target="_blank" aria-label="Reddit 主页" title="Reddit"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M12 0C5.373 0 0 5.373 0 12c0 3.314 1.343 6.314 3.515 8.485l-2.286 2.286C.775 23.225 1.097 24 1.738 24H12c6.627 0 12-5.373 12-12S18.627 0 12 0Zm4.388 3.199c1.104 0 1.999.895 1.999 1.999 0 1.105-.895 2-1.999 2-.946 0-1.739-.657-1.947-1.539v.002c-1.147.162-2.032 1.15-2.032 2.341v.007c1.776.067 3.4.567 4.686 1.363.473-.363 1.064-.58 1.707-.58 1.547 0 2.802 1.254 2.802 2.802 0 1.117-.655 2.081-1.601 2.531-.088 3.256-3.637 5.876-7.997 5.876-4.361 0-7.905-2.617-7.998-5.87-.954-.447-1.614-1.415-1.614-2.538 0-1.548 1.255-2.802 2.803-2.802.645 0 1.239.218 1.712.585 1.275-.79 2.881-1.291 4.64-1.365v-.01c0-1.663 1.263-3.034 2.88-3.207.188-.911.993-1.595 1.959-1.595Zm-8.085 8.376c-.784 0-1.459.78-1.506 1.797-.047 1.016.64 1.429 1.426 1.429.786 0 1.371-.369 1.418-1.385.047-1.017-.553-1.841-1.338-1.841Zm7.406 0c-.786 0-1.385.824-1.338 1.841.047 1.017.634 1.385 1.418 1.385.785 0 1.473-.413 1.426-1.429-.046-1.017-.721-1.797-1.506-1.797Zm-3.703 4.013c-.974 0-1.907.048-2.77.135-.147.015-.241.168-.183.305.483 1.154 1.622 1.964 2.953 1.964 1.33 0 2.47-.81 2.953-1.964.057-.137-.037-.29-.184-.305-.863-.087-1.795-.135-2.769-.135Z"/></svg></a><a href="https://discord.gg/msgvnUG7js" rel="noopener" target="_blank" aria-label="Discord 服务器" title="Discord"><svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z"/></svg></a><a href="https://x.com/soundblooms" rel="noopener" target="_blank" aria-label="X（原推特）主页" title="X（原推特）"><svg viewBox="-2 -2 28 28" width="22" height="22" aria-hidden="true" focusable="false"><path fill="currentColor" d="M14.234 10.162 22.977 0h-2.072l-7.591 8.824L7.251 0H.258l9.168 13.343L.258 24H2.33l8.016-9.318L16.749 24h6.993zm-2.837 3.299-.929-1.329L3.076 1.56h3.182l5.965 8.532.929 1.329 7.754 11.09h-3.182z"/></svg></a></p>
-  <p>Contour 是非官方项目，与 CrinEar、飞傲、雪漫天、TRN、水月雨和 Kiwi Ears 均无隶属关系，也未获得其认可。产品名称归各自所有者所有。</p>
-  <p>由 Chronosaur 制作</p>
+<footer class="fv">
+  <p class="fv-sentence">Contour 免费，由一个人独立开发。在 <a href="https://soundblooms.com/dacs" rel="noopener" target="_blank">Soundblooms</a> 上可以找到能搭配它使用的解码器。</p>
+  <div class="fv-quiet">
+    <p class="fv-legal"><span>由 <a href="https://soundblooms.com/about" rel="noopener" target="_blank">Chronosaur</a> 制作</span><a href="https://github.com/Chronosauros/contour">源代码</a><span>Apache 2.0</span><a href="/zh/privacy/">隐私政策</a></p>
+    <p class="fv-note">Contour 是非官方项目，与 CrinEar、飞傲、雪漫天、TRN、水月雨、Kiwi Ears、JCally 和天使吉米均无隶属关系，也未获得其认可。产品名称归各自所有者所有。</p>
+  </div>
 </footer>
 
 </div>

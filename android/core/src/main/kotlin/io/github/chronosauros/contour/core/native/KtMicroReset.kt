@@ -120,7 +120,8 @@ class KtMicroResetFlow(private val model: KtMicroCatalog.Model) {
     /** The backup is complete and kept: the reset may be asked for. */
     fun begin(taken: KtMicroResetBackup) {
         require(step == Step.START) { "A reset is already under way" }
-        require(model in KtMicroCatalog.models) { "Unqualified KT model" }
+        require(model in KtMicroCatalog.allModels) { "Unqualified KT model" }
+        require(model.resetOffered) { "${model.productName} has no reset in Contour: CLEAR (0x43) is never sent to it" }
         val problems = taken.problems(model)
         require(problems.isEmpty()) { "Backup incomplete, nothing sent: " + problems.joinToString("; ") }
         backup = taken

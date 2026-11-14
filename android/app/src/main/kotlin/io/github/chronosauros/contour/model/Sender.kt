@@ -3,8 +3,10 @@ package io.github.chronosauros.contour.model
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.setValue
 import io.github.chronosauros.contour.core.Profile
+import io.github.chronosauros.contour.core.native.FamilyState
 import io.github.chronosauros.contour.usb.DeviceController
 import io.github.chronosauros.contour.usb.DacSnapshot
 import io.github.chronosauros.contour.usb.Link
@@ -17,11 +19,30 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** Library badges follow the saved curve, not Tune's working copy. A read belongs only to the active destination. */
+/**
+ * One profile's answer to "does the DAC hold its SAVED version": good while the SAVED version is the same object ([AppModel.savedEqKey]) and nothing else of the
+ * profile that a device plan could read (its texts, the archive flag) has changed. Only [Profile.updatedAt] is left out: it moves with every edit of the working copy.
+ */
+internal class SavedMatch(private val eq: Any, private val p: Profile, val on: Boolean) {
+    fun stands(eq: Any, p: Profile): Boolean = this.eq === eq && (this.p === p ||
+        (this.p.name == p.name && this.p.subtitle == p.subtitle && this.p.icon == p.icon && this.p.archived == p.archived))
+}
+
+/**
+ * Library badges follow the saved curve, not Tune's working copy. A read belongs only to the active destination. [cache] (by profile id, for this one
+ * [snapshot]) keeps each profile's answer: without it every profile of the library was planned for the DAC again on each step of a drag on EQ.
+ */
 internal fun savedOnDacIds(model: AppModel, snapshot: DacSnapshot?, connected: Boolean,
-    destinationActive: Boolean, pendingId: String?): Set<String> {
+    destinationActive: Boolean, pendingId: String?, cache: MutableMap<String, SavedMatch>? = null): Set<String> {
     if (!connected || !destinationActive || snapshot == null) return emptySet()
-    return model.profiles.filter { it.id != pendingId && snapshot.matches(model.savedProfile(it)) }.map { it.id }.toSet()
+    return model.profiles.filter { p ->
+        if (p.id == pendingId) return@filter false
+        if (cache == null) return@filter snapshot.matches(model.savedProfile(p))
+        val eq = model.savedEqKey(p)
+        val kept = cache[p.id]
+        if (kept != null && kept.stands(eq, p)) kept.on
+        else snapshot.matches(model.savedProfile(p)).also { cache[p.id] = SavedMatch(eq, p, it) }
+    }.map { it.id }.toSet()
 }
 
 /**
@@ -47,6 +68,26 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
 
     private val cache = HashMap<String, Pair<Profile, Boolean>>()
     private var cacheSnapshot: Any? = null
+
+    /** [AppModel.touches] at the last read or send of the cable: the DUSK-SP foot names its preset until the person touches the EQ after it ([presetFoot]). */
+    private var footTouches = 0
+
+    init {
+        // eager, so a pick in the Library made while Tune is not composed still counts. The baseline moves when a read shows another cable state (connect, a preset choice, a send that changed the bank)
+        // and when a send is verified ([send]); a background read of the same state does not take the foot back from HOLD TO SEND.
+        scope.launch { snapshotFlow { (device.snapshot?.familyState as? FamilyState.Dusk)?.describe() }.collect { footTouches = model.touches } }
+    }
+
+    /**
+     * The foot button of the DUSK-SP when it is not a send control: the cable's active preset in capitals (CUSTOM EQ, DUSK-DEFAULT, ...), shown while the cable is connected and nothing was picked, imported or edited
+     * since its last read or send (a preset chosen on the DAC page is a read, so it shows at once; a verified send ends in a read, so it reads CUSTOM EQ). Null for every other DAC, for a cable not read, after a
+     * touch (HOLD TO SEND then) and after a failed send of [p] (FAILED - HOLD TO RETRY).
+     */
+    fun presetFoot(p: Profile): String? {
+        val dusk = device.snapshot?.familyState as? FamilyState.Dusk ?: return null
+        if (device.link != Link.CONNECTED || model.touches != footTouches || failedFor(p)) return null
+        return dusk.footLabel
+    }
 
     /** Id of the library profile the DAC holds right now, or null. */
     val onDacId: String? by derivedStateOf {
@@ -75,8 +116,15 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
     }
 
     /** Library "ON DAC" badges: the profiles whose SAVED curve the DAC holds (only for the active destination). */
+    private val savedCache = HashMap<String, SavedMatch>()
+    private var savedSnapshot: Any? = null
     val savedOnDacIds: Set<String> by derivedStateOf {
-        savedOnDacIds(model, device.snapshot, device.link == Link.CONNECTED, device.destinationActive, null)
+        val s = device.snapshot
+        if (savedSnapshot !== s) {
+            savedCache.clear()
+            savedSnapshot = s
+        }
+        savedOnDacIds(model, s, device.link == Link.CONNECTED, device.destinationActive, null, savedCache)
     }
 
     private var abJob by mutableStateOf<Job?>(null)
@@ -146,6 +194,7 @@ class Sender(private val model: AppModel, private val device: DeviceController, 
                 val r: SendOutcome = device.send(p) { f -> scope.launch { sendProgress = maxOf(sendProgress, f.coerceIn(0f, 1f)) } }
                 if (r.verified) {
                     sendProgress = 1f
+                    footTouches = model.touches // the DUSK-SP foot names the cable's preset again (CUSTOM EQ) until the EQ is touched
                     model.markSent(p)
                     delay(PROGRESS_SETTLE_MS) // the fill reaches the end before the button turns ON DAC
                     sendingId = null

@@ -27,7 +27,7 @@ class NativeIntegrationTest {
     private class FiioPort(val target: DeviceTarget) : FakePort() {
         private val c = FiioCodec(requireNotNull(target.fiio))
         var state = c.planOnExplicitSend(profileStatic(), target.destinationSlot!!, true).expected
-        var selectionWorks = true; var brokenBackup = false; var savedMismatch = false; var selected = false; var saved = false; var detachOnSave = false
+        var selectionWorks = true; var brokenBackup = false; var savedMismatch = false; var selected = false; var saved = false; var detachOnSave = false; var throwAfterSave = false
         val names = mutableMapOf(0 to "TEST1", 1 to "FF5", 2 to "FH3")
         private fun word(v: Int) = listOf((v ushr 8) and 255, v and 255)
         // KA15 name replies say LEN 8 but carry IDX + a 9-byte name field (Pixel, 04.10.2026).
@@ -49,6 +49,7 @@ class NativeIntegrationTest {
             }
             mutationFinished()
             if (saved && detachOnSave) live = false
+            if (saved && throwAfterSave) throw java.io.IOException("DAC SESSION CHANGED; reconnect and retry") // HidTransport.sendNative checks the session after the transfer
         }
         override fun request(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean): ByteArray {
             if ((payload[0].toInt() and 255) == 0xAA) {
@@ -82,6 +83,79 @@ class NativeIntegrationTest {
         val select = port.events.indexOf("write:22"); val pregain = port.events.indexOf("write:23")
         assertTrue(select >= 0 && pregain > select)
         assertEquals(listOf("pause:300", "read:22", "read:48", "read:48", "read:48", "read:22", "read:24", "read:23", "read:21", "read:22"), port.events.subList(select + 1, pregain))
+    }
+    @Test fun `a FiiO that leaves the bus on SAVE ends the send at the SAVE frame - pending, nothing read after it, no guard - and the first read after it proves the write`() {
+        val t = DeviceTarget.FIIO_JA11; val port = FiioPort(t); port.detachOnSave = true
+        port.state = port.state.copy(activeSlot = 4, count = 5, bands = List(5) { FiioRegisters(it, 1000, 0, 70, 0) }) // the factory state: Close EQ, five flat peaks
+        val r = NativeSession(t, port).write(profile(count = 5, preamp = 0.0), true)
+        assertTrue(r.pending); assertFalse(r.verified); assertNull(r.readback); assertNull(r.reason)
+        val expected = requireNotNull(r.expected)
+        assertEquals(3, expected.activeSlot); assertEquals(5, expected.count)
+        assertFalse(port.live) // the DAC left after SAVE and the session did not guard (or throw) after it
+        assertEquals("write:25", port.events.last(), port.events.toString())
+        assertTrue(port.events.indexOf("write:22") < port.events.indexOf("write:23") && port.events.indexOf("write:23") < port.events.indexOf("write:25"))
+        assertEquals(1, port.events.count { it == "write:25" })
+        // the DAC is back: a plain read matches what the send planned, as the app's pending save compares it
+        port.live = true; port.detachOnSave = false
+        val back = NativeSession(t, port).read() as NativeState.Fiio
+        assertTrue(back.codec.matches(expected, back.raw))
+        // a DAC that came back on the wrong slot or with other bands is a mismatch, never a pass
+        port.state = port.state.copy(activeSlot = 4)
+        assertFalse((NativeSession(t, port).read() as NativeState.Fiio).let { back.codec.matches(expected, it.raw) })
+    }
+    @Test fun `a SAVE whose session check fails after the transfer (the DAC detached with the frame) is still pending, never a failed send`() {
+        val t = DeviceTarget.FIIO_JA11; val port = FiioPort(t); port.throwAfterSave = true
+        port.state = port.state.copy(activeSlot = 4, count = 5, bands = List(5) { FiioRegisters(it, 1000, 0, 70, 0) })
+        val r = NativeSession(t, port).write(profile(count = 5, preamp = 0.0), true)
+        assertTrue(r.pending); assertFalse(r.verified); assertNotNull(r.expected)
+        assertEquals("write:25", port.events.last(), port.events.toString())
+    }
+    @Test fun `a setting write that makes the DAC leave the bus (the JA11 mic) is the SET alone - no read-back - and a lost echo is not an error`() {
+        val t = DeviceTarget.FIIO_JA11
+        class LeavingPort : NativePort {
+            override val deviceKey = "g1"; val frames = ArrayList<List<Int>>(); var live = true
+            override fun guard() { check(live) { "SESSION CHANGED" } }
+            override fun pause(ms: Long) {}
+            override fun send(id: Int, kind: NativeHidReports.Kind, payload: ByteArray) { error("a setting SET is a request") }
+            override fun request(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean): ByteArray {
+                frames += payload.take(9).map { it.toInt() and 255 }; live = false
+                throw java.io.IOException("DAC SESSION CHANGED; reconnect and retry") // the DAC left with the frame
+            }
+        }
+        val port = LeavingPort()
+        NativeSession(t, port).sendSettingThenLeave("mic", 0)
+        assertEquals(1, port.frames.size, port.frames.toString())
+        assertEquals(listOf(0xAA, 0x0A, 0), port.frames[0].take(3)); assertEquals(0x12, port.frames[0][4]); assertEquals(0, port.frames[0][6])
+        // a row that stays on the bus is refused here: it has its read-back in writeSetting
+        assertFailsWith<IllegalArgumentException> { NativeSession(t, LeavingPort()).sendSettingThenLeave("volume", 59) }
+    }
+    @Test fun `RETRO NANO found on Close EQ answers the preamp query with a 0x18 frame - read as no EQ active, four queries, no band reads - and no other DAC or slot accepts that frame`() {
+        val t = DeviceTarget.RETRO_NANO
+        // dac-lab run 2026-11-13-snowsky-retro-nano-01-mac: the frames as the unit answered them (report 7, 65 data bytes)
+        fun hexFrame(s: String) = s.split(" ").map { it.toInt(16).toByte() }.toByteArray().copyOf(65)
+        val replies = mapOf(0x16 to "bb 0b 00 00 16 01 0b 00 ee", 0x18 to "bb 0b 00 00 18 01 0a 00 ee", 0x17 to "bb 0b 00 00 18 01 00 00 ee")
+        class ScriptedPort : NativePort {
+            override val deviceKey = "g1"; val sent = ArrayList<String>()
+            override fun guard() {}
+            override fun pause(ms: Long) {}
+            override fun send(id: Int, kind: NativeHidReports.Kind, payload: ByteArray) { error("a read only asks") }
+            override fun request(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean): ByteArray {
+                sent += payload.take(8).joinToString(" ") { "%02x".format(it) }
+                val reply = hexFrame(replies.getValue(payload[4].toInt() and 255))
+                if (!matches(reply)) throw java.io.IOException("Native request timed out")
+                return reply
+            }
+        }
+        val port = ScriptedPort()
+        val state = NativeSession(t, port).read() as NativeState.Fiio
+        assertEquals(listOf("bb 0b 00 00 16 00 00 ee", "bb 0b 00 00 18 00 00 ee", "bb 0b 00 00 17 00 00 ee", "bb 0b 00 00 16 00 00 ee"), port.sent)
+        assertEquals(11, state.slot); assertEquals(10, state.raw.count); assertEquals(0, state.raw.preampTenths); assertEquals(10, state.raw.bands.size)
+        assertTrue(state.raw.bands.all { it.frequencyHz == 0 && it.gainTenths == 0 })
+        // the frame is accepted for this model on its bypass slot only, and only with data byte 0
+        val c = FiioCodec(requireNotNull(t.fiio)); val frame = hexFrame(replies.getValue(0x17)).copyOf(9)
+        assertTrue(c.isBypassNoEqReply(frame, 11)); assertFalse(c.isBypassNoEqReply(frame, 160))
+        assertFalse(c.isBypassNoEqReply(frame.copyOf().also { it[6] = 1 }, 11))
+        for (other in listOf(DeviceTarget.TINY_A, DeviceTarget.KA15, DeviceTarget.FIIO_JIEZI)) assertFalse(FiioCodec(requireNotNull(other.fiio)).isBypassNoEqReply(frame, other.fiio!!.bypassSlot!!), other.caps.name)
     }
     @Test fun `KA15 save to another USER slot switches to it and names it after the profile`() {
         val t = fiio(); val port = FiioPort(t)

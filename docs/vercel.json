@@ -1,3 +1,13 @@
 {
-  "trailingSlash": true
+  "trailingSlash": true,
+  "redirects": [
+    { "source": "/devices", "destination": "/install/", "statusCode": 301 },
+    { "source": "/devices/", "destination": "/install/", "statusCode": 301 }
+  ],
+  "headers": [
+    {
+      "source": "/USER-GUIDE.md",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
+    }
+  ]
 }

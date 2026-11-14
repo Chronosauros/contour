@@ -150,16 +150,19 @@ class LiftGuard<T : Any>(private val density: Float, private val label: String) 
 }
 
 /**
- * detectHorizontalDragGestures plus both ends of the gesture: [onStart] gets the touch-down (the finger has
+ * detectHorizontalDragGestures plus both ends of the gesture: [onDown] gets the touch-down at once (before the touch
+ * slop, so also a touch that never becomes a drag), [onStart] the same touch-down when the drag starts (the finger has
  * been on the value since then), [onDrag] every move (the first carries the part past the touch slop, like
  * detectHorizontalDragGestures), [onEnd] the time of the up, or null when the drag was cancelled.
  */
 suspend fun PointerInputScope.detectHorizontalDragWithEnds(
     onStart: (down: PointerInputChange) -> Unit,
     onEnd: (upTime: Long?) -> Unit,
+    onDown: (down: PointerInputChange) -> Unit = {},
     onDrag: (change: PointerInputChange, dx: Float) -> Unit,
 ) = awaitEachGesture {
     val down = awaitFirstDown(requireUnconsumed = false)
+    onDown(down)
     var over = 0f
     val drag = awaitHorizontalTouchSlopOrCancellation(down.id) { ch, o ->
         ch.consume()

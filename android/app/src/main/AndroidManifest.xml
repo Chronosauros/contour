@@ -20,22 +20,19 @@
         android:enableOnBackInvokedCallback="true"
         android:theme="@android:style/Theme.Material.NoActionBar">
 
+        <!-- One MainActivity (singleTask): "Open with Contour" and a share start the Activity inside the caller's task, and a second instance beside the one in
+             Contour's own task meant two DAC controllers on one USB device and page requests taken by the hidden instance (no slide to EQ after an import).
+             The configuration changes listed are handled in place (the UI is all Compose): a recreated Activity makes a new DAC controller, which reads the
+             DAC and visits its slots again - a split screen, a fold or a keyboard-class USB device did that. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTop"
-            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|uiMode">
+            android:launchMode="singleTask"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-            <!-- A supported DAC plugged in: open Contour (the system asks once, "use by default"). The device list (res/xml/device_filter.xml) is generated at build time from the device records in the repo (devices folder). -->
-            <intent-filter>
-                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
-            </intent-filter>
-            <meta-data
-                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
-                android:resource="@xml/device_filter" />
             <!-- A .txt from Files / Downloads ("Open with Contour") or shared from a browser: an EQ text, imported after a
                  confirmation. Read through the content URI grant; the app asks for no storage permission. -->
             <intent-filter>
@@ -49,6 +46,23 @@
                 <data android:mimeType="text/plain" />
             </intent-filter>
         </activity>
+
+        <!-- A supported DAC plugged in: Android offers to open Contour ("Open Contour to handle ...?"). The filter sits on this alias, not on
+             MainActivity, so OPEN CONTOUR WHEN A DAC IS PLUGGED IN (usb/AttachOpen.kt) can switch it off: a disabled alias is no match, so no pop-up.
+             Never rename the alias - a new name is a new component, enabled again for everyone who switched it off. The device list
+             (res/xml/device_filter.xml) is generated at build time from the device records in the repo (devices folder). -->
+        <activity-alias
+            android:name=".UsbAttachLauncher"
+            android:targetActivity=".MainActivity"
+            android:exported="true"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+            </intent-filter>
+            <meta-data
+                android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+                android:resource="@xml/device_filter" />
+        </activity-alias>
     </application>
 
 </manifest>

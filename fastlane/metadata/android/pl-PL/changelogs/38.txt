@@ -1,0 +1,1 @@
+TRN Black Pearl: niektóre egzemplarze (widziane na firmware 0.5) odpowiadają na pytanie o preamp dodatkowym bajtem, którego Contour nie przyjmował. Biblioteka pokazywała DAC jako połączony, ale jego strona DAC zostawała pusta, a każda wysyłka kończyła się SEND INTERRUPTED. Contour już nie sprawdza tego bajtu. Dzięki, sebu.

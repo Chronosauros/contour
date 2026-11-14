@@ -1,0 +1,6 @@
+Smoother EQ page: dragging a band does less work on every frame, most of all with a DAC connected.
+Fixes:
+- Moondrop Dawn Pro 2: a strong, steep shelf with AUTO preamp crashed the app. It now shows INVALID EQ.
+- GAIN and FREQ sliders use the range of the connected DAC (FiiO K13 R2R: -24 to +12 dB).
+- An import with more filters than the DAC has bands drops the OFF filters first.
+- UNDO after a delete, the band sheet and the NAME field work as they should.

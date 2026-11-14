@@ -235,12 +235,13 @@ object ApoText {
     /**
      * The text of a profile as the user means it (stored bands, stored or auto preamp) for SHARE and SAVE .TXT.
      * Never the device domain: the FiiO KA15 correction (shelf Q scaled, register preamp offset) is applied only
-     * when sending, inside the codec, and is not part of the [Profile].
+     * when sending, inside the codec, and is not part of the [Profile]. An AUTO preamp is computed with the shelves of [form], the one the attached DAC plays ([ShelfForm]), so the
+     * exported "Preamp:" is the number the PREAMP row shows.
      */
-    fun formatProfile(p: Profile): String = format(p.bands, p.effectivePreampDb())
+    fun formatProfile(p: Profile, form: ShelfForm): String = format(p.bands, p.effectivePreampDb(form))
 
     /** The text of a `.txt` file: CRLF like squig.link's export (every reader here also takes plain LF). */
-    fun fileText(p: Profile): String = formatProfile(p).replace("\n", "\r\n")
+    fun fileText(p: Profile, form: ShelfForm): String = formatProfile(p, form).replace("\n", "\r\n")
 
     /**
      * Profile name from a file name: without the extension and without squig.link's trailing " Filters"

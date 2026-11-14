@@ -71,6 +71,20 @@ object Importer {
         }
         // The file import keeps the filters at 0 dB: they go first when the file has more filters than the DAC has bands.
         ApoText.dropEmptyToFit(bands, caps.bands).let { (fits, n) -> if (n > 0) { bands = fits; notes += emptyNote(n)!! } }
+        // Then the filters the file has switched OFF, last first and only as many as it takes: an OFF filter among the first ones must not keep its place
+        // while a filter that plays is cut off the end (a 10-filter file with two OFF lines fits an 8-band DAC whole).
+        if (bands.size > caps.bands) {
+            var extra = bands.size - caps.bands
+            val out = HashSet<Int>()
+            for (i in bands.indices.reversed()) {
+                if (extra == 0) break
+                if (!bands[i].enabled) { out += i; extra-- }
+            }
+            if (out.isNotEmpty()) {
+                bands = bands.filterIndexed { i, _ -> i !in out }
+                notes += "${out.size} disabled filter${if (out.size > 1) "s" else ""} skipped"
+            }
+        }
         if (bands.size > caps.bands) {
             notes += "${bands.size - caps.bands} band${if (bands.size - caps.bands > 1) "s" else ""} over ${caps.bands} dropped"
             bands = bands.take(caps.bands)
@@ -79,7 +93,7 @@ object Importer {
         bands = bands.map { b ->
             val f = Math.round(b.freqHz.coerceIn(caps.freqMinHz, caps.freqMaxHz)).toDouble()
             // down: boosts never grow. An emulated HIGH SHELF goes down to the preamp's grid, because its gain is folded into the preamp register (DeviceTarget.highShelfStepDb).
-            val g = Preamp.floorTo(b.gainDb.coerceIn(caps.gainMinDb, caps.gainMaxDb), if (b.type == FilterType.HIGH_SHELF) protocol.highShelfStepDb ?: 0.1 else 0.1)
+            val g = Preamp.floorTo(b.gainDb.coerceIn(caps.gainRange(b.type).start, caps.gainRange(b.type).endInclusive), if (b.type == FilterType.HIGH_SHELF) protocol.highShelfStepDb ?: 0.1 else 0.1)
             val qRange = caps.qRange(b.type)
             // Q keeps the precision the file brought (0.707 stays 0.707); the family codec rounds it when it builds the register value.
             val q = b.q.coerceIn(qRange.start, qRange.endInclusive)

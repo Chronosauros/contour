@@ -1,0 +1,1 @@
+TRN Black Pearl: some units (seen on firmware 0.5) answer the preamp query with an extra byte that Contour refused. The Library showed the DAC as connected, but its DAC page stayed empty and every send stopped with SEND INTERRUPTED. Contour no longer checks that byte. Thanks, sebu.

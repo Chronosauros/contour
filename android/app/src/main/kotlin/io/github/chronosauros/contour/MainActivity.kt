@@ -97,7 +97,7 @@ class MainActivity : ComponentActivity() {
         persistenceScope.launch {
             // after process death the library is still loading: wait for it, "not loaded yet" is not "gone"
             snapshotFlow { model.loading }.first { !it }
-            val text = id?.let(model::byId)?.let { runCatching { ApoText.fileText(it) }.getOrNull() }
+            val text = id?.let(model::byId)?.let { runCatching { ApoText.fileText(it, model.protocol.shelfForm) }.getOrNull() }
             val ok = text != null && withContext(Dispatchers.IO) {
                 runCatching { resolver.openOutputStream(uri, "wt")!!.use { it.write(text.toByteArray(Charsets.UTF_8)) } }.isSuccess
             }
@@ -162,7 +162,7 @@ class MainActivity : ComponentActivity() {
      * on a simulated DAC, nothing touches USB; `off` = the real bus; see [DeviceController.simulate]),
      * `--es channel release|review` (what a release build gates and says, or what a review build runs: [Proven.channel]; applied first, best as a cold start, `am start -S`),
      * `--es writetest <id> [--ei to <v>]` (the DAC write self-test, see [runWriteTest]: onNewIntent only).
-     * No other mutating or exporting intent extras: this activity is exported for USB attachment.
+     * No other mutating or exporting intent extras: this activity is exported for USB attachment (through the alias UsbAttachLauncher).
      */
     private fun applyReviewExtras(i: Intent?, first: Boolean) {
         if (i == null || !reviewBuild || model.loadError) return
@@ -178,8 +178,7 @@ class MainActivity : ComponentActivity() {
             "dark" -> forcedDark = true
         }
         // before "dac" and "screen": the DAC pages exist only while a DAC (the simulated one included) is connected
-        i.getStringExtra("simulate")?.let { device.simulate(it.takeIf { n -> n != "off" }) }
-        // before "screen": the DAC page exists only while the preview (or a DAC with settings) is there
+        i.getStringExtra("simulate")?.let { device.simulate(it.takeIf { n -> n != "off" }) }        // before "screen": the DAC page exists only while the preview (or a DAC with settings) is there
         when (i.getStringExtra("dac")) {
             "tinya" -> device.dacPreview = io.github.chronosauros.contour.core.DeviceTarget.TINY_A
             "melody" -> device.dacPreview = io.github.chronosauros.contour.core.DeviceTarget.MELODY
@@ -262,6 +261,9 @@ class MainActivity : ComponentActivity() {
      */
     private fun readIncoming(i: Intent?) {
         if (i?.action != Intent.ACTION_VIEW && i?.action != Intent.ACTION_SEND) return
+        // Reopened from Recents, a task that began with "Open with Contour" or a share is started with that same intent again: the file was answered
+        // the first time, and asking again made a second copy of the profile (or CANNOT IMPORT once the read grant was gone).
+        if (i.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
         val resolver = contentResolver
         lifecycleScope.launch {
             val result = withContext(Dispatchers.IO) { ImportFile.fromIntent(resolver, i) }

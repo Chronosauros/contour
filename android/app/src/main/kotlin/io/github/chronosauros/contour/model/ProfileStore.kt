@@ -6,6 +6,7 @@ import java.io.FileOutputStream
 import java.io.IOException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 
 /** filesDir/state.json: everything the library needs besides the profiles themselves. */
 @Serializable
@@ -94,11 +95,28 @@ class ProfileStore(filesDir: File) {
         atomicWrite(confined(stateFile, root), json.encodeToString(SavedState.serializer(), s))
     }
 
-    /** The edit history is a convenience: an unreadable file starts it empty instead of blocking the library. */
+    /**
+     * The edit history is a convenience: an unreadable file never blocks the library. But the file holds every profile's UNDO steps and SAVED version, and
+     * the app writes the history it loaded back within a second, so what cannot be read is first kept beside it (history.unreadable.json), and the profiles
+     * are then read one by one: an entry this build does not understand (a filter type from a newer version) costs that profile its history, not all of them.
+     */
     fun loadHistory(): Map<String, ProfileHistory> = try {
         val file = confined(historyFile, root)
         if (!file.exists()) emptyMap()
-        else json.decodeFromString(HistoryFile.serializer(), file.readText()).profiles.filterKeys { safeId.matches(it) }
+        else {
+            val text = file.readText()
+            try {
+                json.decodeFromString(HistoryFile.serializer(), text).profiles.filterKeys { safeId.matches(it) }
+            } catch (e: Exception) {
+                android.util.Log.w(TAG, "Edit history not readable as a whole; keeping a copy and reading it profile by profile", e)
+                runCatching { file.copyTo(confined(File(root, "history.unreadable.json"), root), overwrite = true) }
+                val entries = (json.parseToJsonElement(text) as? JsonObject)?.get("profiles") as? JsonObject ?: throw e
+                entries.mapNotNull { (id, entry) ->
+                    if (!safeId.matches(id)) null
+                    else runCatching { id to json.decodeFromJsonElement(ProfileHistory.serializer(), entry) }.getOrNull()
+                }.toMap()
+            }
+        }
     } catch (e: Exception) {
         android.util.Log.w(TAG, "Edit history unreadable; starting empty", e)
         emptyMap()
