@@ -43,6 +43,7 @@
     "types": { "PEAK": 0, "LOW_SHELF": 1, "HIGH_SHELF": 2 },
     "heldTypes": { "BAND_PASS": 3, "LOW_PASS": 4, "HIGH_PASS": 5, "ALL_PASS": 6 },
     "shelfQScale": "sqrt2",
+    "shelfForm": "q",
     "peakQScale": 1.0,
     "emulation": null
   },

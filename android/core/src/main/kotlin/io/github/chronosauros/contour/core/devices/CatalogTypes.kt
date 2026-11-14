@@ -2,6 +2,7 @@ package io.github.chronosauros.contour.core.devices
 
 import io.github.chronosauros.contour.core.DeviceCapabilities
 import io.github.chronosauros.contour.core.FilterType
+import io.github.chronosauros.contour.core.ShelfForm
 import io.github.chronosauros.contour.core.ShelfLimits
 
 /*
@@ -57,6 +58,8 @@ internal data class WalkPlayData(
     val types: Set<FilterType>,
     /** The register Q of a shelf is the intended Q times this (record `peq.shelfQScale`; the TRN: sqrt(2)); 1.0 = the register is the Q. */
     val shelfQScale: Double,
+    /** How the DAC builds a shelf (record `peq.shelfForm`): the Micro plays Contour's coefficient bytes (slope), the Max and the TRN build it from the registers (Q). */
+    val shelfForm: ShelfForm,
     /** The rate the DSP runs the coefficients Contour sends at (record `peq.coefficientRateHz`; the Micro: 93 750 Hz, the vendor's tool designs for 96 000). */
     val coefficientRateHz: Double,
     val preampWholeDb: Boolean,
@@ -68,7 +71,7 @@ internal data class WalkPlayData(
     val readBoundsDb: ClosedFloatingPointRange<Double>?,
 ) {
     fun caps() = DeviceCapabilities(name, vendorId, productId, bands, gainMinDb, gainMaxDb, qMin, qMax, freqMinHz, freqMaxHz, types, preampWholeDb,
-        shelfQScale = shelfQScale, coefficientRateHz = coefficientRateHz)
+        shelfQScale = shelfQScale, shelfForm = shelfForm, coefficientRateHz = coefficientRateHz)
 }
 
 /** The WalkPlay record of a device Contour only reads (the Echo-A): what its profile and its caps take from the record; the rest is [PendingRecords]. */
@@ -86,6 +89,8 @@ internal data class ReadOnlyWalkPlayData(
     val qMin: Double,
     val qMax: Double,
     val types: Set<FilterType>,
+    /** How the DAC builds a shelf (record `peq.shelfForm`; the Echo-A plays Contour's coefficient bytes like the Micro: slope). */
+    val shelfForm: ShelfForm,
     /** The rate the DSP runs the coefficients at (record `peq.coefficientRateHz`), measured on the Echo-A like on the Micro. */
     val coefficientRateHz: Double,
 )
@@ -113,6 +118,8 @@ internal data class MoondropData(
     val nativeTypes: Map<Int, FilterType>,
     /** The register Q of a shelf is the intended Q times this (record `peq.shelfQScale`; measured on the Dawn Pro 2, run 2026-10-25-moondrop-dawn-pro-2-08-mac-eqtest-48k: sqrt(2)); 1.0 = the register is the Q. */
     val shelfQScale: Double,
+    /** How the DAC builds a shelf (record `peq.shelfForm`; the Dawn Pro 2 plays the registers: Q). */
+    val shelfForm: ShelfForm,
     val preGainMinDb: Double,
     val preGainMaxDb: Double,
     val globalGainMinDb: Double,
@@ -146,6 +153,8 @@ internal data class KtMicroData(
     val assumedStreamHz: Double,
     /** The register Q of a shelf is the intended Q times this (record `peq.shelfQScale`; 1.0 = the register is the Q). Only meaningful for a record whose `peq.types` has a shelf. */
     val shelfQScale: Double,
+    /** How the DAC builds a shelf (record `peq.shelfForm`; the JM12: Q; the Allegro Mini offers no shelf, its record says "unknown" and the code uses the slope form). */
+    val shelfForm: ShelfForm,
     /** `driver.reconnectAfterSave`: the USB device leaves the bus after SAVE. null = the record says "unknown" and the code's own value is used ([PendingRecords]). */
     val reconnectAfterSave: Boolean?,
     /** `reset.offered`: the vendor software offers CLEAR (0x43) and Contour's bench may build it. False = Contour never sends it to this model. */
@@ -181,6 +190,8 @@ internal data class MoondropGen1Data(
     val freqMinHz: Double,
     val freqMaxHz: Double,
     val types: Set<FilterType>,
+    /** The cable plays the biquad coefficients Contour computes: slope (record `peq.shelfForm`, which the generator requires to say "slope"). */
+    val shelfForm: ShelfForm,
     /** The firmware presets and the Custom EQ by index (record `slots.labels`): 0 is the Custom EQ Contour writes. */
     val presetLabels: Map<Int, String>,
     /** The Custom EQ index (record `driver.customIndex`). */

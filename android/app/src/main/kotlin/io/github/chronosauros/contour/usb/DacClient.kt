@@ -530,7 +530,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
     private suspend fun writeDawn(device: DacHandle, profile: Profile, target: DeviceTarget, model: MoondropCatalog.Model,
                                   onProgress: ((Float) -> Unit)?): WriteResult {
         target.issues(profile).takeIf { it.isNotEmpty() }?.let { throw IOException(it.joinToString("; ")) }
-        val planned = MoondropCodec.planFor(model, profile.bands, profile.effectivePreampDb())
+        val planned = MoondropCodec.planFor(model, profile.bands, profile.effectivePreampDb(model.shelfForm))
         if (planned.issues.isNotEmpty()) throw IOException(planned.issues.joinToString("; "))
         return withDevice(device) { t ->
             val start = SystemClock.elapsedRealtime()

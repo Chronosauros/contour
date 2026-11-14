@@ -812,7 +812,7 @@ class NativeFamilyTest {
         // the owner's unit: stays on 9, the Hub-style write (tagged 07) lands in bank 9
         val dac = FakeDawn(seed, index = 9).also { it.failSelect = true; it.storesIntoActive = true }
         val eq = Profile("id", "t", bands = listOf(Band("a", FilterType.PEAK, 100.0, 4.0, 1.0), Band("b", FilterType.PEAK, 1000.0, -6.0, 2.0)), preampDb = -3.0, createdAt = 0, updatedAt = 0)
-        val planned = MoondropCodec.planFor(dawn, eq.bands, eq.effectivePreampDb())
+        val planned = MoondropCodec.planFor(dawn, eq.bands, eq.effectivePreampDb(dawn.shelfForm))
         val session = MoondropSession(dawn, dac)
         val before = FamilyState.Dawn(dawn, session.read(withPreGain = true))
         assertTrue(before.onWritableBank && before.importable); assertNull(before.bankNotice)   // the factory bands of bank 9 are shown and can be opened
@@ -864,7 +864,7 @@ class NativeFamilyTest {
         val eq = Profile("id", "t", bands = listOf(Band("a", FilterType.PEAK, 100.0, 4.0, 1.0), Band("b", FilterType.PEAK, 1000.0, -6.0, 2.0)),
             preampDb = -3.0, createdAt = 0, updatedAt = 0)
         assertEquals(emptyList(), DeviceTarget.DAWN_PRO_2.issues(eq))
-        val planned = MoondropCodec.planFor(dawn, eq.bands, eq.effectivePreampDb())
+        val planned = MoondropCodec.planFor(dawn, eq.bands, eq.effectivePreampDb(dawn.shelfForm))
         assertEquals(emptyList(), planned.issues)
         val r = session.write(planned.bands, planned.preGainDb, explicitHold = true)
         assertTrue(r.verified, r.reason)
@@ -886,7 +886,7 @@ class NativeFamilyTest {
         val seed = LogPort(resource("dawn-pro-2-read-103434.log"), 0x4B, dawnShape(), "d")
         val sticky = FakeDawn(seed, index = 9).also { it.failSelect = true; it.storesIntoActive = true }
         val eq = Profile("id", "t", bands = listOf(Band("a", FilterType.PEAK, 100.0, 4.0, 1.0)), preampDb = -3.0, createdAt = 0, updatedAt = 0)
-        val planned = MoondropCodec.planFor(dawn, eq.bands, eq.effectivePreampDb())
+        val planned = MoondropCodec.planFor(dawn, eq.bands, eq.effectivePreampDb(dawn.shelfForm))
         val session = MoondropSession(dawn, sticky)
         val r = session.write(planned.bands, planned.preGainDb, explicitHold = true)
         assertTrue(r.verified, r.reason)
@@ -968,5 +968,19 @@ class NativeFamilyTest {
         val frames = KtMicroCodec.compile(eq, state.snapshot).frames + KtMicroCodec.compileSwitch(state.snapshot, true).frames
         assertTrue(frames.none { it.payload[0].toInt() == KtMicroCodec.GLOBAL_GAIN_REGISTER && it.payload[4].toInt() == 0x57 })
         assertTrue(frames.none { it.payload[4].toInt() == 0x43 })
+    }
+
+    @Test fun `Dawn Pro 2 AUTO uses the Q form it plays - LS 100 Hz +6 dB Q 3 sets the pre-gain to minus 12 dB, not minus 8`() {
+        val p = Profile("p", "p", bands = listOf(Band("ls", FilterType.LOW_SHELF, 100.0, 6.0, 3.0)), preampDb = null, createdAt = 0, updatedAt = 0)
+        val form = DeviceTarget.DAWN_PRO_2.shelfForm
+        assertEquals(ShelfForm.Q, form)
+        val planned = MoondropCodec.planFor(dawn, p.bands, p.effectivePreampDb(form))
+        assertEquals(emptyList(), planned.issues)
+        assertEquals(-12.0, planned.preGainDb)
+        assertEquals(-8.0, p.effectivePreampDb(ShelfForm.SLOPE)) // what 1.7.0 sent
+        assertEquals(-12.0, DeviceTarget.DAWN_PRO_2.shownPreamp(p))
+        // the shelf register is the intended Q x sqrt2 whatever the preamp is
+        val manual = MoondropCodec.planFor(dawn, p.bands, -3.0)
+        assertEquals(planned.bands.map { listOf(it.index, it.frequencyHz, it.qQ8, it.gainQ8, it.nativeType, hex(it.coefficients)) }, manual.bands.map { listOf(it.index, it.frequencyHz, it.qQ8, it.gainQ8, it.nativeType, hex(it.coefficients)) })
     }
 }

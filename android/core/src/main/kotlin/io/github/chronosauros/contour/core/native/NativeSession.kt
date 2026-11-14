@@ -38,7 +38,7 @@ sealed interface NativeState {
         override val preamp get() = codec.intendedPreampDb(raw.preampTenths)
         override fun importExact(): ImportedEq = codec.importExact(raw).let { ImportedEq(it.bands, it.preampDb) }
         override fun matches(profile: Profile): Boolean = runCatching {
-            codec.matches(codec.planOnExplicitSend(profile.copy(bands = codec.padToDeviceCount(profile.bands), preampDb = profile.effectivePreampDb()), slot, true).expected, raw)
+            codec.matches(codec.planOnExplicitSend(profile.copy(bands = codec.padToDeviceCount(profile.bands), preampDb = profile.effectivePreampDb(codec.config.shelfForm)), slot, true).expected, raw)
         }.getOrDefault(false)
     }
 }
@@ -166,9 +166,21 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
     private fun readNames(c: FiioCodec) = c.config.userSlots.sorted().associateWith { readName(c, it) }
     /** SnowSky: the names read after the curve (they never decide the slot). */
     private fun withNames(c: FiioCodec, state: NativeState.Fiio) = if (c.config.userSlotNames) state.copy(names = readNames(c)) else state
+    /** The preamp query of a DAC that may answer it with its bypass "no EQ active" frame ([FiioConfig.bypassPreampAnswersAsCount]): the 0x17 reply, or on the bypass slot that one 0x18 frame. */
+    private fun bypassPreampReply(c: FiioCodec, activeSlot: Int): ByteArray {
+        val f = c.queryPreamp()
+        val raw = request(f.reportId, f.payload()) { p -> runCatching {
+            val l = c.logicalReply(f.reportId, p, p.size)
+            require(l[4] == f.payload()[4] || c.isBypassNoEqReply(l, activeSlot))
+        }.isSuccess }
+        return c.logicalReply(f.reportId, raw, raw.size)
+    }
     private fun readFiioBody(c: FiioCodec, slot: ByteArray, names: Map<Int, String> = emptyMap()): NativeState.Fiio {
         val count = fiioReply(c, c.queryCount())
-        val preamp = fiioReply(c, c.queryPreamp())
+        val bypassCheck = c.config.bypassPreampAnswersAsCount && c.parseSlot(slot) == c.config.bypassSlot
+        val preamp = if (bypassCheck) bypassPreampReply(c, c.parseSlot(slot)) else fiioReply(c, c.queryPreamp())
+        if (bypassCheck && c.isBypassNoEqReply(preamp, c.parseSlot(slot))) // measured on the RETRO NANO: Close EQ answers the preamp query with a 0x18 frame, data 0; no bands to read
+            return NativeState.Fiio(c, c.bypassSnapshot(slot, count, fiioReply(c, c.querySlot())), names = names)
         val bands = c.activeBandQueries(c.parseCount(count)).map { fiioReply(c, it) }
         // USER band/preamp traffic corrupts the SnowSky slot reply. Never query/predict it here.
         // 0..6 may still be a stock preset, and Close EQ is stable: retain their closing guard.
@@ -476,7 +488,7 @@ class NativeSession(val target: DeviceTarget, private val port: NativePort) {
         when (val before = read()) {
             is NativeState.Fiio -> {
                 val c = before.codec
-                val p = c.planOnExplicitSend(profile.copy(bands = c.padToDeviceCount(profile.bands), preampDb = profile.effectivePreampDb()), targetSlot ?: target.destinationSlot!!, true)
+                val p = c.planOnExplicitSend(profile.copy(bands = c.padToDeviceCount(profile.bands), preampDb = profile.effectivePreampDb(c.config.shelfForm)), targetSlot ?: target.destinationSlot!!, true)
                 // The official app never switches presets to save the active one. On the Pixel a KA15 preset
                 // switch silenced every later HID reply (hardware, 03.10.2026), so only switch when needed.
                 // The SnowSky DACs must always select: their initial USER slot reply may already be stale.

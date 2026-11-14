@@ -160,7 +160,7 @@ object KtMicroCodec {
         require(before.eqControl in setOf(EQ_OFF, EQ_ON)) { "Only validated KT EQ enable values (2 off, 3 custom)" }
         require(profile.bands.size <= model.bandCount) { "KT supports ${model.bandCount} bands; no truncation" }
         profile.bands.forEachIndexed { i, b -> validateBand(model, b, i + 1) }
-        val requestedPregain = profile.effectivePreampDb()
+        val requestedPregain = profile.effectivePreampDb(model.shelfForm)
         require(requestedPregain.isFinite() && requestedPregain == 0.0) { "${model.productName} has no preamp: only 0 dB is accepted (its Global Gain is the analog DAC gain, not written)" }
         require(before.hasZeroDigitalGain) { "Nonzero device digital DAC gain is read-only; cannot realize requested 0 dB" }
         val bands = List(model.bandCount) { i ->

@@ -20,7 +20,7 @@
       "report 7, 33 bytes in and out, declared on Generic Desktop usage 0x00 (research/protocol/PROTOCOL.md:241-247)",
       "FiiO Control reaches the K13 R2R over Bluetooth only (connect_mode 1); over USB the only vendor path is PEQ in the FiiO web app (scope-fiio.md:22-30,111)",
       "Q 0.1-10 is the code's range; FiiO Control and the FiiO web app list 0.25-8 (kept as is)",
-      "preamp register offset is 0 until measured: the KA15 plays USER presets 12 dB down, the K13 R2R was not swept",
+      "preamp register offset 0, measured 13.11.2026 (run 2026-11-13-fiio-k13-r2r-04-mac-eqoff, -24 dBFS): a flat USER1 with register 0 plays +0.09 dB against BYPASS (slot 240), the two BYPASS sweeps agree within 0.002 dB; USER presets play at the BYPASS level",
       "persistence was shown at a 300 ms write gap only"
     ]
   },
@@ -44,6 +44,7 @@
     "types": { "PEAK": 0, "LOW_SHELF": 1, "HIGH_SHELF": 2, "BAND_PASS": 3, "LOW_PASS": 4, "HIGH_PASS": 5, "ALL_PASS": 6 },
     "heldTypes": {},
     "shelfQScale": 1.0,
+    "shelfForm": "q",
     "peakQScale": "sqrt2",
     "emulation": null
   },
@@ -86,6 +87,6 @@
     "persistence": { "result": "pass", "note": "Ten bands and the preamp survived a power cycle in USER9 and USER10 at a 300 ms write gap (Pixel)." },
     "settings": { "result": "not-run", "note": "Contour offers no DAC Settings rows for the K13 R2R: FiiO Control reaches it over Bluetooth only, and over USB the only vendor path is PEQ in the FiiO web app." },
     "beyondVendor": "The FiiO web app offers USER1-USER10 with no rename and the seven filter types (it wrote BP, LP, HP and AP, and a read after HP returned type 5). Contour offers the same; its Q range 0.1-10 is wider than the 0.25-8 the vendor apps list.",
-    "runs": ["run:2026-10-25-fiio-k13-r2r-02-mac-eqtest", "run:2026-10-25-fiio-k13-r2r-phone-nothing"]
+    "runs": ["run:2026-10-25-fiio-k13-r2r-02-mac-eqtest", "run:2026-10-25-fiio-k13-r2r-phone-nothing", "run:2026-11-13-fiio-k13-r2r-04-mac-eqoff"]
   }
 }

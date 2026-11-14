@@ -319,7 +319,7 @@ class ProtocolParityTest {
             val text = ApoText.format(first.bands, first.preampDb ?: 0.0)
             val second = ApoText.parse(text)
             assertEquals(first, second, "${f.parentFile.name}/${f.name}")
-            println("  ${f.parentFile.name}/${f.name}: ${first.bands.size} bands, preamp ${first.preampDb}, auto ${Preamp.auto(first.bands)}")
+            println("  ${f.parentFile.name}/${f.name}: ${first.bands.size} bands, preamp ${first.preampDb}, auto ${Preamp.auto(first.bands, ShelfForm.SLOPE)}")
             ok++
         }
         println("PARITY 4 APO parse -> format -> parse lossless: $ok/${files.size}")
@@ -330,7 +330,7 @@ class ProtocolParityTest {
         val json = EqByEarJson.parse(nightfallDir.listFiles()!!.first { it.name.endsWith(".json") }.readText())
         assertNull(json.preampDb, "preampAuto: true must read as auto")
         assertEquals(txt.bands, json.bands)
-        val auto = Preamp.auto(json.bands)
+        val auto = Preamp.auto(json.bands, ShelfForm.SLOPE)
         println("PARITY 4 Nightfall auto preamp: $auto dB")
         assertEquals(-3, auto)
     }
@@ -366,7 +366,7 @@ class ProtocolParityTest {
         val freqs = Dsp.logFreqs(1024)
         val active = bands.filter { it.enabled }
         val intendedWrites = List(8) { if (it < active.size) WalkPlay.bandWrite(it, active[it]) else WalkPlay.factoryFlat(it) }
-        val intended = deviceCurve(intendedWrites, preampDb ?: Preamp.auto(active).toDouble(), freqs)
+        val intended = deviceCurve(intendedWrites, preampDb ?: Preamp.auto(active, ShelfForm.SLOPE).toDouble(), freqs)
         val device = deviceCurve(plan.bands, plan.preampDb.toDouble(), freqs)
         val diff = DoubleArray(freqs.size) { device[it] - intended[it] }
         val mean = diff.average()
@@ -404,15 +404,15 @@ class ProtocolParityTest {
         )
         for (band in cases) {
             val freqs = Dsp.logFreqs(512) + doubleArrayOf(band.freqHz, 500.0, 20_000.0)
-            val actual = Dsp.bandDb(band, Dsp.FreqGrid(freqs))
+            val actual = Dsp.bandDb(band, ShelfForm.SLOPE, Dsp.FreqGrid(freqs))
             val bytes = WalkPlay.computeIir(band.freqHz, band.gainDb, band.q, WalkPlay.typeCode(band.type))
             freqs.forEachIndexed { i, f ->
                 assertEquals(q30Db(bytes, f), actual[i], 0.003, "${band.type} Q=${band.q} at $f Hz")
             }
         }
-        assertEquals(5.163, Dsp.bandDb(cases[0], Dsp.FreqGrid(doubleArrayOf(500.0)))[0], 0.02)
-        assertEquals(3.753, Dsp.bandDb(cases[1], Dsp.FreqGrid(doubleArrayOf(20_000.0)))[0], 0.02)
-        assertEquals(-7, Preamp.auto(listOf(Band("auto", FilterType.LOW_SHELF, 1000.0, 6.0, 2.0))))
+        assertEquals(5.163, Dsp.bandDb(cases[0], ShelfForm.SLOPE, Dsp.FreqGrid(doubleArrayOf(500.0)))[0], 0.02)
+        assertEquals(3.753, Dsp.bandDb(cases[1], ShelfForm.SLOPE, Dsp.FreqGrid(doubleArrayOf(20_000.0)))[0], 0.02)
+        assertEquals(-7, Preamp.auto(listOf(Band("auto", FilterType.LOW_SHELF, 1000.0, 6.0, 2.0)), ShelfForm.SLOPE))
     }
 
     @Test
@@ -425,7 +425,7 @@ class ProtocolParityTest {
             val plan = ProtocolMicro.plan(listOf(band), manual) as DevicePlan.Ready
             val emulated = plan.bands[0]
             val emulatedBytes = WalkPlay.computeIir(emulated.freq, emulated.gainDb, emulated.q, emulated.typeCode)
-            val nativePreamp = manual ?: Preamp.auto(listOf(band)).toDouble()
+            val nativePreamp = manual ?: Preamp.auto(listOf(band), ShelfForm.SLOPE).toDouble()
             for (f in freqs) {
                 val difference = plan.preampDb + q30Db(emulatedBytes, f) - nativePreamp - q30Db(nativeBytes, f)
                 assertEquals(expectedOffset, difference, 0.003, "preamp=$manual at $f Hz")
@@ -716,13 +716,13 @@ class ProtocolParityTest {
         for (type in listOf(FilterType.LOW_SHELF, FilterType.HIGH_SHELF)) {
             val invalid = Band("extreme", type, 1000.0, 10.0, 10.0)
             assertFailsWith<IllegalArgumentException>("$type must not report AUTO 0") {
-                Preamp.auto(listOf(invalid))
+                Preamp.auto(listOf(invalid), ShelfForm.SLOPE)
             }
             val plan = ProtocolMicro.plan(listOf(invalid), null)
             assertTrue(plan is DevicePlan.Rejected, "$type AUTO unexpectedly ready: $plan")
             assertTrue(plan.issues.any { it.contains("non-finite") || it.contains("no real response") }, "$plan")
             val valid = invalid.copy(q = 0.7)
-            assertTrue(Preamp.auto(listOf(valid)) < 0, "$type valid AUTO lost")
+            assertTrue(Preamp.auto(listOf(valid), ShelfForm.SLOPE) < 0, "$type valid AUTO lost")
             assertTrue(ProtocolMicro.plan(listOf(valid), null) is DevicePlan.Ready, "$type valid shelf rejected")
         }
     }

@@ -71,7 +71,7 @@ object MoondropGen1Catalog {
         fun presetName(index: Int): String = presetLabels[index] ?: "preset $index"
         /** The index is one of the firmware presets (not the Custom EQ): the cable plays what is in its firmware, whatever the Custom bank holds. */
         fun isFirmwarePreset(index: Int): Boolean = index != customIndex
-        fun caps(): DeviceCapabilities = DeviceCapabilities(name, VENDOR_ID, productIds.min(), bandCount, minGainDb, maxGainDb, minQ, maxQ, minFrequencyHz, maxFrequencyHz, types, false)
+        fun caps(): DeviceCapabilities = DeviceCapabilities(name, VENDOR_ID, productIds.min(), bandCount, minGainDb, maxGainDb, minQ, maxQ, minFrequencyHz, maxFrequencyHz, types, false, shelfForm = data.shelfForm)
     }
 
     val duskSp = Model(dusk.productName, setOf(dusk.productId), dusk.reportBytes, hardwareVerified = dusk.hardwareVerified)

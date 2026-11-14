@@ -100,6 +100,7 @@ import androidx.compose.ui.unit.dp
 import io.github.chronosauros.contour.BuildConfig
 import io.github.chronosauros.contour.core.Band
 import io.github.chronosauros.contour.core.Profile
+import io.github.chronosauros.contour.core.ShelfForm
 import io.github.chronosauros.contour.model.AppModel
 import io.github.chronosauros.contour.model.Sender
 import io.github.chronosauros.contour.ui.DeviceStatus
@@ -111,8 +112,11 @@ import io.github.chronosauros.contour.ui.Radii
 import io.github.chronosauros.contour.ui.pal
 import io.github.chronosauros.contour.ui.sink
 import io.github.chronosauros.contour.ui.ResponseThumb
+import io.github.chronosauros.contour.ui.HapticsRow
+import io.github.chronosauros.contour.ui.UsbAttachRow
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
 import io.github.chronosauros.contour.ui.kit.ProfileIcons
+import io.github.chronosauros.contour.ui.kit.SwipeFeel
 import io.github.chronosauros.contour.usb.DeviceController
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -253,6 +257,7 @@ fun LibraryScreen(
                     onDac = p.id in onDac,
                     saved = model.savedBands(p),
                     edited = model.canRevertToSent(p),
+                    shelfForm = model.protocol.shelfForm,
                     open = if (openId == p.id) openSide else Side.NONE,
                     onOpen = { if (it != Side.NONE) { openId = p.id; openSide = it } else if (openId == p.id) openId = null },
                     onTap = { sender.leaveAb { model.choose(p.id) } },
@@ -277,6 +282,7 @@ fun LibraryScreen(
                     p = null,
                     current = false,
                     onDac = false,
+                    shelfForm = model.protocol.shelfForm,
                     open = if (openId == NEW_SLOT_ID) openSide else Side.NONE,
                     onOpen = { if (it != Side.NONE) { openId = NEW_SLOT_ID; openSide = it } else if (openId == NEW_SLOT_ID) openId = null },
                     onTap = { openId = null; actions.newProfile() },
@@ -319,6 +325,7 @@ fun LibraryScreen(
                             onDac = p.id in onDac,
                             saved = model.savedBands(p),
                             edited = model.canRevertToSent(p),
+                            shelfForm = model.protocol.shelfForm,
                             open = if (openId == p.id) openSide else Side.NONE,
                             onOpen = { if (it != Side.NONE) { openId = p.id; openSide = it } else if (openId == p.id) openId = null },
                             onTap = { sender.leaveAb { model.choose(p.id) } },
@@ -336,6 +343,14 @@ fun LibraryScreen(
                         )
                     }
                 }
+            }
+            item(key = "usb-attach") {
+                // the edges of the profile cards (the row's side strips stay empty)
+                UsbAttachRow(Modifier.padding(start = SIDE + HINT_GAP, end = SIDE + HINT_GAP, top = 20.dp))
+            }
+            item(key = "haptics") {
+                // right under the plug-in switch, the same card (owner 14.11.2026)
+                HapticsRow(Modifier.padding(start = SIDE + HINT_GAP, end = SIDE + HINT_GAP, top = 20.dp))
             }
             item(key = "licences") {
                 // the way to the privacy policy and the open-source notices, always visible at the foot of the library, with the version
@@ -385,6 +400,8 @@ private fun SwipeRow(
     onSwipe: () -> Unit = {},
     saved: List<Band>? = null,
     edited: Boolean = false,
+    /** The shelf form of the attached DAC ([ShelfForm]): the curve of the row is drawn in it. */
+    shelfForm: ShelfForm,
 ) {
     val c = pal
     val haptics = LocalHaptics.current
@@ -425,15 +442,21 @@ private fun SwipeRow(
         if (offset != target) animateTo(target)
     }
 
+    // Arming the full swipe is a threshold the finger crosses (owner 14.11.2026): the snap of the bowstring when it arms ([SwipeFeel] draws the tension on
+    // the way), a soft tick when the finger takes it back while still dragging (not when the drag ends, which also disarms).
     LaunchedEffect(Unit) {
+        var was = false
         snapshotFlow { fullSwipeArmed(-offset, fullAt(revealNow.value), fullSwipeStart) }.distinctUntilChanged().collectLatest { armed ->
-            if (armed) haptics.step()
+            if (armed) haptics.swipeSnap() else if (was && fullSwipeStart != null) haptics.threshold(false)
+            was = armed
             arm.animateTo(if (armed) 1f else 0f, spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium))
         }
     }
     LaunchedEffect(Unit) {
+        var was = false
         snapshotFlow { fullSwipeArmed(offset, fullAt(revealLeftNow.value), fullSwipeStart) }.distinctUntilChanged().collectLatest { armed ->
-            if (armed) haptics.step()
+            if (armed) haptics.swipeSnap() else if (was && fullSwipeStart != null) haptics.threshold(false)
+            was = armed
             armLeft.animateTo(if (armed) 1f else 0f, spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMedium))
         }
     }
@@ -531,8 +554,18 @@ private fun SwipeRow(
                             val lo = if (dragSide == Side.RIGHT) -width.toFloat() else 0f
                             val hi = if (dragSide == Side.LEFT) width.toFloat() else 0f
                             var x = offset + total.x
+                            val right = dragSide == Side.RIGHT
+                            // the tension of the swipe follows the card: how far it is towards the full-action point, and how far it moved
+                            val tension = SwipeFeel(haptics)
+                            val feelTension = {
+                                val shownNow = if (right) -offset else offset
+                                val fullPx = fullAt(if (right) revealNow.value else revealLeftNow.value)
+                                tension.move(shownNow, fullPx, fullSwipeArmed(shownNow, fullPx, fullSwipeStart))
+                            }
+                            tension.start(abs(offset))
                             val fireFull = try {
                                 offset = x.coerceIn(lo, hi)
+                                feelTension()
                                 while (true) {
                                     val ev = awaitPointerEvent()
                                     val ch = ev.changes.firstOrNull { it.id == down.id } ?: break
@@ -540,6 +573,7 @@ private fun SwipeRow(
                                     x += ch.positionChange().x
                                     ch.consume()
                                     offset = x.coerceIn(lo, hi)
+                                    feelTension()
                                 }
                                 fullSwipeArmed(if (dragSide == Side.RIGHT) -offset else offset,
                                     fullAt(if (dragSide == Side.RIGHT) revealNow.value else revealLeftNow.value), fullSwipeStart)
@@ -555,10 +589,10 @@ private fun SwipeRow(
                                     offset = 0f
                                     scope.launch { arm.snapTo(0f); armLeft.snapTo(0f) }
                                     if (dragSide == Side.RIGHT) {
-                                        haptics.confirm()
+                                        haptics.commit()
                                         full.value()
                                     } else if (fullLeft.value()) {
-                                        haptics.confirm()
+                                        haptics.commit()
                                     }
                                 }
                                 shown > strip / 2 -> {
@@ -679,7 +713,7 @@ private fun SwipeRow(
             // SAVED version; RESTORE / SAVE live only behind the rightward swipe.
             Box(Modifier.width(74.dp).fillMaxHeight().padding(vertical = 12.dp)) {
                 Column(Modifier.fillMaxSize(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    ResponseThumb(saved ?: p.bands, if (dim) c.textMute else c.textDim, Modifier.fillMaxWidth().weight(1f))
+                    ResponseThumb(saved ?: p.bands, shelfForm, if (dim) c.textMute else c.textDim, Modifier.fillMaxWidth().weight(1f))
                     if (onDac) {
                         Spacer(Modifier.height(3.dp))
                         Text(
@@ -809,7 +843,7 @@ private class Geo(d: Density, val n: Int, gapDp: Dp) {
     private fun rest(i: Int, ar: Float) = if (i == 0) 1f else 1f - ar
 
     /**
-     * How far icon [i] has travelled, 0..1. The first one goes farthest, so it leaves the strip at once and is in
+     * How far icon [i] has moved, 0..1. The first one goes farthest, so it leaves the strip at once and is in
      * place by half the reveal instead of lingering next to the others; the rest follow a beat later.
      */
     private fun travel(i: Int, o: Float): Float {

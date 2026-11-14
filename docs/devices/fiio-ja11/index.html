@@ -80,11 +80,11 @@
       "name": "Contour",
       "alternateName": "Contour EQ",
       "url": "https://contoureq.app/",
-      "description": "Free, open-source Android EQ manager for USB DACs: send profiles from your phone to CrinEar Protocol, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears and JCally dongles.",
+      "description": "Free, open-source Android EQ manager for USB DACs: send profiles from your phone to CrinEar Protocol, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears, JCally and Tanchjim dongles.",
       "operatingSystem": "Android",
       "applicationCategory": "MultimediaApplication",
-      "softwareVersion": "1.7.0",
-      "dateModified": "2026-11-11",
+      "softwareVersion": "1.8.0",
+      "dateModified": "2026-11-14",
       "offers": {
         "@type": "Offer",
         "price": "0",
@@ -385,8 +385,8 @@ footer.fv p{margin:0}
     <p class="dv-lede">Contour EQ is a free, open-source Android app that reads and writes the parametric EQ stored inside the FiiO JadeAudio JA11. The EQ stays in the dongle, so it works in every app and on every device you plug it into.</p>
   </div>
   <div class="dv-side">
-    <p class="ver"><span class="dot" aria-hidden="true"></span><span>Stable 1.7.0</span></p>
-    <a class="btn btn-primary" href="/install/">Install Contour</a>
+    <p class="ver"><span class="dot" aria-hidden="true"></span><span>Stable 1.8.0</span></p>
+    <a class="btn btn-primary" href="https://play.google.com/store/apps/details?id=io.github.chronosauros.contour">Install Contour</a>
   </div>
 </header>
 
@@ -426,7 +426,7 @@ footer.fv p{margin:0}
           <tr role="row"><th scope="row" role="rowheader">Gain</th><td role="cell">-12 to +12 dB</td></tr>
           <tr role="row"><th scope="row" role="rowheader">Q</th><td role="cell">0.1 to 10</td></tr>
           <tr role="row"><th scope="row" role="rowheader">Frequency</th><td role="cell">20 Hz to 20 kHz</td></tr>
-          <tr role="row"><th scope="row" role="rowheader">Preamp</th><td role="cell">-12 to +12 dB</td></tr>
+          <tr role="row"><th scope="row" role="rowheader">Preamp</th><td role="cell">-24 to 0 dB</td></tr>
           <tr role="row"><th scope="row" role="rowheader">Where the EQ is kept</th><td role="cell">In USER1, the JA11's one custom slot. Contour selects USER1, writes it and saves it, and the JA11 then drops off USB for about 2 seconds. The EQ and the preamp stay after unplugging, and the JA11 starts on USER1.</td></tr>
           <tr role="row"><th scope="row" role="rowheader">DAC page</th><td role="cell">Since 1.7.0: VOLUME (0 to 60) and IN-LINE MIC (OFF / ON); USB AUDIO is shown, read-only. Each change is read back. An IN-LINE MIC change makes the JA11 reconnect on USB, so Contour reads it once the JA11 is back.</td></tr>
           <tr role="row"><th scope="row" role="rowheader">Tested</th><td role="cell">By the developer on hardware and on a test rig, November 2026, firmware V2.2 (USB version 2.20).</td></tr>
@@ -494,18 +494,22 @@ footer.fv p{margin:0}
   <ul class="dv-devs">
     <li class="dv-dev"><a class="dv-dev-a" href="/devices/fiio-ka15/"><span class="dv-brand">FiiO</span> <span class="dv-model"><span class="dv-mn">KA15</span></span></a><span class="dv-meta">10 bands, FiiO</span></li>
     <li class="dv-dev"><a class="dv-dev-a" href="/devices/fiio-k13-r2r/"><span class="dv-brand">FiiO</span> <span class="dv-model"><span class="dv-mn">K13 R2R</span> <span class="dv-tag">Desktop DAC</span></span></a><span class="dv-meta">10 bands, FiiO</span></li>
+    <li class="dv-dev"><a class="dv-dev-a" href="/devices/fiio-jiezi/"><span class="dv-brand">FiiO</span> <span class="dv-model"><span class="dv-mn">JadeAudio JIEZI</span></span></a><span class="dv-meta">10 bands, FiiO</span></li>
     <li class="dv-dev"><a class="dv-dev-a" href="/devices/snowsky-melody/"><span class="dv-brand">SnowSky</span> <span class="dv-model"><span class="dv-mn">Melody</span></span></a><span class="dv-meta">10 bands, FiiO</span></li>
     <li class="dv-dev"><a class="dv-dev-a" href="/devices/snowsky-tiny-a/"><span class="dv-brand">SnowSky</span> <span class="dv-model"><span class="dv-mn">Tiny A</span></span></a><span class="dv-meta">10 bands, FiiO</span></li>
+    <li class="dv-dev"><a class="dv-dev-a" href="/devices/snowsky-retro-nano/"><span class="dv-brand">SnowSky</span> <span class="dv-model"><span class="dv-mn">RETRO NANO</span></span></a><span class="dv-meta">10 bands, FiiO</span></li>
   </ul>
   <h3 class="dv-sub">Other chips</h3>
   <ul class="dv-devs">
     <li class="dv-dev"><a class="dv-dev-a" href="/devices/crinear-protocol-micro/"><span class="dv-brand">CrinEar</span> <span class="dv-model"><span class="dv-mn">Protocol Micro</span></span></a><span class="dv-meta">8 bands, WalkPlay</span></li>
     <li class="dv-dev"><a class="dv-dev-a" href="/devices/crinear-protocol-max/"><span class="dv-brand">CrinEar</span> <span class="dv-model"><span class="dv-mn">Protocol Max</span></span></a><span class="dv-meta">10 bands, WalkPlay</span></li>
     <li class="dv-dev"><a class="dv-dev-a" href="/devices/trn-black-pearl/"><span class="dv-brand">TRN</span> <span class="dv-model"><span class="dv-mn">Black Pearl</span></span></a><span class="dv-meta">10 bands, WalkPlay</span></li>
+    <li class="dv-dev"><a class="dv-dev-a" href="/devices/tanchjim-space-ii/"><span class="dv-brand">Tanchjim</span> <span class="dv-model"><span class="dv-mn">SPACE II</span></span></a><span class="dv-meta">10 bands, WalkPlay</span></li>
     <li class="dv-dev"><a class="dv-dev-a" href="/devices/moondrop-dawn-pro-2/"><span class="dv-brand">Moondrop</span> <span class="dv-model"><span class="dv-mn">Dawn Pro 2</span></span></a><span class="dv-meta">8 bands, Moondrop</span></li>
     <li class="dv-dev"><a class="dv-dev-a" href="/devices/moondrop-echo-a/"><span class="dv-brand">Moondrop</span> <span class="dv-model"><span class="dv-mn">Echo-A</span></span></a><span class="dv-meta">8 bands, WalkPlay</span></li>
     <li class="dv-dev"><a class="dv-dev-a" href="/devices/moondrop-dusk/"><span class="dv-brand">Moondrop</span> <span class="dv-model"><span class="dv-mn">DUSK-SP</span></span></a><span class="dv-meta">9 bands, Moondrop FreeDSP (gen 1)</span></li>
     <li class="dv-dev"><a class="dv-dev-a" href="/devices/kiwi-ears-allegro-mini/"><span class="dv-brand">Kiwi Ears</span> <span class="dv-model"><span class="dv-mn">Allegro Mini</span></span></a><span class="dv-meta">5 bands, KT Micro</span></li>
+    <li class="dv-dev"><a class="dv-dev-a" href="/devices/kiwi-ears-ad1/"><span class="dv-brand">Kiwi Ears</span> <span class="dv-model"><span class="dv-mn">AD1</span></span></a><span class="dv-meta">5 bands, KT Micro</span></li>
     <li class="dv-dev"><a class="dv-dev-a" href="/devices/jcally-jm12/"><span class="dv-brand">JCally</span> <span class="dv-model"><span class="dv-mn">JM12</span></span></a><span class="dv-meta">5 bands, KT Micro</span></li>
   </ul>
   <p class="dv-all"><a href="/install/#dacs">All supported devices</a></p>

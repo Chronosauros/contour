@@ -3,6 +3,7 @@ package io.github.chronosauros.contour.core.native
 import io.github.chronosauros.contour.core.Band
 import io.github.chronosauros.contour.core.Dsp
 import io.github.chronosauros.contour.core.FilterType
+import io.github.chronosauros.contour.core.ShelfForm
 import kotlin.math.abs
 import kotlin.math.sign
 import kotlin.math.truncate
@@ -105,9 +106,9 @@ object MoondropGen1Codec {
         override fun toString() = "band $index $meta"
     }
 
-    /** The coefficients of [band] at [fs]: FreeDSP-Studio's `compute_biquad` (RBJ, shelf slope S = Q, over a0, x 2^22, rounded half away from zero), through [Dsp.biquad]. */
+    /** The coefficients of [band] at [fs]: FreeDSP-Studio's `compute_biquad` (RBJ, shelf slope S = Q, over a0, x 2^22, rounded half away from zero), through [Dsp.biquad] in the SLOPE form: the bytes go to the cable, which plays them, so the form is the cable's and never a choice of the display. */
     fun coefficients(band: Band, fs: Double): IntArray {
-        val q = Dsp.biquad(band, fs)
+        val q = Dsp.biquad(band, ShelfForm.SLOPE, fs)
         val raw = doubleArrayOf(q.b0, q.b1, q.b2, -q.a1, -q.a2)
         return IntArray(5) { i ->
             val v = raw[i] * SCALE

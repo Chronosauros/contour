@@ -18,6 +18,11 @@ data class DeviceCapabilities(
     /** The device stores the preamp in whole dB only. */
     val preampWholeDb: Boolean,
     /**
+     * How the DAC builds a shelf from the band's Q (record `peq.shelfForm`, see [ShelfForm]). What the graph draws and what AUTO preamp computes follow it; the band registers, the coefficient bytes and the Q scales never do.
+     * Required: a new caps has to say it.
+     */
+    val shelfForm: ShelfForm,
+    /**
      * Measured Q conventions of the DAC (records `peq.shelfQScale` and `peq.peakQScale`): the register holds intended Q x the scale for that type, so
      * [qMin] and [qMax] are the register range and the Q the editor offers is that range divided by the scale ([qRange]). 1.0 = the register is the Q.
      */
@@ -29,7 +34,8 @@ data class DeviceCapabilities(
     val shelfLimits: ShelfLimits? = null,
     /**
      * A band whose biquad overflows signed Q30 is sent with its coefficients wrapped to int32, as devicePEQ's quantizer and byte split do, instead of being refused. Only for a DAC that
-     * plays the registers and not the coefficient bytes (the Protocol Max, see [ProtocolMax]); false everywhere else: the other WalkPlay DACs play the bytes, so a wrapped one would be a different filter.
+     * plays the registers and not the coefficient bytes, and only where that was measured to be right (the Protocol Max, see [ProtocolMax]); false everywhere else. The Protocol Micro and the Echo-A play the bytes, so a wrapped
+     * one would be a different filter. The TRN Black Pearl plays the registers like the Max (its record says it computes shelves from the registers and does not play the band-frame bytes), but the wrapped band was measured and enabled on the Max only, so on the TRN this stays false and an overflowing band is refused.
      */
     val wrapQ30: Boolean = false,
 ) {
@@ -170,6 +176,12 @@ object ProtocolMax {
 
 /** CrinEar Protocol Micro (WalkPlay SchemeNo11). Unofficial; not affiliated with CrinEar. */
 object ProtocolMicro {
+    /**
+     * The shelf form the Micro's planner works in: [WalkPlay.scaledCoefficients] computes the shelf in the slope form (S = Q), and the Protocol Micro and the Moondrop Echo-A, the DACs this planner serves, play those coefficient bytes. The
+     * one named constant for "the form the coefficient bytes have": the planner takes no form parameter, and the two records say the same (`peq.shelfForm` "slope").
+     */
+    val COEFFICIENT_SHELF_FORM: ShelfForm = ShelfForm.SLOPE
+
     // The caps are the record's (devices/crinear-protocol-micro.json). HIGH_SHELF has no native register type we trust on SchemeNo11: it is
     // offered, sent as an emulated LOW_SHELF plus preamp (see [plan]); LP/HP are unverified, so held in the record and not offered.
     private val CAPS_PLAIN: DeviceCapabilities = capabilities(false)
@@ -273,7 +285,7 @@ object ProtocolMicro {
      */
     fun devicePreamp(bands: List<Band>, preampDb: Double?, maxDb: Int = PREAMP_MAX_EFFECTIVE_DB): Int {
         val raw = if (preampDb == null) {
-            Preamp.auto(deviceBands(bands))
+            Preamp.auto(deviceBands(bands), COEFFICIENT_SHELF_FORM)
         } else {
             kotlin.math.floor(preampDb + highShelfGainSum(bands) + 1e-6).toInt()
         }
@@ -328,7 +340,7 @@ object ProtocolMicro {
         }
         if (issues.isNotEmpty()) return DevicePlan.Rejected(issues)
         val deviceGain = if (preampDb == null) {
-            val needed = runCatching { Preamp.auto(dev) }.getOrElse {
+            val needed = runCatching { Preamp.auto(dev, COEFFICIENT_SHELF_FORM) }.getOrElse {
                 return DevicePlan.Rejected(listOf("AUTO preamp: no finite response; cannot send to ${caps.name}"))
             }
             // AUTO that needs more than the device takes is refused with the number, not sent as -30.
@@ -350,7 +362,7 @@ object ProtocolMicro {
 
     /** AUTO's refusal for [bands] (the device-domain preamp it needs is below the floor), or null when AUTO fits or has no response. */
     fun autoRefusal(bands: List<Band>): String? {
-        val needed = runCatching { Preamp.auto(deviceBands(bands.filter { it.enabled })) }.getOrNull() ?: return null
+        val needed = runCatching { Preamp.auto(deviceBands(bands.filter { it.enabled }), COEFFICIENT_SHELF_FORM) }.getOrNull() ?: return null
         return if (needed < PREAMP_MIN_DB) SendBlocked.auto(needed, PREAMP_MIN_DB) else null
     }
 

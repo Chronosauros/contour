@@ -27,7 +27,7 @@ class PassFilterTest {
 
     // ---- DSP -------------------------------------------------------------------------------------------------
 
-    private fun magDb(b: Band, f: Double): Double = Dsp.bandDb(b, Dsp.FreqGrid(doubleArrayOf(f)))[0]
+    private fun magDb(b: Band, f: Double): Double = Dsp.bandDb(b, ShelfForm.SLOPE, Dsp.FreqGrid(doubleArrayOf(f)))[0]
 
     @Test fun `band pass has 0 dB at its centre and falls away on both sides`() {
         for (q in listOf(0.5, 1.0, 4.0)) {
@@ -53,16 +53,16 @@ class PassFilterTest {
     @Test fun `all pass turns the phase and band pass biquad matches the RBJ cookbook`() {
         val w0 = 2 * Math.PI * 1000.0 / Dsp.FS
         val alpha = sin(w0) / (2 * 2.0)
-        val bp = Dsp.biquad(band(FilterType.BAND_PASS, f = 1000.0, q = 2.0))
+        val bp = Dsp.biquad(band(FilterType.BAND_PASS, f = 1000.0, q = 2.0), ShelfForm.SLOPE)
         assertEquals(alpha / (1 + alpha), bp.b0, 1e-12); assertEquals(0.0, bp.b1); assertEquals(-alpha / (1 + alpha), bp.b2, 1e-12)
-        val ap = Dsp.biquad(band(FilterType.ALL_PASS, f = 1000.0, q = 2.0))
+        val ap = Dsp.biquad(band(FilterType.ALL_PASS, f = 1000.0, q = 2.0), ShelfForm.SLOPE)
         assertEquals((1 - alpha) / (1 + alpha), ap.b0, 1e-12); assertEquals(-2 * cos(w0) / (1 + alpha), ap.b1, 1e-12)
         assertEquals(ap.b0, ap.a2, 1e-12); assertEquals(ap.b1, ap.a1, 1e-12) // numerator is the mirrored denominator
     }
 
     @Test fun `gain does not change any pass filter`() {
         for (t in pass) for (f in listOf(40.0, 1000.0, 12000.0)) {
-            val flat = Dsp.bandDb(band(t, 0.0, f, 1.3)); val loud = Dsp.bandDb(band(t, 9.0, f, 1.3))
+            val flat = Dsp.bandDb(band(t, 0.0, f, 1.3), ShelfForm.SLOPE); val loud = Dsp.bandDb(band(t, 9.0, f, 1.3), ShelfForm.SLOPE)
             for (i in flat.indices) assertEquals(flat[i], loud[i], 1e-12, "$t $f")
         }
     }

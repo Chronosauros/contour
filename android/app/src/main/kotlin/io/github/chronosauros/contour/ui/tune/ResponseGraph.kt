@@ -36,11 +36,16 @@ import io.github.chronosauros.contour.ui.Type
 import io.github.chronosauros.contour.ui.lift
 import io.github.chronosauros.contour.ui.Radii
 import io.github.chronosauros.contour.ui.pal
+import io.github.chronosauros.contour.ui.kit.GRID_F
 import io.github.chronosauros.contour.ui.kit.LiftGuard
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
 import io.github.chronosauros.contour.ui.kit.LocalPagerLock
 import io.github.chronosauros.contour.ui.kit.holdsPager
+import io.github.chronosauros.contour.ui.kit.NodeFeel
+import io.github.chronosauros.contour.ui.kit.QFeel
 import io.github.chronosauros.contour.ui.kit.Scale
+import io.github.chronosauros.contour.ui.kit.gridDb
+import kotlin.math.abs
 import kotlin.math.exp
 import kotlin.math.hypot
 import kotlin.math.ln
@@ -67,20 +72,18 @@ class PlotMap(private val w: Float, private val h: Float, private val pad: Float
 private val PAD = 18.dp
 private val NODE_RADIUS = 12.dp
 private val GRAPH_SHAPE = RoundedCornerShape(Radii.L)
-private val GRID_F = doubleArrayOf(20.0, 50.0, 100.0, 200.0, 500.0, 1000.0, 2000.0, 5000.0, 10_000.0, 20_000.0)
 private val LABEL_F = listOf(100.0 to "100", 1000.0 to "1K", 10_000.0 to "10K")
 /** Texts the graph keeps laid out between frames: the axis labels (3 + one per 6 dB line) and the node numbers of the largest profile, with room to spare. */
 private const val TEXT_CACHE = 64
 private val NODE_NUMBERS = Array(TEXT_CACHE) { "${it + 1}" }
 private fun nodeNumber(i: Int): String = NODE_NUMBERS.getOrNull(i) ?: "${i + 1}"
-/** The horizontal grid: every 6 dB inside the plot's range. */
-private fun gridDb(lo: Double, hi: Double): List<Double> = generateSequence(Math.ceil(lo / 6.0) * 6.0) { it + 6.0 }.takeWhile { it <= hi + 1e-9 }.toList()
 
 /**
  * The response graph of the current profile. Every gesture that starts inside it belongs to it (the pager
  * never gets it): drag a node = frequency / gain, tap = select, double-tap = 0 dB, long-press on an empty
  * spot = new PEAK band, pinch = Q of the selected band. Lifting the finger off a node or out of a pinch keeps
- * the value it rested on ([LiftGuard]).
+ * the value it rested on ([LiftGuard]). Haptics (owner 14.11.2026, haptics design): the node drag feels [NodeFeel] (round 2), the pinch [QFeel]
+ * (round 4), without a grab click; the double tap to 0 dB is a click, like GAIN's zero.
  */
 @Composable
 fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifier, bypassed: Boolean = false, enabled: Boolean = true) {
@@ -96,6 +99,8 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
     val prof = rememberUpdatedState(profile)
     // the DAC's own gain bounds (device record) for the plot, the nodes and a new band
     val caps = model.protocol.caps
+    // the curve is drawn the way the attached DAC builds its shelves (no DAC: the Protocol Micro's, as before)
+    val shelfForm = model.protocol.shelfForm
     val capsNow = rememberUpdatedState(caps)
     val (gainLo, gainHi) = PlotMap.range(caps)
     val gridLines = remember(gainLo, gainHi) { gridDb(gainLo, gainHi) }
@@ -146,12 +151,16 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                     var total = Offset.Zero
                     var lastUptime = t0
                     var pinching = false
-                    var ticked = 0.0 to 0.0 // the node's (Hz, dB) the haptics last spoke for
-                    var qTicked = 1.0
+                    val qFeel = QFeel(haptics, Scale.Q) // the pinch feels Q like the slider, without the grab
+                    var pinchSpeed = 0f
+                    var pinchD = 0f
+                    // a node's gain scale: a shelf of a DAC measured narrower has its own range, as on the sliders
+                    val nodeType = hit?.let { bands0[it].type }
+                    val gScale = if (nodeType != null && nodeType.isShelf && capsNow.value.shelfLimits != null) Param.GAIN.scaleFor(capsNow.value, nodeType)!! else gainScale
+                    val nodeFeel = NodeFeel(haptics, freqScale, gScale, lo, hi, size.width.toFloat(), density)
                     if (hit != null) {
                         val b = bands0[hit]
-                        ticked = b.freqHz to b.gainDb
-                        nodeGuard.start(t0, down.position, ticked)
+                        nodeGuard.start(t0, down.position, b.freqHz to b.gainDb)
                     }
                     while (true) {
                         val waitLong = mode == 0 && hit == null
@@ -192,7 +201,7 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                                 if (lastTap[1] == hit.toLong() && now - lastTap[0] < viewConfiguration.doubleTapTimeoutMillis) {
                                     val b = prof.value.bands.getOrNull(hit)
                                     if (b != null) {
-                                        haptics.detent()
+                                        haptics.centre()
                                         model.setBand(hit, b.copy(gainDb = 0.0))
                                     }
                                     lastTap[1] = -1
@@ -212,19 +221,21 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                                 pinching = true
                                 pinchD0 = d.coerceAtLeast(1f)
                                 pinchQ0 = prof.value.bands.getOrNull(model.selectedBand)?.q ?: 1.0
-                                qTicked = pinchQ0
+                                qFeel.start(pinchQ0)
+                                pinchSpeed = 0f
+                                pinchD = d
                                 pinchGuard.start(lastUptime, Offset(d, 0f), pinchQ0)
                             } else {
                                 val i = model.selectedBand
                                 val b = prof.value.bands.getOrNull(i) ?: continue
-                                val q = Scale.Q.quantize(pinchQ0 * pinchD0 / d.coerceAtLeast(1f))
+                                val rawQ = pinchQ0 * pinchD0 / d.coerceAtLeast(1f)
+                                val q = Scale.Q.quantize(rawQ)
                                 if (q != b.q) model.setBand(i, b.copy(q = q))
                                 pinchGuard.move(lastUptime, Offset(d, 0f), q)
-                                if (q != qTicked && !pinchGuard.settling(lastUptime)) {
-                                    val k = Param.Q.crossing(qTicked, q)
-                                    if (k > 0) haptics.crossing(k)
-                                    qTicked = q
-                                }
+                                // the rate of change of the distance between the fingers, dp/ms, smoothed like BandDrag
+                                pinchSpeed = 0.6f * pinchSpeed + 0.4f * (abs(d - pinchD) / density / (lastUptime - ev.changes.first().previousUptimeMillis).coerceAtLeast(1L))
+                                pinchD = d
+                                if (!pinchGuard.settling(lastUptime)) qFeel.move(q, rawQ < Scale.Q.min || rawQ > Scale.Q.max, pinchSpeed.coerceAtMost(1f))
                             }
                             continue
                         }
@@ -239,6 +250,8 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                                         val b = prof.value.bands[hit]
                                         grab = Offset(map.x(b.freqHz), map.y(b.gainDb)) - ch.position
                                         nodeGuard.move(ch.uptimeMillis, ch.position, b.freqHz to b.gainDb)
+                                        nodeFeel.start(b.freqHz, b.gainDb)
+                                        haptics.grab()
                                     } else {
                                         mode = 3
                                     }
@@ -247,15 +260,23 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
                             1 -> {
                                 val b = prof.value.bands.getOrNull(hit!!) ?: continue
                                 val pos = ch.position + grab
-                                val f = freqScale.quantize(map.f(pos.x))
-                                val g = (if (b.type.isShelf && capsNow.value.shelfLimits != null) Param.GAIN.scaleFor(capsNow.value, b.type)!! else gainScale).quantize(map.g(pos.y))
+                                val rawF = map.f(pos.x)
+                                val rawG = map.g(pos.y)
+                                val f = freqScale.quantize(rawF)
+                                val g = gScale.quantize(rawG)
                                 if (f != b.freqHz || g != b.gainDb) model.setBand(hit, b.copy(freqHz = f, gainDb = g))
                                 nodeGuard.move(ch.uptimeMillis, ch.position, f to g)
-                                if ((f to g) != ticked && !nodeGuard.settling(ch.uptimeMillis)) {
-                                    val k = maxOf(Param.FREQ.crossing(ticked.first, f), Param.GAIN.crossing(ticked.second, g))
-                                    if (k > 0) haptics.crossing(k)
-                                    ticked = f to g
-                                }
+                                // the plot's or the range's edge pushed past: the edge click plays once even when the node cannot move on
+                                val fx = (pos.x - pad) / (size.width - 2 * pad)
+                                val gy = (pos.y - pad) / (size.height - 2 * pad)
+                                nodeFeel.step(
+                                    f, g,
+                                    pushedF = fx < 0f || fx > 1f || rawF < freqScale.min || rawF > freqScale.max,
+                                    pushedG = gy < 0f || gy > 1f || rawG < gScale.min - 1e-9 || rawG > gScale.max + 1e-9,
+                                    movePx = ch.positionChangeIgnoreConsumed().getDistance(),
+                                    dtMs = ch.uptimeMillis - ch.previousUptimeMillis,
+                                    silent = nodeGuard.settling(ch.uptimeMillis),
+                                )
                             }
                         }
                     }
@@ -281,7 +302,7 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
 
         val bands: List<Band> = profile.bands
         val ghostAlpha = if (bypassed) 0.24f else 1f
-        val response = runCatching { Dsp.responseDb(bands, Dsp.DISPLAY_GRID, curve) }
+        val response = runCatching { Dsp.responseDb(bands, shelfForm, Dsp.DISPLAY_GRID, curve) }
         path.reset()
         val freqs = Dsp.DISPLAY_GRID.freqs
         if (response.isSuccess) {

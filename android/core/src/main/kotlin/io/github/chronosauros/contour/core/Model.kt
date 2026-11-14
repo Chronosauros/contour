@@ -52,6 +52,6 @@ data class Profile(
     val updatedAt: Long,
     @EncodeDefault(EncodeDefault.Mode.NEVER) val archived: Boolean = false,
 ) {
-    /** The preamp that goes with this profile: the stored value, or the auto value when none is stored. */
-    fun effectivePreampDb(): Double = preampDb ?: Preamp.auto(bands).toDouble()
+    /** The preamp that goes with this profile: the stored value, or the auto value when none is stored. AUTO draws the shelves in [form], the one the DAC plays ([ShelfForm]). */
+    fun effectivePreampDb(form: ShelfForm): Double = preampDb ?: Preamp.auto(bands, form).toDouble()
 }

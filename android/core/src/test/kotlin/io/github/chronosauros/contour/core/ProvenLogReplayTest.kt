@@ -121,6 +121,8 @@ class ProvenLogReplayTest {
     private val allegro = requireNotNull(KtMicroCatalog.find(0x31B2, 0x0111, "Kiwi Ears-Allegro Mini"))
     /** The JCally JM12: the same VID:PID, found by its USB name. Its proofs are the Mac runs of 10.11.2026 (the jm12 folder). */
     private val jm12 = requireNotNull(KtMicroCatalog.find(0x31B2, 0x0111, "KT02H20 HIFI Audio"))
+    /** The Kiwi Ears AD1 (3302:20E3, found by its USB name): the Mac runs of 13.11.2026 (the ad1 folder). */
+    private val ad1 = requireNotNull(KtMicroCatalog.find(0x3302, 0x20E3, "AD1"))
 
     private fun fiioTarget(p: Proof): DeviceTarget {
         val pass = "pass-filters" in p.flags
@@ -130,13 +132,15 @@ class ProvenLogReplayTest {
             "melody" -> DeviceTarget.melody(pass)
             "tiny-a" -> DeviceTarget.TINY_A
             "ja11" -> DeviceTarget.FIIO_JA11
+            "retro-nano" -> DeviceTarget.RETRO_NANO
+            "jiezi" -> DeviceTarget.FIIO_JIEZI
             else -> error("Not a FiiO cell: ${p.cell}")
         }
     }
 
     /** `--pass-filters` and `--positive-preamp` widen the WalkPlay profile as the bench tool does (the flags the run gave every call). */
     private fun walkPlayProfile(p: Proof): WalkPlayProfile {
-        var wp = when (p.dac) { "micro" -> WalkPlayProfiles.micro; "max" -> WalkPlayProfiles.max; "trn" -> WalkPlayProfiles.trn; "echo-a" -> WalkPlayProfiles.echoA; else -> error("Not a WalkPlay cell: ${p.cell}") }
+        var wp = when (p.dac) { "micro" -> WalkPlayProfiles.micro; "max" -> WalkPlayProfiles.max; "trn" -> WalkPlayProfiles.trn; "space-2" -> WalkPlayProfiles.space2; "echo-a" -> WalkPlayProfiles.echoA; else -> error("Not a WalkPlay cell: ${p.cell}") }
         if ("pass-filters" in p.flags) { val caps = ProtocolMicro.capabilities(true); wp = wp.copy(capsOverride = caps, types = caps.types) }
         if ("positive-preamp" in p.flags) wp = wp.copy(preampMaxOverride = ProtocolMicro.VENDOR_PREAMP_MAX_DB)
         return wp
@@ -151,10 +155,11 @@ class ProvenLogReplayTest {
         val command = p.header["command"] ?: fail("no # command in the header")
         val input = p.input
         when (p.dac) {
-            "ka15", "k13-r2r", "melody", "tiny-a", "ja11" -> {
+            "ka15", "k13-r2r", "melody", "tiny-a", "ja11", "retro-nano", "jiezi" -> {
                 val target = fiioTarget(p)
                 val f = requireNotNull(target.fiio)
-                val bytes = if (p.dac == "k13-r2r") 33 else if (p.dac == "ja11") 21 else 64 // the JA11: report ID 2 and its 20 data bytes
+                // the JA11: report ID 2 and its 20 data bytes; the RETRO NANO: report 7 of 66 bytes (65 data bytes, a 64-byte IN endpoint); the JIEZI: 63 data bytes
+                val bytes = if (p.dac == "k13-r2r") 33 else if (p.dac == "ja11") 21 else if (p.dac == "retro-nano") 66 else 64
                 val rp = port(f.reportId, bytes)
                 when (command) {
                     "plan" -> {
@@ -175,8 +180,8 @@ class ProvenLogReplayTest {
                     else -> fail("command $command is not replayed for FiiO")
                 }
             }
-            "allegro-mini", "jm12" -> {
-                val kt = if (p.dac == "jm12") jm12 else allegro
+            "allegro-mini", "jm12", "ad1" -> {
+                val kt = if (p.dac == "jm12") jm12 else if (p.dac == "ad1") ad1 else allegro
                 val rp = port(KtMicroCodec.REPORT_ID, 11)
                 val session = KtMicroSession(kt, rp)
                 when (command) {
@@ -207,7 +212,7 @@ class ProvenLogReplayTest {
                     else -> fail("command $command is not replayed for the Allegro Mini")
                 }
             }
-            "micro", "echo-a", "trn", "max" -> {
+            "micro", "echo-a", "trn", "max", "space-2" -> {
                 val wp = walkPlayProfile(p)
                 val rp = port(0x4B, 64)
                 val session = WalkPlaySession(wp, rp)

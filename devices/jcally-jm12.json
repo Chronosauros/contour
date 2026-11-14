@@ -55,6 +55,7 @@
     "types": { "PEAK": 0, "LOW_SHELF": 3, "HIGH_SHELF": 4 },
     "heldTypes": {},
     "shelfQScale": 1,
+    "shelfForm": "q",
     "shelfGainDb": [-6, 6],
     "shelfQ": [0.7, 1.0]
   },

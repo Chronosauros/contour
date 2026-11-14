@@ -2,6 +2,7 @@ package io.github.chronosauros.contour.core.native
 
 import io.github.chronosauros.contour.core.FilterType
 import io.github.chronosauros.contour.core.Proven
+import io.github.chronosauros.contour.core.ShelfForm
 import io.github.chronosauros.contour.core.devices.GeneratedDevices
 
 /**
@@ -63,6 +64,8 @@ object MoondropCatalog {
         val minQ: Double, val maxQ: Double,
         /** The register Q of a shelf over the intended Q (record `peq.shelfQScale`); 1.0 = the register is the Q. Peaks and pass filters play the register as Q. */
         val shelfQScale: Double,
+        /** How the DAC builds a shelf (record `peq.shelfForm`): the Dawn Pro 2 plays the registers (Q). */
+        val shelfForm: ShelfForm,
         val minFrequencyHz: Double, val maxFrequencyHz: Double,
         /** Pre-gain (0x23) range in dB, and the global gain (0x03) range. */
         val preGainMinDb: Double, val preGainMaxDb: Double,
@@ -79,7 +82,7 @@ object MoondropCatalog {
     }
 
     val dawnPro2 = Model(dawn.productName, setOf(dawn.productId), dawn.bands, dawn.reportId, dawn.writableIndex, dawn.writableIndexes,
-        dawn.gainMinDb, dawn.gainMaxDb, dawn.qMin, dawn.qMax, dawn.shelfQScale, dawn.freqMinHz, dawn.freqMaxHz,
+        dawn.gainMinDb, dawn.gainMaxDb, dawn.qMin, dawn.qMax, dawn.shelfQScale, dawn.shelfForm, dawn.freqMinHz, dawn.freqMaxHz,
         dawn.preGainMinDb, dawn.preGainMaxDb, dawn.globalGainMinDb, dawn.globalGainMaxDb, dawn.reportBytes, hardwareVerified = true)
     val models = listOf(dawnPro2)
 

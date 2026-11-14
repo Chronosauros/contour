@@ -32,6 +32,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import io.github.chronosauros.contour.core.Band
 import io.github.chronosauros.contour.core.Dsp
+import io.github.chronosauros.contour.core.ShelfForm
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
 import io.github.chronosauros.contour.usb.DeviceController
 import io.github.chronosauros.contour.usb.Link
@@ -123,10 +124,10 @@ fun AppButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, 
     }
 }
 
-/** A small real-response thumbnail of [bands] (enabled bands, -12..+12 dB). */
+/** A small real-response thumbnail of [bands] (enabled bands, -12..+12 dB), shelves drawn in [form] (the attached DAC's, [ShelfForm]); the key of the remembered curve holds both, so another DAC redraws it. */
 @Composable
-fun ResponseThumb(bands: List<Band>, color: Color, modifier: Modifier = Modifier) {
-    val db = remember(bands) { runCatching { Dsp.responseDb(bands, THUMB_GRID) }.getOrNull() }
+fun ResponseThumb(bands: List<Band>, form: ShelfForm, color: Color, modifier: Modifier = Modifier) {
+    val db = remember(bands, form) { runCatching { Dsp.responseDb(bands, form, THUMB_GRID) }.getOrNull() }
     Canvas(modifier) {
         if (db == null) return@Canvas // Invalid response must never be drawn as a flat or NaN curve.
         val h = size.height

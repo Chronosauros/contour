@@ -20,7 +20,10 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
     // stable build: owner decision 14.10.2026, pass filters reach stable only with branch wip/pass-filters after the
     // UMC202HD measurement. The record holds them in `peq.heldTypes`; the plain RBJ low-pass and high-pass biquads are in WalkPlay.scaledCoefficients
     // (the Micro and the Echo-A send them through the same band frame), and a review build offers them through [ProtocolTrn.PASS_FILTERS_VERIFIED] and [Proven].
-    TRN(GeneratedDevices.TRN_BLACK_PEARL);
+    TRN(GeneratedDevices.TRN_BLACK_PEARL),
+    // The Tanchjim Space II (WalkPlay SchemeNo16, found by its USB name): the Protocol Max's code and write sequence with its own record (shelf Q = register, measured), proven on a unit from the Mac and a phone
+    // (13.11.2026; [WalkPlayProfiles.space2]).
+    SPACE_2(GeneratedDevices.TANCHJIM_SPACE_II);
 
     /** The record's caps; the Micro's, the TRN's and the Max's follow their verification flags ([ProtocolMicro.PASS_FILTERS_VERIFIED], [ProtocolTrn.PASS_FILTERS_VERIFIED], [ProtocolMax.CANDIDATES_VERIFIED]). */
     val caps: DeviceCapabilities get() = when {
@@ -45,7 +48,7 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
         ProtocolMicro.devicePreamp(bands, preampDb)
     } else {
         require(preampDb == null || preampDb.isFinite())
-        (if (preampDb == null) Preamp.auto(bands) else kotlin.math.floor(preampDb + 1e-6).toInt())
+        (if (preampDb == null) Preamp.auto(bands, caps.shelfForm) else kotlin.math.floor(preampDb + 1e-6).toInt())
             .coerceIn(preampMin, preampMax)
     }
 
@@ -93,7 +96,7 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
     /** AUTO's refusal for [bands] (the preamp it needs is below the floor), or null when AUTO fits or has no response. */
     fun autoRefusal(bands: List<Band>): String? {
         if (this == MICRO) return ProtocolMicro.autoRefusal(bands)
-        val needed = runCatching { Preamp.auto(bands.filter { it.enabled }) }.getOrNull() ?: return null
+        val needed = runCatching { Preamp.auto(bands.filter { it.enabled }, caps.shelfForm) }.getOrNull() ?: return null
         return if (needed < preampMin) SendBlocked.auto(needed, preampMin) else null
     }
 
@@ -157,7 +160,7 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
             if (blocked.isNotEmpty()) return@runCatching DevicePlan.Rejected(blocked)
             // AUTO that needs more than the device takes is refused with the number, not sent as -30.
             if (preampDb == null) {
-                val needed = Preamp.auto(active)
+                val needed = Preamp.auto(active, caps.shelfForm)
                 if (needed < preampMin) return@runCatching DevicePlan.Rejected(listOf(SendBlocked.auto(needed, preampMin)))
             }
             DevicePlan.Ready(writes, devicePreamp(active, preampDb))
@@ -275,7 +278,7 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
         // not checked. A tester's Black Pearl on firmware 0.5 (09.11.2026) answered `80 03 02 32 01`, and with the 0x32 every
         // read and every send stopped at "Invalid preamp header". The TRN fills that position with stale bytes in its settings
         // replies too (research/trn-settings-walkplay-2026-10-27/FINDINGS.md). The Max keeps the strict header (no unit to test).
-        if (this != TRN) require(buf[3].toInt() == 2 && buf[4].toInt() == 0) { "Invalid preamp header" }
+        if (this != TRN && this != SPACE_2) require(buf[3].toInt() == 2 && buf[4].toInt() == 0) { "Invalid preamp header" }
         return WalkPlay.parsePreamp(buf)
     }
 

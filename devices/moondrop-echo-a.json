@@ -42,6 +42,7 @@
     "types": { "PEAK": 2, "LOW_SHELF": 1, "HIGH_SHELF": 1, "LOW_PASS": 4, "HIGH_PASS": 5 },
     "heldTypes": "unknown",
     "shelfQScale": "unknown",
+    "shelfForm": "slope",
     "coefficientRateHz": 93750,
     "emulation": "micro-hs-as-ls"
   },

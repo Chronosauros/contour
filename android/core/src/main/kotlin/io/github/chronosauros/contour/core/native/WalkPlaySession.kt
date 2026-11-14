@@ -58,12 +58,14 @@ object WalkPlayProfiles {
      */
     const val ECHO_A_HARDWARE_VERIFIED = true
 
-    private fun stable(id: String, protocol: DeviceProtocol) = protocol.data.let { d ->
-        WalkPlayProfile(id, d.name, d.vendorId, d.productId, protocol, d.types, d.schemeNo, true, usbName = d.usbName)
+    private fun stable(id: String, protocol: DeviceProtocol, hardwareVerified: Boolean = true) = protocol.data.let { d ->
+        WalkPlayProfile(id, d.name, d.vendorId, d.productId, protocol, d.types, d.schemeNo, hardwareVerified, usbName = d.usbName)
     }
     val micro = stable("micro", DeviceProtocol.MICRO)
     val max = stable("max", DeviceProtocol.MAX)
     val trn = stable("trn", DeviceProtocol.TRN)
+    /** The Tanchjim Space II: written and read back on a unit from the Mac (runs 2026-11-13-tanchjim-space-ii-01-mac to -04-mac-max) and from a phone (edge profile VERIFIED, a replug kept it, 13.11.2026), so it writes in every build. */
+    val space2 = stable("space-2", DeviceProtocol.SPACE_2)
     val echoA = GeneratedDevices.MOONDROP_ECHO_A.let { d ->
         // The Echo-A runs the Protocol Micro's code, so its record has to agree with that protocol on what the code takes from it.
         require(d.bands == DeviceProtocol.MICRO.caps.bands && d.schemeNo == DeviceProtocol.MICRO.data.schemeNo && d.reportId == WalkPlay.REPORT_ID) {
@@ -72,10 +74,10 @@ object WalkPlayProfiles {
         // The record gives bands, gain, Q and types; its frequency range is still "unknown" there (PendingRecords), and the preamp policy is the Micro's.
         val caps = DeviceCapabilities(d.name, d.vendorId, d.productId, d.bands, d.gainMinDb, d.gainMaxDb, d.qMin, d.qMax,
             PendingRecords.ECHO_A_FREQ_HZ.start, PendingRecords.ECHO_A_FREQ_HZ.endInclusive, d.types, DeviceProtocol.MICRO.caps.preampWholeDb,
-            coefficientRateHz = d.coefficientRateHz)
+            shelfForm = d.shelfForm, coefficientRateHz = d.coefficientRateHz)
         WalkPlayProfile("echo-a", d.name, d.vendorId, d.productId, DeviceProtocol.MICRO, d.types, d.schemeNo, ECHO_A_HARDWARE_VERIFIED, usbName = d.usbName, capsOverride = caps)
     }
-    val all = listOf(micro, max, trn, echoA)
+    val all = listOf(micro, max, trn, echoA, space2)
 
     fun find(vendorId: Int, productId: Int): WalkPlayProfile? = all.singleOrNull { it.vendorId == vendorId && it.productId == productId }
 
@@ -84,6 +86,7 @@ object WalkPlayProfiles {
         DeviceProtocol.MICRO -> micro
         DeviceProtocol.MAX -> max
         DeviceProtocol.TRN -> trn
+        DeviceProtocol.SPACE_2 -> space2
     }
 }
 

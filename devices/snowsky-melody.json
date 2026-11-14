@@ -23,7 +23,7 @@
       "FiiO Control in the background holds the HID interface; Contour cannot connect while it runs (dac-lab:devices/snowsky-melody.md)",
       "FiiO Control config lists a coaxial switch for the Melody that is a template copy (no coaxial jack); left out (scope-fiio.md:168,236-239)",
       "gain -12..12 is the code's and FiiO Control's range, the FiiO web app lists -24..12 (kept until a capture shows the DAC keeps -13 dB); Q 0.1-10 is the code's range, the vendor apps list 0.25-8",
-      "preamp register offset is 0 until measured: the KA15 plays USER presets 12 dB down, the Melody was not swept"
+      "USER presets play 12 dB below Close EQ (slot 240), the KA15's and the JA11's law, so the preamp register holds the intended preamp + 12 dB (register offset 12 dB, measured 13.11.2026, run 2026-11-13-snowsky-melody-09-mac-eqoff: a flat USER1 with register 0 plays -12.00 dB against Close EQ, start and end, the two Close EQ sweeps agree within 0.0002 dB)"
     ]
   },
   "family": "fiio",
@@ -46,10 +46,11 @@
     "types": { "PEAK": 0, "LOW_SHELF": 1, "HIGH_SHELF": 2 },
     "heldTypes": { "BAND_PASS": 3, "LOW_PASS": 4, "HIGH_PASS": 5, "ALL_PASS": 6 },
     "shelfQScale": "sqrt2",
+    "shelfForm": "q",
     "peakQScale": 1.0,
     "emulation": null
   },
-  "preamp": { "present": true, "db": [-12, 12], "step": 0.1, "wholeDb": true, "registerOffsetDb": 0 },
+  "preamp": { "present": true, "db": [-24, 0], "step": 0.1, "wholeDb": true, "registerOffsetDb": 12 },
   "slots": {
     "user": [160, 161, 162],
     "declaredWritable": [160, 161, 162],
@@ -95,11 +96,11 @@
     "date": "2026-10-25",
     "firmware": "bcdDevice 1.20 (FW 1.2.0)",
     "contour": null,
-    "rangesAccepted": { "result": "pass", "note": "Ten bands (a shorter count reads back as 10), USER1-3, PK, LS, HS and the four pass types written and read back on the PC and on phones; preamp -12, 0 and +12 dB hold. The DAC keeps whole dB only (-11.9 dB is written as -119 and reads back -11.0), so the plan rounds the preamp down to a whole dB." },
-    "acoustic": { "result": "partial", "note": "PK within 0.083 dB with the register as Q (6 of 6); shelves within 0.075 dB with shelf Q = register / sqrt2 (12 of 12 cases fit). LP, HP, BP and AP and the preamp level were not measured." },
+    "rangesAccepted": { "result": "pass", "note": "Ten bands (a shorter count reads back as 10), USER1-3, PK, LS, HS and the four pass types written and read back on the PC and on phones; preamp register -12, 0 and +12 dB hold (intended -24, -12 and 0 dB with the register offset 12). The DAC keeps whole dB only (-11.9 dB is written as -119 and reads back -11.0), so the plan rounds the preamp down to a whole dB." },
+    "acoustic": { "result": "partial", "note": "PK within 0.083 dB with the register as Q (6 of 6); shelves within 0.075 dB with shelf Q = register / sqrt2 (12 of 12 cases fit). Shelves at Q 3 and 2 (LS 100 Hz +6 dB, HS 6 kHz +6 dB) play the Q form within 0.084 dB and the preamp follows the register 1:1 (run 2026-11-13-snowsky-melody-09-mac-eqoff); a flat USER1 with register 0 plays 12.00 dB below Close EQ, hence the register offset 12. LP, HP, BP and AP were not measured." },
     "persistence": { "result": "not-run", "note": "Only a slot switch and back was checked (USER1 restored bit for bit); a power cycle after a save was not tested." },
     "settings": { "result": "pass", "note": "Volume, volume steps, balance, filter, gain, output, DRE, mic, light and buttons written, read back and restored on a Pixel (the filter echo comes after about 340 ms); the USB audio row is never written. The coaxial switch in FiiO Control is a template copy (no coaxial jack) and is left out." },
     "beyondVendor": "FiiO Control and the FiiO web app list all seven filter types for the Melody; the web app was never captured on a Melody. Contour offers the four pass types since 2026-10-25 (written and read back from a phone). Contour offers FACTORY RESET with a saved copy first (proven on the PC and a phone 2026-10-22: one 0x21 frame, replug, saved copy written back).",
-    "runs": ["run:2026-10-22-snowsky-melody-01-phone", "run:2026-10-22-snowsky-melody-02", "run:2026-10-22-snowsky-melody-03", "run:2026-10-24-snowsky-melody-05-mac-eqtest", "run:2026-10-25-snowsky-melody-phone-nothing"]
+    "runs": ["run:2026-10-22-snowsky-melody-01-phone", "run:2026-10-22-snowsky-melody-02", "run:2026-10-22-snowsky-melody-03", "run:2026-10-24-snowsky-melody-05-mac-eqtest", "run:2026-10-25-snowsky-melody-phone-nothing", "run:2026-11-13-snowsky-melody-09-mac-eqoff"]
   }
 }

@@ -23,7 +23,7 @@
       "reading an inactive USER slot is not possible: the slot byte of a band query is ignored; Contour scans the USER slots by selecting them (research/snowsky-names-types-2026-10-14/FINDINGS.md:34-39)",
       "FiiO Control config has no filter, DRE or gain item for the Tiny A (scope-fiio.md:193-194,207)",
       "Q 0.1-10 is the code's range; FiiO Control and the FiiO web app list 0.25-8 (kept as is)",
-      "preamp register offset is 0 until measured: the KA15 plays USER presets 12 dB down, the Tiny A was not swept"
+      "preamp register offset 0, measured 13.11.2026 (run 2026-11-13-snowsky-tiny-a-08-mac-eqoff, -24 dBFS): a flat USER1 with register 0 plays +0.004 dB against Close EQ (slot 240), the two Close EQ sweeps agree within 0.0008 dB; unlike the Melody and the JA11, USER presets play at the Close EQ level"
     ]
   },
   "family": "fiio",
@@ -46,6 +46,7 @@
     "types": { "PEAK": 0, "LOW_SHELF": 1, "HIGH_SHELF": 2, "BAND_PASS": 3, "LOW_PASS": 4, "HIGH_PASS": 5, "ALL_PASS": 6 },
     "heldTypes": {},
     "shelfQScale": "sqrt2",
+    "shelfForm": "q",
     "peakQScale": 1.0,
     "emulation": null
   },
@@ -95,6 +96,6 @@
     "persistence": { "result": "not-run", "note": "Only a slot switch and back and two cold plugs were checked; a power cycle after a save was not tested." },
     "settings": { "result": "pass", "note": "Volume, volume steps, balance, mic and light written, read back and restored on a Pixel; the USB audio row is never written. FiiO Control has no filter, DRE or gain item for the Tiny A." },
     "beyondVendor": "The FiiO web app wrote PK, LS, HS, BP, LP, HP and AP on the Tiny A and every write echoed; Contour offers all seven (devicePEQ lists five bands, the unit has ten). Names of up to 8 characters (A-Z, 0-9) work as in the web app.",
-    "runs": ["run:2026-10-22-snowsky-tiny-a-01-phone", "run:2026-10-22-snowsky-tiny-a-02", "run:2026-10-24-snowsky-tiny-a-05-mac-eqtest"]
+    "runs": ["run:2026-10-22-snowsky-tiny-a-01-phone", "run:2026-10-22-snowsky-tiny-a-02", "run:2026-10-24-snowsky-tiny-a-05-mac-eqtest", "run:2026-11-13-snowsky-tiny-a-08-mac-eqoff"]
   }
 }

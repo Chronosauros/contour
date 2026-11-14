@@ -2,6 +2,7 @@ package io.github.chronosauros.contour.core.native
 
 import io.github.chronosauros.contour.core.DeviceCapabilities
 import io.github.chronosauros.contour.core.FilterType
+import io.github.chronosauros.contour.core.ShelfForm
 import io.github.chronosauros.contour.core.ShelfLimits
 import io.github.chronosauros.contour.core.devices.GeneratedDevices
 import io.github.chronosauros.contour.core.devices.KtMicroData
@@ -25,6 +26,7 @@ import io.github.chronosauros.contour.core.devices.UsbIdentity
 object KtMicroCatalog {
     private val allegroData = GeneratedDevices.KIWI_EARS_ALLEGRO_MINI
     private val jm12Data = GeneratedDevices.JCALLY_JM12
+    private val ad1Data = GeneratedDevices.KIWI_EARS_AD1
     const val VENDOR_ID = GeneratedDevices.KIWI_EARS_ALLEGRO_MINI_VENDOR_ID
     data class RegisterPair(val gainFrequency: Int, val qType: Int)
     data class RegisterMap(val name: String, val bands: List<RegisterPair>, val enableRegister: Int,
@@ -54,6 +56,8 @@ object KtMicroCatalog {
         val maxQ: Double get() = data.qMax
         /** The register Q of a shelf is the intended Q times this (record `peq.shelfQScale`); 1.0 where the record offers no shelf. */
         val shelfQScale: Double get() = data.shelfQScale
+        /** How the DAC builds a shelf (record `peq.shelfForm`): the JM12 builds it from its registers (Q); the Allegro Mini offers none and uses the slope form. */
+        val shelfForm: ShelfForm get() = data.shelfForm
         /** The rate the DSP designs its biquads for (record `peq.designRateHz`), and the stream rate Contour assumes (record `peq.assumedStreamHz`). */
         val designRateHz: Double get() = data.designRateHz
         val assumedStreamHz: Double get() = data.assumedStreamHz
@@ -75,7 +79,7 @@ object KtMicroCatalog {
         /** The gain a band of [type] may have (the model's, narrowed for a shelf by [shelfLimits]) and its intended Q range (the register range divided by the type's Q scale, narrowed the same way). */
         fun gainRange(type: FilterType): ClosedFloatingPointRange<Double> = caps().gainRange(type)
         fun qRange(type: FilterType): ClosedFloatingPointRange<Double> = caps().qRange(type)
-        private fun caps() = DeviceCapabilities(name, 0, 0, bandCount, minGainDb, maxGainDb, minQ, maxQ, minFrequencyHz, maxFrequencyHz, nativeTypes, false, shelfQScale = shelfQScale, shelfLimits = shelfLimits)
+        private fun caps() = DeviceCapabilities(name, 0, 0, bandCount, minGainDb, maxGainDb, minQ, maxQ, minFrequencyHz, maxFrequencyHz, nativeTypes, false, shelfForm = shelfForm, shelfQScale = shelfQScale, shelfLimits = shelfLimits)
         /** The vendor software offers a reset (CLEAR 0x43) for this model: false = Contour never builds that frame for it. */
         val resetOffered: Boolean get() = data.resetOffered
         /** Bytes 1-3 of register 0x24 are device status, not setting: a switch write sends `[eq, 0, 0, 0]` and verification compares byte 0 only (JM12). False: echoed and compared whole (Allegro Mini). */
@@ -85,6 +89,7 @@ object KtMicroCatalog {
     private val usbByRecord: List<Pair<UsbIdentity, KtMicroData>> = listOf(
         GeneratedDevices.KIWI_EARS_ALLEGRO_MINI_USB to allegroData,
         GeneratedDevices.JCALLY_JM12_USB to jm12Data,
+        GeneratedDevices.KIWI_EARS_AD1_USB to ad1Data,
     )
 
     /** Band i: gain-and-frequency register `base + 2 i`, Q-and-type register `base + 2 i + 1` (the record's `driver.bandRegisters`). */
@@ -92,6 +97,8 @@ object KtMicroCatalog {
         RegisterMap(chip, List(d.bands) { RegisterPair(d.bandRegisterBase + 2 * it, d.bandRegisterBase + 2 * it + 1) }, d.enableRegister, d.writeAck, d.digitalGainRegister)
     val kt0211 = registerMap("KT_0211L", allegroData)
     val kt02h20 = registerMap("KT02H20", jm12Data)
+    /** The Kiwi Ears AD1 answered the register reads like the JM12 (13.11.2026); its chip is not named, so its map carries the model name. */
+    val ad1Map = registerMap("AD1", ad1Data)
 
     private fun modelsOf(d: KtMicroData, map: RegisterMap, verified: Boolean): List<Model> =
         (listOf(d.productName) + d.nameAliases).map { Model(it, setOf(d.productId), map, d.reconnectAfterSave ?: PendingRecords.ALLEGRO_RECONNECT_AFTER_SAVE, hardwareVerified = verified) }
@@ -105,10 +112,16 @@ object KtMicroCatalog {
      */
     val jm12Models: List<Model> = modelsOf(jm12Data, kt02h20, verified = true)
 
-    /** Every KT model of every record: what a plan, a switch write or a reset restore must be for. */
-    val allModels: List<Model> = models + jm12Models
+    /**
+     * The Kiwi Ears AD1 (3302:20E3, found by its USB name). Verified on the owner's unit: the perf app on a Nothing A065 wrote a five-band edge profile (within the record's narrowed limits), the SAVE re-enumerated
+     * the unit and the read after the reconnect was VERIFIED, a replug kept the profile and EQ ON, and the EQ switch OFF was VERIFIED from the DAC page (phone check 13.11.2026; Mac runs 2026-11-13-kiwi-ears-ad1-01-mac to -03-mac-max).
+     */
+    val ad1Models: List<Model> = modelsOf(ad1Data, ad1Map, verified = true)
 
-    private val dataByProductName: Map<String, KtMicroData> = listOf(allegroData, jm12Data).flatMap { d -> (listOf(d.productName) + d.nameAliases).map { it to d } }.toMap()
+    /** Every KT model of every record: what a plan, a switch write or a reset restore must be for. */
+    val allModels: List<Model> = models + jm12Models + ad1Models
+
+    private val dataByProductName: Map<String, KtMicroData> = listOf(allegroData, jm12Data, ad1Data).flatMap { d -> (listOf(d.productName) + d.nameAliases).map { it to d } }.toMap()
         .also { require(it.size == allModels.size) { "two KT models share a USB product name" } }
 
     /** Exact VID, exact PID and the literal USB product name across all KT models; no VID-only or fuzzy-name route: the records' `usb` identities, name match included. */

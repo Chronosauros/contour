@@ -72,10 +72,10 @@ class NativeFiioTest {
             assertEquals(d.getValue("productName").jsonPrimitive.content, c.productName)
         }
     }
-    @Test fun `stable catalog is exactly the KA15, K13 R2R, Melody, Tiny A and JA11 rules not a VID fallback`() {
+    @Test fun `stable catalog is exactly the KA15, K13 R2R, Melody, Tiny A, JA11, RETRO NANO and JIEZI rules not a VID fallback`() {
         val oracle = json("catalog-oracle.json").jsonArray
         // The oracle holds the upstream rows of the KA15 and K13 R2R; Melody and Tiny A are measured on hardware (see FiioCatalog).
-        assertEquals(5, FiioCatalog.rules.size) // the JA11 is the fifth: found by its USB name, not in the oracle
+        assertEquals(7, FiioCatalog.rules.size) // the JA11, the RETRO NANO and the JIEZI come after the Tiny A: found by their USB names, not in the oracle
         assertEquals(oracle.map { it.jsonObject.getValue("productName").jsonPrimitive.content }.toSet(), FiioCatalog.rules.take(2).map { it.productName }.toSet())
         for (row in oracle) {
             val r = row.jsonObject
@@ -156,7 +156,7 @@ class NativeFiioTest {
         assertEquals(listOf(FiioCodec.PREAMP, FiioCodec.COUNT) + List(5) { FiioCodec.BAND }, p.writes.map { it.bytes[4] })
         assertEquals(listOf(0xAA, 0x0A, 0, 0, 0x19, 1, 3, 0, 0xEE), p.save.bytes)
         assertEquals(FiioSaveVerification.RECONNECT_AND_READ_REQUIRED, p.saveVerification)
-        assertEquals(200, c.config.writeGapMs); assertEquals(0, p.expected.preampTenths) // preamp register offset 0 until measured
+        assertEquals(200, c.config.writeGapMs); assertEquals(120, p.expected.preampTenths); assertEquals(12.0, c.config.preampOffsetDb) // USER1 plays 12 dB below Close EQ: register = intended preamp + 12 dB (measured 13.11.2026)
         for (slot in listOf(0, 1, 2, 4)) assertFailsWith<IllegalArgumentException>("slot $slot") { plan(c, slot = slot) }
         // never built for this unit: 0x1A, 0x21, 0x30 (and report 0x54 is no FiiO frame at all)
         val all = p.writes + p.selection + p.save + p.backupQueries + p.verificationQueries
@@ -310,7 +310,7 @@ class NativeFiioTest {
     }
     @Test fun `a written USER name is the full NUL padded field on every FiiO with slot names, so a 5 letter name reads back as written`() {
         val named = FiioCatalog.rules.filter { it.userSlotNames }
-        assertEquals(setOf(FiioCatalog.KA15.productName, FiioCatalog.MELODY.productName, FiioCatalog.TINY_A.productName), named.map { it.productName }.toSet()) // the K13 has a slot picker, no names
+        assertEquals(setOf(FiioCatalog.KA15.productName, FiioCatalog.MELODY.productName, FiioCatalog.TINY_A.productName, FiioCatalog.JIEZI.productName), named.map { it.productName }.toSet()) // the K13 and the RETRO NANO have a slot picker, no names on the DAC
         for (config in named) {
             val c = FiioCodec(config)
             val slot = config.userSlots.min()
@@ -399,11 +399,13 @@ class NativeFiioTest {
         assertEquals(kotlin.math.sqrt(2.0), c.config.shelfQScale)
         assertEquals(12.0, c.config.preampOffsetDb)
         assertFalse(c.config.shelfAlphaCompensation)
-        // Only the KA15 carries the preamp offset; the shelf Q scale is the KA15's, the Melody's and the Tiny A's (acoustic runs 20.10 and 24.10.2026), the peak Q scale the K13 R2R's (25.10.2026).
-        val shelfScaled = setOf("FIIO KA15", "SNOWSKY Melody", "SNOWSKY TINY A")
+        // Only the KA15, the JA11 and the Melody carry the preamp offset (the Tiny A and the K13 R2R measured 0 on 13.11.2026); the shelf Q scale is the KA15's, the Melody's and the Tiny A's (acoustic runs 20.10 and 24.10.2026; the JIEZI takes the Tiny A's, offset 0 included, until step 2; the RETRO NANO measured offset 0 and shelf Q = register), the peak Q scale the K13 R2R's (25.10.2026).
+        val shelfScaled = setOf("FIIO KA15", "SNOWSKY Melody", "SNOWSKY TINY A", "JadeAudio JIEZI") // the JIEZI: the Tiny A's scale as a starting assumption, to be measured at step 2; the RETRO NANO measured Q = register (13.11.2026)
         assertTrue(FiioCatalog.rules.all { (it.shelfQScale == kotlin.math.sqrt(2.0)) == (it.productName in shelfScaled) && (it.shelfQScale == 1.0) == (it.productName !in shelfScaled) })
         assertTrue(FiioCatalog.rules.all { (it.peakQScale == kotlin.math.sqrt(2.0)) == (it.productName == "FIIO K13 R2R") && (it.peakQScale == 1.0) == (it.productName != "FIIO K13 R2R") })
-        assertTrue(FiioCatalog.rules.filter { it.productName != "FIIO KA15" }.all { it.preampOffsetDb == 0.0 })
+        assertTrue(FiioCatalog.rules.filter { it.productName != "FIIO KA15" && it.productName != "JadeAudio JA11" && it.productName != "SNOWSKY Melody" }.all { it.preampOffsetDb == 0.0 })
+        assertEquals(12.0, FiioCatalog.rules.single { it.productName == "JadeAudio JA11" }.preampOffsetDb) // the JA11 plays USER presets 12 dB below Close EQ like the KA15 (13.11.2026)
+        assertEquals(12.0, FiioCatalog.rules.single { it.productName == "SNOWSKY Melody" }.preampOffsetDb) // the Melody plays USER presets 12 dB below Close EQ like the KA15 and the JA11 (13.11.2026)
         val neutral = FiioCodec(c.config.copy(shelfQScale = 1.0, preampOffsetDb = 0.0))
         assertEquals(71, plan(neutral, listOf(peak().copy(type = FilterType.LOW_SHELF)), 0.0).expected.bands.single().qHundredths)
         for (bad in listOf(c.config.copy(shelfAlphaCompensation = true), c.config.copy(shelfQScale = 0.0),
@@ -609,5 +611,22 @@ class NativeFiioTest {
         assertEquals(4, t.issues(profile(listOf(zero, zero.copy(id = "b10")))).size)
         // the KA15 gets the same precise wording; WalkPlay targets keep their own issue lists
         assertEquals("BAND 1: GAIN 13 DB - EDIT BAND", DeviceTarget.blockLabel(DeviceTarget.KA15.issues(profile(listOf(peak().copy(gainDb = 13.0))))))
+    }
+
+    /** LS 100 Hz +6 dB Q 3 peaks at +11.09 dB in the Q form the FiiO DACs play (+7.16 dB in the slope form): AUTO is -12 dB, and the register is that plus the DAC's own preamp offset. */
+    @Test fun `FiiO AUTO uses the Q form the DAC plays - K13 R2R (offset 0) writes register minus 12, KA15 and JA11 (offset 12) write register 0`() {
+        val p = Profile("p", "p", bands = listOf(Band("ls", FilterType.LOW_SHELF, 100.0, 6.0, 3.0)), preampDb = null, createdAt = 0, updatedAt = 0)
+        for ((target, name, tenths) in listOf(Triple(DeviceTarget.K13, "FIIO K13 R2R", -120), Triple(DeviceTarget.KA15, "FIIO KA15", 0), Triple(DeviceTarget.FIIO_JA11, "JadeAudio JA11", 0))) {
+            val c = codec(name)
+            assertEquals(ShelfForm.Q, c.config.shelfForm, name)
+            assertEquals(-12.0, p.effectivePreampDb(c.config.shelfForm), name)
+            assertEquals(-12.0, target.shownPreamp(p), name)
+            assertEquals(emptyList(), target.issues(p), name)
+            val planned = c.planOnExplicitSend(p.copy(bands = c.padToDeviceCount(p.bands), preampDb = p.effectivePreampDb(c.config.shelfForm)), c.config.userSlots.first(), true)
+            assertEquals(tenths, planned.expected.preampTenths, name)
+            // the band registers are the same whatever the AUTO value is
+            val manual = c.planOnExplicitSend(p.copy(bands = c.padToDeviceCount(p.bands), preampDb = -7.0), c.config.userSlots.first(), true)
+            assertEquals(manual.expected.bands, planned.expected.bands, name)
+        }
     }
 }

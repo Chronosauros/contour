@@ -132,7 +132,7 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit, onSaveTxt: (profi
     // what an emptied field falls back to: the name the sheet opened with, not the last letter left on the way to empty ("Bass" cleared ended as "B")
     val openedName = remember(id) { p.name }
     var sub by remember(id) { mutableStateOf(p.subtitle) }
-    val sharePreamp = runCatching { p.effectivePreampDb() }.getOrNull()
+    val sharePreamp = runCatching { p.effectivePreampDb(model.protocol.shelfForm) }.getOrNull()
     SheetFrame(onDone) {
         SheetTitle("EDIT PROFILE")
         OutlinedTextField(
@@ -181,7 +181,7 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit, onSaveTxt: (profi
                 "SHARE",
                 onClick = {
                     val cur = model.byId(id) ?: return@AppButton
-                    val text = runCatching { ApoText.formatProfile(cur) }.getOrNull() ?: return@AppButton
+                    val text = runCatching { ApoText.formatProfile(cur, model.protocol.shelfForm) }.getOrNull() ?: return@AppButton
                     val send = Intent(Intent.ACTION_SEND).setType("text/plain")
                         .putExtra(Intent.EXTRA_SUBJECT, cur.name)
                         .putExtra(Intent.EXTRA_TEXT, text)

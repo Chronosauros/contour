@@ -49,7 +49,7 @@ sealed interface FamilyState {
         val bankNotice: String? get() = if (onWritableBank) null
             else "The DAC is on EQ index ${snapshot.activeIndex}, one of its own presets. Switch the DAC to its PEQ mode (EQ index ${model.writableIndexes.sorted().joinToString(" or ")}): HOLD TO SEND writes the EQ the DAC is on."
 
-        private fun planned(profile: Profile) = MoondropCodec.planFor(model, profile.bands, profile.effectivePreampDb())
+        private fun planned(profile: Profile) = MoondropCodec.planFor(model, profile.bands, profile.effectivePreampDb(model.shelfForm))
         override fun holds(profile: Profile): Boolean = runCatching {
             onWritableBank && planned(profile).let { p ->
                 p.issues.isEmpty() && p.bands.all { e -> snapshot.bands.singleOrNull { it.index == e.index }?.let { sameSound(e, it) } == true }
@@ -59,7 +59,7 @@ sealed interface FamilyState {
         override fun matches(profile: Profile): Boolean = runCatching {
             onWritableBank && planned(profile).let { p ->
                 p.issues.isEmpty() && MoondropCodec.matches(p.bands, snapshot.activeIndex, snapshot.bands).isEmpty() &&
-                    snapshot.preGain?.rawQ8 == preGainQ8(profile.effectivePreampDb())
+                    snapshot.preGain?.rawQ8 == preGainQ8(profile.effectivePreampDb(model.shelfForm))
             }
         }.getOrDefault(false)
 

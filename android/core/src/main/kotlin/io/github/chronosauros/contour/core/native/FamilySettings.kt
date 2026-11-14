@@ -72,6 +72,9 @@ object FamilySettings {
      */
     private val jm12 = listOf(ktSwitch(writeVerified = true), ktGlobalGain(KtMicroCatalog.jm12Models.first(), writeVerified = true))
 
+    /** The Kiwi Ears AD1: the JM12's two rows, both writes on. The Global Gain was written 13 -> 12 -> 13, saved, read back after the reconnect and restored on the unit (run 2026-11-13-kiwi-ears-ad1-01-mac T14); the EQ switch OFF was written from the DAC page on a phone and read back VERIFIED (phone check 13.11.2026). */
+    private val ad1 = listOf(ktSwitch(writeVerified = true), ktGlobalGain(KtMicroCatalog.ad1Models.first(), writeVerified = true))
+
     /**
      * The preset row of a Moondrop gen-1 cable: the Custom EQ and the firmware presets of the record (`slots.labels`), when the record offers the stock picker (`slots.stockPicker`). Choosing one selects it
      * (`5a 00 [5a, idx]`, the commit `dc 00 [ff]`) and reads the index back ([MoondropGen1Session.selectPreset]); a send always goes to the Custom EQ and leaves the cable on it. The row's write is
@@ -90,6 +93,7 @@ object FamilySettings {
         target.ktMicro != null -> when {
             target.ktMicro.globalGainUserSteps == null -> ktSwitchOnly
             target.ktMicro in KtMicroCatalog.jm12Models -> jm12
+            target.ktMicro in KtMicroCatalog.ad1Models -> ad1
             else -> allegro
         }
         else -> emptyList()

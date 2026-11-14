@@ -146,7 +146,14 @@ class HidTransport private constructor(
                         }
                         val outSize = shape.rawSize(reportId, NativeHidReports.Kind.OUTPUT)
                         val inSize = shape.rawSize(reportId, NativeHidReports.Kind.INPUT)
-                        val input = eps.filter { it.direction == UsbConstants.USB_DIR_IN && it.maxPacketSize >= inSize }.singleOrNull()
+                        val ins = eps.filter { it.direction == UsbConstants.USB_DIR_IN }
+                        // A report bigger than one packet arrives as several packets of one transfer; receive() asks for the
+                        // whole report, so the only IN endpoint still serves it (SnowSky RETRO NANO: report 7 of 66 bytes on a
+                        // 64-byte IN endpoint 0x89 and no OUT endpoint, measured on the phone 13.11.2026).
+                        val input = ins.filter { it.maxPacketSize >= inSize }.singleOrNull()
+                            ?: ins.singleOrNull()?.also {
+                                UsbLog.line("HID if ${h.id} input report $inSize bytes over a ${it.maxPacketSize}-byte IN endpoint (multi-packet)")
+                            }
                             ?: error("No matching native interrupt IN")
                         // Send like the FiiO web app (WebHID writes to the interrupt OUT endpoint when there is one).
                         val out = eps.firstOrNull { it.direction == UsbConstants.USB_DIR_OUT && it.maxPacketSize >= outSize }

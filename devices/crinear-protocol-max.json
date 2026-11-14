@@ -51,6 +51,7 @@
     "types": { "PEAK": 2, "LOW_SHELF": 1, "HIGH_SHELF": 3, "LOW_PASS": 4, "HIGH_PASS": 5 },
     "heldTypes": {},
     "shelfQScale": "sqrt2",
+    "shelfForm": "q",
     "coefficientRateHz": 96000,
     "emulation": null
   },

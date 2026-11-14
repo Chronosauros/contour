@@ -220,7 +220,7 @@ class TextFilesTest {
             band(4, FilterType.PEAK, 8200.5, 0.0, 3.125, on = false),
             band(5, FilterType.PEAK, 20000.0, 12.0, 10.0),
         )
-        for (text in listOf(ApoText.format(bands, -6.1234), ApoText.fileText(Profile("p", "P", bands = bands, createdAt = 0, updatedAt = 0)))) {
+        for (text in listOf(ApoText.format(bands, -6.1234), ApoText.fileText(Profile("p", "P", bands = bands, createdAt = 0, updatedAt = 0), ShelfForm.SLOPE))) {
             val filters = text.lines().filter { it.startsWith("Filter") }
             assertEquals(5, filters.size)
             for (line in filters) {
@@ -235,14 +235,14 @@ class TextFilesTest {
     @Test fun `file text is CRLF and parses back to the same bands`() {
         val bands = listOf(band(1, FilterType.PEAK, 105.0, -3.5, 0.7), band(2, FilterType.HIGH_SHELF, 9000.0, 2.0, 0.71, on = false))
         val p = Profile("p", "P", bands = bands, preampDb = -4.5, createdAt = 0, updatedAt = 0)
-        val file = ApoText.fileText(p)
+        val file = ApoText.fileText(p, ShelfForm.SLOPE)
         assertTrue(file.contains("\r\n"))
         assertFalse(file.replace("\r\n", "").contains('\n'), "no bare LF in the file")
         val back = ApoText.parse(file)
         assertEquals(bands.map { it.copy(id = "") }, back.bands.map { it.copy(id = "") })
         assertEquals(-4.5, back.preampDb)
         // the same text goes to SHARE, with LF
-        assertEquals(ApoText.formatProfile(p), file.replace("\r\n", "\n"))
+        assertEquals(ApoText.formatProfile(p, ShelfForm.SLOPE), file.replace("\r\n", "\n"))
     }
 
     @Test fun `a KA15-targeted profile exports its stored Q and preamp, never the device values`() {
@@ -256,7 +256,7 @@ class TextFilesTest {
         )
         val p = Profile("p", "KA", bands = bands, preampDb = -5.0, createdAt = 0, updatedAt = 0)
         assertEquals(emptyList(), DeviceTarget.KA15.issues(p), "the profile is valid for the KA15")
-        for (text in listOf(ApoText.formatProfile(p), ApoText.fileText(p).replace("\r\n", "\n"))) {
+        for (text in listOf(ApoText.formatProfile(p, DeviceTarget.KA15.shelfForm), ApoText.fileText(p, DeviceTarget.KA15.shelfForm).replace("\r\n", "\n"))) {
             assertEquals(
                 "Preamp: -5.0 dB\n" +
                     "Filter 1: ON LSC Fc 105 Hz Gain 4.0 dB Q 0.70\n" +
@@ -265,9 +265,11 @@ class TextFilesTest {
                 text,
             )
         }
-        // AUTO preamp: the auto value of the user's curve, again without any register offset
+        // AUTO preamp: the auto value of the user's curve in the shelf form the KA15 plays (Q), again without any register offset
         val auto = p.copy(preampDb = null)
-        assertEquals("Preamp: ${"%.1f".format(java.util.Locale.ROOT, Preamp.auto(bands).toDouble())} dB", ApoText.formatProfile(auto).lines().first())
+        val form = DeviceTarget.KA15.shelfForm
+        assertEquals(ShelfForm.Q, form)
+        assertEquals("Preamp: ${"%.1f".format(java.util.Locale.ROOT, Preamp.auto(bands, form).toDouble())} dB", ApoText.formatProfile(auto, form).lines().first())
     }
 
     // ---- file names -------------------------------------------------------------------------------------------------

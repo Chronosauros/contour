@@ -12,6 +12,7 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
 import kotlin.math.abs
 import kotlin.math.roundToInt
+import androidx.compose.foundation.interaction.DragInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Arrangement
@@ -65,6 +66,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -81,6 +83,8 @@ import io.github.chronosauros.contour.model.Sender
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
 import io.github.chronosauros.contour.ui.kit.LocalPagerLock
 import io.github.chronosauros.contour.ui.kit.PagerLock
+import io.github.chronosauros.contour.ui.kit.pressStart
+import io.github.chronosauros.contour.ui.kit.rememberGatedHapticFeedback
 import io.github.chronosauros.contour.ui.kit.rememberHaptics
 import io.github.chronosauros.contour.ui.dac.DacScreen
 import io.github.chronosauros.contour.ui.library.LibraryActions
@@ -147,7 +151,8 @@ fun ContourApp(
     val haptics = rememberHaptics()
     val pagerLock = remember { PagerLock() }
     // LocalContentColor: every Text without an explicit color follows the theme (dark mode drew them black)
-    CompositionLocalProvider(LocalHaptics provides haptics, LocalPagerLock provides pagerLock, LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+    val gatedFeedback = rememberGatedHapticFeedback(haptics)
+    CompositionLocalProvider(LocalHaptics provides haptics, LocalHapticFeedback provides gatedFeedback, LocalPagerLock provides pagerLock, LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
         val context = LocalContext.current
         val prefs = remember { context.getSharedPreferences("ui", Context.MODE_PRIVATE) }
         // DAC | EQ | LIBRARY while the DAC has a settings list, EQ | LIBRARY otherwise. Pages are logical ids ([Page]); the pager keys its
@@ -163,7 +168,7 @@ fun ContourApp(
         var licences by remember { mutableStateOf(false) }
         var confirmSync by remember { mutableStateOf(false) }
         var archiveOpen by remember { mutableStateOf(prefs.getBoolean("archiveOpen", false)) }
-        // The Google Play beta board of the APK builds: decided once per start of the app (not while a shared file waits), kept over a recreated Activity.
+        // The Google Play board of the APK builds: shown once per install (not while a shared file waits; marked shown at once), kept over a recreated Activity.
         var playBeta by rememberSaveable { mutableStateOf<Boolean?>(null) }
         LaunchedEffect(Unit) { if (playBeta == null) playBeta = incoming == null && PlayBeta.takeShowing(context, prefs) }
         val snackbar = remember { SnackbarHostState() }
@@ -185,9 +190,38 @@ fun ContourApp(
                 sender.leaveAb { scope.launch { pagesNow.value.indexOf(p).takeIf { it >= 0 }?.let { pager.animateScrollToPage(it) } } }
             }
         }
+        // Page swipes (owner 14.11.2026, haptics round 5): while a finger drags, the start TICK when the page the pager would settle on moves away from the
+        // settled one and a soft one when it comes back; when the pager settles after a drag or a tap on the bottom bar, the end CLICK of the pair (the same
+        // for every control). By logical page: a DAC page appearing shifts the positions, not the page.
         LaunchedEffect(pager) {
-            // by logical page: a DAC page appearing shifts the positions, not the page
-            snapshotFlow { logicalPage(pager.settledPage) }.drop(1).collect { haptics.step() }
+            var dragging = false
+            launch {
+                pager.interactionSource.interactions.collect { i ->
+                    dragging = when (i) {
+                        is DragInteraction.Start -> true
+                        is DragInteraction.Stop, is DragInteraction.Cancel -> false
+                        else -> dragging
+                    }
+                }
+            }
+            launch {
+                snapshotFlow { logicalPage(pager.targetPage) != logicalPage(pager.settledPage) }.drop(1).collect { away -> if (dragging) { if (away) haptics.segStart() else haptics.threshold(false) } }
+            }
+            // The end plays when the page visually arrives (owner 14.11.2026: the end at the spring's full stop, ~400 ms after the press, was late): the first
+            // frame in which the pager shows its target page within 3 % of a page of rest, or when it settles, whichever comes first (segEnd disarms, so once).
+            // Only a page a drag or a tab press started is felt; a page the model asks for (a tapped row, a new profile) settles in silence.
+            launch {
+                var shown = logicalPage(pager.currentPage)
+                snapshotFlow {
+                    if (pager.currentPage == pager.targetPage && abs(pager.currentPageOffsetFraction) < PAGE_ARRIVED) logicalPage(pager.currentPage) else null
+                }.collect { arrived ->
+                    if (arrived != null && arrived != shown) {
+                        shown = arrived
+                        if (haptics.segArmed()) haptics.segEnd()
+                    }
+                }
+            }
+            snapshotFlow { logicalPage(pager.settledPage) }.drop(1).collect { if (haptics.segArmed()) haptics.segEnd() }
         }
         // The DAC Settings page reads the DAC when it settles with a DAC connected, and again after a (re)connect while it is open.
         val onDacPage = logicalPage(pager.settledPage) == Page.DAC
@@ -413,8 +447,8 @@ fun ContourApp(
         }
         // The factory reset sheet is outside the DAC SETTINGS page: the DAC leaves the bus after the reset and the page goes with it.
         if (device.resetUi != ResetUi.Idle) FactoryResetSheet(device)
-        if (playBeta == true) PlayBetaBoard(onClose = { playBeta = false }, onNever = { PlayBeta.never(prefs); playBeta = false })
-        else if (sheet == Sheet.PlayBetaPreview) PlayBetaBoard(onClose = close, onNever = close)
+        if (playBeta == true) PlayBetaBoard(onClose = { playBeta = false })
+        else if (sheet == Sheet.PlayBetaPreview) PlayBetaBoard(onClose = close)
 
         // Back from EQ goes to the Library (as before); back from DAC Settings goes to EQ.
         val backFrom = logicalPage(pager.currentPage)
@@ -469,6 +503,7 @@ private fun IncomingDialog(model: AppModel, incoming: Incoming, onAnswer: (impor
 @Composable
 private fun PageBar(pager: PagerState, pages: List<Int>, onPage: (Int) -> Unit, modifier: Modifier = Modifier) {
     val c = pal
+    val haptics = LocalHaptics.current
     val n = pages.size
     val name = when (pages.getOrNull(pager.settledPage)) { Page.DAC -> "page dac"; Page.TUNE -> "page tune"; else -> "page library" }
     val track = RoundedCornerShape(Radii.L)
@@ -511,7 +546,7 @@ private fun PageBar(pager: PagerState, pages: List<Int>, onPage: (Int) -> Unit, 
                 // on the knob (onAccent) when the pager is on its page, dim (textDim) a whole page away
                 PageHalf(
                     label, icon, lerp(c.onAccent, c.textDim, abs(pos - i).coerceIn(0f, 1f)),
-                    Modifier.weight(1f).clickable(none, null) { onPage(page) }.testTag(tag),
+                    Modifier.weight(1f).pressStart { if (pager.targetPage != i) haptics.segStart() }.clickable(none, null) { onPage(page) }.testTag(tag),
                 )
             }
         }
@@ -526,3 +561,6 @@ private fun PageHalf(label: String, icon: ImageVector, color: Color, modifier: M
         Text(label, style = Type.button, color = color, maxLines = 1)
     }
 }
+
+/** The pager has visually arrived at a page when it shows it within this fraction of a page of rest (the end CLICK of a page change plays then). */
+private const val PAGE_ARRIVED = 0.03f

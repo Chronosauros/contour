@@ -622,7 +622,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             // a full send plan per slot per step was the largest cost of a drag on these DACs.
             val k = compiledForHolds?.takeIf { it.profile === profile && it.config === f } ?: FiioCodec(f).let { c ->
                 CompiledForHolds(profile, f, c, runCatching {
-                    c.planOnExplicitSend(profile.copy(bands = c.padToDeviceCount(profile.bands), preampDb = profile.effectivePreampDb()), f.userSlots.min(), true).expected
+                    c.planOnExplicitSend(profile.copy(bands = c.padToDeviceCount(profile.bands), preampDb = profile.effectivePreampDb(f.shelfForm)), f.userSlots.min(), true).expected
                 }.getOrNull())
             }.also { compiledForHolds = it }
             val expected = k.expected ?: return false
@@ -659,7 +659,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     /** The registers [raw] equal what [profile] compiles to; the slot number is left out (a stock preset or an unknown SnowSky slot has none to compile for). */
     private fun rawHolds(c: FiioCodec, raw: FiioSnapshot, profile: Profile): Boolean = runCatching {
         val ref = c.config.userSlots.min()
-        c.matches(c.planOnExplicitSend(profile.copy(bands = c.padToDeviceCount(profile.bands), preampDb = profile.effectivePreampDb()), ref, true).expected, raw.copy(activeSlot = ref))
+        c.matches(c.planOnExplicitSend(profile.copy(bands = c.padToDeviceCount(profile.bands), preampDb = profile.effectivePreampDb(c.config.shelfForm)), ref, true).expected, raw.copy(activeSlot = ref))
     }.getOrDefault(false)
     private fun sameName(f: FiioConfig, name: String?): (Profile) -> Boolean = { p ->
         name != null && (if (f.userSlotNames) FiioCodec.slotName(p.name, f.nameLength) == name else p.name == name)
@@ -742,7 +742,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         if (protocol.isFamily) return FamilyDevices.stateIssues(protocol, snapshot?.familyState)
         val state = snapshot?.nativeState as? NativeState.Fiio ?: return listOf("Read the DAC first")
         return runCatching {
-            state.codec.planOnExplicitSend(profile.copy(bands = state.codec.padToDeviceCount(profile.bands), preampDb = profile.effectivePreampDb()), destinationSlot()!!, true)
+            state.codec.planOnExplicitSend(profile.copy(bands = state.codec.padToDeviceCount(profile.bands), preampDb = profile.effectivePreampDb(state.codec.config.shelfForm)), destinationSlot()!!, true)
         }.exceptionOrNull()?.let { listOf(it.message ?: "Unrepresentable EQ") }.orEmpty()
     }
 

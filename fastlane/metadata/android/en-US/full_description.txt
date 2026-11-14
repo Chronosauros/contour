@@ -1,24 +1,27 @@
 <p>Contour is a free, open-source app for the parametric EQ stored inside your USB DAC. Keep your EQ profiles on your phone, plug the DAC in, pick a profile and hold to send. Contour writes the EQ into the DAC and reads it back to check every value.</p>
 <p>The EQ stays in the dongle. It is written into the DAC itself, so it works in every app, not just one. On the DACs where Contour has confirmed it, the EQ stays after you unplug and plays on every device you plug the DAC into: another phone, a laptop, a PC or an iPhone. Each DAC's page says what was confirmed. No system equalizer, nothing running in the background.</p>
-<p><b>Supported DACs</b></p>
-<p>Every one of them was tested on real hardware before Contour enabled it.</p>
+<p><b>Supported DACs, each tested on real hardware</b></p>
 <ul>
 <li>CrinEar Protocol Micro</li>
 <li>CrinEar Protocol Max</li>
 <li>FiiO KA15</li>
 <li>FiiO K13 R2R</li>
 <li>FiiO JadeAudio JA11</li>
+<li>FiiO JadeAudio JIEZI</li>
 <li>SnowSky Melody</li>
 <li>SnowSky Tiny A</li>
+<li>SnowSky Retro Nano</li>
 <li>TRN Black Pearl</li>
 <li>Moondrop Dawn Pro 2</li>
 <li>Moondrop Echo-A</li>
 <li>Moondrop DUSK-SP</li>
 <li>Kiwi Ears Allegro Mini</li>
+<li>Kiwi Ears AD1</li>
+<li>Tanchjim Space 2 (Space II)</li>
 <li>JCally JM12</li>
 </ul>
 <p><b>Made for your DAC</b></p>
-<p>Contour only shows what your DAC can do: its bands, filter types and gain range. On the FiiO KA15, SnowSky Melody and SnowSky Tiny A you pick USER1, USER2 or USER3 before you send, on the FiiO K13 R2R one of ten USER slots.</p>
+<p>Contour only shows what your DAC can do: its bands, filter types and gain range. Where it has several USER slots, you pick one before you send: USER1, USER2 or USER3, or one of ten on the FiiO K13 R2R.</p>
 <p><b>Tune on the go</b></p>
 <ul>
 <li>Drag bands on the response graph, or add one with +.</li>
@@ -37,7 +40,7 @@
 <li>Three profiles to start from: BASS BOOST, SOFTER VOCALS and TREBLE BOOST.</li>
 </ul>
 <p><b>DAC settings in the same app</b></p>
-<p>On ten of these DACs a DAC page shows the settings that DAC has, such as volume, balance, filter, output or presets. Factory reset on the KA15 and Melody saves a copy of your slots and settings on the phone first.</p>
+<p>Most of these DACs have a DAC page with their own settings, such as volume, balance, filter, output or presets. Factory reset on the KA15 and Melody saves a copy of your slots and settings on the phone first.</p>
 <p><b>Private by design</b></p>
 <p>No account, no ads, no analytics. The app has no internet access and talks only to the DAC you plug in. Your profiles stay on your phone and leave it only when you share or save them yourself.</p>
 <p><b>Good to know</b></p>
@@ -51,4 +54,4 @@
 </ul>
 <p>Every supported DAC has its own page with its limits and notes: contoureq.app/install</p>
 <p>Contour is free and open source (Apache-2.0) and part of Soundblooms, a small audio label by Chronosaur.</p>
-<p>Unofficial. Not affiliated with or endorsed by CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears or JCally. AutoEQ, squig.link and Equalizer APO are named only as profile formats Contour can read.</p>
+<p>Unofficial. Not affiliated with or endorsed by CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears, Tanchjim or JCally. AutoEQ, squig.link and Equalizer APO are named only as profile formats Contour can read.</p>

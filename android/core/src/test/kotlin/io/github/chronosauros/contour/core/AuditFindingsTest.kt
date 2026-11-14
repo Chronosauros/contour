@@ -57,22 +57,22 @@ class AuditFindingsTest {
         // one PEAK band: the maximum is its gain, at its own centre frequency (which AUTO always looks at)
         val a = listOf(Band("a", FilterType.PEAK, 1000.0, 4.2, 1.0))
         val b = listOf(Band("a", FilterType.PEAK, 60.0, 9.6, 2.0))
-        val firstA = Preamp.auto(a)
-        val firstB = Preamp.auto(b)
+        val firstA = Preamp.auto(a, ShelfForm.SLOPE)
+        val firstB = Preamp.auto(b, ShelfForm.SLOPE)
         assertEquals(-5, firstA)
         assertEquals(-10, firstB)
         repeat(3) {
-            assertEquals(firstA, Preamp.auto(a.map { it.copy() }))
-            assertEquals(firstB, Preamp.auto(b))
+            assertEquals(firstA, Preamp.auto(a.map { it.copy() }, ShelfForm.SLOPE))
+            assertEquals(firstB, Preamp.auto(b, ShelfForm.SLOPE))
         }
         // a disabled band is not part of the answer, and switching it on is a new question
-        assertEquals(firstA, Preamp.auto(a + Band("c", FilterType.PEAK, 60.0, 12.0, 1.0, enabled = false)))
-        assertTrue(Preamp.auto(a + Band("c", FilterType.PEAK, 60.0, 12.0, 1.0)) <= -12)
+        assertEquals(firstA, Preamp.auto(a + Band("c", FilterType.PEAK, 60.0, 12.0, 1.0, enabled = false), ShelfForm.SLOPE))
+        assertTrue(Preamp.auto(a + Band("c", FilterType.PEAK, 60.0, 12.0, 1.0), ShelfForm.SLOPE) <= -12)
         // a value changed by the smallest step is a new question too
-        assertEquals(-6, Preamp.auto(listOf(a[0].copy(gainDb = 5.1))))
-        assertEquals(0, Preamp.auto(emptyList()))
+        assertEquals(-6, Preamp.auto(listOf(a[0].copy(gainDb = 5.1)), ShelfForm.SLOPE))
+        assertEquals(0, Preamp.auto(emptyList(), ShelfForm.SLOPE))
         // an EQ with no real response fails every time it is asked (never a remembered number)
-        repeat(2) { assertFailsWith<IllegalArgumentException> { Preamp.auto(listOf(steepShelf)) } }
-        assertEquals(firstA, Preamp.auto(a))
+        repeat(2) { assertFailsWith<IllegalArgumentException> { Preamp.auto(listOf(steepShelf), ShelfForm.SLOPE) } }
+        assertEquals(firstA, Preamp.auto(a, ShelfForm.SLOPE))
     }
 }

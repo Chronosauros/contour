@@ -155,10 +155,38 @@ object WalkPlaySettings {
      */
     const val MAX_MIC_VERIFIED = true
 
+    /**
+     * THE verification flag of the Tanchjim Space II's DAC Settings rows (the TRN's and the Max's frames: FILTER, OUTPUT (work mode), GAIN (gain mode), BALANCE, and the Max's MIC GAIN with its flash save).
+     * The Tanchjim app offers gain High / Low, the digital filter, the amplifier class and UAC1 / UAC2 for this model (reviews, not a frame source); devicePEQ's extras for its scheme (SchemeNo16) are the Max's.
+     * Read on a unit from the Mac (dac-lab run 2026-11-13-tanchjim-space-ii-05-mac-settings-read, firmware 1.2): every read answers (filter 1, work mode 0, gain mode 1, balance 0 / 0, mic 0). The unit exposes
+     * no audio input (2 output channels), so the mic row is vendor parity as on the Max. UAC1 / UAC2 has no known frame and no row.
+     * Mac (dac-lab runs 2026-11-13-tanchjim-space-ii-06-mac-settings, s2 T14, and -07-mac-settings-effect, line level through the UMC202HD): filter 1 -> 2 -> 1, work mode 0 -> 1 -> 0 and mic 0 -> -1 -> 0 written,
+     * read back and restored by the bench; GAIN LOW plays 6.16 dB below HIGH across the band (back to HIGH within 0.002 dB); BALANCE L 8 lowers the right channel by 8.00 dB and leaves the left one (1.00 dB a step,
+     * channel 1 the right one, as on the TRN and the Max); NON-OS lowers 20 kHz by 2.6 dB, SLOW-LL changes nothing below 20 kHz (0.01 dB); Class-AB against Class-H shows no level difference at line level (as on the Max).
+     * Phone (Nothing A065, perf 1.7.1 / 41, 13.11.2026 23:05-23:09): the DAC page read 5/5 rows; SLOW-PC, CLASS AB, LOW, L 6 and mic -5 were written from the app, each `settings write: VERIFIED`; after an unplug and replug
+     * all five read back unchanged (200 ms; the gain mode too, so the unit has no physical gain switch that wins, unlike the Max); the factory state (FAST-LL, CLASS H, HIGH, CENTER, mic 0) was written back VERIFIED.
+     * The filter and output names are the WalkPlay web tool's (the TRN capture), not read from the Tanchjim app. True releases FILTER, OUTPUT, GAIN and BALANCE; MIC GAIN has its own flag
+     * ([SPACE2_MIC_VERIFIED]).
+     */
+    const val SPACE2_VERIFIED = true
+
+    /**
+     * THE verification flag of the Space II's MIC GAIN row (the Max's 16-bit encoding, then the flash save `01 01 00`). The row is not in the Tanchjim app's list (vendor parity with the Max).
+     * True since the Mac run dac-lab 2026-11-14-tanchjim-space-ii-08-mac-mic-save, the Max's marker run (2026-11-11-crinear-protocol-max-23): with a PK 1000 Hz -12 dB Q2 marker on the EQ, mic -7 written
+     * with the save read back -7 and the marker played the same (1 kHz +0.002 dB, the band within 0.018 dB, two reads before the save 0.0096 dB apart); -15..+15 written without the save read back right
+     * (31 of 31); +15 (`00 7f`), +14, -14 and -15 (`00 81`) written with the save read back without a wrap; after an unplug and replug -15 was still stored and the marker unchanged (within 0.0096 dB).
+     * The phone had shown mic -5 kept over a replug (13.11). One line to withdraw it: set this to false.
+     */
+    const val SPACE2_MIC_VERIFIED = true
+
+    /** The Space II's rows: see [SPACE2_VERIFIED] and [SPACE2_MIC_VERIFIED]. */
+    private val space2Rows = listOf(dacFilter, workMode, gainMode, balance).map { it.copy(writeVerified = SPACE2_VERIFIED) } + maxMic.copy(writeVerified = SPACE2_MIC_VERIFIED)
+
     /** The rows of [profile]'s DAC Settings (see the class comment): empty for a DAC the plan does not cover. */
     fun of(profile: WalkPlayProfile): List<DacSetting> = when (profile.id) {
         "trn" -> listOf(dacFilter, workMode, gainMode, balance, readOnlyMic)
         "max" -> maxRows
+        "space-2" -> space2Rows
         "micro", "echo-a" -> listOf(readOnlyMic)
         else -> emptyList()
     }

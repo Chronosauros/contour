@@ -52,6 +52,7 @@
     "types": { "PEAK": 2 },
     "heldTypes": { "LOW_SHELF": 1, "HIGH_SHELF": 3, "LOW_PASS": 4, "HIGH_PASS": 5 },
     "shelfQScale": "sqrt2",
+    "shelfForm": "q",
     "emulation": null
   },
   "preamp": {

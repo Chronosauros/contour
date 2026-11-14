@@ -245,6 +245,23 @@ class FiioCodec(val config: FiioConfig) {
         return logical
     }
     fun parseSlot(payload: ByteArray): Int { reply(payload, SLOT, 1); return u(payload[6]) }
+    /**
+     * The one non-0x17 answer to a preamp query that [FiioConfig.bypassPreampAnswersAsCount] allows: a logical COUNT frame (command 0x18, one data byte) whose data byte is 0, while the DAC is on
+     * its bypass slot. True = "no EQ active"; false for every other reply, so a config without the flag never accepts it.
+     */
+    fun isBypassNoEqReply(payload: ByteArray, activeSlot: Int): Boolean = config.bypassPreampAnswersAsCount && activeSlot == config.bypassSlot &&
+        runCatching { reply(payload, COUNT, 1); u(payload[6]) == 0 }.getOrDefault(false)
+    /**
+     * A bypass read without band queries ([FiioConfig.bypassPreampAnswersAsCount], the DAC said "no EQ active"): the slot, the filter count the DAC reported, preamp register 0 and
+     * inactive zero records, which is what a read of any DAC's Close EQ keeps (see [snapshotBody]); import, writes and verification stay strict on them.
+     */
+    fun bypassSnapshot(slotReply: ByteArray, countReply: ByteArray, closingSlotReply: ByteArray): FiioSnapshot {
+        val slot = parseSlot(slotReply)
+        require(slot == parseSlot(closingSlotReply)) { "Active bank changed during read" }
+        require(config.bypassPreampAnswersAsCount && slot == config.bypassSlot) { "Not a bypass read of ${config.productName}" }
+        val count = parseCount(countReply)
+        return FiioSnapshot(config.productName, slot, count, 0, List(count) { FiioRegisters(it, 0, 0, 0, 0) })
+    }
     fun parseCount(payload: ByteArray): Int {
         reply(payload, COUNT, 1)
         return u(payload[6]).also { validateCount(it) }

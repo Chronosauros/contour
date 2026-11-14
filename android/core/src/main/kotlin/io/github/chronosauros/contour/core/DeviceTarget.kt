@@ -53,6 +53,7 @@ data class DeviceTarget private constructor(
         moondrop != null -> !Proven.on(moondrop.hardwareVerified)
         ktMicro != null -> !Proven.on(ktMicro.hardwareVerified)
         gen1 != null -> !Proven.on(gen1.hardwareVerified)
+        walkplay != null -> !WalkPlayProfiles.of(walkplay).writeOn
         fiioRecord != null -> !Proven.on(fiioRecord.hardwareVerified)
         else -> false
     }
@@ -92,14 +93,14 @@ data class DeviceTarget private constructor(
     val caps: DeviceCapabilities get() = walkplay?.caps ?: fiio?.let { f ->
         DeviceCapabilities(f.productName, f.capture?.vendorId ?: 0, f.capture?.productId ?: 0, f.maxFilters,
             f.minGainDb, f.maxGainDb, f.minQ, f.maxQ, f.minFrequencyHz.toDouble(), f.maxFrequencyHz.toDouble(),
-            f.typeCodes.keys, f.preampWholeDb, shelfQScale = f.shelfQScale, peakQScale = f.peakQScale)
+            f.typeCodes.keys, f.preampWholeDb, shelfForm = f.shelfForm, shelfQScale = f.shelfQScale, peakQScale = f.peakQScale)
     } ?: familyCaps()
     /** The limits of the 1.6 families, from their :core catalogs; only what Contour offers is in [DeviceCapabilities.types] (the Dawn Pro 2: PEAK, plus its shelves and pass filters behind their flags). */
     private fun familyCaps(): DeviceCapabilities = when {
         moondrop != null -> DeviceCapabilities(MOONDROP_NAME, MoondropCatalog.VENDOR_ID, moondrop.productIds.min(), moondrop.bandCount,
-            moondrop.minGainDb, moondrop.maxGainDb, moondrop.minQ, moondrop.maxQ, moondrop.minFrequencyHz, moondrop.maxFrequencyHz, MOONDROP_TYPES, false, shelfQScale = moondrop.shelfQScale)
-        ktMicro != null -> DeviceCapabilities(ktMicro.name, KtMicroCatalog.VENDOR_ID, ktMicro.productIds.min(), ktMicro.bandCount,
-            ktMicro.minGainDb, ktMicro.maxGainDb, ktMicro.minQ, ktMicro.maxQ, ktMicro.minFrequencyHz, ktMicro.maxFrequencyHz, ktMicro.nativeTypes, false, shelfQScale = ktMicro.shelfQScale, shelfLimits = ktMicro.shelfLimits)
+            moondrop.minGainDb, moondrop.maxGainDb, moondrop.minQ, moondrop.maxQ, moondrop.minFrequencyHz, moondrop.maxFrequencyHz, MOONDROP_TYPES, false, shelfForm = moondrop.shelfForm, shelfQScale = moondrop.shelfQScale)
+        ktMicro != null -> DeviceCapabilities(ktMicro.name, ktMicro.data.vendorId, ktMicro.productIds.min(), ktMicro.bandCount,
+            ktMicro.minGainDb, ktMicro.maxGainDb, ktMicro.minQ, ktMicro.maxQ, ktMicro.minFrequencyHz, ktMicro.maxFrequencyHz, ktMicro.nativeTypes, false, shelfForm = ktMicro.shelfForm, shelfQScale = ktMicro.shelfQScale, shelfLimits = ktMicro.shelfLimits)
         gen1 != null -> gen1.caps()
         // The Echo-A's record gives the band count, gain, Q and types; its frequency range is still "unknown" there (PendingRecords), and its preamp
         // policy is the Protocol Micro's, whose code drives it (see [WalkPlayProfiles.echoA]).
@@ -145,14 +146,19 @@ data class DeviceTarget private constructor(
     }
     fun shownPreamp(profile: Profile): Double = if (!hasPreamp) 0.0 else writableEcho?.let { e ->
         ProtocolMicro.devicePreamp(profile.bands, profile.preampDb, e.preampMaxDb) - ProtocolMicro.highShelfGainSum(profile.bands)
-    } ?: preampRules?.shownPreamp(profile) ?: profile.effectivePreampDb()
+    } ?: preampRules?.shownPreamp(profile) ?: profile.effectivePreampDb(shelfForm)
+    /**
+     * How this DAC builds a shelf (record `peq.shelfForm`, see [ShelfForm]): what the graph draws and what AUTO preamp computes for it. With no DAC attached the app's target is the Protocol Micro (slope), so the
+     * editor looks and computes as it did before the field existed. Band registers and coefficient bytes never follow it.
+     */
+    val shelfForm: ShelfForm get() = caps.shelfForm
     /** The Q this DAC takes for a [type] band: a type has its own range where the DAC stores a scaled Q (KA15 and TRN shelves, K13 peaks: the register range divided by sqrt(2)). */
     fun qRange(type: FilterType): ClosedFloatingPointRange<Double> = caps.qRange(type)
 
     /** The graph's short headline for the first refusal; the detailed planner reasons stay untouched. */
     fun invalidEqHeadline(profile: Profile, reasons: List<String> = issues(profile)): String {
         // The graph shows this headline when it cannot draw the curve: that failure names its cause before any send blocker.
-        val curveFailure = runCatching { Dsp.responseDb(profile.bands) }.exceptionOrNull()?.message
+        val curveFailure = runCatching { Dsp.responseDb(profile.bands, shelfForm) }.exceptionOrNull()?.message
         val issue = (curveFailure ?: reasons.firstOrNull()).orEmpty().trim().lowercase(java.util.Locale.ROOT)
         val band = Regex("""^band (\d+):""").find(issue)?.groupValues?.get(1)?.toIntOrNull()
             ?.let { profile.bands.getOrNull(it - 1) }
@@ -205,7 +211,7 @@ data class DeviceTarget private constructor(
                 if (!b.q.isFinite() || b.q !in qLo..qHi)
                     found += "Band $n: ${if (!scaled) "" else if (b.type.isShelf) "shelf " else "peak "}Q %.2f outside %.2f-%.2f".format(java.util.Locale.ROOT, b.q, qLo, qHi)
             }
-            val gain = profile.effectivePreampDb()
+            val gain = profile.effectivePreampDb(shelfForm)
             if (!(gain.isFinite() && gain in preampMin..preampMax))
                 found += "Pregain %.1f outside %.1f..%.1f dB".format(java.util.Locale.ROOT, gain, preampMin, preampMax)
             if (found.isNotEmpty()) return found
@@ -234,7 +240,7 @@ data class DeviceTarget private constructor(
         }
         // AUTO is computed from the curve, and a band with no real response (a strong, steep shelf inside the DAC's own ranges) has no curve: that is a reason
         // to name, like the same band with a manual preamp, never an exception for the page that asks while it draws (1.6.5 threw it from here).
-        val gain = if (!hasPreamp && moondrop == null) null else runCatching { profile.effectivePreampDb() }.getOrElse { e ->
+        val gain = if (!hasPreamp && moondrop == null) null else runCatching { profile.effectivePreampDb(shelfForm) }.getOrElse { e ->
             if (found.isNotEmpty()) return found
             return moondrop?.let { MoondropCodec.planFor(it, profile.bands, null).issues }.orEmpty().ifEmpty { listOf(e.message ?: "Unrepresentable EQ") }
         }
@@ -290,6 +296,9 @@ data class DeviceTarget private constructor(
         val TINY_A = DeviceTarget(fiioRecord = FiioCatalog.TINY_A)
         /** The FiiO JadeAudio JA11 (found by its USB name; [readOnly] in a release until its record says `hardwareVerified`). */
         val FIIO_JA11 = DeviceTarget(fiioRecord = FiioCatalog.JA11)
+        /** The SnowSky RETRO NANO (0A12:4007, found by its USB name) and the FiiO JadeAudio JIEZI (2972:0151, found by its USB name): both written and read back from a phone on 13.11.2026, so their records say `hardwareVerified` true. */
+        val RETRO_NANO = DeviceTarget(fiioRecord = FiioCatalog.RETRO_NANO)
+        val FIIO_JIEZI = DeviceTarget(fiioRecord = FiioCatalog.JIEZI)
         private val MELODY_WITH_PASS = DeviceTarget(fiioRecord = SnowSkyMelody.config(true))
         private val KA15_WITH_PASS = DeviceTarget(fiioRecord = FiioKa15.config(true))
         /** The KA15 as the app plans with it now is [KA15]; this is it with LP, HP, BP and AP offered whatever the flag says (the bench's `--pass-filters` and the tests). */
@@ -300,6 +309,10 @@ data class DeviceTarget private constructor(
         val ALLEGRO_MINI = DeviceTarget(ktMicro = KtMicroCatalog.models.first())
         /** The JCally JM12 (KT02H20, same VID:PID as the Allegro Mini, found by its USB name): written and read back from a phone on 10.11.2026 (run 2026-11-10-jcally-jm12-11-phone), so it writes in every build. */
         val JCALLY_JM12 = DeviceTarget(ktMicro = KtMicroCatalog.jm12Models.first())
+        /** The Kiwi Ears AD1 (3302:20E3, a KT Micro register DAC on the WalkPlay vendor id, found by its USB name): written and read back from a phone on 13.11.2026, so it writes in every build. */
+        val KIWI_EARS_AD1 = DeviceTarget(ktMicro = KtMicroCatalog.ad1Models.first())
+        /** The Tanchjim Space II (3302:4381, WalkPlay SchemeNo16 on the Protocol Max's code, found by its USB name): written and read back from a phone on 13.11.2026, so it writes in every build. */
+        val SPACE_2 = DeviceTarget(walkplay = DeviceProtocol.SPACE_2)
         val ECHO_A = DeviceTarget(echo = WalkPlayProfiles.echoA)
         /** The Moondrop DUSK-SP (35D8:1499, found by its USB name; [readOnly] in a release until its record says `hardwareVerified`). */
         val MOONDROP_DUSK = DeviceTarget(gen1 = MoondropGen1Catalog.duskSp)
@@ -311,6 +324,7 @@ data class DeviceTarget private constructor(
             DeviceProtocol.MICRO -> MICRO
             DeviceProtocol.MAX -> MAX
             DeviceProtocol.TRN -> TRN
+            DeviceProtocol.SPACE_2 -> SPACE_2
         }
 
         /** The target of each device record, by record id; the identities themselves are [GeneratedDevices.USB_IDS], the records' `usb` sections. */
@@ -323,9 +337,13 @@ data class DeviceTarget private constructor(
             GeneratedDevices.SNOWSKY_MELODY_USB.recordId to MELODY,
             GeneratedDevices.SNOWSKY_TINY_A_USB.recordId to TINY_A,
             GeneratedDevices.FIIO_JA11_USB.recordId to FIIO_JA11,
+            GeneratedDevices.SNOWSKY_RETRO_NANO_USB.recordId to RETRO_NANO,
+            GeneratedDevices.FIIO_JIEZI_USB.recordId to FIIO_JIEZI,
             GeneratedDevices.MOONDROP_DAWN_PRO_2_USB.recordId to DAWN_PRO_2,
             GeneratedDevices.KIWI_EARS_ALLEGRO_MINI_USB.recordId to ALLEGRO_MINI,
             GeneratedDevices.JCALLY_JM12_USB.recordId to JCALLY_JM12,
+            GeneratedDevices.KIWI_EARS_AD1_USB.recordId to KIWI_EARS_AD1,
+            GeneratedDevices.TANCHJIM_SPACE_II_USB.recordId to SPACE_2,
             GeneratedDevices.MOONDROP_ECHO_A_USB.recordId to ECHO_A,
             GeneratedDevices.MOONDROP_DUSK_USB.recordId to MOONDROP_DUSK,
         ).also { m -> require(m.keys == GeneratedDevices.USB_IDS.map { it.recordId }.toSet()) { "a device record has no DeviceTarget (or the other way round)" } }
