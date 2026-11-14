@@ -67,7 +67,7 @@
     "id": "snowsky-retro-nano",
     "name": "SnowSky RETRO NANO",
     "url": "https://contoureq.app/devices/snowsky-retro-nano/",
-    "soundbloomsSlug": null,
+    "soundbloomsSlug": "snowsky-retro-nano",
     "since": "1.8.0",
     "dongle": true
   },
@@ -83,7 +83,7 @@
     "id": "tanchjim-space-ii",
     "name": "TANCHJIM SPACE II",
     "url": "https://contoureq.app/devices/tanchjim-space-ii/",
-    "soundbloomsSlug": null,
+    "soundbloomsSlug": "tanchjim-space-ii",
     "since": "1.8.0",
     "dongle": true
   },
@@ -123,7 +123,7 @@
     "id": "kiwi-ears-ad1",
     "name": "Kiwi Ears AD1",
     "url": "https://contoureq.app/devices/kiwi-ears-ad1/",
-    "soundbloomsSlug": null,
+    "soundbloomsSlug": "kiwi-ears-ad1",
     "since": "1.8.0",
     "dongle": true
   },
