@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -e
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+BIN="$DIR/macos/build/install/macos/bin/macos"
+
+if [ ! -f "$BIN" ]; then
+    echo "Building Contour macOS binary..."
+    (cd "$DIR/android" && ./gradlew -q :macos:installDist)
+fi
+
+exec "$BIN" "$@"
