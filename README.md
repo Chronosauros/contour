@@ -7,6 +7,10 @@ DAC in, pick one and send it. Plug in, send, unplug - that is the whole routine.
 
 **Website: [contoureq.app](https://contoureq.app/)** - a 1.5-minute demo film, the full guide film and the install page.
 
+**Brands:** happy to [test your DAC with Contour](mailto:chronosaur@soundblooms.com?subject=Device%20for%20Contour) or [review your IEMs](mailto:chronosaur@soundblooms.com?subject=Review%20sample) on [Soundblooms](https://soundblooms.com/) - just write to chronosaur@soundblooms.com :)
+
+品牌方：我很乐意测试你的解码器能否适配 Contour，或在 Soundblooms 上评测你的耳机。欢迎来信：chronosaur@soundblooms.com
+
 <!-- facts:start -->
 **Contour 1.8.0, released 14 Nov 2026.** Supported DACs, each with its own page: [CrinEar Protocol Micro](https://contoureq.app/devices/crinear-protocol-micro/), [CrinEar Protocol Max](https://contoureq.app/devices/crinear-protocol-max/), [FiiO KA15](https://contoureq.app/devices/fiio-ka15/), [FiiO K13 R2R](https://contoureq.app/devices/fiio-k13-r2r/), [FiiO JadeAudio JA11](https://contoureq.app/devices/fiio-ja11/), [FiiO JadeAudio JIEZI](https://contoureq.app/devices/fiio-jiezi/), [SnowSky Melody](https://contoureq.app/devices/snowsky-melody/), [SnowSky Tiny A](https://contoureq.app/devices/snowsky-tiny-a/), [SnowSky RETRO NANO](https://contoureq.app/devices/snowsky-retro-nano/), [TRN Black Pearl](https://contoureq.app/devices/trn-black-pearl/), [TANCHJIM SPACE II](https://contoureq.app/devices/tanchjim-space-ii/), [Moondrop Dawn Pro 2](https://contoureq.app/devices/moondrop-dawn-pro-2/), [Moondrop Echo-A](https://contoureq.app/devices/moondrop-echo-a/), [Moondrop DUSK-SP](https://contoureq.app/devices/moondrop-dusk/), [Kiwi Ears Allegro Mini](https://contoureq.app/devices/kiwi-ears-allegro-mini/), [Kiwi Ears AD1](https://contoureq.app/devices/kiwi-ears-ad1/) and [JCally JM12](https://contoureq.app/devices/jcally-jm12/).
 

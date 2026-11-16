@@ -52,8 +52,20 @@
       "license": "https://www.apache.org/licenses/LICENSE-2.0",
       "author": {
         "@type": "Person",
+        "@id": "https://soundblooms.com/about#person",
         "name": "Chronosaur",
-        "url": "https://github.com/Chronosauros"
+        "url": "https://soundblooms.com/about",
+        "sameAs": [
+          "https://github.com/Chronosauros",
+          "https://www.reddit.com/user/T6_8K",
+          "https://x.com/soundblooms"
+        ],
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "contactType": "brand partnerships",
+          "email": "chronosaur@soundblooms.com",
+          "description": "品牌方：我很乐意测试你的解码器能否适配 Contour，或在 Soundblooms 上评测你的耳机。欢迎来信：chronosaur@soundblooms.com"
+        }
       },
       "sameAs": [
         "https://github.com/Chronosauros/contour"
@@ -223,6 +235,8 @@ footer.fv p{margin:0}
 .fv .fv-legal a{text-decoration-thickness:1px;text-underline-offset:3px}
 @media (max-width:480px){.fv-legal{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}}
 .fv-note{max-width:48em;margin-top:2px;font-size:13.5px;line-height:1.5}
+.fv-brands{max-width:48em;margin-bottom:10px;font-size:14px;line-height:1.5}
+.fv .fv-brands a{text-decoration-thickness:1px;text-underline-offset:3px}
 
 /* phone */
 @media (max-width:820px){
@@ -435,6 +449,7 @@ body,.intro,footer{line-height:1.7}
   <div class="fv-in">
     <p class="fv-sentence">Contour 免费，由一个人独立开发。在 <a href="https://soundblooms.com/dacs" rel="noopener" target="_blank">Soundblooms</a> 上可以找到能搭配它使用的解码器。</p>
     <div class="fv-quiet">
+      <p class="fv-brands">品牌方：我很乐意<a href="mailto:chronosaur@soundblooms.com?subject=Device%20for%20Contour">测试你的解码器能否适配 Contour</a>，或在 Soundblooms 上<a href="mailto:chronosaur@soundblooms.com?subject=Review%20sample">评测你的耳机</a>。欢迎来信：<a href="mailto:chronosaur@soundblooms.com">chronosaur@soundblooms.com</a></p>
       <p class="fv-legal"><span>由 <a href="https://soundblooms.com/about" rel="noopener" target="_blank">Chronosaur</a> 制作</span><a href="https://github.com/Chronosauros/contour">源代码</a><span>Apache 2.0</span><a href="https://github.com/Chronosauros/contour/blob/main/THIRD_PARTY_NOTICES.md">致谢</a><a href="/zh/privacy/">隐私政策</a></p>
       <p class="fv-note">非官方应用，与 CrinEar、飞傲、雪漫天、TRN、水月雨、Kiwi Ears、JCally 和天使吉米均无隶属关系，也未获得其认可；它会写入硬件，使用风险请自行承担。Google Play 是 Google LLC 的商标。</p>
     </div>

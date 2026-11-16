@@ -4,6 +4,10 @@
 
 Contour talks to the dongle over USB and stores the EQ in the device itself. It supports USB DACs from CrinEar, FiiO, JCally, Kiwi Ears, Moondrop, SnowSky, Tanchjim and TRN, each tested on real hardware. The app has no internet permission, no analytics and no accounts. Source code and releases: https://github.com/Chronosauros/contour (Apache 2.0). Contour is an unofficial project, not affiliated with the makers of the supported devices.
 
+Brands: happy to test your DAC with Contour or review your IEMs on Soundblooms - just write to chronosaur@soundblooms.com :)
+
+品牌方：我很乐意测试你的解码器能否适配 Contour，或在 Soundblooms 上评测你的耳机。欢迎来信：chronosaur@soundblooms.com
+
 ## Pages
 
 - [Contour](https://contoureq.app/): what the app does and which USB DACs it supports.

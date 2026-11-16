@@ -54,8 +54,20 @@
       "license": "https://www.apache.org/licenses/LICENSE-2.0",
       "author": {
         "@type": "Person",
+        "@id": "https://soundblooms.com/about#person",
         "name": "Chronosaur",
-        "url": "https://github.com/Chronosauros"
+        "url": "https://soundblooms.com/about",
+        "sameAs": [
+          "https://github.com/Chronosauros",
+          "https://www.reddit.com/user/T6_8K",
+          "https://x.com/soundblooms"
+        ],
+        "contactPoint": {
+          "@type": "ContactPoint",
+          "contactType": "brand partnerships",
+          "email": "chronosaur@soundblooms.com",
+          "description": "Brands: happy to test your DAC with Contour or review your IEMs on Soundblooms - just write to chronosaur@soundblooms.com :)"
+        }
       },
       "sameAs": [
         "https://github.com/Chronosauros/contour"
@@ -226,6 +238,8 @@ footer.fv p{margin:0}
 .fv .fv-legal a{text-decoration-thickness:1px;text-underline-offset:3px}
 @media (max-width:480px){.fv-legal{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}}
 .fv-note{max-width:48em;margin-top:2px;font-size:13.5px;line-height:1.5}
+.fv-brands{max-width:48em;margin-bottom:10px;font-size:14px;line-height:1.5}
+.fv .fv-brands a{text-decoration-thickness:1px;text-underline-offset:3px}
 
 /* phone */
 @media (max-width:820px){
@@ -425,6 +439,7 @@ footer.fv p{margin:0}
   <div class="fv-in">
     <p class="fv-sentence">Contour is free and made by one person. Find a DAC for it on <a href="https://soundblooms.com/dacs" rel="noopener" target="_blank">Soundblooms</a>, or ask for yours on <a href="https://discord.gg/msgvnUG7js" rel="noopener" target="_blank">Discord</a>.</p>
     <div class="fv-quiet">
+      <p class="fv-brands">Brands: happy to <a href="mailto:chronosaur@soundblooms.com?subject=Device%20for%20Contour">test your DAC with Contour</a> or <a href="mailto:chronosaur@soundblooms.com?subject=Review%20sample">review your IEMs</a> on Soundblooms - just write to <a href="mailto:chronosaur@soundblooms.com">chronosaur@soundblooms.com</a> :)</p>
       <p class="fv-legal"><span>Made by <a href="https://soundblooms.com/about" rel="noopener" target="_blank">Chronosaur</a></span><a href="https://github.com/Chronosauros/contour">Source code</a><span>Apache 2.0</span><a href="https://github.com/Chronosauros/contour/blob/main/THIRD_PARTY_NOTICES.md">Credits</a><a href="/privacy/">Privacy policy</a></p>
       <p class="fv-note">Unofficial, not affiliated with or endorsed by CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears, JCally or Tanchjim; it writes to hardware, so use it at your own risk. Google Play is a trademark of Google LLC.</p>
     </div>
