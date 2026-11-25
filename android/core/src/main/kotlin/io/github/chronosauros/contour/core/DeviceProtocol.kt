@@ -23,7 +23,10 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
     TRN(GeneratedDevices.TRN_BLACK_PEARL),
     // The Tanchjim Space II (WalkPlay SchemeNo16, found by its USB name): the Protocol Max's code and write sequence with its own record (shelf Q = register, measured), proven on a unit from the Mac and a phone
     // (13.11.2026; [WalkPlayProfiles.space2]).
-    SPACE_2(GeneratedDevices.TANCHJIM_SPACE_II);
+    SPACE_2(GeneratedDevices.TANCHJIM_SPACE_II),
+    // The EPZ TP65 (WalkPlay SchemeNo16, found by its USB name): EXPERIMENTAL TESTER ENTRY (version 1.8.0-tp65test1, issue #6). The Space II's code with the catalog's range (+-10 dB, PK, LS, HS), no DAC settings;
+    // nothing of it was measured on a Contour unit (evidence: two catalogs and the identity an owner read on Windows, devices/epz-tp65.json). Its preamp reply header is read the Space II's lenient way (no capture of its reply).
+    EPZ_TP65(GeneratedDevices.EPZ_TP65);
 
     /** The record's caps; the Micro's, the TRN's and the Max's follow their verification flags ([ProtocolMicro.PASS_FILTERS_VERIFIED], [ProtocolTrn.PASS_FILTERS_VERIFIED], [ProtocolMax.CANDIDATES_VERIFIED]). */
     val caps: DeviceCapabilities get() = when {
@@ -278,7 +281,7 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
         // not checked. A tester's Black Pearl on firmware 0.5 (09.11.2026) answered `80 03 02 32 01`, and with the 0x32 every
         // read and every send stopped at "Invalid preamp header". The TRN fills that position with stale bytes in its settings
         // replies too (research/trn-settings-walkplay-2026-10-27/FINDINGS.md). The Max keeps the strict header (no unit to test).
-        if (this != TRN && this != SPACE_2) require(buf[3].toInt() == 2 && buf[4].toInt() == 0) { "Invalid preamp header" }
+        if (this != TRN && this != SPACE_2 && this != EPZ_TP65) require(buf[3].toInt() == 2 && buf[4].toInt() == 0) { "Invalid preamp header" }
         return WalkPlay.parsePreamp(buf)
     }
 

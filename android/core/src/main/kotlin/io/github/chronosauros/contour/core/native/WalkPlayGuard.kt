@@ -30,6 +30,7 @@ object WalkPlayGuard {
         listOf(0x05, 0x01, 0x02, 0x00, 0xFF), listOf(0x05, 0x01, 0x01, 0x00, 0xFF), listOf(0x02, 0x00, 0x00, 0x01, 0xFF), listOf(0x80, 0x00, 0x00, 0x00, 0xFF),
     )
     private val CB1300D_WRITES = setOf(0x60, 0x22, 0xD3, 0x24)
+    private val TP65_NO_SETTINGS = setOf(WalkPlaySettings.CMD_MIC, WalkPlaySettings.CMD_DAC_FILTER, WalkPlaySettings.CMD_BALANCE, WalkPlaySettings.CMD_GAIN_MODE, WalkPlaySettings.CMD_WORK_MODE)
     private val CB1300D_READS = setOf(0xDA, 0x22, 0xD3, 0x24, 0x26, 0x25)
 
     private fun u(p: ByteArray, i: Int) = if (i < p.size) p[i].toInt() and 255 else 0
@@ -45,7 +46,9 @@ object WalkPlayGuard {
             if (cmd == 0x1B) return "01 1B (noise reduction) is disabled for class CB: never sent"
             val trn = profile.protocol == DeviceProtocol.TRN
             // the Tanchjim Space II is held to the Max's rules (the stricter of the two SchemeNo16 DACs) for 01 01 00 (only as a mic save); its gain mode is a real setting (it kept LOW over a replug, 13.11.2026)
-            val maxLike = profile.protocol == DeviceProtocol.MAX || profile.protocol == DeviceProtocol.SPACE_2
+            val maxLike = profile.protocol == DeviceProtocol.MAX || profile.protocol == DeviceProtocol.SPACE_2 || profile.protocol == DeviceProtocol.EPZ_TP65
+            // the EPZ TP65 is an experimental tester entry without DAC settings: no gain mode, filter, work mode, balance or mic frame ever leaves for it
+            if (profile.protocol == DeviceProtocol.EPZ_TP65 && cmd in TP65_NO_SETTINGS) return "0x%02x is a DAC setting and ${profile.name} has none in Contour: never sent".format(cmd)
             val schemeNo16 = trn || maxLike
             when (cmd) {
                 0x05 -> {

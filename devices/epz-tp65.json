@@ -1,0 +1,196 @@
+{
+  "id": "epz-tp65",
+  "name": "EPZ TP65",
+  "shortName": "TP65",
+  "productName": "TP65",
+  "vendor": "EPZ",
+  "status": "stable",
+  "usb": {
+    "vid": "0x3302",
+    "pid": "0x4325",
+    "productName": "TP65",
+    "hidInterface": 0,
+    "matchByName": true,
+    "nameAliases": [],
+    "recognisedBy": "findDevice",
+    "listOrder": 18,
+    "notes": [
+      "EXPERIMENTAL TESTER ENTRY: nothing of this record was measured on a Contour unit. It exists so that one owner of a TP65 can try Contour's WalkPlay SchemeNo16 path (the Protocol Max's and Tanchjim Space II's code) and report what the unit does (https://github.com/Chronosauros/contour/issues/6). It is not a supported device.",
+      "identity from the owner's report in that issue (read on Windows): VID 0x3302, PID 0x4325, manufacturer string \"EPZ Technology\", product string \"TP65\", firmware 0.4, HID interface MI_00, 64-byte input and output reports including report ID 0x4B, ten PEQ bands; PEQ reads and writes verified there with the maker's protocol, and changed PEQ values were still read after a USB reconnection without an explicit flash save. Android USB descriptors not seen yet",
+      "catalogs: devicePEQ's usbDeviceConfig.js lists PID 0x4325 in its \"SchemeNo16\" group (line 702, https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/usbDeviceConfig.js#L702; peq10Band10dBFullShelves: ten bands, +-10 dB, PEAK and both shelves, Q 0.1-10, deviceHandlesPregain false); FreeDSP-Studio's tools/app/src/dsp2.rs (MIT) lists 0x4325 in `Scheme { no: 16, bands: 10, gain: 10.0, types: SHELVES }` (line 145); no source names the TP65 itself",
+      "found by VID, PID and the exact USB product name \"TP65\" (findDevice); the same PID with any other name matches nothing (another product may use PID 0x4325)",
+      "the record is the catalog's range on the Tanchjim Space II's code and conventions (a measured unit of the same scheme): ten bands, PK, LS and HS, +-10 dB, Q 0.1-10, shelf Q = register, 96 kHz coefficient design, preamp -30..0 dB in whole dB, the Space II's lenient preamp reply header. LOW_PASS, HIGH_PASS and +-12 dB (taken by the Space II and the Max) stay candidates for a measured unit",
+      "no DAC settings: the record has no settings rows, so the DAC Settings page is empty and Contour sends no gain, filter, work mode, balance or mic frame and never report 0x54 to this unit; also never sent: the factory reset and firmware commands"
+    ]
+  },
+  "family": "walkplay",
+  "driver": {
+    "reportId": 75,
+    "schemeNo": 16,
+    "bandLen": 24,
+    "writeSequence": "devicepeq",
+    "strictParse": true,
+    "importMode": "strict",
+    "ab": false,
+    "designRateHz": 96000
+  },
+  "peq": {
+    "bands": 10,
+    "fixedBandCount": true,
+    "freqHz": [
+      20,
+      20000
+    ],
+    "gainDb": [
+      -10,
+      10
+    ],
+    "q": [
+      0.1,
+      10
+    ],
+    "types": {
+      "PEAK": 2,
+      "LOW_SHELF": 1,
+      "HIGH_SHELF": 3
+    },
+    "heldTypes": {},
+    "shelfQScale": 1.0,
+    "shelfForm": "q",
+    "coefficientRateHz": 96000,
+    "emulation": null
+  },
+  "preamp": {
+    "present": true,
+    "db": [
+      -30,
+      0
+    ],
+    "step": 0.1,
+    "wholeDb": true,
+    "registerOffsetDb": 0
+  },
+  "slots": {
+    "user": [
+      0
+    ],
+    "declaredWritable": [
+      0
+    ],
+    "stock": [],
+    "bypass": null,
+    "labels": {
+      "0": "Custom"
+    },
+    "picker": false,
+    "names": "none",
+    "slotByte": "echo-read-value",
+    "factoryFlat": [
+      [
+        31,
+        0.7109375,
+        "PEAK"
+      ],
+      [
+        62,
+        0.7109375,
+        "PEAK"
+      ],
+      [
+        125,
+        0.7109375,
+        "PEAK"
+      ],
+      [
+        250,
+        0.7109375,
+        "PEAK"
+      ],
+      [
+        500,
+        0.7109375,
+        "PEAK"
+      ],
+      [
+        1000,
+        0.7109375,
+        "PEAK"
+      ],
+      [
+        2000,
+        0.7109375,
+        "PEAK"
+      ],
+      [
+        4000,
+        0.7109375,
+        "PEAK"
+      ],
+      [
+        8000,
+        0.7109375,
+        "PEAK"
+      ],
+      [
+        16000,
+        0.7109375,
+        "PEAK"
+      ]
+    ]
+  },
+  "pacing": {
+    "writeGapMs": 20,
+    "consumeEchoes": false,
+    "checksum": false,
+    "needsAudioStream": false,
+    "probeGapMs": null,
+    "afterSaveMs": 200,
+    "sequence": [
+      "every band write 01 09 18 00 i 00 00 + 20 coefficient bytes + freq, Q, gain, type, 00, slot, 20 ms after it (120 ms after the last band)",
+      "preamp write 01 03 02 00 g, 50 ms",
+      "commit 01 05, 20 ms; 01 17, 20 ms; TEMP_WRITE 01 0A 04 00 00 FF FF, 50 ms; FLASH_EQ 01 01 01, 0 ms, then 200 ms (devicePEQ's push for every SchemeNo16 PID)",
+      "before it a full strict read (version, every band, the preamp, the slot byte); after it a full strict read-back; any mismatch is a failure, not ON DAC"
+    ]
+  },
+  "readback": {
+    "qSlack": "q256",
+    "readBoundsHz": [
+      1,
+      48000
+    ],
+    "readBoundsDb": [
+      -60,
+      60
+    ]
+  },
+  "settings": [],
+  "info": [],
+  "preview": {},
+  "reset": {
+    "offered": "unknown",
+    "src": "nothing read from a TP65 by Contour; command 0x05 resets are never sent to it"
+  },
+  "hwVolume": {
+    "inScope": "unknown",
+    "src": "the owner reports physical volume control not validated yet; nothing recorded about a UAC Feature Unit or vendor volume control"
+  },
+  "upstream": {
+    "sourceUrl": "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/usbDeviceConfig.js#L702",
+    "constraintsUrl": "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/peqConstraintsConfig.json",
+    "constraintsRef": "peq10Band10dBFullShelves",
+    "vendorIds": [
+      13058
+    ],
+    "oracle": false,
+    "status": "beta-unverified",
+    "experimental": true,
+    "bestGuessProductName": false,
+    "codecBlockers": [],
+    "evidenceCaveats": [
+      "Two catalog entries (devicePEQ and FreeDSP-Studio, SchemeNo16 by PID) and the identity an owner read on Windows; nothing was written or measured with Contour. The shelf Q convention, the 96 kHz design, the factory flat of the spare bands and the preamp policy are the Space II's, not the TP65's own.",
+      "The owner's Windows work found the changed PEQ readable after a reconnection without an explicit flash save; Contour still sends devicePEQ's commit (01 05, 01 17, 01 0A, 01 01 01) as for every SchemeNo16 DAC."
+    ],
+    "schemeCatalogUrl": "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/usbDeviceConfig.js#L702",
+    "schemeConstraintsRef": "peq10Band10dBFullShelves"
+  }
+}

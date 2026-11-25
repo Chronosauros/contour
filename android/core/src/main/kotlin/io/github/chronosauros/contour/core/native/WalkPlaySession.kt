@@ -66,6 +66,13 @@ object WalkPlayProfiles {
     val trn = stable("trn", DeviceProtocol.TRN)
     /** The Tanchjim Space II: written and read back on a unit from the Mac (runs 2026-11-13-tanchjim-space-ii-01-mac to -04-mac-max) and from a phone (edge profile VERIFIED, a replug kept it, 13.11.2026), so it writes in every build. */
     val space2 = stable("space-2", DeviceProtocol.SPACE_2)
+    /**
+     * THE write flag of the EPZ TP65, an EXPERIMENTAL tester entry (1.8.0-tp65test1, https://github.com/Chronosauros/contour/issues/6): true only so that one owner of a TP65 can try the Space II's write on his unit in a
+     * beta build; nothing of it was measured on a Contour unit (the evidence is two catalogs and the identity read on Windows). Every send is read back and compared. One line to withdraw it: set this to false
+     * (the unit is then read only).
+     */
+    const val TP65_TESTER_WRITE = true
+    val tp65 = stable("epz-tp65", DeviceProtocol.EPZ_TP65, TP65_TESTER_WRITE)
     val echoA = GeneratedDevices.MOONDROP_ECHO_A.let { d ->
         // The Echo-A runs the Protocol Micro's code, so its record has to agree with that protocol on what the code takes from it.
         require(d.bands == DeviceProtocol.MICRO.caps.bands && d.schemeNo == DeviceProtocol.MICRO.data.schemeNo && d.reportId == WalkPlay.REPORT_ID) {
@@ -77,7 +84,7 @@ object WalkPlayProfiles {
             shelfForm = d.shelfForm, coefficientRateHz = d.coefficientRateHz)
         WalkPlayProfile("echo-a", d.name, d.vendorId, d.productId, DeviceProtocol.MICRO, d.types, d.schemeNo, ECHO_A_HARDWARE_VERIFIED, usbName = d.usbName, capsOverride = caps)
     }
-    val all = listOf(micro, max, trn, echoA, space2)
+    val all = listOf(micro, max, trn, echoA, space2, tp65)
 
     fun find(vendorId: Int, productId: Int): WalkPlayProfile? = all.singleOrNull { it.vendorId == vendorId && it.productId == productId }
 
@@ -87,6 +94,7 @@ object WalkPlayProfiles {
         DeviceProtocol.MAX -> max
         DeviceProtocol.TRN -> trn
         DeviceProtocol.SPACE_2 -> space2
+        DeviceProtocol.EPZ_TP65 -> tp65
     }
 }
 

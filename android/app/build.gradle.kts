@@ -35,7 +35,7 @@ android {
         targetSdk = 36
         // v0.2 (versionCode 2) is on the Pixel; `install -r` refuses a lower code, and keeps the data only on update.
         versionCode = 41
-        versionName = "1.8.0" // literal: F-Droid reads it for update checks
+        versionName = "1.8.0-tp65test1" // literal: F-Droid reads it for update checks
     }
 
     signingConfigs {

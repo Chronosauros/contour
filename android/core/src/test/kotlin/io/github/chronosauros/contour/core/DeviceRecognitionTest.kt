@@ -35,7 +35,7 @@ class DeviceRecognitionTest {
                 0x31B2 to 0x0111, 0x152A to 0x88DB, 0x0A12 to 0x4005, 0x0233 to 0x0F2C, 0x7229 to 0x0401).filter { it != k13 && it != melody && it != tinyA })
             assertNull(DeviceTarget.find(vid, pid), "%04X:%04X".format(vid, pid))
         // Structure behind "exactly": three WalkPlay entries and four native FiiO rules.
-        assertEquals(listOf(DeviceProtocol.MICRO, DeviceProtocol.MAX, DeviceProtocol.TRN, DeviceProtocol.SPACE_2), DeviceProtocol.entries.toList()) // the Space II is found by findDevice only
+        assertEquals(listOf(DeviceProtocol.MICRO, DeviceProtocol.MAX, DeviceProtocol.TRN, DeviceProtocol.SPACE_2, DeviceProtocol.EPZ_TP65), DeviceProtocol.entries.toList()) // the Space II and the TP65 are found by findDevice only
         assertEquals(listOf("FIIO KA15", "FIIO K13 R2R", "SNOWSKY Melody", "SNOWSKY TINY A", "JadeAudio JA11", "RETRO NANO", "JadeAudio JIEZI"), FiioCatalog.rules.map { it.productName })
         assertEquals(10610 to 260, FiioCatalog.KA15.capture!!.let { it.vendorId to it.productId })
         assertNull(FiioCatalog.JA11.capture); assertNull(DeviceTarget.find(0x2972, 0x0102)) // the JA11 is found by findDevice only: the 1.5 list stays
@@ -53,14 +53,14 @@ class DeviceRecognitionTest {
         val xml = java.io.File(requireNotNull(System.getProperty("contour.usbFilterXml"))).readText()
         val listed = Regex("""<usb-device\s+vendor-id="(\d+)"\s+product-id="(\d+)"""").findAll(xml)
             .map { it.groupValues[1].toInt() to it.groupValues[2].toInt() }.toList()
-        val added = listOf(0x35D8 to 0x011D, 0x31B2 to 0x0111, 0x3302 to 0x12C5, 0x2972 to 0x0102, 0x35D8 to 0x1499, 0x0A12 to 0x4007, 0x2972 to 0x0151, 0x3302 to 0x20E3, 0x3302 to 0x4381) // Dawn Pro 2, Allegro Mini, Echo-A, FiiO JA11, Moondrop DUSK-SP, SnowSky RETRO NANO, FiiO JIEZI, Kiwi Ears AD1, Tanchjim Space II
+        val added = listOf(0x35D8 to 0x011D, 0x31B2 to 0x0111, 0x3302 to 0x12C5, 0x2972 to 0x0102, 0x35D8 to 0x1499, 0x0A12 to 0x4007, 0x2972 to 0x0151, 0x3302 to 0x20E3, 0x3302 to 0x4381, 0x3302 to 0x4325) // Dawn Pro 2, Allegro Mini, Echo-A, FiiO JA11, Moondrop DUSK-SP, SnowSky RETRO NANO, FiiO JIEZI, Kiwi Ears AD1, Tanchjim Space II, EPZ TP65 (experimental tester entry)
         assertEquals(expected.keys.toList() + added, listed)
         assertEquals(GeneratedDevices.USB_IDS.map { it.vendorId to it.productId }.distinct(), listed) // one line per VID:PID: the JM12 shares the Allegro Mini's
         for ((vid, pid) in added) assertNull(DeviceTarget.find(vid, pid), "%04X:%04X is not in the 1.5 list".format(vid, pid))
     }
 
-    /** `findDevice` knows all seventeen records; the Dawn Pro 2, the Allegro Mini, the JM12 (the last two share 31B2:0111), the JA11, the DUSK-SP, the RETRO NANO, the JIEZI, the AD1 and the Space II need their exact USB product name, the Echo-A does not. */
-    @Test fun `findDevice recognises the seventeen records, the JM12 and the Allegro Mini told apart by the USB name`() {
+    /** `findDevice` knows all eighteen records; the Dawn Pro 2, the Allegro Mini, the JM12 (the last two share 31B2:0111), the JA11, the DUSK-SP, the RETRO NANO, the JIEZI, the AD1, the Space II and the TP65 need their exact USB product name, the Echo-A does not. */
+    @Test fun `findDevice recognises the eighteen records, the JM12 and the Allegro Mini told apart by the USB name`() {
         expected.forEach { (id, target) -> assertEquals(target, DeviceTarget.findDevice(id.first, id.second, null)) }
         assertEquals(DeviceTarget.DAWN_PRO_2, DeviceTarget.findDevice(0x35D8, 0x011D, GeneratedDevices.MOONDROP_DAWN_PRO_2.productName))
         assertEquals(DeviceTarget.ALLEGRO_MINI, DeviceTarget.findDevice(0x31B2, 0x0111, GeneratedDevices.KIWI_EARS_ALLEGRO_MINI.productName))
@@ -73,11 +73,14 @@ class DeviceRecognitionTest {
         assertNull(DeviceTarget.findDevice(0x31B2, 0x0112, "KT02H20 HIFI Audio")); assertNull(DeviceTarget.find(0x31B2, 0x0111))
         // Every identity of the records resolves to its own target, and no two records resolve to one target.
         val targets = GeneratedDevices.USB_IDS.map { u -> DeviceTarget.findDevice(u.vendorId, u.productId, u.productName) ?: error("${u.recordId} is not recognised") }
-        assertEquals(17, targets.toSet().size)
+        assertEquals(18, targets.toSet().size)
         assertEquals(DeviceTarget.MOONDROP_DUSK, DeviceTarget.findDevice(0x35D8, 0x1499, "DUSK-SP")); assertNull(DeviceTarget.findDevice(0x35D8, 0x1499, null))
         assertEquals(DeviceTarget.RETRO_NANO, DeviceTarget.findDevice(0x0A12, 0x4007, "RETRO NANO")); assertNull(DeviceTarget.findDevice(0x0A12, 0x4007, null)); assertNull(DeviceTarget.findDevice(0x0A12, 0x4007, "Retro Nano"))
         assertEquals(DeviceTarget.KIWI_EARS_AD1, DeviceTarget.findDevice(0x3302, 0x20E3, "AD1")); assertNull(DeviceTarget.findDevice(0x3302, 0x20E3, null)); assertNull(DeviceTarget.find(0x3302, 0x20E3))
         assertEquals(DeviceTarget.SPACE_2, DeviceTarget.findDevice(0x3302, 0x4381, "TANCHJIM-SPACE II")); assertNull(DeviceTarget.findDevice(0x3302, 0x4381, null)); assertNull(DeviceTarget.find(0x3302, 0x4381))
+        // The TP65 (experimental tester entry): its own PID and its exact USB name; another name on its PID, and its name on the Space II's PID, match nothing
+        assertEquals(DeviceTarget.EPZ_TP65, DeviceTarget.findDevice(0x3302, 0x4325, "TP65")); assertNull(DeviceTarget.findDevice(0x3302, 0x4325, null)); assertNull(DeviceTarget.find(0x3302, 0x4325))
+        assertNull(DeviceTarget.findDevice(0x3302, 0x4325, "tp65")); assertNull(DeviceTarget.findDevice(0x3302, 0x4325, "TANCHJIM-SPACE II")); assertNull(DeviceTarget.findDevice(0x3302, 0x4381, "TP65"))
         assertEquals(DeviceTarget.FIIO_JIEZI, DeviceTarget.findDevice(0x2972, 0x0151, "JadeAudio JIEZI")); assertNull(DeviceTarget.findDevice(0x2972, 0x0151, null)); assertNull(DeviceTarget.findDevice(0x2972, 0x0151, "JadeAudio JA11"))
     }
 }
