@@ -4,7 +4,9 @@ import io.github.chronosauros.contour.core.devices.GeneratedDevices
 import io.github.chronosauros.contour.core.native.FiioCatalog
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
+import kotlin.test.assertTrue
 
 /** The stable app recognises exactly seven USB identities; every other one is plain unrecognised (NO DAC). */
 class DeviceRecognitionTest {
@@ -82,5 +84,19 @@ class DeviceRecognitionTest {
         assertEquals(DeviceTarget.EPZ_TP65, DeviceTarget.findDevice(0x3302, 0x4325, "TP65")); assertNull(DeviceTarget.findDevice(0x3302, 0x4325, null)); assertNull(DeviceTarget.find(0x3302, 0x4325))
         assertNull(DeviceTarget.findDevice(0x3302, 0x4325, "tp65")); assertNull(DeviceTarget.findDevice(0x3302, 0x4325, "TANCHJIM-SPACE II")); assertNull(DeviceTarget.findDevice(0x3302, 0x4381, "TP65"))
         assertEquals(DeviceTarget.FIIO_JIEZI, DeviceTarget.findDevice(0x2972, 0x0151, "JadeAudio JIEZI")); assertNull(DeviceTarget.findDevice(0x2972, 0x0151, null)); assertNull(DeviceTarget.findDevice(0x2972, 0x0151, "JadeAudio JA11"))
+    }
+
+    /** The TP65 tester entry since 1.8.0-tp65test2: read only in a release or beta build, writable only in a review build; its preamp read is `80 03 01` (the form read on a unit), every other WalkPlay DAC keeps `80 03 00`. */
+    @Test fun `the TP65 is read only in a release and asks for its preamp with 80 03 01`() {
+        Proven.asChannel(BuildChannel.RELEASE) { assertTrue(DeviceTarget.EPZ_TP65.readOnly); assertFalse(DeviceTarget.SPACE_2.readOnly); assertFalse(DeviceTarget.MAX.readOnly) }
+        Proven.asChannel(BuildChannel.PERF) { assertFalse(DeviceTarget.EPZ_TP65.readOnly) }
+        fun head(b: ByteArray) = b.copyOf(5).joinToString(" ") { "%02x".format(it) }
+        assertEquals("4b 80 03 01 00", head(DeviceProtocol.EPZ_TP65.preampRequest()))
+        for (p in DeviceProtocol.entries.filter { it != DeviceProtocol.EPZ_TP65 }) assertEquals("4b 80 03 00 00", head(p.preampRequest()), p.name)
+        assertEquals(WalkPlay.REPORT_SIZE, DeviceProtocol.EPZ_TP65.preampRequest().size)
+        // the reply its owner read on Windows: 4B 80 03 02 00 00, zero padded to 64 bytes -> offset 0 dB
+        val reply = ByteArray(WalkPlay.REPORT_SIZE).also { r -> intArrayOf(0x4B, 0x80, 0x03, 0x02, 0x00, 0x00).forEachIndexed { i, v -> r[i] = v.toByte() } }
+        assertTrue(DeviceProtocol.EPZ_TP65.isReply(reply, WalkPlay.CMD_GLOBAL_GAIN))
+        assertEquals(0, DeviceProtocol.EPZ_TP65.parsePreamp(reply))
     }
 }

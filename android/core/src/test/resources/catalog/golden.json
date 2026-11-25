@@ -49822,7 +49822,7 @@
             "flags": {
                 "isFamily": false,
                 "readOnly": false,
-                "readOnlyInRelease": false,
+                "readOnlyInRelease": true,
                 "readOnlyInReview": false,
                 "hasPreamp": true,
                 "preampLabel": "PREAMP",

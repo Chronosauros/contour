@@ -24,7 +24,7 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
     // The Tanchjim Space II (WalkPlay SchemeNo16, found by its USB name): the Protocol Max's code and write sequence with its own record (shelf Q = register, measured), proven on a unit from the Mac and a phone
     // (13.11.2026; [WalkPlayProfiles.space2]).
     SPACE_2(GeneratedDevices.TANCHJIM_SPACE_II),
-    // The EPZ TP65 (WalkPlay SchemeNo16, found by its USB name): EXPERIMENTAL TESTER ENTRY (version 1.8.0-tp65test1, issue #6). The Space II's code with the catalog's range (+-10 dB, PK, LS, HS), no DAC settings;
+    // The EPZ TP65 (WalkPlay SchemeNo16, found by its USB name): EXPERIMENTAL TESTER ENTRY (versions 1.8.0-tp65test1 and -tp65test2, issue #6). The Space II's code with the catalog's range (+-10 dB, PK, LS, HS), no DAC settings, its own preamp read ([preampRequest]);
     // nothing of it was measured on a Contour unit (evidence: two catalogs and the identity an owner read on Windows, devices/epz-tp65.json). Its preamp reply header is read the Space II's lenient way (no capture of its reply).
     EPZ_TP65(GeneratedDevices.EPZ_TP65);
 
@@ -273,6 +273,12 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
         require(version.isNotEmpty() && version.all { it.code in 0x20..0x7E }) { "Invalid firmware version" }
         return version
     }
+
+    /**
+     * The preamp read: `80 03 00` (devicePEQ's, proven on the Micro, the Max, the TRN and the Space II). The EPZ TP65 gets `80 03 01`, the form its owner's Windows tool read on the unit
+     * (reply `80 03 02 00 00`, offset 0; issue #6 attachment, 25.11.2026); `80 03 00` was never sent to a TP65.
+     */
+    fun preampRequest(): ByteArray = if (this == EPZ_TP65) WalkPlay.report(WalkPlay.READ, WalkPlay.CMD_GLOBAL_GAIN, 0x01) else WalkPlay.preampRequest()
 
     fun parsePreamp(buf: ByteArray): Int {
         if (this == MICRO) return WalkPlay.parsePreamp(buf)

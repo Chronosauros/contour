@@ -67,11 +67,12 @@ object WalkPlayProfiles {
     /** The Tanchjim Space II: written and read back on a unit from the Mac (runs 2026-11-13-tanchjim-space-ii-01-mac to -04-mac-max) and from a phone (edge profile VERIFIED, a replug kept it, 13.11.2026), so it writes in every build. */
     val space2 = stable("space-2", DeviceProtocol.SPACE_2)
     /**
-     * THE write flag of the EPZ TP65, an EXPERIMENTAL tester entry (1.8.0-tp65test1, https://github.com/Chronosauros/contour/issues/6): true only so that one owner of a TP65 can try the Space II's write on his unit in a
-     * beta build; nothing of it was measured on a Contour unit (the evidence is two catalogs and the identity read on Windows). Every send is read back and compared. One line to withdraw it: set this to false
-     * (the unit is then read only).
+     * THE write flag of the EPZ TP65, an EXPERIMENTAL tester entry (https://github.com/Chronosauros/contour/issues/6). False since 1.8.0-tp65test2: the unit's owner asked for a read-only
+     * first test, and his Windows evidence (issue attachment, 25.11.2026) validated only one PEAK band write and the RAM apply `01 0A`, never the preamp write, `01 05`, `01 17` or the
+     * flash `01 01 01` of the Space II's sequence. So a release (and beta) build only reads the TP65; a review build still writes it through the Space II's sequence. A TP65 write path
+     * of its own comes after the read test. (1.8.0-tp65test1 had it true.)
      */
-    const val TP65_TESTER_WRITE = true
+    const val TP65_TESTER_WRITE = false
     val tp65 = stable("epz-tp65", DeviceProtocol.EPZ_TP65, TP65_TESTER_WRITE)
     val echoA = GeneratedDevices.MOONDROP_ECHO_A.let { d ->
         // The Echo-A runs the Protocol Micro's code, so its record has to agree with that protocol on what the code takes from it.
@@ -176,7 +177,7 @@ class WalkPlaySession(val profile: WalkPlayProfile, private val port: NativePort
         val version = p.parseVersion(request(WalkPlay.versionRequest(), "version") { p.isReply(it, WalkPlay.CMD_VERSION) })
         val slot = p.parseSlot(request(WalkPlay.slotRequest(), "slot") { p.isSlotReply(it) }, profile.caps)
         val bands = (0 until profile.bands).map { i -> p.parseBand(bandReply(i), i, profile.caps) }
-        val preamp = p.parsePreamp(request(WalkPlay.preampRequest(), "preamp") { p.isReply(it, WalkPlay.CMD_GLOBAL_GAIN) })
+        val preamp = p.parsePreamp(request(p.preampRequest(), "preamp") { p.isReply(it, WalkPlay.CMD_GLOBAL_GAIN) })
         WalkPlaySnapshot(version, slot, bands, preamp)
     }
 
