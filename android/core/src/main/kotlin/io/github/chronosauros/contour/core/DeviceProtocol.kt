@@ -24,9 +24,10 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
     // The Tanchjim Space II (WalkPlay SchemeNo16, found by its USB name): the Protocol Max's code and write sequence with its own record (shelf Q = register, measured), proven on a unit from the Mac and a phone
     // (13.11.2026; [WalkPlayProfiles.space2]).
     SPACE_2(GeneratedDevices.TANCHJIM_SPACE_II),
-    // The EPZ TP65 (WalkPlay SchemeNo16, found by its USB name): EXPERIMENTAL TESTER ENTRY (tester versions 1.8.0-tp65test1, -tp65test2 and 1.8.1-tp65test3, issue #6). The Space II's read code with the
-    // catalog's range (+-10 dB; PEAK only, the one type written on a unit), no DAC settings, its own preamp read ([preampRequest]) and its own write ([writeSequence]: band frames and the RAM apply,
-    // no preamp, no flash), the only frames its owner validated on the unit (devices/epz-tp65.json). Its preamp reply header is read the Space II's lenient way.
+    // The EPZ TP65 (WalkPlay SchemeNo16, found by its USB name): EXPERIMENTAL TESTER ENTRY (tester versions 1.8.0-tp65test1 to 1.8.1-tp65test4, issue #6). The Space II's read code with the
+    // catalog's range and types (+-10 dB; PEAK, verified on the unit with tp65test3, and the two shelves, offered since tp65test4 with the Space II's shelf Q convention, not measured on a TP65),
+    // no DAC settings, its own preamp read ([preampRequest]) and its own write ([writeSequence]: band frames and the RAM apply, no preamp, no flash), the only frames its owner validated on the
+    // unit (devices/epz-tp65.json). Its preamp reply header is read the Space II's lenient way.
     EPZ_TP65(GeneratedDevices.EPZ_TP65);
 
     /** The record's caps; the Micro's, the TRN's and the Max's follow their verification flags ([ProtocolMicro.PASS_FILTERS_VERIFIED], [ProtocolTrn.PASS_FILTERS_VERIFIED], [ProtocolMax.CANDIDATES_VERIFIED]). */

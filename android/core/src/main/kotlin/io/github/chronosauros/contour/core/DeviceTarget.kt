@@ -315,7 +315,7 @@ data class DeviceTarget private constructor(
         val KIWI_EARS_AD1 = DeviceTarget(ktMicro = KtMicroCatalog.ad1Models.first())
         /** The Tanchjim Space II (3302:4381, WalkPlay SchemeNo16 on the Protocol Max's code, found by its USB name): written and read back from a phone on 13.11.2026, so it writes in every build. */
         val SPACE_2 = DeviceTarget(walkplay = DeviceProtocol.SPACE_2)
-        /** The EPZ TP65 (3302:4325, found by its USB name): an EXPERIMENTAL tester entry, read by Contour on its owner's unit (1.8.0-tp65test2) and written with its own sequence since 1.8.1-tp65test3 ([WalkPlayProfiles.TP65_TESTER_WRITE]); no DAC settings. */
+        /** The EPZ TP65 (3302:4325, found by its USB name): an EXPERIMENTAL tester entry, read by Contour on its owner's unit (1.8.0-tp65test2) and written with its own sequence since 1.8.1-tp65test3 ([WalkPlayProfiles.TP65_TESTER_WRITE]; PEAK passed there, shelves since tp65test4); no DAC settings. */
         val EPZ_TP65 = DeviceTarget(walkplay = DeviceProtocol.EPZ_TP65)
         val ECHO_A = DeviceTarget(echo = WalkPlayProfiles.echoA)
         /** The Moondrop DUSK-SP (35D8:1499, found by its USB name; [readOnly] in a release until its record says `hardwareVerified`). */

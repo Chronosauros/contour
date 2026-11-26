@@ -49910,7 +49910,9 @@
                 "shelfForm": "Q",
                 "shelfQScale": 1.0,
                 "types": [
-                    "PEAK"
+                    "PEAK",
+                    "LOW_SHELF",
+                    "HIGH_SHELF"
                 ],
                 "vendorId": 13058
             },
@@ -49948,7 +49950,9 @@
                 "q": "0.1..10.0",
                 "freq": "20.0..20000.0",
                 "offered": [
-                    "PEAK"
+                    "PEAK",
+                    "LOW_SHELF",
+                    "HIGH_SHELF"
                 ],
                 "preamp": "-30.0..0.0"
             },
@@ -50965,9 +50969,9 @@
                             "preampDb": -3.0
                         },
                         "issues": [
-                            "Band 1: outside EPZ TP65 supported types/ranges"
+                            "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -3 dB. Reduce the boosts or set the preamp to 0 dB."
                         ],
-                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - EDIT BAND",
                         "preampPolicy": {
                             "devicePreamp": -3,
@@ -50984,7 +50988,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Band 1: outside EPZ TP65 supported types/ranges"
+                                "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -3 dB. Reduce the boosts or set the preamp to 0 dB."
                             ]
                         }
                     },
@@ -50997,10 +51001,10 @@
                             "preampDb": -3.0
                         },
                         "issues": [
-                            "Band 1: outside EPZ TP65 supported types/ranges"
+                            "EPZ TP65 band 1 cannot be represented safely. Reduce the boost, raise the shelf frequency or adjust Q."
                         ],
                         "blockLabel": "INVALID EQ - EDIT BAND",
-                        "headline": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - adjust shelf gain or Q",
                         "preampPolicy": {
                             "devicePreamp": -3,
                             "shownPreamp": -3.0,
@@ -51016,7 +51020,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Band 1: outside EPZ TP65 supported types/ranges"
+                                "EPZ TP65 band 1 cannot be represented safely. Reduce the boost, raise the shelf frequency or adjust Q."
                             ]
                         }
                     },
@@ -51157,9 +51161,9 @@
                             "preampDb": -2.0
                         },
                         "issues": [
-                            "Band 1: outside EPZ TP65 supported types/ranges"
+                            "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -2 dB. Reduce the boosts or set the preamp to 0 dB."
                         ],
-                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - EDIT BAND",
                         "preampPolicy": {
                             "devicePreamp": -2,
@@ -51176,7 +51180,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Band 1: outside EPZ TP65 supported types/ranges"
+                                "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -2 dB. Reduce the boosts or set the preamp to 0 dB."
                             ]
                         }
                     },
@@ -51221,10 +51225,10 @@
                             "preampDb": -2.0
                         },
                         "issues": [
-                            "Band 1: outside EPZ TP65 supported types/ranges"
+                            "EPZ TP65 band 1 cannot be represented safely. Reduce the boost, raise the shelf frequency or adjust Q."
                         ],
                         "blockLabel": "INVALID EQ - EDIT BAND",
-                        "headline": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - adjust shelf gain or Q",
                         "preampPolicy": {
                             "devicePreamp": -2,
                             "shownPreamp": -2.0,
@@ -51240,7 +51244,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Band 1: outside EPZ TP65 supported types/ranges"
+                                "EPZ TP65 band 1 cannot be represented safely. Reduce the boost, raise the shelf frequency or adjust Q."
                             ]
                         }
                     },
@@ -51350,9 +51354,9 @@
                             "preampDb": null
                         },
                         "issues": [
-                            "Band 1: outside EPZ TP65 supported types/ranges"
+                            "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -4 dB. Reduce the boosts or set the preamp to 0 dB."
                         ],
-                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - EDIT BAND",
                         "preampPolicy": {
                             "devicePreamp": -4,
@@ -51365,7 +51369,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Band 1: outside EPZ TP65 supported types/ranges"
+                                "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -4 dB. Reduce the boosts or set the preamp to 0 dB."
                             ]
                         }
                     },
@@ -51379,9 +51383,9 @@
                             "preampDb": -2.5
                         },
                         "issues": [
-                            "Band 1: outside EPZ TP65 supported types/ranges"
+                            "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -3 dB. Reduce the boosts or set the preamp to 0 dB."
                         ],
-                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - EDIT BAND",
                         "preampPolicy": {
                             "devicePreamp": -3,
@@ -51398,7 +51402,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Band 1: outside EPZ TP65 supported types/ranges"
+                                "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -3 dB. Reduce the boosts or set the preamp to 0 dB."
                             ]
                         }
                     },
@@ -51413,9 +51417,9 @@
                             "preampDb": null
                         },
                         "issues": [
-                            "Band 3: outside EPZ TP65 supported types/ranges"
+                            "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -14 dB. Reduce the boosts or set the preamp to 0 dB."
                         ],
-                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - EDIT BAND",
                         "preampPolicy": {
                             "devicePreamp": -14,
@@ -51428,7 +51432,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Band 3: outside EPZ TP65 supported types/ranges"
+                                "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -14 dB. Reduce the boosts or set the preamp to 0 dB."
                             ]
                         }
                     },
@@ -51682,28 +51686,28 @@
                             "name": "full-mixed-types-manual",
                             "bands": [
                                 "b0 PEAK 31.0 Hz 2.5 dB Q 0.7 enabled=true",
-                                "b1 PEAK 62.0 Hz -1.5 dB Q 1.0 enabled=true",
-                                "b2 PEAK 125.0 Hz 3.0 dB Q 1.4 enabled=true",
+                                "b1 LOW_SHELF 62.0 Hz -1.5 dB Q 1.0 enabled=true",
+                                "b2 HIGH_SHELF 125.0 Hz 3.0 dB Q 1.4 enabled=true",
                                 "b3 PEAK 250.0 Hz -2.0 dB Q 2.0 enabled=true",
-                                "b4 PEAK 500.0 Hz 1.0 dB Q 0.9 enabled=true",
-                                "b5 PEAK 1000.0 Hz -3.0 dB Q 3.0 enabled=true",
+                                "b4 LOW_SHELF 500.0 Hz 1.0 dB Q 0.9 enabled=true",
+                                "b5 HIGH_SHELF 1000.0 Hz -3.0 dB Q 3.0 enabled=true",
                                 "b6 PEAK 2000.0 Hz 2.0 dB Q 1.1 enabled=true",
-                                "b7 PEAK 4000.0 Hz -1.0 dB Q 0.8 enabled=true",
-                                "b8 PEAK 8000.0 Hz 1.5 dB Q 1.6 enabled=true",
+                                "b7 LOW_SHELF 4000.0 Hz -1.0 dB Q 0.8 enabled=true",
+                                "b8 HIGH_SHELF 8000.0 Hz 1.5 dB Q 1.6 enabled=true",
                                 "b9 PEAK 16000.0 Hz -2.5 dB Q 2.5 enabled=true"
                             ],
                             "preampDb": -6.0
                         },
                         "issues": [
-                            "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -6 dB. Reduce the boosts or set the preamp to 0 dB."
+                            "EPZ TP65 band 3 cannot be represented safely. Reduce the boost, raise the shelf frequency or adjust Q."
                         ],
-                        "blockLabel": "PREAMP OUT OF RANGE",
-                        "headline": "INVALID EQ - EDIT BAND",
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - adjust shelf gain or Q",
                         "preampPolicy": {
                             "devicePreamp": -6,
                             "shownPreamp": -6.0,
                             "shelfOffset": 0.0,
-                            "manualForAuto": -3.0,
+                            "manualForAuto": -6.0,
                             "autoRefusal": null,
                             "explicit": {
                                 "fits": true,
@@ -51714,7 +51718,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -6 dB. Reduce the boosts or set the preamp to 0 dB."
+                                "EPZ TP65 band 3 cannot be represented safely. Reduce the boost, raise the shelf frequency or adjust Q."
                             ]
                         }
                     },
@@ -51722,36 +51726,36 @@
                         "profile": {
                             "name": "full-mixed-types-auto",
                             "bands": [
-                                "b0 PEAK 31.0 Hz 2.5 dB Q 0.7 enabled=true",
-                                "b1 PEAK 62.0 Hz -1.5 dB Q 1.0 enabled=true",
+                                "b0 LOW_SHELF 31.0 Hz 2.5 dB Q 0.7 enabled=true",
+                                "b1 HIGH_SHELF 62.0 Hz -1.5 dB Q 1.0 enabled=true",
                                 "b2 PEAK 125.0 Hz 3.0 dB Q 1.4 enabled=true",
-                                "b3 PEAK 250.0 Hz -2.0 dB Q 2.0 enabled=true",
-                                "b4 PEAK 500.0 Hz 1.0 dB Q 0.9 enabled=true",
+                                "b3 LOW_SHELF 250.0 Hz -2.0 dB Q 2.0 enabled=true",
+                                "b4 HIGH_SHELF 500.0 Hz 1.0 dB Q 0.9 enabled=true",
                                 "b5 PEAK 1000.0 Hz -3.0 dB Q 3.0 enabled=true",
-                                "b6 PEAK 2000.0 Hz 2.0 dB Q 1.1 enabled=true",
-                                "b7 PEAK 4000.0 Hz -1.0 dB Q 0.8 enabled=true",
+                                "b6 LOW_SHELF 2000.0 Hz 2.0 dB Q 1.1 enabled=true",
+                                "b7 HIGH_SHELF 4000.0 Hz -1.0 dB Q 0.8 enabled=true",
                                 "b8 PEAK 8000.0 Hz 1.5 dB Q 1.6 enabled=true",
-                                "b9 PEAK 16000.0 Hz -2.5 dB Q 2.5 enabled=true"
+                                "b9 LOW_SHELF 16000.0 Hz -2.5 dB Q 2.5 enabled=true"
                             ],
                             "preampDb": null
                         },
                         "issues": [
-                            "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -3 dB. Reduce the boosts or set the preamp to 0 dB."
+                            "EPZ TP65 band 5 cannot be represented safely. Reduce the boost, raise the shelf frequency or adjust Q."
                         ],
-                        "blockLabel": "PREAMP OUT OF RANGE",
-                        "headline": "INVALID EQ - EDIT BAND",
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - adjust shelf gain or Q",
                         "preampPolicy": {
-                            "devicePreamp": -3,
-                            "shownPreamp": -3.0,
+                            "devicePreamp": -1,
+                            "shownPreamp": -1.0,
                             "shelfOffset": 0.0,
-                            "manualForAuto": -3.0,
+                            "manualForAuto": -1.0,
                             "autoRefusal": null,
                             "explicit": null
                         },
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -3 dB. Reduce the boosts or set the preamp to 0 dB."
+                                "EPZ TP65 band 5 cannot be represented safely. Reduce the boost, raise the shelf frequency or adjust Q."
                             ]
                         }
                     },
