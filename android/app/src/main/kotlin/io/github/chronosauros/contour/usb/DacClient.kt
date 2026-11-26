@@ -67,16 +67,18 @@ data class DacSnapshot(
     val nativeState: NativeState? = null,
     val target: DeviceTarget = DeviceTarget.of(requireNotNull(protocol)),
     val familyState: FamilyState? = null,
+    /** The MAX VOLUME Contour sends this DAC with ([io.github.chronosauros.contour.core.ProtocolMicro.trimmedRegister]); 0 on every DAC but the Protocol Micro. ON DAC and FROM DAC take it out of the preamp read. */
+    val trimDb: Int = 0,
 ) {
     val shownPreamp: Double? get() = if (familyState != null) familyState.preampDb else if (nativeState != null) nativeState.preamp else preampDb?.toDouble()
     fun matches(profile: Profile): Boolean = familyState?.matches(profile) ?: nativeState?.matches(profile)
-        ?: requireNotNull(protocol).matches(profile, bands.map { it.registers }, requireNotNull(preampDb))
+        ?: requireNotNull(protocol).matches(profile, bands.map { it.registers }, requireNotNull(preampDb), trimDb)
     /** What the DAC holds as an EQ Contour can open; what the screens say about a state it cannot open exactly is [refusalText]. */
     fun importExact(): DacImport = familyState?.let { s -> runCatching<DacImport> { DacImport.Ready(s.importExact()) }
         .getOrElse { DacImport.Rejected(listOf(it.message ?: "The DAC state cannot be imported exactly")) } }
         ?: nativeState?.let { s -> runCatching<DacImport> { DacImport.Ready(s.importExact()) }
         .getOrElse { DacImport.Rejected(listOf(it.message ?: "Native state cannot be imported exactly")) } }
-        ?: requireNotNull(protocol).importExact(bands, requireNotNull(preampDb))
+        ?: requireNotNull(protocol).importExact(bands, requireNotNull(preampDb), trimDb = trimDb)
     /** A state Contour cannot open exactly names the reason only in a review build; a release says it in one plain sentence. */
     fun refusalText(r: DacImport.Rejected): UiText =
         if (Proven.channel != BuildChannel.PERF) UiText.res(R.string.dac_import_not_exact) else coreTexts(r.issues)
@@ -114,7 +116,9 @@ class PendingSave(
  * KA15's USB audio stream running for the whole HID session (it answers HID only while audio streams).
  */
 class DacClient(private val manager: UsbManager, private val guardFor: (DacHandle) -> (() -> Unit) = { {} },
-    private val audioKeepAlive: (UsbDevice) -> AutoCloseable? = { null }) {
+    private val audioKeepAlive: (UsbDevice) -> AutoCloseable? = { null },
+    /** The MAX VOLUME a DAC is sent with now ([DeviceTarget.takesVolumeTrim]; 0 for every other DAC): what a send adds under the profile's preamp and what a read takes back out. */
+    private val trimFor: (DeviceTarget) -> Int = { 0 }) {
     private val executor = Executors.newSingleThreadExecutor { Thread(it, "contour-usb") }
     private val usb = executor.asCoroutineDispatcher()
 
@@ -209,7 +213,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
     /**
      * Sets one setting of a WalkPlay DAC (TRN: DAC filter, work mode, mic; Micro and Echo-A: mic) and reads it back ([WalkPlaySession.writeSetting]). The caller (the controller)
      * lets it through only for a row the gate opened ([DacSetting.writeEnabled]); it is checked here again, so a row that is read only for the app (the gain mode, the balance)
-     * or that no release has proven cannot reach a frame. The vendor's flash save (`01 01 00`) follows a mic write only, as in its tool, on a Max too (without it the Max loses the mic value over a replug; the guard lets `01 01 00` through there only as that save).
+     * or that no release has proven cannot reach a frame. The vendor's flash save (`01 01 00`) follows a mic write only, as in its tool, on a Max too (without it the Max loses the mic value over a replug; the guard lets `01 01 00` through there only as that save). A Space II volume write gets its own save (`01 04`) inside the session.
      */
     suspend fun writeWalkPlaySetting(device: DacHandle, id: String, value: Int): SettingWriteOutcome = withDevice(device) { t ->
         val target = target(device)
@@ -460,17 +464,19 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
     /** Profile -> device plan -> write -> read back and compare. Throws with the issues when it does not fit.
      * [targetSlot]: KA15 only, the USER slot to write (null = USER1). [onProgress]: 0..1, the frames completed out of those
      * planned (select, every band, preamp, save, the read-back), called on the USB thread. */
-    suspend fun writeProfile(device: DacHandle, profile: Profile, targetSlot: Int? = null, onProgress: ((Float) -> Unit)? = null): WriteResult {
+    suspend fun writeProfile(device: DacHandle, profile: Profile, targetSlot: Int? = null, onProgress: ((Float) -> Unit)? = null, trimDb: Int? = null): WriteResult {
         val target = target(device)
+        // [trimDb]: the MAX VOLUME to send under (the DAC page's new value); null = the one this DAC is sent with now
+        val trim = trimDb ?: trimFor(target)
         // A 1.6 family DAC is read only until its write is proven or the build is a review build (DeviceTarget.readOnly, Proven): this is the guard, and nothing below it builds a frame for a read-only DAC.
         if (target.readOnly) throw IOException(DeviceTarget.READ_ONLY_ISSUE.format(target.caps.name))
         target.echo?.let { return writeEcho(device, profile, target, it, onProgress) }
         target.moondrop?.let { return writeDawn(device, profile, target, it, onProgress) }
         target.ktMicro?.let { return writeAllegro(device, profile, target, it, onProgress) }
         target.gen1?.let { return writeGen1(device, profile, target, it, onProgress) }
-        if (!target.native) return when (val plan = requireNotNull(target.walkplay).plan(profile)) {
+        if (!target.native) return when (val plan = requireNotNull(target.walkplay).plan(profile, trim)) {
             is DevicePlan.Rejected -> throw IOException(plan.issues.joinToString("; "))
-            is DevicePlan.Ready -> writePlan(device, plan, onProgress)
+            is DevicePlan.Ready -> writePlan(device, plan, onProgress, trim)
         }
         target.issues(profile).takeIf { it.isNotEmpty() }?.let { throw IOException(it.joinToString("; ")) }
         return withDevice(device, postGuard = target.fiio?.disconnectOnSave != true) { t ->
@@ -650,7 +656,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
     }
 
     /** Micro: factory flat on all 8 slots, preamp 0. Max: neutral flat PK on all 10 slots, preamp 0. TRN: its factory flat on all 10 slots, preamp 0. */
-    suspend fun restoreFlat(device: DacHandle): WriteResult = writePlan(device, protocol(device).flatPlan())
+    suspend fun restoreFlat(device: DacHandle): WriteResult = writePlan(device, protocol(device).flatPlan(), trimDb = trimFor(target(device)))
 
     /**
      * The state just read with band 1's gain register 0.5 dB lower, like research/protocol/write_test.py
@@ -666,16 +672,17 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
         val writes = regs.mapIndexed { i, r ->
             WalkPlay.BandWrite(r.index, r.freq.toDouble(), (if (i == 0) g else r.gain256) / 256.0, r.q256 / 256.0, r.typeCode, rateHz = DeviceProtocol.MICRO.caps.coefficientRateHz)
         }
-        walkPlayWrite(session, port, DevicePlan.Ready(writes, now.preampDb), DeviceProtocol.MICRO)
+        walkPlayWrite(session, port, DevicePlan.Ready(writes, now.preampDb), DeviceProtocol.MICRO, trimFor(target(device)))
     }
 
-    private suspend fun writePlan(device: DacHandle, plan: DevicePlan.Ready, onProgress: ((Float) -> Unit)? = null): WriteResult = withDevice(device) { t ->
+    /** [trimDb]: the MAX VOLUME [plan] was made under; the read-back snapshot carries it. */
+    private suspend fun writePlan(device: DacHandle, plan: DevicePlan.Ready, onProgress: ((Float) -> Unit)? = null, trimDb: Int = 0): WriteResult = withDevice(device) { t ->
         val p = protocol(device)
         // Frames planned: the read before (Max: the whole state; Micro: version and slot), every report of the write sequence, the read-back.
         var steps: Steps? = null
         val (session, port) = walkPlaySession(device, t, target(device)) { steps?.tick() }
         steps = Steps(session.plannedFrames(plan), onProgress)
-        walkPlayWrite(session, port, plan, p)
+        walkPlayWrite(session, port, plan, p, trimDb)
     }
 
     /** Frames done out of [total] planned, as 0..1 for [report]; the total grows if the plan was underestimated, so it never reaches 1 early. */
@@ -690,7 +697,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
         return WalkPlaySession(requireNotNull(target.walkplayProfile), port) to port
     }
 
-    private fun snapshotOf(p: DeviceProtocol, s: WalkPlaySnapshot, ms: Long) = DacSnapshot(s.firmware, s.slot, s.bands, s.preampDb, ms, p)
+    private fun snapshotOf(p: DeviceProtocol, s: WalkPlaySnapshot, ms: Long, trimDb: Int) = DacSnapshot(s.firmware, s.slot, s.bands, s.preampDb, ms, p, trimDb = trimDb)
 
     /** MICRO: exactly the 1.2.2 predicates and parsers (DeviceProtocol delegates). MAX, TRN: strict, all 10 slots; TRN asks a missing band once more. */
     private fun readWalkPlay(device: DacHandle, t: HidIo, target: DeviceTarget): DacSnapshot {
@@ -698,12 +705,13 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
         val t0 = SystemClock.elapsedRealtime()
         val s = walkPlaySession(device, t, target).first.read()
         val ms = SystemClock.elapsedRealtime() - t0
-        UsbLog.line("read: ${if (p.experimental) "${p.caps.name}, " else ""}firmware ${s.firmware}, slot ${s.slot}, preamp ${s.preampDb} dB, $ms ms")
-        return snapshotOf(p, s, ms)
+        val trim = trimFor(target)
+        UsbLog.line("read: ${if (p.experimental) "${p.caps.name}, " else ""}firmware ${s.firmware}, slot ${s.slot}, preamp ${s.preampDb} dB${if (trim != 0) " (MAX VOLUME $trim dB)" else ""}, $ms ms")
+        return snapshotOf(p, s, ms, trim)
     }
 
     /** The session's write (every band report, preamp, commit sequence with devicePEQ's delays, the read-back) as a [WriteResult]; the registers, preamp and (Max, TRN) slot are compared. */
-    private fun walkPlayWrite(session: WalkPlaySession, port: WalkPlayPort, plan: DevicePlan.Ready, p: DeviceProtocol): WriteResult {
+    private fun walkPlayWrite(session: WalkPlaySession, port: WalkPlayPort, plan: DevicePlan.Ready, p: DeviceProtocol, trimDb: Int): WriteResult {
         val r = session.writePlan(plan, explicitHold = true)
         val back = requireNotNull(r.readback)
         val now = SystemClock.elapsedRealtime()
@@ -713,6 +721,6 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
         val verified = mismatches.isEmpty()
         UsbLog.line("write: ${if (verified) "VERIFIED" else "MISMATCH ${mismatches.size}"}, write $writeMs ms, read-back $readMs ms")
         mismatches.forEach { UsbLog.line("  $it") }
-        return WriteResult(verified, mismatches, writeMs, readMs, snapshotOf(p, back, readMs))
+        return WriteResult(verified, mismatches, writeMs, readMs, snapshotOf(p, back, readMs, trimDb))
     }
 }

@@ -46900,7 +46900,7 @@
                 "preampMax": 0.0,
                 "preampStep": 1.0,
                 "destinationSlot": null,
-                "settingsCount": 5,
+                "settingsCount": 7,
                 "infoCount": 0
             },
             "settings": [
@@ -46963,8 +46963,8 @@
                     "kind": "CHOICE",
                     "evidence": "VB",
                     "options": [
-                        "CLASS H",
-                        "CLASS AB"
+                        "CLASS AB",
+                        "CLASS H"
                     ],
                     "shortOptions": [],
                     "min": 0,
@@ -47100,6 +47100,103 @@
                         "a6=255,a7=255 -> 1"
                     ],
                     "writeCommand": 22,
+                    "writeVerified": true,
+                    "maxRule": null,
+                    "longChoice": false
+                },
+                {
+                    "id": "dre",
+                    "label": "DRE",
+                    "kind": "TOGGLE",
+                    "evidence": "VB",
+                    "options": [
+                        "OFF",
+                        "ON"
+                    ],
+                    "shortOptions": [],
+                    "min": 0,
+                    "max": 0,
+                    "step": 1,
+                    "unit": "",
+                    "group": 0,
+                    "section": null,
+                    "readCommand": 50,
+                    "read": {
+                        "type": "WalkPlayGet",
+                        "command": 50
+                    },
+                    "readProbe": [
+                        "a6=0 -> 1",
+                        "a6=1 -> 1",
+                        "a6=2 -> 1",
+                        "a6=3 -> 1",
+                        "a6=4 -> 1",
+                        "a6=5 -> 1",
+                        "a6=6 -> 1",
+                        "a6=7 -> 1",
+                        "a6=59 -> 1",
+                        "a6=60 -> 1",
+                        "a6=61 -> 1",
+                        "a6=119 -> 1",
+                        "a6=120 -> 1",
+                        "a6=121 -> 1",
+                        "a6=200 -> 1",
+                        "a6=255 -> 1",
+                        "a6=0,a7=3 -> 1",
+                        "a6=3,a7=0 -> 1",
+                        "a6=2,a7=2 -> 1",
+                        "a6=0,a7=12 -> 1",
+                        "a6=12,a7=0 -> 1",
+                        "a6=255,a7=255 -> 1"
+                    ],
+                    "writeCommand": 50,
+                    "writeVerified": true,
+                    "maxRule": null,
+                    "longChoice": false
+                },
+                {
+                    "id": "volume",
+                    "label": "VOLUME",
+                    "kind": "LEVEL",
+                    "evidence": "VB",
+                    "options": [],
+                    "shortOptions": [],
+                    "min": 0,
+                    "max": 60,
+                    "step": 1,
+                    "unit": "",
+                    "group": 1,
+                    "section": null,
+                    "readCommand": 133,
+                    "read": {
+                        "type": "WalkPlayGet",
+                        "command": 133
+                    },
+                    "readProbe": [
+                        "a6=0 -> 0",
+                        "a6=1 -> 0",
+                        "a6=2 -> 0",
+                        "a6=3 -> 0",
+                        "a6=4 -> 0",
+                        "a6=5 -> 0",
+                        "a6=6 -> 0",
+                        "a6=7 -> 0",
+                        "a6=59 -> 0",
+                        "a6=60 -> 0",
+                        "a6=61 -> 0",
+                        "a6=119 -> 0",
+                        "a6=120 -> 0",
+                        "a6=121 -> 0",
+                        "a6=200 -> 0",
+                        "a6=255 -> 0",
+                        "a6=0,a7=3 -> 0",
+                        "a6=3,a7=0 -> 0",
+                        "a6=2,a7=2 -> 0",
+                        "a6=0,a7=12 -> 0",
+                        "a6=12,a7=0 -> 0",
+                        "a6=255,a7=255 -> 0"
+                    ],
+                    "writeCommand": 133,
                     "writeVerified": true,
                     "maxRule": null,
                     "longChoice": false

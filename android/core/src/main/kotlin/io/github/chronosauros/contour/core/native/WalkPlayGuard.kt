@@ -20,11 +20,15 @@ import io.github.chronosauros.contour.core.WalkPlay
  *
  * Settings writes follow the tabs WalkPlay shows for the scheme: `01 11`, `01 16` and `01 1D` on the TRN and the Protocol Max (SchemeNo16, the DAC Filter tab, see
  * [WalkPlaySettings]), `01 19` (gain mode) on the TRN and the Tanchjim Space II only (the Max has a physical Eco / Boost switch that wins after every replug; the Space II kept LOW over a replug); `01 02` (mic) on every WalkPlay DAC (the MIC tab; the Max
- * exposes no audio input, its row is vendor parity); nothing else. `01 01 00` (the flash save after a mic write) goes to the Max only in [Context.MIC_SAVE]: there `01 01 x` is also the EQ enable / flash frame.
+ * exposes no audio input, its row is vendor parity); `01 32` (DRE) and `01 85` (the DAC's own volume) on the Tanchjim Space II only; nothing else. `01 01 00` (the flash save after a mic write) goes to the Max only in [Context.MIC_SAVE]: there `01 01 x` is also the EQ enable / flash frame.
+ * `01 04` (the flash save after a Space II volume write) goes to the Space II only in [Context.VOLUME_SAVE]; the Micro, the Max and the Echo-A never get it. The TRN's own write sequence ends with a `01 04 00` of its
+ * own (offset and preamp flash, [WalkPlay.trnWriteSequence], proven on its unit): that one stays allowed on the TRN, which has no volume row.
  */
 object WalkPlayGuard {
     /** [MIC_SAVE]: the flash save `01 01 00` right after a mic write ([WalkPlaySession.writeSetting]); the one place a Max may be sent it. */
-    enum class Context { NORMAL, RESET, MIC_SAVE }
+    enum class Context { NORMAL, RESET, MIC_SAVE, VOLUME_SAVE }
+
+    // [VOLUME_SAVE]: the flash save `01 04` right after a Space II volume write ([WalkPlaySession.writeSetting]); the one place anything is sent it.
 
     private val CANDIDATES: List<List<Int>> = listOf(
         listOf(0x05, 0x01, 0x02, 0x00, 0xFF), listOf(0x05, 0x01, 0x01, 0x00, 0xFF), listOf(0x02, 0x00, 0x00, 0x01, 0xFF), listOf(0x80, 0x00, 0x00, 0x00, 0xFF),
@@ -60,6 +64,10 @@ object WalkPlayGuard {
                 }
                 WalkPlaySettings.CMD_GAIN_MODE ->
                     if (!trn && profile.protocol != DeviceProtocol.SPACE_2) return "0x%02x (gain mode) is not a setting of ${profile.name}: ".format(cmd) + if (profile.protocol == DeviceProtocol.MAX) "its physical Eco / Boost switch sets it and wins after every replug" else "WalkPlay shows it for SchemeNo16 only"
+                WalkPlaySettings.CMD_DRE, WalkPlaySettings.CMD_VOLUME ->
+                    if (profile.protocol != DeviceProtocol.SPACE_2) return "0x%02x is a setting of the Tanchjim Space II only, not of ${profile.name}".format(cmd)
+                WalkPlaySettings.CMD_VOLUME_SAVE ->
+                    if (!trn && (profile.protocol != DeviceProtocol.SPACE_2 || context != Context.VOLUME_SAVE)) return "01 04 is sent to the Tanchjim Space II only as the flash save right after its volume write (the TRN's write sequence has its own); never to ${profile.name} otherwise"
                 WalkPlaySettings.CMD_DAC_FILTER, WalkPlaySettings.CMD_WORK_MODE, WalkPlaySettings.CMD_BALANCE ->
                     if (!schemeNo16) return "0x%02x is not a setting of ${profile.name} (WalkPlay shows it for SchemeNo16 only)".format(cmd)
                 // the vendor's flash save after a mic write: on a Max `01 01 x` is also the EQ enable / flash frame, so `01 01 00` goes out only as that save (it kept the mic over a replug and left the EQ alone, dac-lab run 2026-11-11-crinear-protocol-max-23)

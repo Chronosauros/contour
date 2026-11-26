@@ -91,14 +91,14 @@
     "oracle": false
   },
   "tested": {
-    "date": "2026-10-25",
+    "date": "2026-10-28",
     "firmware": "0.6 (VERSION command)",
     "contour": null,
     "rangesAccepted": { "result": "pass", "note": "The factory state (10 PK bands at 0 dB) was read; PK +10 dB Q 1, PK -10 dB Q 10, both shelves and LP 18 kHz / HP 30 Hz were stored as sent and read back byte identical on the PC, and a five-band profile and a -6 dB preamp sent from a Pixel were verified. The unit also stores values beyond +-10 dB as sent (-10.4 dB seen); Contour sends within +-10." },
     "acoustic": { "result": "partial", "note": "PK within 0.124 dB with the register as Q (6 of 6) and shelves within 0.124 dB with Q = register / sqrt2; the DAC computes shelves from the registers at the stream rate and does not play the band-frame coefficient bytes. LP, HP and the preamp level were not measured." },
     "persistence": { "result": "pass", "note": "The whole state including a -12 dB preamp came back after unplug and replug (after 01 04 00), and a write from the phone survived the move to the PC; the preamp without 01 04 00 was not tested." },
-    "settings": { "result": "not-run", "note": "No DAC Settings rows are offered for the TRN Black Pearl." },
+    "settings": { "result": "pass", "note": "The DAC page offers FILTER (FAST-LL, FAST-PC, SLOW-LL, SLOW-PC, NON-OS), OUTPUT (CLASS H, CLASS AB), GAIN (LOW, HIGH) and BALANCE (15 steps to either side) with the WalkPlay web tool's frames (captured 27.10.2026, research/trn-settings-walkplay-2026-10-27): each value read back and was kept after an unplug, with no flash save. On a Pixel (28.10.2026) GAIN LOW, OUTPUT CLASS H, FILTER SLOW-PC and BALANCE L 8 were written from the DAC page, read back VERIFIED and read the same after an unplug and replug; at L 8 the right ear was quieter. Released since Contour 1.6.4. The effect of FILTER, OUTPUT and GAIN on the sound was not measured. The mic gain is not a row: the unit ignores the write." },
     "beyondVendor": "devicePEQ and FreeDSP list SchemeNo16 as PK, LS and HS only; the WalkPlay web tool offers LP and HP on every scheme and the unit stores both as sent (PC), but Contour keeps LP and HP held back until they are measured acoustically.",
-    "runs": ["run:2026-10-25-trn-black-pearl-01-mac-eqtest"]
+    "runs": ["run:2026-10-21-trn-black-pearl-01", "run:2026-10-21-trn-black-pearl-02", "run:2026-10-25-trn-black-pearl-01-mac-eqtest"]
   }
 }

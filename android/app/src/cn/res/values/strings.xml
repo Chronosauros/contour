@@ -286,21 +286,38 @@
     <string name="library_action_save_all_description">保存全部配置</string>
     <!-- Header of the collapsible list of archived profiles (a count follows it) -->
     <string name="library_archive_header">已归档</string>
-    <!-- Small orange line under the curve of a profile the DAC holds -->
+    <!-- Small orange words under the name of a profile the DAC holds -->
     <string name="library_on_dac">已写入 DAC</string>
-    <!-- Two switch cards at the foot of the Library (label over the value, OFF | ON beside it) -->
+    <!-- Under the LIBRARY title while a DAC is connected: "TANCHJIM SPACE II · NIGHTFALL ON DAC"; this is the orange part. %1$s = the profile's name, %2$s = library_on_dac -->
+    <string name="library_header_on_dac">%1$s %2$s</string>
+    <!-- Two settings rows at the foot of the Library (the label, OFF | ON beside it; HAPTIC FEEDBACK has four levels under it) -->
     <string name="usb_attach_label">插上 DAC 时打开 Contour</string>
     <string name="haptics_label">触感反馈</string>
     <string name="switch_on">开</string>
     <string name="switch_off">关</string>
-    <!-- Link at the foot of the Library to the about, privacy and licences screen. %1$s = the app version -->
-    <string name="library_about_link">关于 · 隐私 · 开源许可 · %1$s</string>
+    <!-- The strength of HAPTIC FEEDBACK: OFF | LOW | MEDIUM | HIGH -->
+    <string name="haptics_low">低</string>
+    <string name="haptics_medium">中</string>
+    <string name="haptics_high">高</string>
+    <!-- First row of the foot of the Library: the profiles come apart into cards that can be dragged into a new order; DONE (action_done) glues them back -->
+    <string name="library_reorder_profiles">调整配置顺序</string>
+    <!-- Under the LIBRARY title while the profiles can be dragged -->
+    <string name="library_drag_to_reorder">拖动以调整顺序</string>
+    <!-- Accessibility actions of a profile row: one place up or down in the library -->
+    <string name="library_move_up">上移</string>
+    <string name="library_move_down">下移</string>
+    <!-- Last row of the foot of the Library: the about, privacy and licences screen (the app version stands at the other end of the row) -->
+    <string name="library_about">关于 · 隐私 · 开源许可</string>
     <!-- Accessibility description of a profile row (%1$s = the profile\'s name) and of the empty card that creates one -->
     <string name="library_row_new">新建配置；向左滑可保存全部配置</string>
     <string name="library_row_archived">%1$s，已归档</string>
     <string name="library_row_archived_edited">%1$s，已归档，已编辑</string>
     <string name="library_row_normal">%1$s。向左滑：归档、删除。向右滑：保存、恢复为已保存版本。</string>
     <string name="library_row_normal_edited">%1$s，已编辑。向左滑：归档、删除。向右滑：保存、恢复为已保存版本。</string>
+    <!-- The same on a phone whose language is written right to left (Arabic, Hebrew): the row is mirrored, so are its swipes -->
+    <string name="library_row_new_rtl">新建配置；向右滑可保存全部配置</string>
+    <string name="library_row_normal_rtl">%1$s。向右滑：归档、删除。向左滑：保存、恢复为已保存版本。</string>
+    <string name="library_row_normal_edited_rtl">%1$s，已编辑。向右滑：归档、删除。向左滑：保存、恢复为已保存版本。</string>
     <string name="library_row_create">新建配置</string>
     <string name="library_row_select">选择配置</string>
     <string name="library_row_edit">编辑配置</string>
@@ -316,20 +333,6 @@
     <string name="source_code_url" translatable="false">https://github.com/Chronosauros/contour</string>
     <string name="privacy_url" translatable="false">https://contoureq.app/zh/privacy/</string>
     <string name="privacy_url_label" translatable="false">contoureq.app/zh/privacy</string>
-
-    <!-- Google Play board (shown once on GitHub, Obtainium, F-Droid and sideloaded installs; never in the Chinese edition). %1$s = the app version without the patch, e.g. 1.8 -->
-    <string name="play_beta_title">Contour %1$s is on Google Play.</string>
-    <!-- Three things that are new, one row each, next to an icon -->
-    <string name="play_beta_new_dacs">4 new DACs</string>
-    <string name="play_beta_new_haptics">Haptics you can feel</string>
-    <string name="play_beta_new_popup">Turn off the plug-in pop-up</string>
-    <string name="play_beta_text">Get it from Google Play and it stays up to date. Same app, same signature.</string>
-    <string name="play_beta_open">OPEN GOOGLE PLAY</string>
-    <string name="play_beta_not_now">NOT NOW</string>
-    <!-- Accessibility name of the Google Play logo on the board -->
-    <string name="play_beta_google_play_description">Google Play</string>
-    <!-- Where OPEN GOOGLE PLAY leads: the store page of the app -->
-    <string name="play_beta_play_url" translatable="false">https://play.google.com/store/apps/details?id=io.github.chronosauros.contour</string>
 
     <!-- DAC Settings page. The names of the settings and of their options come from the device records and stay as the records have them -->
     <string name="dac_settings_header">DAC 设置</string>
@@ -348,6 +351,9 @@
     <string name="dac_not_set_reads">设置失败：%1$s 回读为 %2$s</string>
     <string name="dac_not_set_no_reply">设置失败：%1$s 无响应</string>
     <string name="dac_not_set_busy">设置失败：%1$s 正忙</string>
+    <string name="dac_max_volume_send_first">设置失败：请先向 %1$s 发送一个配置</string>
+    <!-- The line under MAX VOLUME on the Protocol Micro's DAC page (a fixed cut under every profile, kept in the DAC) -->
+    <string name="dac_max_volume_note">作用于所有配置 · 保存在 DAC 中</string>
     <!-- The factory reset row of the page -->
     <string name="dac_factory_reset">恢复出厂设置</string>
     <string name="dac_factory_reset_detail">先备份，再恢复出厂</string>
@@ -383,6 +389,31 @@
     <string name="profile_icon_eye">眼睛</string>
     <string name="profile_icon_anchor">船锚</string>
     <string name="profile_icon_spiral">螺旋</string>
+    <!-- The Bryla icons added 16.11.2026 (40 in all; circle, triangle, eye and spiral above are old ids, shown as vinyl, bolt and film) -->
+    <string name="profile_icon_earbuds">耳塞</string>
+    <string name="profile_icon_mic">麦克风</string>
+    <string name="profile_icon_jack">耳机插头</string>
+    <string name="profile_icon_car">汽车</string>
+    <string name="profile_icon_phone">手机</string>
+    <string name="profile_icon_computer">电脑</string>
+    <string name="profile_icon_tuning_fork">音叉</string>
+    <string name="profile_icon_vinyl">黑胶唱片</string>
+    <string name="profile_icon_guitar">吉他</string>
+    <string name="profile_icon_keys">琴键</string>
+    <string name="profile_icon_cassette">磁带</string>
+    <string name="profile_icon_drum">鼓</string>
+    <string name="profile_icon_trumpet">小号</string>
+    <string name="profile_icon_metronome">节拍器</string>
+    <string name="profile_icon_radio">收音机</string>
+    <string name="profile_icon_game">游戏</string>
+    <string name="profile_icon_film">电影</string>
+    <string name="profile_icon_train">火车</string>
+    <string name="profile_icon_plane">飞机</string>
+    <string name="profile_icon_dumbbell">哑铃</string>
+    <string name="profile_icon_book">书</string>
+    <string name="profile_icon_heart">爱心</string>
+    <string name="profile_icon_cloud">云</string>
+    <string name="profile_icon_gem">宝石</string>
 
     <!-- NEW PROFILE sheet: four options, each a title and a line under it -->
     <string name="new_title">新建配置</string>
@@ -548,6 +579,12 @@
     <string name="core_issue_auto_no_response">自动前置增益：无法算出有效的频响，不能写入 %1$s</string>
     <!-- Note of a Moondrop Dawn Pro 2 that is on one of its own presets. %1$s = the EQ index it is on, %2$s = the index (or "7 or 9") Contour writes -->
     <string name="core_note_dawn_bank">DAC 当前在 EQ 序号 %1$s，这是它自带的预设之一。请把 DAC 切换到 PEQ 模式（EQ 序号 %2$s）：“按住写入”会写入 DAC 当前所在的 EQ。</string>
+    <!-- Import report: a filter line of the file whose values could not be read was left out. %1$s = its number in the file -->
+    <string name="core_import_filter_unreadable">无法读取滤波器 %1$s，已跳过</string>
+    <!-- Import report: several such lines. %1$s = their numbers, "2, 5, 7" -->
+    <string name="core_import_filters_unreadable">无法读取滤波器 %1$s，已跳过</string>
+    <!-- Import report: the file's preamp line could not be read and was left out -->
+    <string name="core_import_preamp_unreadable">无法读取前置增益，已跳过</string>
 
     <!-- ===== Words of the DAC Settings page that come from :core and the device records: row labels, section headers, option words. The key is core_setting_<word>; the English text is exactly what the code has.
          Shown from here only where translate_core_text is true. Entries marked "keep as is" are a manufacturer's name or a standard: translate only where a Chinese term is the usual one. ===== -->
@@ -571,6 +608,7 @@
     <string name="core_setting_eq_index">EQ 序号</string>
     <string name="core_setting_global_gain">全局增益</string>
     <string name="core_setting_pre_gain">前置增益</string>
+    <string name="core_setting_max_volume">最大音量</string>
     <string name="core_setting_preset">预设</string>
     <!-- keep as is unless a Chinese term is standard -->
     <string name="core_setting_eq">EQ</string>

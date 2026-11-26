@@ -293,11 +293,34 @@ object ProtocolMicro {
     }
 
     /**
+     * MAX VOLUME (owner 25.11.2026, Reddit: the Micro has no volume rocker and plays at full scale, so 20 % of the phone's volume was already very loud): one fixed cut kept
+     * for the attached Micro and added under the device preamp of every profile at send time, AUTO or MANUAL alike, so a change of profile never changes the level. Whole dB,
+     * [TRIM_MIN_DB]..0; it goes out in the preamp frame of the proven write sequence, so the DAC keeps it in flash with the EQ.
+     */
+    const val TRIM_MIN_DB: Int = PREAMP_MIN_DB
+
+    /**
+     * The register a send writes for a profile whose own register is [register], with [trimDb] under it: never below the floor. At the floor the clamp eats the trim,
+     * never the profile's own preamp, so a profile never plays louder with a trim than without one. [trimDb] 0 leaves [register] as it is.
+     */
+    fun trimmedRegister(register: Int, trimDb: Int): Int {
+        require(trimDb in TRIM_MIN_DB..0) { "MAX VOLUME $trimDb dB outside $TRIM_MIN_DB..0 dB" }
+        return if (trimDb == 0) register else maxOf(PREAMP_MIN_DB, register + trimDb)
+    }
+
+    /**
      * Maps [bands] to the 8 device slots in order: enabled bands take slots 0..n-1 (HIGH SHELF emulated as
      * LOW SHELF, see [deviceBands]), disabled and unused slots become that slot's factory flat band.
-     * [preampDb] = null means AUTO (see [devicePreamp]).
+     * [preampDb] = null means AUTO (see [devicePreamp]). [trimDb] is the DAC's MAX VOLUME ([trimmedRegister]): it moves only the preamp
+     * register of a plan the profile alone would get, so every refusal stays the profile's own.
      */
-    fun plan(bands: List<Band>, preampDb: Double?, caps: DeviceCapabilities = CAPABILITIES, maxDb: Int = PREAMP_MAX_EFFECTIVE_DB): DevicePlan {
+    fun plan(bands: List<Band>, preampDb: Double?, caps: DeviceCapabilities = CAPABILITIES, maxDb: Int = PREAMP_MAX_EFFECTIVE_DB, trimDb: Int = 0): DevicePlan {
+        require(trimDb in TRIM_MIN_DB..0) { "MAX VOLUME $trimDb dB outside $TRIM_MIN_DB..0 dB" }
+        val plan = planUntrimmed(bands, preampDb, caps, maxDb)
+        return if (trimDb == 0 || plan !is DevicePlan.Ready) plan else DevicePlan.Ready(plan.bands, trimmedRegister(plan.preampDb, trimDb))
+    }
+
+    private fun planUntrimmed(bands: List<Band>, preampDb: Double?, caps: DeviceCapabilities, maxDb: Int): DevicePlan {
         val issues = ArrayList<String>()
         val active = bands.filter { it.enabled }
         if (active.size > caps.bands) issues += "${active.size} enabled bands; ${caps.name} has ${caps.bands}"
@@ -352,8 +375,8 @@ object ProtocolMicro {
         return DevicePlan.Ready(writes, deviceGain)
     }
 
-    fun plan(profile: Profile, caps: DeviceCapabilities = CAPABILITIES, maxDb: Int = PREAMP_MAX_EFFECTIVE_DB): DevicePlan =
-        plan(profile.bands, profile.preampDb, caps, maxDb)
+    fun plan(profile: Profile, caps: DeviceCapabilities = CAPABILITIES, maxDb: Int = PREAMP_MAX_EFFECTIVE_DB, trimDb: Int = 0): DevicePlan =
+        plan(profile.bands, profile.preampDb, caps, maxDb, trimDb)
 
     /** True when the device registers [regs] (8 bands) and [preampDb] are exactly what [plan] writes. */
     fun matches(plan: DevicePlan.Ready, regs: List<WalkPlay.Registers>, preampDb: Int): Boolean =
@@ -369,8 +392,20 @@ object ProtocolMicro {
     /**
      * Invert register quantisation and validate the re-encoded registers; coefficients are not compared. The native
      * codes accepted are PK, the LOW SHELF code (HIGH SHELF is only ever sent as that) and the pass codes [caps] offers.
+     *
+     * With a MAX VOLUME [trimDb] the preamp comes back as the profile's own, the register less the trim, so a read sent back is not cut twice. At the floor the clamp
+     * may have eaten part of the trim: the loudest preamp that writes the same register is taken (a -12 dB profile under a -20 dB trim reads back as -10). A register above
+     * what any send under the trim writes (the trim set, nothing sent since, or another tool's write) was not written under it: it comes back as it is.
      */
-    fun importExact(bands: List<WalkPlay.DeviceBand>, preampDb: Int, caps: DeviceCapabilities = CAPABILITIES, maxDb: Int = PREAMP_MAX_EFFECTIVE_DB): DacImport {
+    fun importExact(bands: List<WalkPlay.DeviceBand>, preampDb: Int, caps: DeviceCapabilities = CAPABILITIES, maxDb: Int = PREAMP_MAX_EFFECTIVE_DB, trimDb: Int = 0): DacImport {
+        require(trimDb in TRIM_MIN_DB..0) { "MAX VOLUME $trimDb dB outside $TRIM_MIN_DB..0 dB" }
+        val own = preampDb - trimDb
+        // own in range: trimmedRegister(own, trimDb) == preampDb, so the import's own re-encode check against [own] is the check against the register read
+        return if (trimDb != 0 && preampDb >= PREAMP_MIN_DB && own <= maxDb) importUntrimmed(bands, own, caps, maxDb)
+            else importUntrimmed(bands, preampDb, caps, maxDb)
+    }
+
+    private fun importUntrimmed(bands: List<WalkPlay.DeviceBand>, preampDb: Int, caps: DeviceCapabilities, maxDb: Int): DacImport {
         if (bands.size != WalkPlay.BANDS || bands.indices.any { bands[it].registers.index != it }) {
             return DacImport.Rejected(listOf("Expected all 8 DAC slots in order"))
         }
@@ -415,8 +450,8 @@ object ProtocolMicro {
     }
 
     /** "This profile is on the DAC": its plan produces exactly the registers read back. */
-    fun matches(profile: Profile, regs: List<WalkPlay.Registers>, preampDb: Int): Boolean =
-        (plan(profile) as? DevicePlan.Ready)?.let { matches(it, regs, preampDb) } ?: false
+    fun matches(profile: Profile, regs: List<WalkPlay.Registers>, preampDb: Int, trimDb: Int = 0): Boolean =
+        (plan(profile, trimDb = trimDb) as? DevicePlan.Ready)?.let { matches(it, regs, preampDb) } ?: false
 
     /** The factory flat state (every slot flat, preamp 0). */
     fun isFlat(regs: List<WalkPlay.Registers>, preampDb: Int): Boolean = matches(flatPlan(), regs, preampDb)

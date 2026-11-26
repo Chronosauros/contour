@@ -298,15 +298,31 @@ class WalkPlaySession(val profile: WalkPlayProfile, private val port: NativePort
         val s = WalkPlaySettings.row(profile, id)
         val frames = WalkPlaySettings.writeReports(s, value)
         lastSettingBefore = readValue(s)
-        for (f in frames) { send(f); io.pause(SETTING_GAP_MS) }
-        if (save) {
-            // on a Max the save is allowed through the guard as the flash save after a mic write and nowhere else
-            val before = context
-            if (id == WalkPlaySettings.MIC) context = WalkPlayGuard.Context.MIC_SAVE
-            try { send(WalkPlaySettings.saveReport()) } finally { context = before }
-            io.pause(SAVE_GAP_MS)
+        fun write() {
+            for (f in frames) { send(f); io.pause(SETTING_GAP_MS) }
+            if (id == WalkPlaySettings.VOLUME) {
+                // the Space II's volume is always followed by the vendor's flash save `01 04` (not the mic's `01 01 00`); the guard lets it through in this context only
+                val before = context
+                context = WalkPlayGuard.Context.VOLUME_SAVE
+                try { send(WalkPlaySettings.saveVolumeReport()) } finally { context = before }
+                io.pause(SAVE_GAP_MS)
+            } else if (save) {
+                // on a Max the save is allowed through the guard as the flash save after a mic write and nowhere else
+                val before = context
+                if (id == WalkPlaySettings.MIC) context = WalkPlayGuard.Context.MIC_SAVE
+                try { send(WalkPlaySettings.saveReport()) } finally { context = before }
+                io.pause(SAVE_GAP_MS)
+            }
         }
-        val back = readValue(s)
+        write()
+        var back = readValue(s)
+        if (back != value && p == DeviceProtocol.SPACE_2) {
+            // The Space II drops an output frame now and then (a band frame in 3 of 16 A/B switches on a phone, 16.11.2026), so a SET that did not land is sent once
+            // more, with its save, and the row read again; what it reads then is the verdict. Only the Space II: the other DACs' proven frames stay as they are.
+            port.log("setting ${s.id}: the DAC reads ${back ?: "nothing"}, wrote $value: sent once more")
+            write()
+            back = readValue(s)
+        }
         WriteOutcome(back == value, false, if (back == value) null else "the DAC reads ${back ?: "nothing"}, wrote $value", back)
     }
 

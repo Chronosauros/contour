@@ -19,7 +19,10 @@ import io.github.chronosauros.contour.R
 import io.github.chronosauros.contour.ui.UiText
 import io.github.chronosauros.contour.ui.coreTexts
 import io.github.chronosauros.contour.core.BuildChannel
+import io.github.chronosauros.contour.core.DacImport
 import io.github.chronosauros.contour.core.DeviceTarget
+import io.github.chronosauros.contour.core.native.VolumeTrim
+import io.github.chronosauros.contour.model.VolumeTrims
 import io.github.chronosauros.contour.core.Proven
 import io.github.chronosauros.contour.core.Profile
 import io.github.chronosauros.contour.core.WalkPlay
@@ -100,7 +103,14 @@ sealed interface ResetUi {
  */
 class DeviceController(private val context: Context, private val scope: CoroutineScope) {
     private val manager = context.getSystemService(UsbManager::class.java)
-    val client = DacClient(manager, { d -> sessionGuard(d) }, { d -> UsbAudioKeepAlive.start(context, d) })
+    /** MAX VOLUME per DAC (the Protocol Micro's DAC page): every send and every read of that DAC goes through [client] with it. */
+    val volumeTrims = VolumeTrims(context)
+    val client = DacClient(manager, { d -> sessionGuard(d) }, { d -> UsbAudioKeepAlive.start(context, d) }, { t -> volumeTrims.of(t) })
+    /**
+     * The library profile the DAC holds now, or null (set by the app: the Sender knows the library). MAX VOLUME sends it again under the new value: its own preamp, AUTO or
+     * MANUAL, so a profile whose register sat at the -30 dB floor keeps its own number, which a read can no longer tell ([io.github.chronosauros.contour.core.ProtocolMicro.importExact]).
+     */
+    var onDacProfile: () -> Profile? = { null }
 
     /**
      * Review hook only (`--es simulate <dac>`, [DacSimulation]): the DAC the app behaves as if it were attached; null = the real bus. While it is set [findDac] never looks at the USB
@@ -223,15 +233,20 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     /** Review hook only (`--es dac tinya|melody|ka15`): the target whose list the page shows while no attached DAC has a list; nothing touches USB. */
     var dacPreview by mutableStateOf<DeviceTarget?>(null)
     /** A DAC with a settings list is attached (or plugged in and waiting for permission): the page shows that DAC, never the preview. */
-    private val attachedHasSettings: Boolean get() = link != Link.NO_DAC && protocol.settings.isNotEmpty()
+    private val attachedHasSettings: Boolean get() = link != Link.NO_DAC && pageRows(protocol).isNotEmpty()
     /** The DAC whose settings the page shows: the one attached (when it has a list), else the preview (also over an attached DAC without a list). Null = no DAC Settings page. */
     val dacTarget: DeviceTarget? get() = if (attachedHasSettings) protocol else dacPreview?.takeIf { it.settings.isNotEmpty() }
     /** The page shows a preview, not a DAC. */
     val dacIsPreview: Boolean get() = !attachedHasSettings && dacTarget != null
-    val dacSettings: List<DacSetting> get() = dacTarget?.settings.orEmpty()
-    /** The last settings read of this connection, by setting id. */
-    var settingValues by mutableStateOf<Map<String, SettingReading>>(emptyMap())
-        private set
+    /** The rows of the page: an attached DAC's [pageRows], a preview's own settings. */
+    val dacSettings: List<DacSetting> get() = dacTarget?.let { if (dacIsPreview) it.settings else pageRows(it) }.orEmpty()
+    /** The rows of [t]'s DAC page: MAX VOLUME first where the DAC takes it ([VolumeTrim]; the Protocol Micro, which had no page before), then its own settings. */
+    private fun pageRows(t: DeviceTarget): List<DacSetting> = VolumeTrim.rows(t) + t.settings
+    /** The last settings read of this connection, by setting id; [settingValues] is what the page shows. */
+    private var readValues by mutableStateOf<Map<String, SettingReading>>(emptyMap())
+    /** The last settings read of this connection, by setting id, and MAX VOLUME's row: the cut this DAC is sent with ([volumeTrims]), which no read asks the DAC for. */
+    val settingValues: Map<String, SettingReading> get() =
+        if (link != Link.NO_DAC && protocol.takesVolumeTrim) readValues + (VolumeTrim.ID to SettingReading(VolumeTrim.ID, volumeTrims.of(protocol), null)) else readValues
     /** A settings pass of this connection has finished (answered or not): a readable setting without a value then says NO REPLY. */
     var settingsRead by mutableStateOf(false)
         private set
@@ -262,11 +277,11 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                 busy = true
                 try {
                     val r = client.readSettings(d)
-                    if (epoch == connectionEpoch) { settingValues = r.associateBy { it.id }; settingsRead = true }
+                    if (epoch == connectionEpoch) { readValues = r.associateBy { it.id }; unsureSettings.clear(); settingsRead = true }
                 } catch (e: Exception) {
                     if (e is CancellationException) throw e
                     UsbLog.line("settings failed: ${e.message}")
-                    if (epoch == connectionEpoch) { settingValues = emptyMap(); settingsRead = true }
+                    if (epoch == connectionEpoch) { readValues = emptyMap(); unsureSettings.clear(); settingsRead = true }
                 } finally {
                     busy = false
                 }
@@ -276,59 +291,178 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         }
     }
     private var writeJob: Job? = null
+
+    /** A setting write the person asked for that has not run yet: the value, the connection it was asked on, and who is told. */
+    private class QueuedSetting(val value: Int, val epoch: Long, val onDone: (SettingWriteOutcome?) -> Unit, val onDropped: () -> Unit)
+
+    /**
+     * Setting writes waiting for the one in progress, by setting id, oldest first. A tap made while a write ran used to be refused without a word,
+     * so the control sprang back and the DAC ended on an earlier choice (owner 16.11.2026, SPACE II; the DAC itself answered writes 100 ms apart, every
+     * one VERIFIED). A newer value for a row replaces the one waiting for it, which is never sent and never answered: only the last choice counts.
+     */
+    private val settingQueue = LinkedHashMap<String, QueuedSetting>()
+
+    /**
+     * Rows whose last write got no reply: the SET may have landed while [settingValues] still holds the value from before, so a tap on that value is sent, not
+     * taken as already there ([drainSettings]). Emptied by a full read of the settings and when the settings are dropped.
+     */
+    private val unsureSettings = HashSet<String>()
+
     /**
      * Sets one setting of the connected DAC and reads it back (the UI send path). Only a setting with [DacSetting.writeEnabled] (proven, or a review build) goes out, and never
-     * the preview: otherwise [onDone] gets null at once. It waits for the connect read, the background slot scan, the follower and any other DAC work
-     * and holds the DAC ([busy]) while it writes, so it never runs beside an EQ write or the slot scan; one write at a time. [onDone] gets the outcome
-     * (null = not run). A verified value, or the value the DAC read instead, replaces the one in [settingValues]. A verified VOLUME STEPS re-reads
-     * the settings (the volume may rescale and the slider top moves).
+     * the preview: otherwise [onDone] gets null at once. Writes run one at a time in the order asked ([settingQueue]); each waits for the connect read, the background slot scan,
+     * the follower and any other DAC work and holds the DAC ([busy]) while it writes, so it never runs beside an EQ write or the slot scan. [onDone] gets the outcome (null = not
+     * run); a value replaced by a newer one for the same row before its turn gets no answer at all. [onDropped]: the write was never run, because the DAC went away or an
+     * earlier write got no reply (as the follower, Contour does not keep asking a silent DAC). A verified value, or the value the DAC read instead, replaces the one in
+     * [settingValues]. A verified VOLUME STEPS re-reads the settings (the volume may rescale and the slider top moves).
      */
-    fun writeSetting(id: String, value: Int, onDone: (SettingWriteOutcome?) -> Unit) {
-        val s = protocol.settings.firstOrNull { it.id == id }
-        if (s == null || !s.writeEnabled || dacIsPreview || link != Link.CONNECTED || writeJob?.isActive == true) return onDone(null)
-        // WalkPlay (Micro, TRN, Echo-A) goes through its own session below; the Dawn Pro 2 and the Allegro Mini write by setting id: each id has its own frame and its own read-back,
-        // and an id with none is refused here.
-        val walkplay = protocol.walkplayProfile != null
-        if (protocol.isFamily && !walkplay) return writeFamilySetting(id, value, onDone)
-        val epoch = connectionEpoch
-        writeJob = scope.launch {
-            var outcome: SettingWriteOutcome? = null
-            try {
-                var waits = 0
-                while ((busy || scanning || following || connecting || openPending) && waits++ < 400) delay(25)
-                if (epoch != connectionEpoch || busy || scanning || following || connecting || openPending) return@launch
-                val d = findDac() ?: return@launch
-                if (!permitted(d)) return@launch
-                busy = true
-                try {
-                    if (!walkplay && s.reconnectsAfterWrite) {
-                        // The write makes the DAC leave the bus (JA11 mic): the SET goes out and the session ends with it; the value counts after a read once the DAC is back.
-                        settingLeaving = true
-                        client.writeSettingThenLeave(d, id, value)
-                        busy = false
-                        outcome = awaitSettingAfterReturn(id, value)
-                        return@launch
-                    }
-                    outcome = if (walkplay) client.writeWalkPlaySetting(d, id, value) else client.writeSetting(d, id, value)
-                    if (epoch == connectionEpoch) when (val o = outcome) {
-                        SettingWriteOutcome.Verified -> settingValues = settingValues + (id to SettingReading(id, value, null))
-                        is SettingWriteOutcome.Mismatch -> settingValues = settingValues + (id to SettingReading(id, o.read, null))
-                        else -> Unit
-                    }
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    UsbLog.line("settings write failed: ${e.message}")
-                    outcome = SettingWriteOutcome.NoReply
-                } finally {
-                    busy = false
-                    settingLeaving = false
+    fun writeSetting(id: String, value: Int, onDropped: () -> Unit = {}, onDone: (SettingWriteOutcome?) -> Unit) {
+        val s = pageRows(protocol).firstOrNull { it.id == id }
+        if (s == null || !s.writeEnabled || dacIsPreview || link != Link.CONNECTED) return onDone(null)
+        settingQueue.remove(id)
+        settingQueue[id] = QueuedSetting(value, connectionEpoch, onDone, onDropped)
+        if (writeJob?.isActive != true) writeJob = scope.launch { drainSettings() }
+    }
+
+    /**
+     * Runs [settingQueue] to the end, one write after another, [SETTING_QUEUE_GAP_MS] apart; a write that got no reply or could not run drops what waits (silently: its
+     * own answer already says why). A write whose connection is gone by its turn, or that waits when the job is cancelled (the DAC went away), is answered null, as a
+     * refused write always was ("busy").
+     */
+    private suspend fun drainSettings() {
+        // when the last write that went out ended (uptime ms); 0 = none yet in this run
+        var lastWriteEnd = 0L
+        try {
+            while (true) {
+                if (settingQueue.isEmpty()) break
+                // Taps used to reach the DAC a finger's time apart; the queue would send them back to back. Several DACs want room between writes (the K13 R2R 300 ms
+                // between EQ writes, the RETRO NANO 150 ms, the KA15 went silent after rapid traffic), so queued writes keep at least this gap. The gap comes
+                // BEFORE the next write is taken from the queue: a newer tap on the same row made meanwhile still replaces it (only the last choice is sent), and a
+                // cancel during the gap finds it still queued and answers it (review 18.11.2026).
+                if (lastWriteEnd > 0L) {
+                    val wait = SETTING_QUEUE_GAP_MS - (SystemClock.uptimeMillis() - lastWriteEnd)
+                    if (wait > 0L) delay(wait)
                 }
-                if (outcome == SettingWriteOutcome.Verified && id == "volume-steps") readSettings()
-            } finally {
-                onDone(outcome)
+                val id = settingQueue.keys.firstOrNull() ?: break
+                val q = settingQueue.remove(id) ?: break
+                if (q.epoch != connectionEpoch) { q.onDone(null); continue }
+                // The row was set back to what the DAC holds before its turn came (a drag let go on the old value): nothing to send. Not after a write of
+                // this row got no reply: the DAC may hold the other value then ([unsureSettings]).
+                if (id !in unsureSettings && settingValues[id]?.value == q.value) { q.onDone(SettingWriteOutcome.Verified); continue }
+                var outcome: SettingWriteOutcome? = null
+                try {
+                    outcome = runSettingWrite(id, q.value, q.epoch)
+                } finally {
+                    lastWriteEnd = SystemClock.uptimeMillis()
+                    when (outcome) {
+                        SettingWriteOutcome.NoReply -> unsureSettings += id
+                        null -> Unit
+                        else -> unsureSettings -= id
+                    }
+                    q.onDone(outcome)
+                }
+                if (outcome == null || outcome == SettingWriteOutcome.NoReply) {
+                    if (settingQueue.isNotEmpty()) UsbLog.line("settings write: ${settingQueue.size} waiting write(s) dropped after ${if (outcome == null) "a write that could not run" else "no reply"}")
+                    dropQueuedSettings(answer = false)
+                    break
+                }
             }
+        } finally {
+            dropQueuedSettings(answer = true) // cancelled (the DAC went away): what waits was never sent
         }
     }
+
+    /** Empties [settingQueue]: [answer] true tells each caller null (not run, "busy"), false only reverts its control ([QueuedSetting.onDropped]). */
+    private fun dropQueuedSettings(answer: Boolean) {
+        val left = settingQueue.values.toList()
+        settingQueue.clear()
+        left.forEach { if (answer) it.onDone(null) else it.onDropped() }
+    }
+
+    /** One setting write of [drainSettings]: null when it could not run (the DAC stayed busy, went away or has no permission). */
+    private suspend fun runSettingWrite(id: String, value: Int, epoch: Long): SettingWriteOutcome? {
+        if (id == VolumeTrim.ID) return runTrimWrite(value, epoch)
+        val s = protocol.settings.firstOrNull { it.id == id } ?: return null
+        // WalkPlay (Micro, TRN, Echo-A, Max, SPACE II) goes through its own session below; the Dawn Pro 2 and the Allegro Mini write by setting id: each id has its own frame and its
+        // own read-back, and an id with none is refused there.
+        val walkplay = protocol.walkplayProfile != null
+        if (protocol.isFamily && !walkplay) return writeFamilySetting(id, value, epoch)
+        var waits = 0
+        while ((busy || scanning || following || connecting || openPending) && waits++ < 400) delay(25)
+        // Not while A/B is on B: the DAC then plays the flat B from RAM, and a setting write that ends with a flash save could store it.
+        if (epoch != connectionEpoch || busy || scanning || following || connecting || openPending || abBypassed) return null
+        val d = findDac() ?: return null
+        if (!permitted(d)) return null
+        var outcome: SettingWriteOutcome? = null
+        busy = true
+        try {
+            if (!walkplay && s.reconnectsAfterWrite) {
+                // The write makes the DAC leave the bus (JA11 mic): the SET goes out and the session ends with it; the value counts after a read once the DAC is back.
+                settingLeaving = true
+                client.writeSettingThenLeave(d, id, value)
+                busy = false
+                return awaitSettingAfterReturn(id, value)
+            }
+            outcome = if (walkplay) client.writeWalkPlaySetting(d, id, value) else client.writeSetting(d, id, value)
+            if (epoch == connectionEpoch) when (val o = outcome) {
+                SettingWriteOutcome.Verified -> readValues = readValues + (id to SettingReading(id, value, null))
+                is SettingWriteOutcome.Mismatch -> readValues = readValues + (id to SettingReading(id, o.read, null))
+                else -> Unit
+            }
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            UsbLog.line("settings write failed: ${e.message}")
+            outcome = SettingWriteOutcome.NoReply
+        } finally {
+            busy = false
+            settingLeaving = false
+        }
+        if (outcome == SettingWriteOutcome.Verified && id == "volume-steps") readSettings()
+        return outcome
+    }
+    /**
+     * MAX VOLUME (the Protocol Micro's DAC page, owner 25.11.2026): the EQ the DAC holds goes out again under [value] through the ordinary send ([sendWith]: every band, the
+     * preamp frame, commit, read-back), so the DAC keeps the new level in flash; [volumeTrims] takes [value] only when that write read back VERIFIED, so the row never shows a
+     * level the DAC does not play. What goes out is the library profile ON DAC ([onDacProfile]), else what the DAC read as with the old level taken out ([DacSnapshot.importExact]);
+     * a DAC that holds an EQ Contour cannot open exactly is not written (the page asks [trimNeedsSend] first and says so). Null (not run) while A/B is on B, the DAC is busy or gone,
+     * or there is nothing to send again.
+     */
+    private suspend fun runTrimWrite(value: Int, epoch: Long): SettingWriteOutcome? {
+        var waits = 0
+        while ((busy || scanning || following || connecting || openPending) && waits++ < 400) delay(25)
+        if (epoch != connectionEpoch || busy || scanning || following || connecting || openPending || abBypassed || link != Link.CONNECTED) return null
+        val target = protocol
+        if (!target.takesVolumeTrim) return null
+        val (profile, held) = trimResend() ?: run {
+            UsbLog.line("max volume: not sent, the DAC holds an EQ Contour cannot open exactly (or was not read)")
+            return null
+        }
+        val before = volumeTrims.of(target)
+        UsbLog.line("max volume: $before -> $value dB, sending ${if (held) "\"${profile.name}\"" else "what the DAC holds"} again under it")
+        val slot = if (slotPicker) destinationSlot() else null
+        val out = sendWith("max volume") { d -> client.writeProfile(d, profile, slot, null, trimDb = value) }
+        if (out.verified) {
+            volumeTrims.set(target, value)
+            return SettingWriteOutcome.Verified
+        }
+        // Not proven: what the DAC holds is read under the level the row still shows.
+        if (epoch == connectionEpoch) snapshot = snapshot?.copy(trimDb = before)
+        return SettingWriteOutcome.NoReply
+    }
+
+    /** What MAX VOLUME sends again, and whether it is a library profile: the one ON DAC ([onDacProfile]), else what the DAC read as with the level taken out; null = nothing it can send. */
+    private fun trimResend(): Pair<Profile, Boolean>? {
+        val s = snapshot ?: return null
+        onDacProfile()?.takeIf { s.matches(it) }?.let { return it to true }
+        val eq = (s.importExact() as? DacImport.Ready)?.eq ?: return null
+        val read = Profile(id = "max-volume", name = "MAX VOLUME", bands = eq.bands, preampDb = eq.preampDb, createdAt = 0, updatedAt = 0)
+        // A read that loads with a band Contour would refuse to send (another tool's write) has nothing MAX VOLUME may send: refused here, before any frame, as HOLD TO SEND refuses it
+        return read.takeIf { protocol.walkplay?.plan(it) is io.github.chronosauros.contour.core.DevicePlan.Ready }?.let { it to false }
+    }
+
+    /** The DAC was read and holds an EQ Contour cannot open exactly: MAX VOLUME has nothing to send again until a profile is sent (the page says so instead of writing). */
+    fun trimNeedsSend(): Boolean = protocol.takesVolumeTrim && snapshot != null && trimResend() == null
+
     /** A setting write that makes the DAC leave the bus is waiting for it to come back ([DacSetting.reconnectsAfterWrite]); the detach that ends the connection is expected, not a reason to drop the write. */
     @Volatile private var settingLeaving = false
 
@@ -354,7 +488,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
                 try {
                     val r = client.readSettings(d)
                     val read = r.firstOrNull { it.id == id }?.value ?: continue
-                    settingValues = r.associateBy { it.id }
+                    readValues = r.associateBy { it.id }; unsureSettings.clear()
                     settingsRead = true
                     UsbLog.line("settings write: read after the return: $id = $read (wrote $value)")
                     return if (read == value) SettingWriteOutcome.Verified else SettingWriteOutcome.Mismatch(read)
@@ -375,7 +509,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
      * (0x23, tenths of a dB), the DUSK-SP preset (the option index is the preset index; the cable is switched and read back in the same session). Only a row with [DacSetting.writeEnabled] gets here ([writeSetting]); an id that has no frame for this DAC is refused (null). An Allegro
      * write ends at SAVE: the DAC leaves the bus and the value counts only after it is back and a read agrees. A Dawn gain is read back in the same session.
      */
-    private fun writeFamilySetting(id: String, value: Int, onDone: (SettingWriteOutcome?) -> Unit) {
+    private suspend fun writeFamilySetting(id: String, value: Int, epoch: Long): SettingWriteOutcome? {
         val allegro = protocol.ktMicro != null
         val dawn = protocol.moondrop != null
         val gen1 = protocol.gen1 != null
@@ -387,56 +521,50 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             dawn && id == FamilySettings.PRE_GAIN -> { d -> client.writeDawnGain(d, MoondropCodec.GainRegister.PRE, value / 10.0) }
             else -> null
         }
-        if (op == null) return onDone(null)
-        val epoch = connectionEpoch
-        writeJob = scope.launch {
-            var outcome: SettingWriteOutcome? = null
-            try {
-                var waits = 0
-                while ((busy || scanning || following || connecting || openPending) && waits++ < 400) delay(25)
-                if (epoch != connectionEpoch || busy || scanning || following || connecting || openPending) return@launch
-                val d = findDac() ?: return@launch
-                if (!permitted(d)) return@launch
-                busy = true
-                var written: WriteResult? = null
-                try {
-                    written = op(d)
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    UsbLog.line("settings write failed: ${e.message}")
-                    outcome = SettingWriteOutcome.NoReply
-                } finally {
-                    busy = false
-                }
-                // What the read after the write says for this setting (null = the read does not carry it).
-                fun readOf(s: DacSnapshot?): Int? = s?.familyState?.readings()?.firstOrNull { it.id == id }?.value
-                written?.pending?.let { save ->
-                    val v = awaitSave(save)
-                    val read = readOf(v.readBack)
-                    outcome = when {
-                        v.verified -> SettingWriteOutcome.Verified
-                        read != null -> SettingWriteOutcome.Mismatch(read)
-                        else -> SettingWriteOutcome.NoReply
-                    }
-                    if (v.verified) settingValues = settingValues + (id to SettingReading(id, value, null))
-                    UsbLog.line("settings write: ${v.log ?: "VERIFIED"}")
-                } ?: written?.let { w ->
-                    val read = readOf(w.readBack)
-                    outcome = when {
-                        w.verified -> SettingWriteOutcome.Verified
-                        read != null -> SettingWriteOutcome.Mismatch(read)
-                        else -> SettingWriteOutcome.NoReply
-                    }
-                    if (epoch == connectionEpoch) {
-                        if (w.verified) { w.readBack?.let { snapshot = it; publishFamilySettings() } }
-                        else if (read != null) settingValues = settingValues + (id to SettingReading(id, read, null))
-                    }
-                    UsbLog.line("settings write: ${if (w.verified) "VERIFIED" else w.mismatches.firstOrNull() ?: "NOT VERIFIED"}")
-                }
-            } finally {
-                onDone(outcome)
-            }
+        if (op == null) return null
+        var outcome: SettingWriteOutcome? = null
+        var waits = 0
+        while ((busy || scanning || following || connecting || openPending) && waits++ < 400) delay(25)
+        if (epoch != connectionEpoch || busy || scanning || following || connecting || openPending) return null
+        val d = findDac() ?: return null
+        if (!permitted(d)) return null
+        busy = true
+        var written: WriteResult? = null
+        try {
+            written = op(d)
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            UsbLog.line("settings write failed: ${e.message}")
+            outcome = SettingWriteOutcome.NoReply
+        } finally {
+            busy = false
         }
+        // What the read after the write says for this setting (null = the read does not carry it).
+        fun readOf(s: DacSnapshot?): Int? = s?.familyState?.readings()?.firstOrNull { it.id == id }?.value
+        written?.pending?.let { save ->
+            val v = awaitSave(save)
+            val read = readOf(v.readBack)
+            outcome = when {
+                v.verified -> SettingWriteOutcome.Verified
+                read != null -> SettingWriteOutcome.Mismatch(read)
+                else -> SettingWriteOutcome.NoReply
+            }
+            if (v.verified) readValues = readValues + (id to SettingReading(id, value, null))
+            UsbLog.line("settings write: ${v.log ?: "VERIFIED"}")
+        } ?: written?.let { w ->
+            val read = readOf(w.readBack)
+            outcome = when {
+                w.verified -> SettingWriteOutcome.Verified
+                read != null -> SettingWriteOutcome.Mismatch(read)
+                else -> SettingWriteOutcome.NoReply
+            }
+            if (epoch == connectionEpoch) {
+                if (w.verified) { w.readBack?.let { snapshot = it; publishFamilySettings() } }
+                else if (read != null) readValues = readValues + (id to SettingReading(id, read, null))
+            }
+            UsbLog.line("settings write: ${if (w.verified) "VERIFIED" else w.mismatches.firstOrNull() ?: "NOT VERIFIED"}")
+        }
+        return outcome
     }
     private var writeTestJob: Job? = null
     /** The last write self-test of this connection as one line (the page shows it in its footer); null = none yet. */
@@ -513,7 +641,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         settingsJob?.cancel()
         if (pending == null && !settingLeaving) writeJob?.cancel() // an Allegro write, or a JA11 mic write, waits for its DAC to come back: the detach that ends the connection is expected
         writeTestLine = null
-        settingValues = emptyMap()
+        readValues = emptyMap(); unsureSettings.clear()
         settingsRead = false
         settingsReading = false
     }
@@ -1394,7 +1522,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
     private fun publishFamilySettings() {
         val state = snapshot?.familyState ?: return
         if (state is FamilyState.EchoA) return
-        settingValues = state.readings().associateBy { it.id }
+        readValues = state.readings().associateBy { it.id }; unsureSettings.clear()
         settingsRead = true
     }
 
@@ -1841,6 +1969,8 @@ class DeviceController(private val context: Context, private val scope: Coroutin
         private const val VERIFY_PERMISSION_MAX_MS = 180_000L
         private const val VERIFY_POLL_MS = 1_000L
         private const val SAVE_NO_DETACH_MS = 8_000L
+        /** The least time between two queued settings writes ([drainSettings]): the K13 R2R's 300 ms between writes, the most any supported DAC asks for. */
+        private const val SETTING_QUEUE_GAP_MS = 300L
         /** The read asked again after the DAC comes back: the first try, the gap between tries, how many, how long a busy controller is waited for, how long a read has to answer. */
         private const val REREAD_FIRST_MS = 800L
         private const val REREAD_GAP_MS = 2_500L

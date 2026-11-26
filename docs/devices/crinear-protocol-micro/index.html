@@ -4,14 +4,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>CrinEar Protocol Micro EQ app for Android - Contour EQ</title>
-<meta name="description" content="Free, open-source Android app that reads and writes the CrinEar Protocol Micro's 8-band EQ and preamp, with A/B to compare. Tested on hardware.">
+<meta name="description" content="Free, open-source Android app that reads and writes the CrinEar Protocol Micro's 8-band EQ and preamp, with A/B to compare and MAX VOLUME to make it quieter.">
 <link rel="canonical" href="https://contoureq.app/devices/crinear-protocol-micro/">
 <link rel="alternate" hreflang="en" href="https://contoureq.app/devices/crinear-protocol-micro/">
 <link rel="alternate" hreflang="x-default" href="https://contoureq.app/devices/crinear-protocol-micro/">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://contoureq.app/devices/crinear-protocol-micro/">
 <meta property="og:title" content="CrinEar Protocol Micro EQ app for Android - Contour EQ">
-<meta property="og:description" content="Free, open-source Android app that reads and writes the CrinEar Protocol Micro's 8-band EQ and preamp, with A/B to compare. Tested on hardware.">
+<meta property="og:description" content="Free, open-source Android app that reads and writes the CrinEar Protocol Micro's 8-band EQ and preamp, with A/B to compare and MAX VOLUME to make it quieter.">
 <meta property="og:image" content="https://contoureq.app/images/icon-512.png">
 <meta name="twitter:card" content="summary">
 <meta name="theme-color" content="#EFECE8" media="(prefers-color-scheme: light)">
@@ -30,9 +30,9 @@
       "@id": "https://contoureq.app/devices/crinear-protocol-micro/#webpage",
       "url": "https://contoureq.app/devices/crinear-protocol-micro/",
       "name": "CrinEar Protocol Micro EQ app for Android - Contour EQ",
-      "description": "Free, open-source Android app that reads and writes the CrinEar Protocol Micro's 8-band EQ and preamp, with A/B to compare. Tested on hardware.",
+      "description": "Free, open-source Android app that reads and writes the CrinEar Protocol Micro's 8-band EQ and preamp, with A/B to compare and MAX VOLUME to make it quieter.",
       "inLanguage": "en",
-      "dateModified": "2026-11-11",
+      "dateModified": "2026-11-26",
       "isPartOf": {
         "@id": "https://contoureq.app/#website"
       },
@@ -83,8 +83,8 @@
       "description": "Free, open-source Android EQ manager for USB DACs: send profiles from your phone to CrinEar Protocol, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears, JCally and Tanchjim dongles.",
       "operatingSystem": "Android",
       "applicationCategory": "MultimediaApplication",
-      "softwareVersion": "1.8.0",
-      "dateModified": "2026-11-14",
+      "softwareVersion": "1.8.1",
+      "dateModified": "2026-11-26",
       "offers": {
         "@type": "Offer",
         "price": "0",
@@ -398,7 +398,7 @@ footer.fv p{margin:0}
     <p class="dv-lede">Contour EQ is a free, open-source Android app that reads and writes the parametric EQ stored inside the CrinEar Protocol Micro. The EQ stays in the dongle, so it works in every app and on every device you plug it into.</p>
   </div>
   <div class="dv-side">
-    <p class="ver"><span class="dot" aria-hidden="true"></span><span>Stable 1.8.0</span></p>
+    <p class="ver"><span class="dot" aria-hidden="true"></span><span>Stable 1.8.1</span></p>
     <a class="btn btn-primary" href="https://play.google.com/store/apps/details?id=io.github.chronosauros.contour">Install Contour</a>
   </div>
 </header>
@@ -423,7 +423,7 @@ footer.fv p{margin:0}
               <td class="dv-c dv-bands" role="cell"><span class="dv-bars" aria-hidden="true"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span><span class="dv-n">8</span><span class="dv-w"> bands</span></td>
               <td class="dv-c dv-filt" role="cell"><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Peak"><title>Peak</title><use href="#dv-g-peak"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Low shelf"><title>Low shelf</title><use href="#dv-g-low_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="High shelf"><title>High shelf</title><use href="#dv-g-high_shelf"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="Low pass"><title>Low pass</title><use href="#dv-g-low_pass"/></svg><svg class="dv-g on" viewBox="0 0 28 20" role="img" aria-label="High pass"><title>High pass</title><use href="#dv-g-high_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>Band pass</title><use href="#dv-g-band_pass"/></svg><svg class="dv-g" viewBox="0 0 28 20" aria-hidden="true"><title>All pass</title><use href="#dv-g-all_pass"/></svg></td>
               <td class="dv-c dv-mem" role="cell">1 EQ</td>
-              <td class="dv-c dv-set empty" role="cell"><span class="dv-pre">DAC settings: </span>-</td>
+              <td class="dv-c dv-set" role="cell"><span class="dv-pre">DAC settings: </span>Max volume</td>
             </tr>
           </tbody>
         </table>
@@ -441,7 +441,8 @@ footer.fv p{margin:0}
           <tr role="row"><th scope="row" role="rowheader">Frequency</th><td role="cell">20 Hz to 20 kHz</td></tr>
           <tr role="row"><th scope="row" role="rowheader">Preamp</th><td role="cell">-30 to 0 dB, whole dB</td></tr>
           <tr role="row"><th scope="row" role="rowheader">Where the EQ is kept</th><td role="cell">In the DAC's memory: one EQ, no slots. It stays after unplugging.</td></tr>
-          <tr role="row"><th scope="row" role="rowheader">Tested</th><td role="cell">By the developer on hardware and on a test rig, September and October 2026, firmware 0.2.</td></tr>
+          <tr role="row"><th scope="row" role="rowheader">DAC page</th><td role="cell">Since 1.8.1: MAX VOLUME, from -30 to 0 dB in whole dB. It lowers everything the Micro plays by that much, under the preamp of every profile, and the DAC keeps it after unplugging. Contour remembers the value on this phone only: another phone or a reinstall shows 0 dB while the Micro still plays quieter.</td></tr>
+          <tr role="row"><th scope="row" role="rowheader">Tested</th><td role="cell">By the developer on hardware and on a test rig, September to November 2026, firmware 0.2.</td></tr>
         </tbody>
       </table>
     </div>
@@ -454,7 +455,7 @@ footer.fv p{margin:0}
     <ul class="dv-list">
       <li>Firmware updates.</li>
       <li>A positive preamp. The Micro accepts one but does not get louder, so Contour offers none.</li>
-      <li>The DAC's own settings and hardware volume. They would need the WalkPlay web tool of the chip's maker, which Contour has no access to.</li>
+      <li>A hardware volume control. MAX VOLUME on the DAC page makes the Micro quieter through its preamp instead.</li>
       <li>Resetting the DAC.</li>
     </ul>
   </section>
@@ -471,13 +472,14 @@ footer.fv p{margin:0}
     <li>Send a profile with HOLD TO SEND. Contour reads every band back from the DAC, and the EQ stays in the Micro after unplugging.</li>
     <li>HIGH SHELF works too. The Micro has no real high shelf, so Contour sends a mirrored LOW SHELF plus preamp, which gives the same curve.</li>
     <li>Tap A/B while the profile is ON DAC to hear the curve off and on at the same volume. A/B never saves anything to the dongle: its temporary change is gone after unplugging.</li>
+    <li>If the Micro is too loud even at a low phone volume, lower MAX VOLUME on the DAC page. Contour sends the profile that is ON DAC again with the cut under it, so send a profile first.</li>
   </ul>
   <p class="dv-more">Everything else works the same on every DAC: <a href="/guide/">How to use Contour</a>.</p>
 </section>
 
 <section id="vendor-app" class="dv-text">
   <h2 class="dv-h2">Contour EQ and CrinEar's EQ.Hangout.Audio tool</h2>
-  <p>CrinEar's own tool for the Protocol Micro is EQ.Hangout.Audio, a desktop browser tool. Contour started in September 2026 as a phone stand-in for it. EQ.Hangout.Audio runs on a computer, which Contour does not: Contour runs on the Android phone the dongle is plugged into. Both work with the Micro's 8 bands, and neither has a reset or a volume control. Contour keeps your profiles in a library on the phone and needs no internet or account.</p>
+  <p>CrinEar's own tool for the Protocol Micro is EQ.Hangout.Audio, a desktop browser tool. Contour started in September 2026 as a phone stand-in for it. EQ.Hangout.Audio runs on a computer, which Contour does not: Contour runs on the Android phone the dongle is plugged into. Both work with the Micro's 8 bands, and neither has a reset. Contour adds MAX VOLUME on its DAC page, a fixed cut under every profile. It keeps your profiles in a library on the phone and needs no internet or account.</p>
 </section>
 </div>
 
@@ -491,6 +493,10 @@ footer.fv p{margin:0}
     <div class="qa">
       <h3>Can I read the PEQ that is already on the Protocol Micro?</h3>
       <p>Yes. Contour reads the Micro's 8 bands and preamp, and FROM DAC (the + card in the Library) saves what the DAC holds right now as a new profile. Nothing on the DAC changes until you hold HOLD TO SEND.</p>
+    </div>
+    <div class="qa">
+      <h3>The Protocol Micro is too loud. Can I make it quieter?</h3>
+      <p>Yes. Since Contour 1.8.1 the DAC page has MAX VOLUME, from -30 to 0 dB. It lowers everything the Micro plays by that much, and on a test rig the level dropped by exactly the amount set at -10, -20 and -30 dB. The Micro keeps the cut after unplugging, so it plays quieter on every device.</p>
     </div>
   </div>
 </section>

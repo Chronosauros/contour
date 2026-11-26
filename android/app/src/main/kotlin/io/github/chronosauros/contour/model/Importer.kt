@@ -23,6 +23,8 @@ internal fun round2(x: Double) = (x * 100).roundToLong() / 100.0
 object Importer {
     /** [fitDevice] plus what the reader already did to the file (channel chosen, empty filters skipped), as one line. */
     fun fit(eq: ImportedEq, protocol: DeviceTarget = DeviceTarget.MICRO): Pair<ImportedEq, UiText?> {
+        // Nothing was read ([parse] keeps such text only for the notes that name its unreadable lines): no device rule runs on an empty list, only the notes are said.
+        if (eq.bands.isEmpty()) return eq to eq.notes.takeIf { it.isNotEmpty() }?.let { n -> UiText.Joined(n.map { UiText.Core(it) }) }
         val (fitted, note) = fitDevice(eq, protocol)
         val parts = eq.notes.map { UiText.Core(it) } + listOfNotNull(note)
         val report = if (parts.isEmpty()) null else UiText.Joined(parts)
@@ -116,13 +118,17 @@ object Importer {
         return ImportedEq(bands, pre) to (if (notes.isEmpty()) null else UiText.Joined(notes))
     }
 
-    /** APO / AutoEQ / squig.link / hangout text, else EQ by Ear JSON; null when nothing parseable. */
+    /**
+     * APO / AutoEQ / squig.link / hangout text, else EQ by Ear JSON; null when nothing parseable. APO text whose filter or preamp lines were all unreadable comes back
+     * with no bands and the notes that name them, so the import says why nothing came in instead of "no filters" (review 18.11.2026: the notes of the audit L15 fix
+     * were lost exactly when every line was unreadable). Callers treat no bands as nothing to import.
+     */
     fun parse(text: String?): ImportedEq? {
         if (text.isNullOrBlank()) return null
         val apo = runCatching { ApoText.parseImport(text) }.getOrNull()
         if (apo != null && apo.bands.isNotEmpty()) return apo
         val j = runCatching { EqByEarJson.parse(text) }.getOrNull()
-        return j?.takeIf { it.bands.isNotEmpty() }
+        return j?.takeIf { it.bands.isNotEmpty() } ?: apo?.takeIf { it.notes.isNotEmpty() }
     }
 
     /** Exact DAC conversion; never pass through the lossy clipboard fitter. */

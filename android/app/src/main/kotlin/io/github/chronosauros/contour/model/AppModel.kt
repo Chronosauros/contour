@@ -61,6 +61,8 @@ class ProfileNames(val seeds: List<String>, val profile: (Int) -> String, val fr
  */
 class AppModel(private val store: ProfileStore, private val scope: CoroutineScope, val names: ProfileNames, private val beforeLoad: () -> Unit = {}) {
     var protocol by mutableStateOf(DeviceTarget.MICRO)
+    /** The DAC an import (PASTE, OPEN FILE, a file opened with or shared to Contour) is fitted to: the attached one, else the last one found ([LastDac]), else [protocol]. */
+    var importTarget by mutableStateOf(DeviceTarget.MICRO)
     val maxBands: Int get() = protocol.caps.bands
     fun shownPreamp(p: Profile): Double = protocol.shownPreamp(p)
     val profiles = mutableStateListOf<Profile>()
@@ -651,6 +653,23 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
 
     /** ARCHIVE (true) / UNARCHIVE (false). The row keeps its place in the order. */
     fun setArchived(id: String, archived: Boolean) = update(id) { it.copy(archived = archived) }
+
+    /**
+     * REORDER PROFILES (owner 16.11.2026): the active profile [id] moves to place [to] among the active profiles. Archived profiles keep their
+     * places in [profiles], so a profile unarchived later comes back where it was. The order is saved with the state (state.order).
+     */
+    fun moveActive(id: String, to: Int) {
+        val act = profiles.filter { !it.archived }
+        val from = act.indexOfFirst { it.id == id }
+        if (from < 0) return
+        val t = to.coerceIn(0, act.lastIndex)
+        if (t == from) return
+        val moved = act.toMutableList().apply { add(t, removeAt(from)) }
+        var k = 0
+        val next = profiles.map { if (it.archived) it else moved[k++] }
+        for (i in next.indices) if (profiles[i].id != next[i].id) profiles[i] = next[i]
+        scheduleState()
+    }
 
     /** Keep the row visible until the tombstone is written; only then announce deletion/UNDO. */
     fun delete(id: String) {

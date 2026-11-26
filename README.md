@@ -12,7 +12,7 @@ DAC in, pick one and send it. Plug in, send, unplug - that is the whole routine.
 品牌方：我很乐意测试你的解码器能否适配 Contour，或在 Soundblooms 上评测你的耳机。欢迎来信：chronosaur@soundblooms.com
 
 <!-- facts:start -->
-**Contour 1.8.0, released 14 Nov 2026.** Supported DACs, each with its own page: [CrinEar Protocol Micro](https://contoureq.app/devices/crinear-protocol-micro/), [CrinEar Protocol Max](https://contoureq.app/devices/crinear-protocol-max/), [FiiO KA15](https://contoureq.app/devices/fiio-ka15/), [FiiO K13 R2R](https://contoureq.app/devices/fiio-k13-r2r/), [FiiO JadeAudio JA11](https://contoureq.app/devices/fiio-ja11/), [FiiO JadeAudio JIEZI](https://contoureq.app/devices/fiio-jiezi/), [SnowSky Melody](https://contoureq.app/devices/snowsky-melody/), [SnowSky Tiny A](https://contoureq.app/devices/snowsky-tiny-a/), [SnowSky RETRO NANO](https://contoureq.app/devices/snowsky-retro-nano/), [TRN Black Pearl](https://contoureq.app/devices/trn-black-pearl/), [TANCHJIM SPACE II](https://contoureq.app/devices/tanchjim-space-ii/), [Moondrop Dawn Pro 2](https://contoureq.app/devices/moondrop-dawn-pro-2/), [Moondrop Echo-A](https://contoureq.app/devices/moondrop-echo-a/), [Moondrop DUSK-SP](https://contoureq.app/devices/moondrop-dusk/), [Kiwi Ears Allegro Mini](https://contoureq.app/devices/kiwi-ears-allegro-mini/), [Kiwi Ears AD1](https://contoureq.app/devices/kiwi-ears-ad1/) and [JCally JM12](https://contoureq.app/devices/jcally-jm12/).
+**Contour 1.8.1, released 26 Nov 2026.** Supported DACs, each with its own page: [CrinEar Protocol Micro](https://contoureq.app/devices/crinear-protocol-micro/), [CrinEar Protocol Max](https://contoureq.app/devices/crinear-protocol-max/), [FiiO KA15](https://contoureq.app/devices/fiio-ka15/), [FiiO K13 R2R](https://contoureq.app/devices/fiio-k13-r2r/), [FiiO JadeAudio JA11](https://contoureq.app/devices/fiio-ja11/), [FiiO JadeAudio JIEZI](https://contoureq.app/devices/fiio-jiezi/), [SnowSky Melody](https://contoureq.app/devices/snowsky-melody/), [SnowSky Tiny A](https://contoureq.app/devices/snowsky-tiny-a/), [SnowSky RETRO NANO](https://contoureq.app/devices/snowsky-retro-nano/), [TRN Black Pearl](https://contoureq.app/devices/trn-black-pearl/), [TANCHJIM SPACE II](https://contoureq.app/devices/tanchjim-space-ii/), [Moondrop Dawn Pro 2](https://contoureq.app/devices/moondrop-dawn-pro-2/), [Moondrop Echo-A](https://contoureq.app/devices/moondrop-echo-a/), [Moondrop DUSK-SP](https://contoureq.app/devices/moondrop-dusk/), [Kiwi Ears Allegro Mini](https://contoureq.app/devices/kiwi-ears-allegro-mini/), [Kiwi Ears AD1](https://contoureq.app/devices/kiwi-ears-ad1/) and [JCally JM12](https://contoureq.app/devices/jcally-jm12/).
 
 The EQ is written into the DAC itself: it stays there after unplugging and works in every app and on every device you plug the DAC into. Contour does not update firmware. An EQ app on the phone, such as Wavelet or Poweramp, is a different thing: it changes the sound on that phone only.
 <!-- facts:end -->
@@ -89,7 +89,7 @@ The pass filters on the Micro, KA15, K13, Melody and Tiny A arrived in 1.6.0.
 
 | DAC | USB ID | Chip / protocol | Kept in the DAC | DAC page | Tested |
 |---|---|---|---|---|---|
-| CrinEar Protocol Micro | `3302:C20F` | WalkPlay | 1 EQ | - | developer + test rig |
+| CrinEar Protocol Micro | `3302:C20F` | WalkPlay | 1 EQ | yes | developer + test rig |
 | CrinEar Protocol Max | `3302:43CC` | WalkPlay | 1 EQ | yes | developer + test rig |
 | FiiO KA15 | `2972:0104` | FiiO | 3 slots | yes | developer + test rig |
 | FiiO K13 R2R | `2972:0120` | FiiO | 10 slots | - | developer + test rig |
@@ -113,6 +113,7 @@ What the DAC pages hold:
 
 <!-- dac-pages:start -->
 
+- **Protocol Micro:** Since 1.8.1: MAX VOLUME, from -30 to 0 dB in whole dB. It lowers everything the Micro plays by that much, under the preamp of every profile, and the DAC keeps it after unplugging. Contour remembers the value on this phone only: another phone or a reinstall shows 0 dB while the Micro still plays quieter.
 - **Protocol Max:** Since 1.7.0: FILTER (FAST-LL, FAST-PC, SLOW-LL, SLOW-PC, NON-OS), OUTPUT (CLASS H, CLASS AB), BALANCE, up to 15 steps to either side, and MIC GAIN, -15 to +15 dB. Each change is read back and stays after unplugging. There is no GAIN row: the Max's Eco / Boost switch sets the gain.
 - **KA15:** Since 1.6.0: VOLUME, VOLUME STEPS, BALANCE, FILTER, OUTPUT, DRE, BRIGHTNESS, SCREEN OFF, ROTATION and LANGUAGE; USB AUDIO is shown, read-only. FACTORY RESET saves a copy of your USER slots, their names and the settings on the phone first.
 - **JadeAudio JA11:** Since 1.7.0: VOLUME (0 to 60) and IN-LINE MIC (OFF / ON); USB AUDIO is shown, read-only. Each change is read back. An IN-LINE MIC change makes the JA11 reconnect on USB, so Contour reads it once the JA11 is back.
@@ -120,7 +121,7 @@ What the DAC pages hold:
 - **Melody:** Since 1.6.0: VOLUME, VOLUME STEPS, BALANCE, FILTER, GAIN, OUTPUT, DRE, IN-LINE MIC, LIGHT and BUTTONS; USB AUDIO is shown, read-only. FACTORY RESET saves a copy of your USER slots, their names and the settings on the phone first.
 - **Tiny A:** Since 1.6.0: VOLUME, VOLUME STEPS, BALANCE, IN-LINE MIC and LIGHT; USB AUDIO is shown, read-only.
 - **Black Pearl:** Since 1.6.4: FILTER (FAST-LL, FAST-PC, SLOW-LL, SLOW-PC, NON-OS), OUTPUT (CLASS H, CLASS AB), GAIN (LOW, HIGH) and BALANCE, up to 15 steps to either side. Each change is read back and stays after unplugging.
-- **SPACE II:** Since 1.8.0: FILTER (FAST-LL, FAST-PC, SLOW-LL, SLOW-PC, NON-OS), OUTPUT (CLASS H, CLASS AB), GAIN (LOW, HIGH), BALANCE, up to 15 steps to either side, and MIC GAIN, -15 to +15 dB. Each change is read back and stays after unplugging.
+- **SPACE II:** Since 1.8.0: FILTER (FAST-LL, FAST-PC, SLOW-LL, SLOW-PC, NON-OS), OUTPUT (CLASS AB, CLASS H), GAIN (LOW, HIGH), BALANCE, up to 15 steps to either side, and MIC GAIN, -15 to +15 dB. Since 1.8.1: DRE (OFF, ON) and VOLUME, the DAC's own volume from 0 to 60. Each change is read back and stays after unplugging.
 - **Dawn Pro 2:** EQ INDEX, GLOBAL GAIN and PRE GAIN, read-only. The DAC ignores a GLOBAL GAIN write.
 - **DUSK-SP:** Since 1.7.0: PRESET, six buttons for CUSTOM EQ and the cable's five presets (DUSK-DEFAULT, DUSK-V, DUSK-HARMAN, DUSK-BASS+, DUSK-DIFFUSE-TILTED). A tap switches the cable at once and is read back, and the EQ page shows the curve of the preset you picked, from the values Crinacle, who co-tuned the DUSK, published. The choice lasts until the cable is unplugged.
 - **Allegro Mini:** Since 1.6.0: the EQ switch (OFF / ON) and GLOBAL GAIN from -18 to +3 dB in 1.5 dB steps. Each change is read back and stays after unplugging. HOLD TO SEND leaves the switch where it is.
@@ -160,9 +161,12 @@ protocol notes and measurements are in [`research/protocol/PROTOCOL.md`](researc
 <summary><b>CrinEar Protocol Micro</b></summary>
 
 Since 1.6.0 the filters are computed for the 93 750 Hz the DAC's DSP runs at (before, every filter played about
-2% too low). The DAC accepts a positive preamp but does not get louder, so Contour offers none. Its settings,
-hardware volume and reset are not supported yet: they would need the maker's own tool (WalkPlay), which Contour
-has no access to.
+2% too low). The DAC accepts a positive preamp but does not get louder, so Contour offers none. Since 1.8.1 the
+DAC page has MAX VOLUME, -30 to 0 dB in whole dB: a fixed cut under every profile's preamp, which the Micro keeps
+after unplugging (measured on the test rig: the level follows it 1:1 to -30 dB). Contour remembers the value on
+the phone that set it; another phone or a reinstall shows 0 dB while the Micro still plays quieter. Its other
+settings, hardware volume and reset are not supported: they would need the maker's own tool (WalkPlay), which
+Contour has no access to.
 </details>
 
 <details>
@@ -260,9 +264,12 @@ are not supported yet.
 USB name `TANCHJIM-SPACE II`, on WalkPlay's scheme 16 like the Protocol Max and the Black Pearl. PEAK, LOW SHELF,
 HIGH SHELF, LOW PASS and HIGH PASS on 10 bands, preamp -30 to 0 dB in whole dB. Every band and the preamp are read
 back after a send, and the EQ stays after unplugging. Cuts to -12 dB and boosts to +9 dB were measured on the test
-rig; larger boosts were written and read back but not measured. The DAC page has FILTER, OUTPUT, GAIN, BALANCE and
-MIC GAIN, each read back and kept after unplugging; the SPACE II has no physical gain switch, so GAIN stays too. The
-UAC 1.0 / 2.0 switch of the Tanchjim app and a reset are not supported.
+rig (firmware 1.2); larger boosts were written and read back but not measured. The DAC page has FILTER, OUTPUT
+(CLASS AB, CLASS H, named as in the Tanchjim app since 1.8.1), GAIN, BALANCE, MIC GAIN and, since 1.8.1, DRE and
+VOLUME (the DAC's own volume, 0 to 60, which does not follow the phone's volume buttons), each read back and kept
+after unplugging; the SPACE II has no physical gain switch, so GAIN stays too. The DAC page was checked on a phone
+on firmware 1.3. A UAC 1.0 / 2.0 switch (no command is known; the Tanchjim app 2.5.8.1 does not offer one either)
+and a reset are not supported.
 </details>
 
 <details>
@@ -345,7 +352,7 @@ gets a third page, **DAC**, in front of them.
   only then saves it to the DAC's memory. The button then shows ON DAC, and the profile is saved. HOLD TO SEND,
   its caption and the slot picker sit in a fixed footer, and messages appear under the header, so they never
   cover the button. A send that is interrupted leaves SEND INTERRUPTED, and the DAC is read again when you plug it back in.
-- **DAC** (Protocol Max, KA15, JadeAudio JA11, JadeAudio JIEZI, Melody, Tiny A, Black Pearl, SPACE II, Dawn Pro 2, DUSK-SP, Allegro Mini, AD1, JM12): the DAC's own settings, only the ones that DAC has
+- **DAC** (Protocol Micro, Protocol Max, KA15, JadeAudio JA11, JadeAudio JIEZI, Melody, Tiny A, Black Pearl, SPACE II, Dawn Pro 2, DUSK-SP, Allegro Mini, AD1, JM12): the DAC's own settings, only the ones that DAC has
   (VOLUME, BALANCE, FILTER and the rest); USB AUDIO (UAC) is only shown. The header shows the sample rate and
   the firmware. **FACTORY RESET** (KA15, Melody) first reads the USER slots, their names and the settings and
   saves them on the phone, then resets the DAC, shows what changed and offers WRITE THE SAVED COPY BACK.

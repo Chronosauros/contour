@@ -55,11 +55,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
@@ -68,6 +71,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.testTagsAsResourceId
@@ -78,6 +82,7 @@ import io.github.chronosauros.contour.model.DacEditor
 import io.github.chronosauros.contour.model.ImportFile
 import io.github.chronosauros.contour.model.Importer
 import io.github.chronosauros.contour.model.Incoming
+import io.github.chronosauros.contour.model.LastDac
 import io.github.chronosauros.contour.model.Page
 import io.github.chronosauros.contour.model.Sender
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
@@ -139,6 +144,14 @@ fun ContourApp(
     onSaveTxt: (profileId: String, fileName: String) -> Unit = { _, _ -> },
 ) {
     LaunchedEffect(device.protocol) { model.protocol = device.protocol }
+    // An import with no DAC attached is fitted to the last DAC found, not to the Micro the editor falls back to (audit 10.11.2026, L7). Nothing reaches a DAC here.
+    val appContext = LocalContext.current.applicationContext
+    val lastDac = remember { LastDac(appContext) }
+    LaunchedEffect(device.protocol, device.link) {
+        val attached = device.link != Link.NO_DAC
+        if (attached) lastDac.seen(device.protocol)
+        model.importTarget = if (attached) device.protocol else lastDac.target ?: device.protocol
+    }
     if (model.loading || model.loadError) {
         Box(Modifier.fillMaxSize().background(pal.bg).padding(24.dp), contentAlignment = Alignment.Center) {
             androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -170,9 +183,8 @@ fun ContourApp(
         var licences by remember { mutableStateOf(false) }
         var confirmSync by remember { mutableStateOf(false) }
         var archiveOpen by remember { mutableStateOf(prefs.getBoolean("archiveOpen", false)) }
-        // The Google Play board of the APK builds: shown once per install (not while a shared file waits; marked shown at once), kept over a recreated Activity.
-        var playBeta by rememberSaveable { mutableStateOf<Boolean?>(null) }
-        LaunchedEffect(Unit) { if (playBeta == null) playBeta = incoming == null && PlayBeta.takeShowing(context, prefs) }
+        // REORDER PROFILES (owner 16.11.2026): the library's cards come apart, the page bar becomes DONE, the pager stands still
+        var reorder by remember { mutableStateOf(false) }
         val snackbar = remember { SnackbarHostState() }
         val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
         val nav = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
@@ -230,9 +242,10 @@ fun ContourApp(
         LaunchedEffect(onDacPage, device.link, device.connectReads, hasDac) {
             if (onDacPage && !device.dacIsPreview && device.link == Link.CONNECTED) device.readSettings()
         }
-        // Swipes have no page-button callback: restore as soon as the pager targets Library.
+        // Swipes have no page-button callback: restore as soon as the pager targets any page but EQ (Library, and the DAC page: no DAC setting is written
+        // while B plays, since a setting write that ends with a flash save could store B).
         LaunchedEffect(pager) {
-            snapshotFlow { logicalPage(pager.targetPage) }.collect { if (it == Page.LIBRARY) sender.leaveAb() }
+            snapshotFlow { logicalPage(pager.targetPage) }.collect { if (it != Page.TUNE) sender.leaveAb() }
         }
         // Also covers model/review-hook changes that did not originate in a Tune control. Collected, not read here: the current profile changes on every
         // step of a drag, and a read in this scope would recompose the whole shell (pager, both pages' parameters, the page bar) each time.
@@ -330,7 +343,7 @@ fun ContourApp(
                 state = pager,
                 beyondViewportPageCount = 1,
                 // a finger on a slider, PREAMP or the graph never turns the page
-                userScrollEnabled = !pagerLock.locked,
+                userScrollEnabled = !pagerLock.locked && !reorder,
                 modifier = Modifier.fillMaxSize(),
                 key = { pagesNow.value.getOrNull(it) ?: (-1 - it) },
             ) { page ->
@@ -351,14 +364,30 @@ fun ContourApp(
                             onArchiveOpen = { archiveOpen = it; prefs.edit().putBoolean("archiveOpen", it).apply() },
                             top = top, bottom = bottom,
                             visible = pager.settledPage == page,
+                            reorder = reorder,
+                            onReorder = { reorder = it },
                         )
                     }
                 }
             }
-            PageBar(
+            // A page scrolled up goes under the status bar, not through it (25.11.2026: LIBRARY and the connect chip ran under the clock and the icons):
+            // the page colour behind the status bar only (a fade under it darkened the top edge of CLEAR EQ on the Pixel).
+            Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().height(top).background(pal.bg))
+            // REORDER: the page bar slides down and fades, a full-width DONE takes its place (and back to the page bar on DONE)
+            val doneShown by animateFloatAsState(if (reorder) 1f else 0f, tween(220, easing = CubicBezierEasing(0.2f, 0.8f, 0.2f, 1f)), label = "done-bar")
+            // Gone once DONE has taken its place, and out of reach while REORDER is on: faded and moved, it still took taps at the very bottom and TalkBack
+            // still focused its DAC / EQ / LIBRARY under DONE (review 18.11.2026).
+            if (doneShown < 1f) PageBar(
                 pager, pages,
-                onPage = { page -> sender.leaveAb { scope.launch { pagesNow.value.indexOf(page).takeIf { it >= 0 }?.let { pager.animateScrollToPage(it) } } } },
-                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = nav + BAR_EDGE),
+                onPage = { page -> if (!reorder) sender.leaveAb { scope.launch { pagesNow.value.indexOf(page).takeIf { it >= 0 }?.let { pager.animateScrollToPage(it) } } } },
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = nav + BAR_EDGE).graphicsLayer {
+                    alpha = 1f - doneShown
+                    translationY = 80.dp.toPx() * doneShown
+                }.then(if (reorder) Modifier.clearAndSetSemantics {} else Modifier),
+            )
+            if (doneShown > 0f) DoneBar(
+                onDone = { reorder = false },
+                modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = nav + BAR_EDGE).graphicsLayer { alpha = doneShown },
             )
             // Every snackbar sits at the top, right under the header row of the page (all three headers are Grid.ROW tall, from the status bar down), over the top edge of the
             // content and never over the header controls (owner 25.10.2026: at the bottom it covered HOLD TO SEND).
@@ -442,17 +471,19 @@ fun ContourApp(
             is Sheet.Value -> ValueSheet(model, s.param, close)
             is Sheet.BandActions -> BandSheet(model, s.index, close)
             is Sheet.SendFailure -> SendFailureSheet(s.reason, close)
-            Sheet.PlayBetaPreview -> Unit // drawn over everything below
             null -> Unit
         }
         // The factory reset sheet is outside the DAC SETTINGS page: the DAC leaves the bus after the reset and the page goes with it.
         if (device.resetUi != ResetUi.Idle) FactoryResetSheet(device)
-        if (playBeta == true) PlayBetaBoard(onClose = { playBeta = false })
-        else if (sheet == Sheet.PlayBetaPreview) PlayBetaBoard(onClose = close)
 
+        // Back while the cards are apart glues them back (as DONE); leaving the library page ends REORDER too.
+        BackHandler(enabled = reorder && sheet == null && !service && !licences) { haptics.segTap(); reorder = false }
+        LaunchedEffect(pager) {
+            snapshotFlow { logicalPage(pager.settledPage) }.collect { if (it != Page.LIBRARY) reorder = false }
+        }
         // Back from EQ goes to the Library (as before); back from DAC Settings goes to EQ.
         val backFrom = logicalPage(pager.currentPage)
-        BackHandler(enabled = sheet == null && playBeta != true && !service && !licences && (backFrom == Page.TUNE || backFrom == Page.DAC)) {
+        BackHandler(enabled = sheet == null && !service && !licences && (backFrom == Page.TUNE || backFrom == Page.DAC)) {
             val to = if (backFrom == Page.DAC) Page.TUNE else Page.LIBRARY
             sender.leaveAb { scope.launch { pagesNow.value.indexOf(to).takeIf { it >= 0 }?.let { pager.animateScrollToPage(it) } } }
         }
@@ -463,7 +494,7 @@ fun ContourApp(
 @Composable
 private fun IncomingDialog(model: AppModel, incoming: Incoming, onAnswer: (import: Boolean) -> Unit) {
     val raw = incoming.eq
-    val (eq, report) = if (raw != null) Importer.fit(raw, model.protocol) else null to null
+    val (eq, report) = if (raw != null) Importer.fit(raw, model.importTarget) else null to null
     val ok = eq != null && eq.bands.isNotEmpty()
     AlertDialog(
         onDismissRequest = { onAnswer(false) },
@@ -530,7 +561,8 @@ private fun PageBar(pager: PagerState, pages: List<Int>, onPage: (Int) -> Unit, 
                     val pl = m.measure(Constraints.fixed(part, cs.maxHeight))
                     layout(cs.maxWidth, cs.maxHeight) {
                         val p = (pager.currentPage + pager.currentPageOffsetFraction).coerceIn(0f, (n - 1).toFloat())
-                        pl.place((p * part).roundToInt(), 0)
+                        // relative: on a right-to-left phone the pager and the labels are mirrored (page 0 on the right), so is the knob
+                        pl.placeRelative((p * part).roundToInt(), 0)
                     }
                 }
                 .lift(knob, Lift.RAISED)
@@ -560,6 +592,28 @@ private fun PageHalf(label: String, icon: ImageVector, color: Color, modifier: M
         Icon(icon, contentDescription = null, tint = color, modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(8.dp))
         Text(label, style = Type.button, color = color, maxLines = 1)
+    }
+}
+
+/** DONE in place of the page bar while the library's cards are apart: the same size and place, the orange of HOLD TO SEND, the button type. */
+@Composable
+private fun DoneBar(onDone: () -> Unit, modifier: Modifier = Modifier) {
+    val c = pal
+    val haptics = LocalHaptics.current
+    val shape = RoundedCornerShape(Radii.L)
+    Box(
+        modifier
+            .fillMaxWidth()
+            .padding(horizontal = Grid.SIDE)
+            .height(BAR_H)
+            .lift(shape, Lift.RAISED)
+            .clip(shape)
+            .background(c.accent)
+            .clickable(role = androidx.compose.ui.semantics.Role.Button) { haptics.segTap(); onDone() }
+            .testTag("reorder_done"),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(stringResource(R.string.action_done), style = Type.button, color = c.onAccent, maxLines = 1)
     }
 }
 

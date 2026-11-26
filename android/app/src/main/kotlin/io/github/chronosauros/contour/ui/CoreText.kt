@@ -75,6 +75,10 @@ object CoreText {
         rule("""^this EQ needs (\S+) dB; Contour supports down to (\S+) dB for this device\. Reduce the combined boosts\.$""", R.string.core_issue_auto_needs),
         rule("""^AUTO preamp: no finite response; cannot send to (.+)$""", R.string.core_issue_auto_no_response),
         rule("""^The DAC is on EQ index (\d+), one of its own presets\. Switch the DAC to its PEQ mode \(EQ index (.+)\): HOLD TO SEND writes the EQ the DAC is on\.$""", R.string.core_note_dawn_bank),
+        // import: lines of the file whose values could not be read (ApoText.parse)
+        rule("""^filter (\S+) unreadable, skipped$""", R.string.core_import_filter_unreadable),
+        rule("""^filters (.+) unreadable, skipped$""", R.string.core_import_filters_unreadable),
+        rule("""^preamp unreadable, skipped$""", R.string.core_import_preamp_unreadable),
     )
 
     /** Setting words of the DAC Settings page: row labels, section headers and option words, exact match. */
@@ -98,6 +102,7 @@ object CoreText {
         "EQ INDEX" to R.string.core_setting_eq_index,
         "GLOBAL GAIN" to R.string.core_setting_global_gain,
         "PRE GAIN" to R.string.core_setting_pre_gain,
+        "MAX VOLUME" to R.string.core_setting_max_volume,
         "PRESET" to R.string.core_setting_preset,
         "EQ" to R.string.core_setting_eq,
         "DEVICE" to R.string.core_setting_section_device,

@@ -89,14 +89,14 @@
     "oracle": false
   },
   "tested": {
-    "date": "2026-10-25",
+    "date": "2026-11-25",
     "firmware": "0.2 (VERSION command)",
     "contour": null,
     "rangesAccepted": { "result": "pass", "note": "Eight bands, PK and LS, LP 8000 Hz, HP 100 Hz and the preamp written and read back byte for byte on the PC and on phones. The preamp is whole dB: +3 dB is accepted by the register but moved the level by +0.00 dB, so a positive preamp is not offered." },
-    "acoustic": { "result": "pass", "note": "At a 48 kHz stream the PK mix, the shelf mix with the emulated HS, LP 8000, HP 100 and the preamp -6 (level -6.00 dB) pass. The DSP plays the coefficient bytes at 93 750 Hz (96 000 x 125/128), so Contour designs them for 93 750 Hz and every case fits within 0.057 dB; shelves play the slope form." },
-    "persistence": { "result": "not-run", "note": "A full commit was not checked over a power cycle; only TEMP_WRITE was seen to be RAM-only (the earlier state came back after unplugging)." },
-    "settings": { "result": "partial", "note": "The mic gain row is read only: the unit takes the write for some values only (phone -3 accepted, -1 ignored; PC -1 ignored). No DAC Settings row is offered." },
-    "beyondVendor": "CrinEar's tool (EQ.Hangout.Audio, devicePEQ) offers eight bands with no reset and no volume. Contour adds a high shelf (sent as an inverted low shelf with the gain sum in the preamp) and, since 2026-10-25, LP and HP, and rounds the preamp to whole dB. The WalkPlay web tool has a reset, which Contour keeps in the bench only (not run on a unit).",
-    "runs": ["run:2026-10-22-crinear-protocol-micro-01-phone", "run:2026-10-22-crinear-protocol-micro-02", "run:2026-10-24-crinear-protocol-micro-04-mac-eqtest", "run:2026-10-24-crinear-protocol-micro-05-mac-eqtest", "run:2026-10-25-crinear-protocol-micro-07-mac-eqtest-48k"]
+    "acoustic": { "result": "pass", "note": "At a 48 kHz stream the PK mix, the shelf mix with the emulated HS, LP 8000, HP 100 and the preamp -6 (level -6.00 dB) pass. The DSP plays the coefficient bytes at 93 750 Hz (96 000 x 125/128), so Contour designs them for 93 750 Hz and every case fits within 0.057 dB; shelves play the slope form. The preamp at -10, -20 and -30 dB moves the level by -10.00, -20.00 and -30.00 dB (1:1), and the PK mix under a -20 dB preamp passes (2026-11-25)." },
+    "persistence": { "result": "pass", "note": "A full send from a phone (eight bands, preamp -23 dB under MAX VOLUME -20, commit) read back the same after unplugging and plugging the unit into a Mac (2026-11-25). TEMP_WRITE alone is RAM-only (the earlier state came back after unplugging)." },
+    "settings": { "result": "partial", "note": "The DAC page offers MAX VOLUME (-30..0 dB in whole dB): a fixed cut Contour adds under every profile's preamp and sends in the preamp frame, so the unit keeps it with the EQ. The mic gain row is read only: the unit takes the write for some values only (phone -3 accepted, -1 ignored; PC -1 ignored)." },
+    "beyondVendor": "CrinEar's tool (EQ.Hangout.Audio, devicePEQ) offers eight bands with no reset and no volume. Contour adds a high shelf (sent as an inverted low shelf with the gain sum in the preamp) and, since 2026-10-25, LP and HP, rounds the preamp to whole dB, and MAX VOLUME: one level under every profile, kept in the DAC, for a unit that has no volume buttons. The WalkPlay web tool has a reset, which Contour keeps in the bench only (not run on a unit).",
+    "runs": ["run:2026-10-22-crinear-protocol-micro-01-phone", "run:2026-10-22-crinear-protocol-micro-02", "run:2026-10-24-crinear-protocol-micro-04-mac-eqtest", "run:2026-10-24-crinear-protocol-micro-05-mac-eqtest", "run:2026-10-25-crinear-protocol-micro-07-mac-eqtest-48k", "run:2026-11-25-crinear-protocol-micro-08-mac-max-volume", "run:2026-11-25-crinear-protocol-micro-09-mac-after-pixel-read"]
   }
 }

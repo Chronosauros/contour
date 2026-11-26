@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Dark system theme: the start window in the app's dark page background (DarkPalette.bg) with light bar icons; see values/themes.xml. -->
+    <color name="window_background">#171615</color>
+    <bool name="window_light_bars">false</bool>
+</resources>

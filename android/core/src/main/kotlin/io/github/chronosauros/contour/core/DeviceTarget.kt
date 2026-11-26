@@ -63,6 +63,8 @@ data class DeviceTarget private constructor(
     val preampLabel: String get() = if (moondrop != null) "PRE GAIN" else "PREAMP"
 
     val supportsAb: Boolean get() = walkplay == DeviceProtocol.MICRO
+    /** MAX VOLUME (a fixed cut under every profile, [ProtocolMicro.trimmedRegister]): the Protocol Micro only; the Echo-A runs the Micro's planner but is not given one. */
+    val takesVolumeTrim: Boolean get() = walkplay?.takesVolumeTrim == true
     val experimental: Boolean get() = !supportsAb
     /** Micro, Protocol Max and TRN Black Pearl: the WalkPlay targets, with their editor/import/preamp policy. */
     val stable: Boolean get() = walkplay != null
@@ -365,5 +367,14 @@ data class DeviceTarget private constructor(
             find(vendorId, productId)
                 ?: GeneratedDevices.USB_IDS.firstOrNull { it.recognition == Recognition.FIND_DEVICE && it.matches(vendorId, productId, productName) }
                     ?.let { byRecord.getValue(it.recordId) }
+
+        /**
+         * The id of the device record [target] stands for: a key the app can keep across versions (the last DAC found, for an import with none attached). Null for a
+         * target no record names (the pass-filter variants of the tests and the bench).
+         */
+        fun recordIdOf(target: DeviceTarget): String? = byRecord.entries.firstOrNull { it.value == target }?.key
+
+        /** The target of a device record id ([recordIdOf]); null for an id no record has (any longer). */
+        fun ofRecord(recordId: String): DeviceTarget? = byRecord[recordId]
     }
 }

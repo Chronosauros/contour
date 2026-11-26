@@ -58,13 +58,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -99,13 +102,14 @@ import io.github.chronosauros.contour.ui.Grid
 import io.github.chronosauros.contour.ui.Lift
 import io.github.chronosauros.contour.ui.Type
 import io.github.chronosauros.contour.ui.kit.LiftGuard
+import io.github.chronosauros.contour.ui.kit.SliderFillStart
+import io.github.chronosauros.contour.ui.kit.sliderSign
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
 import io.github.chronosauros.contour.ui.kit.LocalPagerLock
 import io.github.chronosauros.contour.ui.kit.PreampFeel
 import io.github.chronosauros.contour.ui.kit.pressStart
 import io.github.chronosauros.contour.ui.kit.detectHorizontalDragWithEnds
 import io.github.chronosauros.contour.ui.kit.holdsPager
-import io.github.chronosauros.contour.ui.kit.ProfileIcons
 import io.github.chronosauros.contour.ui.kit.SegmentTravel
 import io.github.chronosauros.contour.ui.lift
 import io.github.chronosauros.contour.ui.Radii
@@ -201,10 +205,14 @@ fun TuneScreen(model: AppModel, device: DeviceController, sender: Sender, editor
                         contents = listOf(
                             { Header(model, p, sender, actions, onDac) },
                             {
-                                Box {
-                                    ResponseGraph(model, p, Modifier.fillMaxSize(), bypassed = sender.bypassed, enabled = bandsEnabled)
-                                    if (sender.canAb(p)) AbButton(sender, p, Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 8.dp))
-                                    GraphNotice(model, Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp, start = 12.dp, end = 12.dp))
+                                // The graph is not mirrored on a right-to-left phone (Material: charts and graphs keep their direction): low
+                                // frequencies on the left, the dB scale on the left edge, and A/B in the top right corner, clear of that scale.
+                                CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+                                    Box {
+                                        ResponseGraph(model, p, Modifier.fillMaxSize(), bypassed = sender.bypassed, enabled = bandsEnabled)
+                                        if (sender.canAb(p)) AbButton(sender, p, Modifier.align(Alignment.TopEnd).padding(top = 8.dp, end = 8.dp))
+                                        GraphNotice(model, Modifier.align(Alignment.BottomCenter).padding(bottom = 12.dp, start = 12.dp, end = 12.dp))
+                                    }
                                 }
                             },
                             { TuneControls(model, p, device, sender, editor, actions, bandsEnabled) },
@@ -395,8 +403,7 @@ private fun Header(model: AppModel, p: Profile?, sender: Sender, actions: TuneAc
                     .testTag("tune_name"),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(ProfileIcons.of(p.icon), null, tint = c.text, modifier = Modifier.size(26.dp))
-                Spacer(Modifier.width(14.dp))
+                // no profile icon before the name (owner 25.11.2026, "Bez ikony"): the profile icons live in the library
                 Column {
                     // a long name steps down from the title size before it is cut (the header shares its row with UNDO/REDO)
                     BasicText(
@@ -640,13 +647,16 @@ private fun BandStrip(model: AppModel, bands: BandFlags, actions: TuneActions, e
     val showPlus = bands.size < model.maxBands
     // "-" is muted while it is the only band and while sending or A/B is busy (when "+" is dead too)
     val canDelete = enabled && bands.size > 1
-    BoxWithConstraints(Modifier.fillMaxWidth().height(ROW_H)) {
-        val plan = BandStripPlan.plan(maxWidth.value.toDouble(), bands.size, showPlus)
-        val numbers = plan.numbersDp.dp
-        Row(Modifier.fillMaxSize().clip(well).background(c.track).sink(well)) {
-            BandNumbers(model, bands, actions, enabled, plan.cellDp.dp, plan.scroll, numbers, Modifier.width(numbers))
-            if (showPlus) PmCell(Icons.Rounded.Add, stringResource(R.string.tune_add_band), enabled, "chip_add") { haptics.tap(); model.addBand() }
-            PmCell(Icons.Rounded.Remove, stringResource(R.string.tune_delete_band), canDelete, "chip_remove") { haptics.tap(); model.deleteBand(model.selectedBand) }
+    // Left to right on a right-to-left phone too, as the graph above it (owner 16.11.2026: "like the graph"): band 1 on the left, "+" and "-" at the right end.
+    CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+        BoxWithConstraints(Modifier.fillMaxWidth().height(ROW_H)) {
+            val plan = BandStripPlan.plan(maxWidth.value.toDouble(), bands.size, showPlus)
+            val numbers = plan.numbersDp.dp
+            Row(Modifier.fillMaxSize().clip(well).background(c.track).sink(well)) {
+                BandNumbers(model, bands, actions, enabled, plan.cellDp.dp, plan.scroll, numbers, Modifier.width(numbers))
+                if (showPlus) PmCell(Icons.Rounded.Add, stringResource(R.string.tune_add_band), enabled, "chip_add") { haptics.tap(); model.addBand() }
+                PmCell(Icons.Rounded.Remove, stringResource(R.string.tune_delete_band), canDelete, "chip_remove") { haptics.tap(); model.deleteBand(model.selectedBand) }
+            }
         }
     }
 }
@@ -1029,8 +1039,10 @@ private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, v
     val pos = if (db == null || hi <= lo) 0f else ((db - lo) / (hi - lo)).toFloat().coerceIn(0f, 1f)
     // AUTO sits at the right of the bar: switching to it moves right, back to MANUAL left (no sliding indicator: the pair is played on the tap)
     val switchTo = { toAuto: Boolean -> sender.leaveAb { model.setPreampAuto(toAuto) } }
+    // -1 on a right-to-left phone: the slider is mirrored there, a finger moving left raises the preamp ([io.github.chronosauros.contour.ui.kit.MIRROR_VALUE_SLIDERS])
+    val sign = sliderSign()
     // the drag that moves a MANUAL preamp
-    val gesture = if (!adjustable) Modifier else Modifier.holdsPager(pagerLock).pointerInput(p.id) {
+    val gesture = if (!adjustable) Modifier else Modifier.holdsPager(pagerLock).pointerInput(p.id, sign) {
                     val guard = LiftGuard<Double>(density, "PREAMP")
                     var acc = 0.0
                     var speed = 0f
@@ -1062,7 +1074,7 @@ private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, v
                         val dt = (ch.uptimeMillis - ch.previousUptimeMillis).coerceAtLeast(1L).toFloat()
                         speed = 0.6f * speed + 0.4f * (kotlin.math.abs(dx) / density / dt)
                         val rate = PREAMP_DB_PER_DP * ratioLerp(PREAMP_SLOW, 1f, speedRamp(speed))
-                        val raw = acc + dx.toDp().value * rate
+                        val raw = acc + (sign * dx).toDp().value * rate
                         acc = raw.coerceIn(lo, hi)
                         val next = io.github.chronosauros.contour.core.Preamp.floorTo(acc, model.protocol.preampStep) // down: never louder than the finger
                         if (next != now) model.setPreamp(next)
@@ -1082,6 +1094,7 @@ private fun PreampBar(model: AppModel, p: Profile, db: Double?, auto: Boolean, v
             val fillW = maxHeight + (maxWidth - maxHeight) * pos
             Box(
                 Modifier
+                    .align(SliderFillStart)
                     .width(fillW)
                     .fillMaxHeight()
                     .then(if (auto) Modifier else Modifier.lift(shape, Lift.RAISED))

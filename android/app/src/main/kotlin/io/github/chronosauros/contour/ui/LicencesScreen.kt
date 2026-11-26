@@ -22,6 +22,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
+import androidx.compose.ui.AbsoluteAlignment
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -96,11 +97,13 @@ fun LicencesScreen(onClose: () -> Unit) {
                     Text(
                         stringResource(R.string.licences_about, version, stringResource(R.string.source_code_url)),
                         style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.fillMaxWidth(),
                     )
                 }
                 items(privacy.size) { i ->
                     val (heading, text) = privacy[i]
-                    Text(text, style = if (heading) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodySmall)
+                    // full width: a heading lines up with its paragraphs, which run left to right on a right-to-left phone too (English text is not mirrored)
+                    Text(text, style = if (heading) MaterialTheme.typography.titleSmall else MaterialTheme.typography.bodySmall, modifier = Modifier.fillMaxWidth())
                 }
                 item {
                     Box(
@@ -108,13 +111,13 @@ fun LicencesScreen(onClose: () -> Unit) {
                             // no INTERNET permission here: the browser fetches the page; no browser installed = nothing happens
                             runCatching { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(privacyUrl))) }
                         },
-                        contentAlignment = Alignment.CenterStart,
+                        contentAlignment = AbsoluteAlignment.CenterLeft, // with the English text around it
                     ) { Text(stringResource(R.string.privacy_url_label), style = Type.segment, color = pal.accent) }
                 }
                 item { HorizontalDivider() }
                 files.forEach { (name, text) ->
-                    item { Text(name, style = MaterialTheme.typography.titleSmall) }
-                    item { Text(text.trim(), fontFamily = FontFamily.Monospace, fontSize = 10.sp, lineHeight = 13.sp) }
+                    item { Text(name, style = MaterialTheme.typography.titleSmall, modifier = Modifier.fillMaxWidth()) }
+                    item { Text(text.trim(), fontFamily = FontFamily.Monospace, fontSize = 10.sp, lineHeight = 13.sp, modifier = Modifier.fillMaxWidth()) }
                     item { HorizontalDivider() }
                 }
             }

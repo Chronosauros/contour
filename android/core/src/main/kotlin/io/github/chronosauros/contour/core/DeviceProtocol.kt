@@ -121,7 +121,17 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
     fun flatPlan(): DevicePlan.Ready = if (this == MICRO) ProtocolMicro.flatPlan()
         else DevicePlan.Ready(List(caps.bands) { flatBand(it) }, 0)
 
-    fun plan(profile: Profile): DevicePlan = plan(profile.bands, profile.preampDb)
+    /** MAX VOLUME, the fixed cut under every profile ([ProtocolMicro.trimmedRegister]): the Protocol Micro only (owner 25.11.2026, Micro first). */
+    val takesVolumeTrim: Boolean get() = this == MICRO
+
+    /** [trimDb]: the DAC's MAX VOLUME, 0 on every DAC but the Micro ([takesVolumeTrim]). */
+    fun plan(profile: Profile, trimDb: Int = 0): DevicePlan {
+        if (this == MICRO) return ProtocolMicro.plan(profile.bands, profile.preampDb, trimDb = trimDb)
+        noTrim(trimDb)
+        return plan(profile.bands, profile.preampDb)
+    }
+
+    private fun noTrim(trimDb: Int) = require(trimDb == 0) { "${caps.name} has no MAX VOLUME" }
 
     /**
      * [caps] are the limits a band is held to: the protocol's own by default; the bench passes a widened set for a Max (LOW PASS and HIGH PASS, +-12 dB: [ProtocolMax.capabilities]) so a
@@ -171,12 +181,14 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
         if (this == MICRO) ProtocolMicro.matches(plan, regs, preampDb)
         else plan.bands.size == caps.bands && ProtocolMicro.matches(plan, regs, preampDb)
 
-    fun matches(profile: Profile, regs: List<WalkPlay.Registers>, preampDb: Int): Boolean =
-        if (this == MICRO) ProtocolMicro.matches(profile, regs, preampDb)
-        else (plan(profile) as? DevicePlan.Ready)?.let { matches(it, regs, preampDb) } ?: false
+    fun matches(profile: Profile, regs: List<WalkPlay.Registers>, preampDb: Int, trimDb: Int = 0): Boolean =
+        if (this == MICRO) ProtocolMicro.matches(profile, regs, preampDb, trimDb)
+        else (plan(profile, trimDb) as? DevicePlan.Ready)?.let { matches(it, regs, preampDb) } ?: false
 
-    fun importExact(bands: List<WalkPlay.DeviceBand>, preampDb: Int, caps: DeviceCapabilities = this.caps): DacImport {
-        if (this == MICRO) return ProtocolMicro.importExact(bands, preampDb)
+    /** [trimDb]: the DAC's MAX VOLUME, taken back out of the preamp read ([ProtocolMicro.importExact]); 0 on every DAC but the Micro. */
+    fun importExact(bands: List<WalkPlay.DeviceBand>, preampDb: Int, caps: DeviceCapabilities = this.caps, trimDb: Int = 0): DacImport {
+        if (this == MICRO) return ProtocolMicro.importExact(bands, preampDb, trimDb = trimDb)
+        noTrim(trimDb)
         return importExactTolerant(bands, preampDb, caps)
     }
 

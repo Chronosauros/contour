@@ -54,7 +54,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.pluralStringResource
@@ -80,6 +83,21 @@ import io.github.chronosauros.contour.model.DacEditor
 import io.github.chronosauros.contour.model.ImportFile
 import io.github.chronosauros.contour.model.Importer
 import io.github.chronosauros.contour.ui.kit.ProfileIcons
+import io.github.chronosauros.contour.ui.kit.LocalHaptics
+import io.github.chronosauros.contour.ui.Lift
+import io.github.chronosauros.contour.ui.lift
+import io.github.chronosauros.contour.ui.sink
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.unit.em
+import kotlinx.coroutines.delay
 import io.github.chronosauros.contour.ui.tune.Param
 import io.github.chronosauros.contour.usb.DeviceController
 import io.github.chronosauros.contour.usb.Link
@@ -100,16 +118,20 @@ sealed interface Sheet {
     data class Value(val param: Param) : Sheet
     data class BandActions(val index: Int) : Sheet
     data class SendFailure(val reason: UiText?) : Sheet
-    /** Review hook only (`--es sheet playbeta`): the Google Play beta board, which a review build never shows by itself. */
-    data object PlayBetaPreview : Sheet
 }
 
 /** A Material 3 bottom sheet whose contents keep their test tags as resource ids (it is its own window). [dismissible] false: a swipe, the scrim and BACK leave it open (the factory reset while it runs). */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
 @Composable
-fun SheetFrame(onDismiss: () -> Unit, dismissible: Boolean = true, content: @Composable () -> Unit) {
+fun SheetFrame(onDismiss: () -> Unit, dismissible: Boolean = true, doneHandle: Boolean = false, content: @Composable () -> Unit) {
     val state = rememberModalBottomSheetState(skipPartiallyExpanded = true, confirmValueChange = { dismissible || it != SheetValue.Hidden })
-    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state) {
+    val scope = rememberCoroutineScope()
+    // [doneHandle]: the grab handle is a wider pressed-in pill with an orange DONE in it (owner 16.11.2026): tap it or pull the sheet down
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = state,
+        dragHandle = if (doneHandle) ({ DoneHandle { scope.launch { state.hide() }.invokeOnCompletion { onDismiss() } } }) else ({ BottomSheetDefaults.DragHandle() }),
+    ) {
         Column(
             Modifier
                 .fillMaxWidth()
@@ -129,7 +151,10 @@ private fun SheetTitle(text: String) {
     Text(text, style = Type.rowName, color = pal.text)
 }
 
-/** NAME, HEADPHONES, icon grid, SHARE, SAVE .TXT, DUPLICATE, CLEAR EQ. Every change is saved as you type. */
+/**
+ * NAME, HEADPHONES, the ICON card (opens the icon board), SHARE, SAVE .TXT, DUPLICATE, CLEAR EQ. Every change is saved as you type. DONE is the
+ * grab handle (owner 16.11.2026: no DONE or REORDER PROFILES buttons; the icons get the room).
+ */
 @Composable
 fun EditSheet(model: AppModel, id: String, onDone: () -> Unit, onSaveTxt: (profileId: String, fileName: String) -> Unit) {
     val p = model.byId(id) ?: return onDone()
@@ -139,7 +164,12 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit, onSaveTxt: (profi
     val openedName = remember(id) { p.name }
     var sub by remember(id) { mutableStateOf(p.subtitle) }
     val sharePreamp = runCatching { p.effectivePreampDb(model.protocol.shelfForm) }.getOrNull()
-    SheetFrame(onDone) {
+    val haptics = LocalHaptics.current
+    val scope = rememberCoroutineScope()
+    var board by remember(id) { mutableStateOf(false) }
+    // the big icon pops when the board sets a new one
+    val pop = remember(id) { Animatable(1f) }
+    SheetFrame(onDone, doneHandle = true) {
         SheetTitle(stringResource(R.string.edit_title))
         OutlinedTextField(
             value = name,
@@ -159,29 +189,20 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit, onSaveTxt: (profi
             shape = FIELD,
             modifier = Modifier.fillMaxWidth().testTag("edit_headphones"),
         )
-        Text(stringResource(R.string.edit_icon), style = Type.label, color = pal.textDim)
-        val icon = model.byId(id)?.icon
-        Column(Modifier.testTag("edit_icons"), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            ProfileIcons.ALL.chunked(5).forEach { row ->
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    row.forEach { (n, v) ->
-                        val sel = n == icon
-                        Box(
-                            Modifier
-                                .weight(1f)
-                                .aspectRatio(1.4f)
-                                .heightIn(min = 48.dp)
-                                .clip(RoundedCornerShape(Radii.S))
-                                // the chosen icon is orange, like every other selection in the app
-                                .background(if (sel) pal.accent else MaterialTheme.colorScheme.surfaceContainerLow)
-                                .clickable { model.setIcon(id, n) }
-                                .testTag("icon_$n"),
-                            contentAlignment = androidx.compose.ui.Alignment.Center,
-                        ) { Icon(v, stringResource(ProfileIcons.descriptionRes(n)), Modifier.size(26.dp), tint = if (sel) pal.onAccent else pal.text) }
-                    }
+        val icon = model.byId(id)?.icon.orEmpty()
+        IconCard(icon, scale = { pop.value }) { board = true }
+        if (board) IconBoard(
+            icon,
+            onPick = { n ->
+                model.setIcon(id, n)
+                haptics.tap()
+                scope.launch {
+                    pop.snapTo(0.8f)
+                    pop.animateTo(1f, tween(420, easing = CubicBezierEasing(0.34f, 1.6f, 0.64f, 1f)))
                 }
-            }
-        }
+            },
+            onDismiss = { board = false },
+        )
         Row(horizontalArrangement = Arrangement.spacedBy(Grid.GAP)) {
             AppButton(
                 stringResource(R.string.edit_share),
@@ -221,6 +242,118 @@ fun EditSheet(model: AppModel, id: String, onDone: () -> Unit, onSaveTxt: (profi
     }
 }
 
+/** The grab handle with DONE (88 x 26 dp pressed-in pill, a 48 dp tall target): tap = close; the sheet still follows a pull down. */
+@Composable
+private fun DoneHandle(onDone: () -> Unit) {
+    val c = pal
+    val haptics = LocalHaptics.current
+    val pill = RoundedCornerShape(13.dp)
+    Box(
+        Modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .clickable(role = Role.Button) { haptics.tap(); onDone() }
+            .testTag("sheet_done"),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(Modifier.size(88.dp, 26.dp).clip(pill).background(c.track).sink(pill), contentAlignment = Alignment.Center) {
+            Text(stringResource(R.string.action_done), style = Type.small.copy(letterSpacing = 0.16.em), color = c.accent, maxLines = 1)
+        }
+    }
+}
+
+/** ICON: one 96 dp card - the label and the icon's name on the left, the icon big (40 dp on a 68 dp raised tile) on the right; tap = the icon board. */
+@Composable
+private fun IconCard(icon: String, scale: () -> Float, onClick: () -> Unit) {
+    val c = pal
+    val card = RoundedCornerShape(Radii.L)
+    val tile = RoundedCornerShape(18.dp)
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .height(96.dp)
+            .lift(card, Lift.CARD)
+            .clip(card)
+            .background(c.surface2)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(start = Grid.TEXT, end = 14.dp)
+            .testTag("edit_icon_card"),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(stringResource(R.string.edit_icon), style = Type.label, color = c.textDim, maxLines = 1)
+            Text(stringResource(ProfileIcons.descriptionRes(icon)).uppercase(), style = Type.value, color = c.text, maxLines = 1)
+        }
+        Box(
+            Modifier
+                .size(68.dp)
+                .graphicsLayer { val s = scale(); scaleX = s; scaleY = s }
+                .lift(tile, Lift.RAISED)
+                .background(c.surface, tile),
+            contentAlignment = Alignment.Center,
+        ) {
+            Icon(ProfileIcons.of(icon), contentDescription = null, tint = c.text, modifier = Modifier.size(40.dp))
+        }
+    }
+}
+
+/**
+ * The icon board: a half-screen sheet over EDIT PROFILE with only the icons (6 columns, 54 dp cells, 30 dp glyphs, the current one on the orange
+ * pill), its own DONE handle and dim. A pick sets the icon and the board closes 140 ms later; back or a pull down closes the board first.
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalComposeUiApi::class)
+@Composable
+private fun IconBoard(current: String, onPick: (String) -> Unit, onDismiss: () -> Unit) {
+    val c = pal
+    val state = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val scope = rememberCoroutineScope()
+    val close = { scope.launch { state.hide() }.invokeOnCompletion { onDismiss() }; Unit }
+    val shown = ProfileIcons.shown(current)
+    var picked by remember { mutableStateOf(false) }
+    val cell = RoundedCornerShape(Radii.M)
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = state, dragHandle = { DoneHandle(close) }) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .semantics { testTagsAsResourceId = true }
+                // 7 rows of icons are ~480 dp: a landscape or split-screen window is shorter, and the last rows must still be reachable (review 18.11.2026)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = Grid.SIDE)
+                .padding(bottom = 20.dp)
+                .navigationBarsPadding()
+                .testTag("icon_board"),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            ProfileIcons.ALL.chunked(6).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    row.forEach { (n, v) ->
+                        val sel = n == shown
+                        Box(
+                            Modifier
+                                .weight(1f)
+                                .height(54.dp)
+                                .let { if (sel) it.lift(cell, Lift.RAISED) else it }
+                                .clip(cell)
+                                // the chosen icon is orange, like every other selection in the app
+                                .background(if (sel) c.accent else c.surface2)
+                                .clickable {
+                                    if (picked) return@clickable
+                                    picked = true
+                                    onPick(n)
+                                    scope.launch { delay(140); state.hide() }.invokeOnCompletion { onDismiss() }
+                                }
+                                .semantics { selected = sel }
+                                .testTag("icon_$n"),
+                            contentAlignment = Alignment.Center,
+                        ) { Icon(v, stringResource(ProfileIcons.descriptionRes(n)), Modifier.size(30.dp), tint = if (sel) c.onAccent else c.textDim) }
+                    }
+                    repeat(6 - row.size) { Spacer(Modifier.weight(1f)) }
+                }
+            }
+        }
+    }
+}
+
 /** FLAT (one 1 kHz band), PASTE (clipboard APO / AutoEQ / EQ by Ear JSON), OPEN FILE (a .txt), FROM DAC (the library profile for what plays, or a new one). The profile opens in Tune. */
 @Composable
 fun NewProfileSheet(model: AppModel, device: DeviceController, editor: DacEditor, onDone: () -> Unit) {
@@ -247,9 +380,9 @@ fun NewProfileSheet(model: AppModel, device: DeviceController, editor: DacEditor
     fun readClipboard() {
         val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
         val text = runCatching { cm.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString() }.getOrNull()
-        clip = Importer.parse(text)?.let { Importer.fit(it, model.protocol) }
+        clip = Importer.parse(text)?.let { Importer.fit(it, model.importTarget) }
     }
-    LaunchedEffect(model.protocol) { readClipboard() }
+    LaunchedEffect(model.importTarget) { readClipboard() }
     val snapshot = device.snapshot
     val dacImport = if (device.link == Link.CONNECTED && snapshot != null)
         snapshot.importExact() else null
@@ -267,12 +400,19 @@ fun NewProfileSheet(model: AppModel, device: DeviceController, editor: DacEditor
             model.create(listOf(model.flatBand()), null)
             onDone()
         }
-        val c = clip
+        // Nothing left after the fit (every line unreadable, or every filter one this DAC does not take): PASTE says why and stays off, as OPEN FILE and a
+        // shared file do - it never makes a profile with no band (review 18.11.2026).
+        val c = clip?.takeIf { it.first.bands.isNotEmpty() }
+        val nothing = clip?.takeIf { it.first.bands.isEmpty() }
         Option(
             stringResource(R.string.new_paste),
-            if (c == null) stringResource(R.string.new_paste_empty)
-            else if (c.second == null) pluralStringResource(R.plurals.new_paste_filters, c.first.bands.size, c.first.bands.size)
-            else pluralStringResource(R.plurals.new_paste_filters_report, c.first.bands.size, c.first.bands.size, c.second!!.asString()),
+            when {
+                c != null && c.second == null -> pluralStringResource(R.plurals.new_paste_filters, c.first.bands.size, c.first.bands.size)
+                c != null -> pluralStringResource(R.plurals.new_paste_filters_report, c.first.bands.size, c.first.bands.size, c.second!!.asString())
+                nothing?.second != null -> stringResource(R.string.import_nothing_report, nothing.second!!.asString())
+                nothing != null -> stringResource(R.string.import_nothing)
+                else -> stringResource(R.string.new_paste_empty)
+            },
             c != null,
             "new_paste",
         ) {
@@ -410,23 +550,26 @@ fun ValueSheet(model: AppModel, param: Param, onDone: () -> Unit) {
             val bands = model.current?.bands
             if (bands == null || down == typed || !model.preampAccepted(bands, typed)) null else down
         }
-        OutlinedTextField(
-            value = text,
-            onValueChange = { text = it; invalid = false; reason = null },
-            label = { Text(range) },
-            isError = invalid,
-            supportingText = when {
-                invalid -> ({ Text(reason?.asString() ?: stringResource(if (param == Param.PREAMP) R.string.preamp_enter_in_range else R.string.value_enter_valid_number)) })
-                savedAs != null -> ({ Text(stringResource(R.string.value_saved_as_whole_db, Param.PREAMP.text(savedAs, true))) })
-                else -> null
-            },
-            suffix = { if (param.unit.isNotEmpty()) Text(param.unit) },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
-            keyboardActions = KeyboardActions(onDone = { commit() }),
-            shape = FIELD,
-            modifier = Modifier.fillMaxWidth().focusRequester(focus).testTag("value_input"),
-        )
+        // A number and its unit (and the range over them) read left to right on a right-to-left phone too (Material: numbers are not mirrored)
+        CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it; invalid = false; reason = null },
+                label = { Text(range) },
+                isError = invalid,
+                supportingText = when {
+                    invalid -> ({ Text(reason?.asString() ?: stringResource(if (param == Param.PREAMP) R.string.preamp_enter_in_range else R.string.value_enter_valid_number)) })
+                    savedAs != null -> ({ Text(stringResource(R.string.value_saved_as_whole_db, Param.PREAMP.text(savedAs, true))) })
+                    else -> null
+                },
+                suffix = { if (param.unit.isNotEmpty()) Text(param.unit) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal, imeAction = ImeAction.Done),
+                keyboardActions = KeyboardActions(onDone = { commit() }),
+                shape = FIELD,
+                modifier = Modifier.fillMaxWidth().focusRequester(focus).testTag("value_input"),
+            )
+        }
         Row(horizontalArrangement = Arrangement.spacedBy(Grid.GAP)) {
             if (param == Param.GAIN || param == Param.PREAMP) {
                 AppButton(

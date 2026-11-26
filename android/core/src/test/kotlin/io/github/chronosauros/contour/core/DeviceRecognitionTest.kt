@@ -80,4 +80,15 @@ class DeviceRecognitionTest {
         assertEquals(DeviceTarget.SPACE_2, DeviceTarget.findDevice(0x3302, 0x4381, "TANCHJIM-SPACE II")); assertNull(DeviceTarget.findDevice(0x3302, 0x4381, null)); assertNull(DeviceTarget.find(0x3302, 0x4381))
         assertEquals(DeviceTarget.FIIO_JIEZI, DeviceTarget.findDevice(0x2972, 0x0151, "JadeAudio JIEZI")); assertNull(DeviceTarget.findDevice(0x2972, 0x0151, null)); assertNull(DeviceTarget.findDevice(0x2972, 0x0151, "JadeAudio JA11"))
     }
+
+    @Test fun `every record's target is kept and found again by its record id, one target per record`() {
+        val ids = GeneratedDevices.USB_IDS.map { it.recordId }.distinct()
+        val targets = ids.map { id -> checkNotNull(DeviceTarget.ofRecord(id)) { "no target for $id" } }
+        assertEquals(ids.size, targets.toSet().size)
+        for ((id, t) in ids.zip(targets)) assertEquals(id, DeviceTarget.recordIdOf(t))
+        // the targets the app finds on the bus are the ones kept
+        for (t in expected.values + DeviceTarget.FAMILIES + listOf(DeviceTarget.SPACE_2, DeviceTarget.KIWI_EARS_AD1, DeviceTarget.FIIO_JIEZI, DeviceTarget.RETRO_NANO, DeviceTarget.FIIO_JA11))
+            assertEquals(t, DeviceTarget.ofRecord(checkNotNull(DeviceTarget.recordIdOf(t)) { "no record id for ${t.caps.name}" }))
+        assertNull(DeviceTarget.ofRecord("no-such-dac"))
+    }
 }

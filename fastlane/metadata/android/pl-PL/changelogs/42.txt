@@ -1,0 +1,4 @@
+Nowa biblioteka: REORDER PROFILES do przeciągania profili, 40 ikon w EDIT PROFILE, przełączniki jako wiersze na dole.
+CrinEar Protocol Micro: MAX VOLUME na stronie DAC, od -30 do 0 dB, gdy Micro gra za głośno (dzięki, wrender8).
+Tanchjim Space II: DRE i VOLUME na stronie DAC; OUTPUT nazwane jak w aplikacji Tanchjim (dzięki, Zoro_fps).
+Układ od prawej do lewej dla arabskiego i hebrajskiego (dzięki, CtrlAltDeliciousan). Znaczniki 2K i 5K na wykresie EQ (dzięki, dla8).

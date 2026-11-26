@@ -10,8 +10,7 @@ Summary:
 - The only code from other projects is a port of the WalkPlay protocol and coefficient maths from
   devicePEQ, licensed under 0BSD, and the TRN Black Pearl write sequence from FreeDSP-Studio, licensed under
   the MIT License (both in section 2).
-- The app bundles one font made by others, Geom (SIL Open Font License 1.1, section 3), and the Google Play
-  mark on the closed-beta invitation of the APK builds (a trademark of Google LLC, section 6); no other fonts,
+- The app bundles one font made by others, Geom (SIL Open Font License 1.1, section 3); no other fonts,
   images, sounds or EQ settings made by others.
 
 ## 1. Libraries inside the app (all Apache License 2.0)
@@ -129,8 +128,7 @@ Formulas and formats, no code copied:
 - Example profiles created on first launch: general settings written for this project, part of it under the
   Apache License 2.0.
 - The launcher icon and all other graphics are drawn in code or as vector resources in this repo, under the
-  project's Apache License 2.0. The Google Play mark (`res/drawable/ic_google_play.xml`, paths from
-  Wikimedia Commons "Google_Play_Arrow_logo.svg") is the exception: see section 6.
+  project's Apache License 2.0.
 
 ## 4. Build and test tools (not inside the app)
 

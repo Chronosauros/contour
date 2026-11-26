@@ -21,6 +21,7 @@ import androidx.compose.ui.text.font.DeviceFontFamilyName
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDirection
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.TextUnit
@@ -109,10 +110,17 @@ val Display = FontFamily(
     Font(DeviceFontFamilyName("google-sans"), FontWeight.Bold),
 )
 
+/**
+ * The direction of every paragraph: its own text's, left to right when it has no letters. Without it a right-to-left phone (Arabic, Hebrew) set
+ * every paragraph right to left - English sentences ended with the full stop at their start, "2 750" read "750 2", "+12" read "12+" - while a
+ * profile name typed in Hebrew or Arabic still runs right to left (Material Design: text is always in the direction of its language).
+ */
+val TEXT_DIRECTION = TextDirection.ContentOrLtr
+
 /** The type roles of the look (sizes from Figma, in sp). */
 object Type {
     private fun s(size: Int, w: FontWeight, ls: TextUnit = 0.em) =
-        TextStyle(fontFamily = Display, fontSize = size.sp, fontWeight = w, letterSpacing = ls, fontFeatureSettings = "tnum")
+        TextStyle(fontFamily = Display, fontSize = size.sp, fontWeight = w, letterSpacing = ls, fontFeatureSettings = "tnum", textDirection = TEXT_DIRECTION)
 
     val screenTitle = s(38, FontWeight.Bold, (-0.01).em)
     val profileTitle = s(30, FontWeight.Bold, (-0.01).em)
@@ -133,7 +141,7 @@ object Type {
 
 private fun typography(): Typography {
     val t = Typography()
-    fun TextStyle.f() = copy(fontFamily = Display)
+    fun TextStyle.f() = copy(fontFamily = Display, textDirection = TEXT_DIRECTION)
     return Typography(
         displayLarge = t.displayLarge.f(), displayMedium = t.displayMedium.f(), displaySmall = t.displaySmall.f(),
         headlineLarge = t.headlineLarge.f(), headlineMedium = t.headlineMedium.f(), headlineSmall = t.headlineSmall.f(),
@@ -205,7 +213,7 @@ fun fitDensity(screen: Density, widthPx: Int): Density = Density(
 )
 
 /** Tabular numerals for every value. */
-val Tabular = TextStyle(fontFeatureSettings = "tnum")
+val Tabular = TextStyle(fontFeatureSettings = "tnum", textDirection = TEXT_DIRECTION)
 
 /**
  * The one layout grid: the page margin, the gap between neighbouring blocks (and between a row's buttons), the

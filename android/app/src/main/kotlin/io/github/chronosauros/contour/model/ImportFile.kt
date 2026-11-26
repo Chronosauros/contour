@@ -114,7 +114,7 @@ object ImportFile {
      */
     fun create(model: AppModel, incoming: Incoming): Boolean {
         val raw = incoming.eq ?: return false
-        val (eq, report) = Importer.fit(raw, model.protocol)
+        val (eq, report) = Importer.fit(raw, model.importTarget)
         if (eq.bands.isEmpty()) {
             model.notice = Notice(if (report == null) UiText.res(R.string.import_nothing) else UiText.res(R.string.import_nothing_report, report), long = report != null)
             return false
