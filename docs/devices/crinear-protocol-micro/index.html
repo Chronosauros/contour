@@ -441,7 +441,7 @@ footer.fv p{margin:0}
           <tr role="row"><th scope="row" role="rowheader">Frequency</th><td role="cell">20 Hz to 20 kHz</td></tr>
           <tr role="row"><th scope="row" role="rowheader">Preamp</th><td role="cell">-30 to 0 dB, whole dB</td></tr>
           <tr role="row"><th scope="row" role="rowheader">Where the EQ is kept</th><td role="cell">In the DAC's memory: one EQ, no slots. It stays after unplugging.</td></tr>
-          <tr role="row"><th scope="row" role="rowheader">DAC page</th><td role="cell">Since 1.8.1: MAX VOLUME, from -30 to 0 dB in whole dB. It lowers everything the Micro plays by that much, under the preamp of every profile, and the DAC keeps it after unplugging. Contour remembers the value on this phone only: another phone or a reinstall shows 0 dB while the Micro still plays quieter.</td></tr>
+          <tr role="row"><th scope="row" role="rowheader">DAC page</th><td role="cell">Since 1.8.1: MAX VOLUME, from -30 to 0 dB in whole dB. It lowers everything the Micro plays by that much, under the preamp of every profile; the preamp and the cut together stop at the Micro's floor of -30 dB. The DAC keeps it after unplugging. Contour remembers the value on this phone only: another phone or a reinstall shows 0 dB while the Micro still plays quieter.</td></tr>
           <tr role="row"><th scope="row" role="rowheader">Tested</th><td role="cell">By the developer on hardware and on a test rig, September to November 2026, firmware 0.2.</td></tr>
         </tbody>
       </table>
@@ -496,7 +496,7 @@ footer.fv p{margin:0}
     </div>
     <div class="qa">
       <h3>The Protocol Micro is too loud. Can I make it quieter?</h3>
-      <p>Yes. Since Contour 1.8.1 the DAC page has MAX VOLUME, from -30 to 0 dB. It lowers everything the Micro plays by that much, and on a test rig the level dropped by exactly the amount set at -10, -20 and -30 dB. The Micro keeps the cut after unplugging, so it plays quieter on every device.</p>
+      <p>Yes. Since Contour 1.8.1 the DAC page has MAX VOLUME, from -30 to 0 dB. It lowers everything the Micro plays by that much, and the preamp and the cut together stop at -30 dB. On a test rig a cut of -10, -20 and -30 dB lowered the level by exactly that much. The Micro keeps the cut after unplugging, so it plays quieter on every device.</p>
     </div>
   </div>
 </section>

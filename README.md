@@ -113,7 +113,7 @@ What the DAC pages hold:
 
 <!-- dac-pages:start -->
 
-- **Protocol Micro:** Since 1.8.1: MAX VOLUME, from -30 to 0 dB in whole dB. It lowers everything the Micro plays by that much, under the preamp of every profile, and the DAC keeps it after unplugging. Contour remembers the value on this phone only: another phone or a reinstall shows 0 dB while the Micro still plays quieter.
+- **Protocol Micro:** Since 1.8.1: MAX VOLUME, from -30 to 0 dB in whole dB. It lowers everything the Micro plays by that much, under the preamp of every profile; the preamp and the cut together stop at the Micro's floor of -30 dB. The DAC keeps it after unplugging. Contour remembers the value on this phone only: another phone or a reinstall shows 0 dB while the Micro still plays quieter.
 - **Protocol Max:** Since 1.7.0: FILTER (FAST-LL, FAST-PC, SLOW-LL, SLOW-PC, NON-OS), OUTPUT (CLASS H, CLASS AB), BALANCE, up to 15 steps to either side, and MIC GAIN, -15 to +15 dB. Each change is read back and stays after unplugging. There is no GAIN row: the Max's Eco / Boost switch sets the gain.
 - **KA15:** Since 1.6.0: VOLUME, VOLUME STEPS, BALANCE, FILTER, OUTPUT, DRE, BRIGHTNESS, SCREEN OFF, ROTATION and LANGUAGE; USB AUDIO is shown, read-only. FACTORY RESET saves a copy of your USER slots, their names and the settings on the phone first.
 - **JadeAudio JA11:** Since 1.7.0: VOLUME (0 to 60) and IN-LINE MIC (OFF / ON); USB AUDIO is shown, read-only. Each change is read back. An IN-LINE MIC change makes the JA11 reconnect on USB, so Contour reads it once the JA11 is back.
@@ -162,7 +162,7 @@ protocol notes and measurements are in [`research/protocol/PROTOCOL.md`](researc
 
 Since 1.6.0 the filters are computed for the 93 750 Hz the DAC's DSP runs at (before, every filter played about
 2% too low). The DAC accepts a positive preamp but does not get louder, so Contour offers none. Since 1.8.1 the
-DAC page has MAX VOLUME, -30 to 0 dB in whole dB: a fixed cut under every profile's preamp, which the Micro keeps
+DAC page has MAX VOLUME, -30 to 0 dB in whole dB: a fixed cut under every profile's preamp (the two together stop at -30 dB), which the Micro keeps
 after unplugging (measured on the test rig: the level follows it 1:1 to -30 dB). Contour remembers the value on
 the phone that set it; another phone or a reinstall shows 0 dB while the Micro still plays quieter. Its other
 settings, hardware volume and reset are not supported: they would need the maker's own tool (WalkPlay), which
