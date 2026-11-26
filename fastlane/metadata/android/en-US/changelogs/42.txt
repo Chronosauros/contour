@@ -1,0 +1,4 @@
+New library: drag profiles into order with REORDER PROFILES, pick one of 40 icons in EDIT PROFILE, and the switches are rows at the bottom.
+CrinEar Protocol Micro: MAX VOLUME on the DAC page, -30 to 0 dB, for a Micro that is too loud (thanks, wrender8).
+Tanchjim Space II: DRE and VOLUME on the DAC page; OUTPUT named as in the Tanchjim app (thanks, Zoro_fps).
+Right-to-left layout for Arabic and Hebrew (thanks, CtrlAltDeliciousan). 2K and 5K marks on the EQ graph (thanks, dla8).

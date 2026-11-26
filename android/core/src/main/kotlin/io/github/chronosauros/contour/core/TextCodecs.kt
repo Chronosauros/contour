@@ -20,19 +20,48 @@ data class ImportedEq(val bands: List<Band>, val preampDb: Double?, val notes: L
  * Filter 1: ON PK Fc 105 Hz Gain -2.5 dB Q 0.70
  * ```
  * Types PK/PEQ, LS/LSC/LSQ, HS/HSC/HSQ, LP/LPQ, HP/HPQ, BP, AP (Equalizer APO's tokens; the pass filters take no Gain); OFF = disabled. Tolerant to case, spacing,
- * missing filter numbers and a decimal comma. Lines it does not understand are skipped.
+ * missing filter numbers, a decimal comma, a number without its leading zero (`-.5`), a typographic minus and the spaces a web page or a word processor puts in
+ * (no-break, narrow, thin; see [plain]). Lines that are not a filter, a preamp or a channel are skipped. A filter or preamp line whose values cannot be read is
+ * never imported as something else (a gain that is not there is not 0 dB): it is left out and named in [ImportedEq.notes].
  */
 object ApoText {
-    private const val NUM = """[-+]?\d+(?:[.,]\d+)?"""
+    private const val NUM = """[-+]?(?:\d+(?:[.,]\d+)?|[.,]\d+)"""
     private val PREAMP = Regex("""^\s*preamp\s*:\s*($NUM)\s*(?:db)?\s*$""", RegexOption.IGNORE_CASE)
+    private val PREAMP_LINE = Regex("""^\s*preamp\s*:""", RegexOption.IGNORE_CASE)
+    private val FILTER_LINE = Regex("""^\s*filter\s*(\d*)\s*:""", RegexOption.IGNORE_CASE)
     private val FILTER = Regex(
         """^\s*filter\s*\d*\s*:\s*(on|off)\s+([a-z]+)\s*(.*)$""",
         RegexOption.IGNORE_CASE,
     )
-    private val FC = Regex("""\bfc\s*($NUM)\s*(?:hz)?""", RegexOption.IGNORE_CASE)
-    private val GAIN = Regex("""\bgain\s*($NUM)\s*(?:db)?""", RegexOption.IGNORE_CASE)
-    private val Q = Regex("""\bq\s*($NUM)""", RegexOption.IGNORE_CASE)
+    /**
+     * After a value: the number ends there - no more digits or separators leading to a digit, no exponent. Without it `Gain 2e-1 dB` read as 2 dB,
+     * `Gain -2..5` as -2 and `Fc 1,200.5` as 1.2 Hz, silently; now such a filter is unreadable and named (review 18.11.2026).
+     */
+    private const val END = """(?![\d.,]*\d)(?![eE][-+]?\d)"""
+    private val FC = Regex("""\bfc\s*($NUM)$END\s*(?:hz)?""", RegexOption.IGNORE_CASE)
+    private val GAIN = Regex("""\bgain\s*($NUM)$END\s*(?:db)?""", RegexOption.IGNORE_CASE)
+    private val Q = Regex("""\bq\s*($NUM)$END""", RegexOption.IGNORE_CASE)
+    /** A Q or a bandwidth (`BW Oct 1.0`) the line names but [Q] cannot read: the filter is not read, rather than given [DEFAULT_Q]. */
+    private val Q_WORD = Regex("""\b(?:q|bw)\b""", RegexOption.IGNORE_CASE)
     private val CHANNEL = Regex("""^\s*channel\s*:\s*(.*)$""", RegexOption.IGNORE_CASE)
+
+    /**
+     * [line] with the typographic minus signs and dashes (U+2212, U+2010-U+2014, U+FE63, U+FF0D) as `-` and the other spaces (U+00A0, U+1680, U+2000-U+200A,
+     * U+202F, U+205F, U+3000) as a plain space: the regular expressions here know only ASCII, so a copied "Gain −3 dB" read as 0 dB and a no-break space
+     * hid a whole line.
+     */
+    private fun plain(line: String): String {
+        if (line.all { it.code < 0x80 }) return line
+        val out = StringBuilder(line.length)
+        for (c in line) out.append(
+            when (c) {
+                '−', '‐', '‑', '‒', '–', '—', '﹣', '－' -> '-'
+                ' ', ' ', in ' '..' ', ' ', ' ', '　' -> ' '
+                else -> c
+            },
+        )
+        return out.toString()
+    }
 
     /** Q used when a shelf or pass filter line has none (Butterworth / APO's 0.71 default). */
     const val DEFAULT_Q: Double = 0.707
@@ -67,8 +96,32 @@ object ApoText {
     /** The lines under one `Channel:` header ([spec] is what follows it); the lines before the first header are a [Side.BOTH] block. */
     private class Block(val side: Side, val spec: String = "") {
         var preamp: Double? = null
+        /** The block's last `Preamp:` line could not be read (a readable one after it takes over; one before it keeps its value). */
+        var preampUnread = false
         val filters = ArrayList<Raw>()
+        /** The filter lines whose values could not be read: the number the file gives them, else their place among the block's filter lines. */
+        val unread = ArrayList<String>()
+        var filterLines = 0
     }
+
+    /**
+     * The filter of one `Filter n:` line ([line] already [plain]); null when a value it needs cannot be read: no ON/OFF and type, a type Contour does not know,
+     * no frequency, no gain on a peak or shelf, or a Q / bandwidth named without a number Contour reads. Never a guessed value in place of one that is there.
+     */
+    private fun readFilter(line: String): Raw? {
+        val m = FILTER.matchEntire(line) ?: return null
+        val type = typeOf(m.groupValues[2]) ?: return null
+        val rest = m.groupValues[3]
+        val fc = FC.find(rest)?.groupValues?.get(1)?.let(::num) ?: return null
+        // A pass filter has no gain: a stray "Gain" on its line is ignored, so it never reaches a band.
+        val gain = if (type.isPass) 0.0 else GAIN.find(rest)?.groupValues?.get(1)?.let(::num) ?: return null
+        // No Q at all is APO's default (a shelf or pass filter written without one); a Q or a bandwidth that is there but not read is not.
+        val q = Q.find(rest)?.groupValues?.get(1)?.let(::num) ?: if (Q_WORD.containsMatchIn(rest)) return null else DEFAULT_Q
+        return Raw(type, fc, gain, q, m.groupValues[1].equals("on", ignoreCase = true))
+    }
+
+    /** REW's empty slot (`Filter 11: ON None`): nothing to read and nothing lost. */
+    private fun isEmptySlot(line: String) = FILTER.matchEntire(line)?.groupValues?.get(2)?.equals("none", ignoreCase = true) == true
 
     private fun sideOf(spec: String): Side {
         val words = spec.uppercase().split(Regex("""[\s,]+""")).filter { it.isNotEmpty() }
@@ -92,25 +145,24 @@ object ApoText {
     fun parse(text: String, newId: (Int) -> String = { "b${it + 1}" }): ImportedEq {
         val blocks = ArrayList<Block>()
         var block = Block(Side.BOTH).also { blocks += it }
-        for (line in text.lineSequence()) {
+        for (raw in text.lineSequence()) {
+            val line = plain(raw)
             val ch = CHANNEL.matchEntire(line)
             if (ch != null) {
                 block = Block(sideOf(ch.groupValues[1]), ch.groupValues[1]).also { blocks += it }
                 continue
             }
-            val p = PREAMP.matchEntire(line)
-            if (p != null) {
-                block.preamp = num(p.groupValues[1])
+            if (PREAMP_LINE.containsMatchIn(line)) {
+                val p = PREAMP.matchEntire(line)
+                if (p != null) { block.preamp = num(p.groupValues[1]); block.preampUnread = false } else block.preampUnread = true
                 continue
             }
-            val m = FILTER.matchEntire(line) ?: continue
-            val type = typeOf(m.groupValues[2]) ?: continue
-            val rest = m.groupValues[3]
-            val fc = FC.find(rest)?.groupValues?.get(1)?.let(::num) ?: continue
-            // A pass filter has no gain: a stray "Gain" on its line is ignored, so it never reaches a band.
-            val gain = if (type.isPass) 0.0 else GAIN.find(rest)?.groupValues?.get(1)?.let(::num) ?: 0.0
-            val q = Q.find(rest)?.groupValues?.get(1)?.let(::num) ?: DEFAULT_Q
-            block.filters += Raw(type, fc, gain, q, m.groupValues[1].equals("on", ignoreCase = true))
+            val head = FILTER_LINE.find(line) ?: continue
+            block.filterLines++
+            if (isEmptySlot(line)) continue
+            val filter = readFilter(line)
+            if (filter != null) block.filters += filter
+            else block.unread += head.groupValues[1].ifEmpty { block.filterLines.toString() }
         }
 
         val notes = ArrayList<String>()
@@ -133,10 +185,19 @@ object ApoText {
             chosen = other
             notes += "channel ${other.joinToString(", ") { it.spec.trim() }} imported (the file has no L or R block)"
         } else {
-            chosen = listOf(global)
+            // no block has a filter that was read: the first one with unreadable lines is named in the notes
+            chosen = listOf(blocks.firstOrNull { it.unread.isNotEmpty() } ?: global)
         }
         val preamp = chosen.lastOrNull { it.preamp != null }?.preamp ?: global.preamp
         val bands = chosen.flatMap { it.filters }.mapIndexed { i, r -> Band(newId(i), r.type, r.freqHz, r.gainDb, r.q, r.enabled) }
+        // What could not be read is said, in the blocks that were taken (a right block left out keeps its own lines to itself).
+        val unread = chosen.flatMap { it.unread }
+        if (unread.size == 1) notes += "filter ${unread[0]} unreadable, skipped"
+        else if (unread.size > 1) notes += "filters ${unread.joinToString(", ")} unreadable, skipped"
+        // Said when the block whose Preamp lines decide (the last taken block that has one, else the lines before any Channel) ends on one that could not be
+        // read - also after a readable one, whose value stays. A global line that a channel block's own preamp overrides is not named (review 18.11.2026).
+        val preampBlock = chosen.lastOrNull { it.preamp != null || it.preampUnread } ?: global
+        if (preampBlock.preampUnread) notes += "preamp unreadable, skipped"
         return ImportedEq(bands, preamp, notes)
     }
 

@@ -63,6 +63,8 @@ data class DeviceTarget private constructor(
     val preampLabel: String get() = if (moondrop != null) "PRE GAIN" else "PREAMP"
 
     val supportsAb: Boolean get() = walkplay == DeviceProtocol.MICRO
+    /** MAX VOLUME (a fixed cut under every profile, [ProtocolMicro.trimmedRegister]): the Protocol Micro only; the Echo-A runs the Micro's planner but is not given one. */
+    val takesVolumeTrim: Boolean get() = walkplay?.takesVolumeTrim == true
     val experimental: Boolean get() = !supportsAb
     /** Micro, Protocol Max and TRN Black Pearl: the WalkPlay targets, with their editor/import/preamp policy. */
     val stable: Boolean get() = walkplay != null
@@ -313,7 +315,7 @@ data class DeviceTarget private constructor(
         val KIWI_EARS_AD1 = DeviceTarget(ktMicro = KtMicroCatalog.ad1Models.first())
         /** The Tanchjim Space II (3302:4381, WalkPlay SchemeNo16 on the Protocol Max's code, found by its USB name): written and read back from a phone on 13.11.2026, so it writes in every build. */
         val SPACE_2 = DeviceTarget(walkplay = DeviceProtocol.SPACE_2)
-        /** The EPZ TP65 (3302:4325, found by its USB name): an EXPERIMENTAL tester entry on the Space II's code, never tried on a Contour unit ([WalkPlayProfiles.TP65_TESTER_WRITE]); no DAC settings. */
+        /** The EPZ TP65 (3302:4325, found by its USB name): an EXPERIMENTAL tester entry, read by Contour on its owner's unit (1.8.0-tp65test2) and written with its own sequence since 1.8.1-tp65test3 ([WalkPlayProfiles.TP65_TESTER_WRITE]); no DAC settings. */
         val EPZ_TP65 = DeviceTarget(walkplay = DeviceProtocol.EPZ_TP65)
         val ECHO_A = DeviceTarget(echo = WalkPlayProfiles.echoA)
         /** The Moondrop DUSK-SP (35D8:1499, found by its USB name; [readOnly] in a release until its record says `hardwareVerified`). */
@@ -369,5 +371,14 @@ data class DeviceTarget private constructor(
             find(vendorId, productId)
                 ?: GeneratedDevices.USB_IDS.firstOrNull { it.recognition == Recognition.FIND_DEVICE && it.matches(vendorId, productId, productName) }
                     ?.let { byRecord.getValue(it.recordId) }
+
+        /**
+         * The id of the device record [target] stands for: a key the app can keep across versions (the last DAC found, for an import with none attached). Null for a
+         * target no record names (the pass-filter variants of the tests and the bench).
+         */
+        fun recordIdOf(target: DeviceTarget): String? = byRecord.entries.firstOrNull { it.value == target }?.key
+
+        /** The target of a device record id ([recordIdOf]); null for an id no record has (any longer). */
+        fun ofRecord(recordId: String): DeviceTarget? = byRecord[recordId]
     }
 }

@@ -57,6 +57,8 @@ import io.github.chronosauros.contour.ui.asString
 import io.github.chronosauros.contour.ui.Lift
 import io.github.chronosauros.contour.ui.Type
 import io.github.chronosauros.contour.ui.kit.LiftGuard
+import io.github.chronosauros.contour.ui.kit.placeFill
+import io.github.chronosauros.contour.ui.kit.sliderSign
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
 import io.github.chronosauros.contour.ui.kit.LocalPagerLock
 import io.github.chronosauros.contour.ui.kit.QFeel
@@ -161,6 +163,8 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
     val change = rememberUpdatedState(onChange)
     val shape = RoundedCornerShape(Radii.M)
     val description = stringResource(R.string.slider_description, param.label.asString())
+    // -1 on a right-to-left phone: the slider is mirrored there, a finger moving left raises the value ([io.github.chronosauros.contour.ui.kit.MIRROR_VALUE_SLIDERS])
+    val sign = sliderSign()
     Box(
         modifier
             .testTag("slider_${param.name.lowercase()}")
@@ -177,7 +181,7 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
                 }
             }
             .then(if (enabled) Modifier.holdsPager(pagerLock) else Modifier)
-            .pointerInput(param, enabled, scale.min, scale.max, owner) {
+            .pointerInput(param, enabled, scale.min, scale.max, owner, sign) {
                 if (!enabled) return@pointerInput
                 val guard = LiftGuard<Double>(density, param.name)
                 var drag = BandDrag(param, v.value, scale)
@@ -197,7 +201,7 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
                     onEnd = { up -> if (up != null) guard.release(up)?.let { change.value(it) } },
                 ) { ch, dx ->
                     ch.consume()
-                    val next = drag.move(dx / density, ch.uptimeMillis - ch.previousUptimeMillis)
+                    val next = drag.move(sign * dx / density, ch.uptimeMillis - ch.previousUptimeMillis)
                     if (next != v.value) change.value(next)
                     guard.move(ch.uptimeMillis, ch.position, next)
                     // no haptics while the finger lifts ([LiftGuard.settling])
@@ -218,7 +222,8 @@ fun RelSlider(param: Param, value: Double, onChange: (Double) -> Unit, modifier:
                     val h = c.maxHeight
                     val w = (h + (c.maxWidth - h) * scale.toPos(v.value)).roundToInt().coerceIn(h, c.maxWidth)
                     val pl = m.measure(Constraints.fixed(w, h))
-                    layout(w, h) { pl.place(0, 0) }
+                    // the fill starts at the slider's low end whatever the layout direction ([placeFill])
+                    layout(c.maxWidth, h) { placeFill(pl) }
                 }
                 .lift(shape, Lift.RAISED)
                 .background(p.fill, shape),

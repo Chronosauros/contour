@@ -1,7 +1,9 @@
 package io.github.chronosauros.contour
 
+import android.content.Context
 import android.content.Intent
 import android.content.pm.ApplicationInfo
+import android.content.res.Configuration
 import android.graphics.Color
 import android.hardware.usb.UsbManager
 import android.net.Uri
@@ -40,6 +42,7 @@ import io.github.chronosauros.contour.model.Sender
 import io.github.chronosauros.contour.ui.ContourApp
 import io.github.chronosauros.contour.ui.ContourTheme
 import io.github.chronosauros.contour.ui.fitDensity
+import io.github.chronosauros.contour.ui.kit.latinDigitLocales
 import io.github.chronosauros.contour.ui.sheets.Sheet
 import io.github.chronosauros.contour.ui.tune.Param
 import io.github.chronosauros.contour.usb.DeviceController
@@ -111,15 +114,24 @@ class MainActivity : ComponentActivity() {
     private val reviewBuild: Boolean
         get() = packageName.endsWith(".perf") || (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
+    /** Latin digits in the app's own texts on a phone whose language writes others (Arabic, Persian): see [latinDigitLocales]. Nothing changes elsewhere. */
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase)
+        latinDigitLocales(newBase.resources.configuration)?.let { applyOverrideConfiguration(Configuration().apply { setLocales(it) }) }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // First of all: what the build may do depends on the channel, and the core reads it as it runs.
         applyChannelExtra(intent)
         // Backup failure blocks loading and all writes; retry loading retries the copy first.
         val appContext = applicationContext
+        // The names the model makes (PROFILE 4) are kept in the library: Latin digits there too, as on the screens (see [attachBaseContext]).
+        val nameContext = latinDigitLocales(appContext.resources.configuration)
+            ?.let { appContext.createConfigurationContext(Configuration(appContext.resources.configuration).apply { setLocales(it) }) } ?: appContext
         val names = ProfileNames(
             listOf(R.string.seed_bass_boost, R.string.seed_softer_vocals, R.string.seed_treble_boost).map { appContext.getString(it) },
-            { n -> appContext.getString(R.string.profile_default_name, n) },
+            { n -> nameContext.getString(R.string.profile_default_name, n) },
             appContext.getString(R.string.profile_from_dac),
         )
         model = processModel ?: AppModel(ProfileStore(filesDir), persistenceScope, names) {
@@ -128,6 +140,8 @@ class MainActivity : ComponentActivity() {
         device = DeviceController(this, lifecycleScope)
         // A/B restoration must survive ON_STOP and Activity destruction long enough to release HID.
         sender = Sender(model, device, lifecycleScope, persistenceScope)
+        // MAX VOLUME sends the library profile ON DAC again under its new value (DeviceController.runTrimWrite)
+        device.onDacProfile = { sender.onDacId?.let { id -> model.profiles.firstOrNull { it.id == id } } }
         editor = DacEditor(model, device, lifecycleScope)
         device.start()
         applyReviewExtras(intent, first = true)
@@ -160,7 +174,7 @@ class MainActivity : ComponentActivity() {
 
     /**
      * Review hooks for screenshots and scripted checks (perf and debug builds only, never release):
-     * `--es theme light|dark`, `--es screen tune|library|dac`, `--es sheet edit|new|value|band|playbeta`,
+     * `--es theme light|dark`, `--es screen tune|library|dac`, `--es sheet edit|new|value|band`,
      * `--es probe <label>` (the DAC probe: reads only, see [runProbe]),
      * `--es dac tinya|melody|ka15|off` (the DAC Settings page for that DAC's list and the values its hardware showed, while no attached DAC has
      * a list - controls move locally, nothing touches USB - or back to the real DAC),
@@ -202,7 +216,6 @@ class MainActivity : ComponentActivity() {
             "new" -> Sheet.New
             "value" -> Sheet.Value(Param.FREQ)
             "band" -> Sheet.BandActions(model.selectedBand)
-            "playbeta" -> Sheet.PlayBetaPreview
             else -> null
         }
         val sheetPage = when (sheet) {

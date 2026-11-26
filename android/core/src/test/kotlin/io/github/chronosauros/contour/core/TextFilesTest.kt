@@ -210,6 +210,119 @@ class TextFilesTest {
         assertEquals(1.2, eq.bands.single().q)
     }
 
+    // ---- numbers as people type and copy them (audit 10.11.2026, L15) ------------------------------------------------
+
+    @Test fun `a number without its leading zero reads as written, never as 0 dB`() {
+        val eq = ApoText.parseImport("Preamp: -.5 dB\nFilter 1: ON PK Fc 1000 Hz Gain -.5 dB Q .7\nFilter 2: ON PK Fc 2000 Hz Gain .5 dB Q 1\nFilter 3: ON PK Fc 3000 Hz Gain +.25 dB Q 1,5\n")
+        assertEquals(-0.5, eq.preampDb)
+        assertEquals(listOf(-0.5, 0.5, 0.25), eq.bands.map { it.gainDb })
+        assertEquals(listOf(0.7, 1.0, 1.5), eq.bands.map { it.q })
+        assertTrue(eq.notes.isEmpty(), eq.notes.toString())
+        assertEquals(-0.5, ApoText.parseImport("Filter 1: ON PK Fc 1000 Hz Gain -,5 dB Q 1\n").bands.single().gainDb)
+    }
+
+    @Test fun `a typographic minus or a dash is a minus`() {
+        for (minus in listOf('−', '–', '‒', '‐', '‑', '—', '﹣', '－')) {
+            val eq = ApoText.parseImport("Preamp: ${minus}6.1 dB\nFilter 1: ON PK Fc 105 Hz Gain ${minus}2.5 dB Q 0.70\nFilter 2: ON LSC Fc 105 Hz Gain ${minus}.5 dB Q 0.71\n")
+            assertEquals(-6.1, eq.preampDb, "U+%04X".format(minus.code))
+            assertEquals(listOf(-2.5, -0.5), eq.bands.map { it.gainDb }, "U+%04X".format(minus.code))
+            assertTrue(eq.notes.isEmpty(), eq.notes.toString())
+        }
+    }
+
+    @Test fun `no-break narrow and thin spaces are spaces, so the line is read`() {
+        for (space in listOf(' ', ' ', ' ', ' ', '　')) {
+            val s = space.toString()
+            val text = "Preamp:${s}-3${s}dB\nFilter${s}1:${s}ON${s}PK${s}Fc${s}100${s}Hz${s}Gain${s}-2${s}dB${s}Q${s}1.41\nFilter 2: ON HSC Fc 8000 Hz Gain${s}4.5 dB Q 0.7\n"
+            val eq = ApoText.parseImport(text)
+            assertEquals(-3.0, eq.preampDb, "U+%04X".format(space.code))
+            assertEquals(listOf(Triple(FilterType.PEAK, 100.0, -2.0), Triple(FilterType.HIGH_SHELF, 8000.0, 4.5)), eq.bands.map { Triple(it.type, it.freqHz, it.gainDb) }, "U+%04X".format(space.code))
+            assertEquals(1.41, eq.bands[0].q)
+            assertTrue(eq.notes.isEmpty(), eq.notes.toString())
+        }
+    }
+
+    @Test fun `a value that cannot be read leaves its filter out and the import says which, never a silent 0 dB`() {
+        val eq = ApoText.parseImport(
+            "Preamp: -3 dB\n" +
+                "Filter 1: ON PK Fc 100 Hz Gain -2 dB Q 1\n" +
+                "Filter 2: ON PK Fc 200 Hz Gain abc dB Q 1\n" + // gain not a number
+                "Filter 3: ON PK Fc 300 Hz Q 1\n" + // a peak with no gain
+                "Filter 4: ON PK Fc 400 Hz Gain 3 dB Q 1\n" +
+                "Filter 5: ON NO Fc 500 Hz Q 2\n" + // a type Contour does not know (notch)
+                "Filter 6: ON PK Fc x Hz Gain 1 dB Q 1\n" + // no frequency
+                "Filter 7: ON PK Fc 700 Hz Gain 1 dB BW Oct 1.0\n" + // a bandwidth, not a Q
+                "Filter 8: ON PK Fc 800 Hz Gain 1 dB Q -\n" + // a Q that is not a number
+                "Filter 9: garbage\n" +
+                "Filter 10: ON None\n", // REW's empty slot: nothing lost, nothing said
+        )
+        assertEquals(listOf(100.0 to -2.0, 400.0 to 3.0), eq.bands.map { it.freqHz to it.gainDb })
+        assertEquals(listOf("filters 2, 3, 5, 6, 7, 8, 9 unreadable, skipped"), eq.notes)
+        assertEquals(-3.0, eq.preampDb)
+        // one filter: the singular; a filter line without a number is named by its place
+        assertEquals(listOf("filter 2 unreadable, skipped"), ApoText.parseImport("Filter: ON PK Fc 100 Hz Gain 1 dB Q 1\nFilter: ON PK Fc 200 Hz Gain ? dB Q 1\n").notes)
+        // a pass filter needs no gain, and a shelf with no Q keeps APO's default: both are read, as before
+        val pass = ApoText.parseImport("Filter 1: ON HPQ Fc 30 Hz Q 0.7\nFilter 2: ON LSC Fc 105 Hz Gain 5 dB\n")
+        assertEquals(listOf(FilterType.HIGH_PASS, FilterType.LOW_SHELF), pass.bands.map { it.type })
+        assertEquals(ApoText.DEFAULT_Q, pass.bands[1].q)
+        assertTrue(pass.notes.isEmpty(), pass.notes.toString())
+    }
+
+    @Test fun `a preamp that cannot be read is said, and the file's filters still come in`() {
+        val eq = ApoText.parseImport("Preamp: about -6 dB\nFilter 1: ON PK Fc 100 Hz Gain -2 dB Q 1\n")
+        assertNull(eq.preampDb)
+        assertEquals(1, eq.bands.size)
+        assertEquals(listOf("preamp unreadable, skipped"), eq.notes)
+        // a block's own preamp that is read wins, and nothing is said
+        assertTrue(ApoText.parseImport("Preamp: about -6 dB\nPreamp: -6 dB\nFilter 1: ON PK Fc 100 Hz Gain -2 dB Q 1\n").notes.isEmpty())
+        // an unreadable line after a readable one: the readable value stays and the skipped line is said
+        val later = ApoText.parseImport("Preamp: -6 dB\nPreamp: about -3 dB\nFilter 1: ON PK Fc 100 Hz Gain -2 dB Q 1\n")
+        assertEquals(-6.0, later.preampDb)
+        assertEquals(listOf("preamp unreadable, skipped"), later.notes)
+        // a global line overridden by the imported channel's own preamp is not named
+        val channel = ApoText.parseImport("Preamp: about -6 dB\nChannel: L R\nPreamp: -3 dB\nFilter 1: ON PK Fc 100 Hz Gain 1 dB Q 1\n")
+        assertEquals(-3.0, channel.preampDb)
+        assertTrue(channel.notes.none { "preamp" in it }, channel.notes.toString())
+    }
+
+    @Test fun `a number that runs on is unreadable, not cut to its first digits`() {
+        val eq = ApoText.parseImport(
+            "Filter 1: ON PK Fc 100 Hz Gain 2e-1 dB Q 1\n" + // exponent: was read as 2 dB
+                "Filter 2: ON PK Fc 200 Hz Gain -2..5 dB Q 1\n" + // was -2 dB
+                "Filter 3: ON PK Fc 1,200.5 Hz Gain 1 dB Q 1\n" + // was 1.2 Hz
+                "Filter 4: ON PK Fc 400 Hz Gain 1 dB Q 1.2.3\n" + // was Q 1.2
+                "Filter 5: ON PK Fc 500Hz Gain 3dB Q 0.7,\n" + // units and a trailing comma still read
+                "Filter 6: ON PK Fc 600 Hz, Gain -.5 dB, Q 1\n",
+        )
+        assertEquals(listOf(Triple(500.0, 3.0, 0.7), Triple(600.0, -0.5, 1.0)), eq.bands.map { Triple(it.freqHz, it.gainDb, it.q) })
+        assertEquals(listOf("filters 1, 2, 3, 4 unreadable, skipped"), eq.notes)
+    }
+
+    @Test fun `unreadable lines of the right block, which is not imported, are not named`() {
+        val text = "Channel: L\nPreamp: -2 dB\nFilter 1: ON PK Fc 100 Hz Gain 1 dB Q 1\nChannel: R\nPreamp: -2 dB\nFilter 1: ON PK Fc 100 Hz Gain ? dB Q 1\n"
+        val eq = ApoText.parseImport(text)
+        assertEquals(listOf(100.0 to 1.0), eq.bands.map { it.freqHz to it.gainDb })
+        assertTrue(eq.notes.none { "unreadable" in it }, eq.notes.toString())
+    }
+
+    @Test fun `a file of only unreadable filters imports nothing and names them`() {
+        val eq = ApoText.parseImport("Preamp: -3 dB\nFilter 1: ON PK Fc 100 Hz Gain ? dB Q 1\nFilter 2: ON PK Fc 200 Hz Gain ? dB Q 1\n")
+        assertTrue(eq.bands.isEmpty())
+        assertEquals(listOf("filters 1, 2 unreadable, skipped"), eq.notes)
+    }
+
+    @Test fun `every profile Contour writes reads back with no note`() {
+        val bands = listOf(
+            band(1, FilterType.PEAK, 105.0, -0.5, 0.7), band(2, FilterType.LOW_SHELF, 60.0, 0.25, 0.707), band(3, FilterType.HIGH_SHELF, 9000.0, -12.0, 1.0),
+            band(4, FilterType.LOW_PASS, 16000.0, 0.0, 0.5), band(5, FilterType.HIGH_PASS, 20.0, 0.0, 0.707), band(6, FilterType.BAND_PASS, 800.0, 0.0, 2.5),
+            band(7, FilterType.ALL_PASS, 4000.0, 0.0, 0.707), band(8, FilterType.PEAK, 1000.0, 3.5, 4.0, on = false),
+        )
+        val eq = ApoText.parseImport(ApoText.format(bands, -0.5))
+        assertEquals(bands, eq.bands)
+        assertEquals(-0.5, eq.preampDb)
+        assertTrue(eq.notes.isEmpty(), eq.notes.toString())
+    }
+
     // ---- export ---------------------------------------------------------------------------------------------------
 
     @Test fun `squig import regex matches every PK LSC and HSC line Contour writes`() {

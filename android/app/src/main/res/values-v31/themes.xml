@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Android 12 and later draw a splash screen in the start window: its background is set to the same colour, not left to the system's choice; see values/themes.xml. -->
+    <style name="Theme.Contour" parent="Theme.Contour.Base">
+        <item name="android:windowSplashScreenBackground">@color/window_background</item>
+    </style>
+</resources>

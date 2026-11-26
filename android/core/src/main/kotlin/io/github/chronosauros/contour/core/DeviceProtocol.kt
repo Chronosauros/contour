@@ -24,8 +24,9 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
     // The Tanchjim Space II (WalkPlay SchemeNo16, found by its USB name): the Protocol Max's code and write sequence with its own record (shelf Q = register, measured), proven on a unit from the Mac and a phone
     // (13.11.2026; [WalkPlayProfiles.space2]).
     SPACE_2(GeneratedDevices.TANCHJIM_SPACE_II),
-    // The EPZ TP65 (WalkPlay SchemeNo16, found by its USB name): EXPERIMENTAL TESTER ENTRY (versions 1.8.0-tp65test1 and -tp65test2, issue #6). The Space II's code with the catalog's range (+-10 dB, PK, LS, HS), no DAC settings, its own preamp read ([preampRequest]);
-    // nothing of it was measured on a Contour unit (evidence: two catalogs and the identity an owner read on Windows, devices/epz-tp65.json). Its preamp reply header is read the Space II's lenient way (no capture of its reply).
+    // The EPZ TP65 (WalkPlay SchemeNo16, found by its USB name): EXPERIMENTAL TESTER ENTRY (tester versions 1.8.0-tp65test1, -tp65test2 and 1.8.1-tp65test3, issue #6). The Space II's read code with the
+    // catalog's range (+-10 dB; PEAK only, the one type written on a unit), no DAC settings, its own preamp read ([preampRequest]) and its own write ([writeSequence]: band frames and the RAM apply,
+    // no preamp, no flash), the only frames its owner validated on the unit (devices/epz-tp65.json). Its preamp reply header is read the Space II's lenient way.
     EPZ_TP65(GeneratedDevices.EPZ_TP65);
 
     /** The record's caps; the Micro's, the TRN's and the Max's follow their verification flags ([ProtocolMicro.PASS_FILTERS_VERIFIED], [ProtocolTrn.PASS_FILTERS_VERIFIED], [ProtocolMax.CANDIDATES_VERIFIED]). */
@@ -116,15 +117,29 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
      */
     private fun flatBand(index: Int): WalkPlay.BandWrite = WalkPlay.flatWrite(index, data.factoryFlat[index])
 
-    /** The reports of one send and the pause after each: Micro and Max as 1.3.x, the TRN with its own sequence. */
-    fun writeSequence(plan: DevicePlan.Ready, slot: Int): List<WalkPlay.Step> =
+    /**
+     * The reports of one send and the pause after each: Micro and Max as 1.3.x, the TRN with its own sequence, the EPZ TP65 with its own ([WalkPlay.tp65WriteSequence]: band frames and
+     * the RAM apply only; [current], the registers read right before the send, leaves out the bands that do not change; null sends every band). [current] is the TP65's only.
+     */
+    fun writeSequence(plan: DevicePlan.Ready, slot: Int, current: List<WalkPlay.Registers>? = null): List<WalkPlay.Step> =
         if (this == TRN) WalkPlay.trnWriteSequence(plan.bands, plan.preampDb.toDouble(), slot)
+        else if (this == EPZ_TP65) WalkPlay.tp65WriteSequence(plan.bands, slot, current)
         else WalkPlay.writeSequence(plan.bands, plan.preampDb.toDouble(), slot, commit = true)
 
     fun flatPlan(): DevicePlan.Ready = if (this == MICRO) ProtocolMicro.flatPlan()
         else DevicePlan.Ready(List(caps.bands) { flatBand(it) }, 0)
 
-    fun plan(profile: Profile): DevicePlan = plan(profile.bands, profile.preampDb)
+    /** MAX VOLUME, the fixed cut under every profile ([ProtocolMicro.trimmedRegister]): the Protocol Micro only (owner 25.11.2026, Micro first). */
+    val takesVolumeTrim: Boolean get() = this == MICRO
+
+    /** [trimDb]: the DAC's MAX VOLUME, 0 on every DAC but the Micro ([takesVolumeTrim]). */
+    fun plan(profile: Profile, trimDb: Int = 0): DevicePlan {
+        if (this == MICRO) return ProtocolMicro.plan(profile.bands, profile.preampDb, trimDb = trimDb)
+        noTrim(trimDb)
+        return plan(profile.bands, profile.preampDb)
+    }
+
+    private fun noTrim(trimDb: Int) = require(trimDb == 0) { "${caps.name} has no MAX VOLUME" }
 
     /**
      * [caps] are the limits a band is held to: the protocol's own by default; the bench passes a widened set for a Max (LOW PASS and HIGH PASS, +-12 dB: [ProtocolMax.capabilities]) so a
@@ -166,7 +181,11 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
                 val needed = Preamp.auto(active, caps.shelfForm)
                 if (needed < preampMin) return@runCatching DevicePlan.Rejected(listOf(SendBlocked.auto(needed, preampMin)))
             }
-            DevicePlan.Ready(writes, devicePreamp(active, preampDb))
+            val device = devicePreamp(active, preampDb)
+            // The TP65's preamp write was never tried on a unit, so Contour sends none ([WalkPlay.tp65WriteSequence]): a send leaves the DAC's preamp as it is (0 dB on the
+            // tested unit) and is refused when the profile asks for another one, AUTO's cut for a boost included.
+            if (this == EPZ_TP65 && device != 0) return@runCatching DevicePlan.Rejected(listOf(TP65_PREAMP_REFUSAL.format(device)))
+            DevicePlan.Ready(writes, device)
         }.getOrElse { DevicePlan.Rejected(listOf("Invalid EQ: ${it.message}")) }
     }
 
@@ -174,12 +193,14 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
         if (this == MICRO) ProtocolMicro.matches(plan, regs, preampDb)
         else plan.bands.size == caps.bands && ProtocolMicro.matches(plan, regs, preampDb)
 
-    fun matches(profile: Profile, regs: List<WalkPlay.Registers>, preampDb: Int): Boolean =
-        if (this == MICRO) ProtocolMicro.matches(profile, regs, preampDb)
-        else (plan(profile) as? DevicePlan.Ready)?.let { matches(it, regs, preampDb) } ?: false
+    fun matches(profile: Profile, regs: List<WalkPlay.Registers>, preampDb: Int, trimDb: Int = 0): Boolean =
+        if (this == MICRO) ProtocolMicro.matches(profile, regs, preampDb, trimDb)
+        else (plan(profile, trimDb) as? DevicePlan.Ready)?.let { matches(it, regs, preampDb) } ?: false
 
-    fun importExact(bands: List<WalkPlay.DeviceBand>, preampDb: Int, caps: DeviceCapabilities = this.caps): DacImport {
-        if (this == MICRO) return ProtocolMicro.importExact(bands, preampDb)
+    /** [trimDb]: the DAC's MAX VOLUME, taken back out of the preamp read ([ProtocolMicro.importExact]); 0 on every DAC but the Micro. */
+    fun importExact(bands: List<WalkPlay.DeviceBand>, preampDb: Int, caps: DeviceCapabilities = this.caps, trimDb: Int = 0): DacImport {
+        if (this == MICRO) return ProtocolMicro.importExact(bands, preampDb, trimDb = trimDb)
+        noTrim(trimDb)
         return importExactTolerant(bands, preampDb, caps)
     }
 
@@ -292,6 +313,9 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
     }
 
     companion object {
+        /** The EPZ TP65's send refusal ([plan]) when the profile's device preamp (%d, whole dB) is not 0. */
+        internal const val TP65_PREAMP_REFUSAL = "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for %d dB. Reduce the boosts or set the preamp to 0 dB."
+
         /** Strict VID/PID pairs only. */
         fun find(vendorId: Int, productId: Int): DeviceProtocol? =
             entries.firstOrNull { it.caps.vendorId == vendorId && it.caps.productId == productId }

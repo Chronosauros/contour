@@ -16,6 +16,10 @@ import kotlin.math.floor
  * | balance (TRN) | `80 16 02 00 00` and `80 16 02 01 00` | `d[3]` channel (0 left, 1 right), `d[5]` r, r != 0 is attenuation 256 - r | two frames, `01 16 04 c 00 a 00` for channel 1 then channel 0, a = 256 - steps or 0 |
  * | mic gain (read only on the TRN, Micro and Echo-A) | `80 02 00` | `d[4]` as int8 | `01 02 02 80 e`, e = the value as int8 (the frame exists, no row writes it, see below) |
  *
+ * Two more rows, for the Tanchjim Space II only, are not from the WalkPlay web tool but from the Tanchjim Android app 2.5.8.1 (Space2Command, read for interoperability, 25.11.2026), so the Space II offers every
+ * setting its vendor's app does: DRE (`80 32` -> reply value buf[4], 0x00 = ON, 0x01 = OFF, inverted; write `01 32 01 r`, no save) and VOLUME (`80 85` -> raw 0..60; write `01 85 01 vv`, then `01 04`, the
+ * vendor's flash save, [saveVolumeReport]). [WalkPlayGuard] lets `01 32` and `01 85` through for the Space II alone and `01 04` only as that save.
+ *
  * Tabs: SchemeNo16 shows EQ, MIC, DAC Filter (with the work mode), Upgrade, Volume and RESET; SchemeNo11 shows EQ, MIC, Upgrade, Volume and RESET and no DAC Filter tab.
  * So the TRN (SchemeNo16) gets all five rows and the Micro and the Echo-A (SchemeNo11) the mic row only; the Micro does not answer 0x11/0x16/0x19/0x1B/0x1D
  * (hardware and the CAP reply agree). The Protocol Max (SchemeNo16, devicePEQ's extras table: 0x11, 0x16 and 0x1D for every scheme, 0x19 for SchemeNo16 and up) gets three of the DAC Filter tab
@@ -59,6 +63,12 @@ object WalkPlaySettings {
     const val CMD_BALANCE = 0x16
     const val CMD_GAIN_MODE = 0x19
     const val CMD_WORK_MODE = 0x1D
+    /** The Space II's DRE (the CS431xx chip's Dynamic Range Enhancement, the Tanchjim app's "DAC DRE optimization"): `01 32 01 r`, r inverted (0 = ON, 1 = OFF). */
+    const val CMD_DRE = 0x32
+    /** The Space II's own volume register (the Tanchjim app's "Current volume"): `01 85 01 vv`, vv = 0..60 raw. 0x85 is above 0x7F: every byte here is read unsigned. */
+    const val CMD_VOLUME = 0x85
+    /** The flash save the Tanchjim app sends right after a volume write (`01 04`); not the `01 01 00` of the mic save. */
+    const val CMD_VOLUME_SAVE = 0x04
     /** The flash save the vendor adds after a mic write (`01 01 00`); whether the other rows need it is unknown. */
     const val CMD_SAVE = 0x01
 
@@ -67,6 +77,8 @@ object WalkPlaySettings {
     const val WORK_MODE = "work-mode"
     const val GAIN_MODE = "gain-mode"
     const val BALANCE = "balance"
+    const val DRE = "dre"
+    const val VOLUME = "volume"
 
     private fun i8(b: Byte) = b.toInt()
     private fun u(b: Byte) = b.toInt() and 255
@@ -88,6 +100,13 @@ object WalkPlaySettings {
     private val filterDecode: (ByteArray) -> Int? = { buf -> if (reply(buf, 5)) (u(buf[4]) - 1).takeIf { it in 0..4 } else null }
     private val workDecode: (ByteArray) -> Int? = { buf -> if (reply(buf, 5)) u(buf[4]).takeIf { it in 0..1 } else null }
     private val gainDecode: (ByteArray) -> Int? = { buf -> if (reply(buf, 5)) u(buf[4]).takeIf { it in 0..1 } else null }
+    /** DRE: the register is inverted, 0x00 = ON and 0x01 = OFF (Tanchjim app 2.5.8.1); the row's index is ON ? 1 : 0, so index = 1 - register. Anything else is no valid value. */
+    private val dreDecode: (ByteArray) -> Int? = { buf -> if (reply(buf, 5)) u(buf[4]).takeIf { it in 0..1 }?.let { 1 - it } else null }
+    /** The Space II's volume register, raw 0..[VOLUME_MAX] (the Tanchjim app shows it as raw x 100 / 60 percent; Contour shows the raw number). */
+    private val volumeDecode: (ByteArray) -> Int? = { buf -> if (reply(buf, 5)) u(buf[4]).takeIf { it in 0..VOLUME_MAX } else null }
+
+    /** The top of the Space II's volume register (0x3C). */
+    const val VOLUME_MAX = 60
     /** The attenuation (vendor steps, 0..[BALANCE_STEPS]) of the channel the reply is for; [balanceChannel] says which. */
     private val balanceDecode: (ByteArray) -> Int? = { buf -> if (reply(buf, 7)) u(buf[6]).let { r -> if (r == 0) 0 else 256 - r }.takeIf { it in 0..BALANCE_STEPS } else null }
 
@@ -137,6 +156,19 @@ object WalkPlaySettings {
         readCommand = CMD_BALANCE, read = SettingRead.WalkPlayGet(CMD_BALANCE, balanceDecode), writeCommand = CMD_BALANCE, writeVerified = true)
 
     /**
+     * The Space II's DRE row: TOGGLE OFF | ON, `80 32` read, `01 32 01 r` write with the register inverted (reply `00` = ON, `01` = OFF; write ON = `01 32 01 00`, OFF = `01 32 01 01`), no save frame after it (the
+     * Tanchjim app sends none). Source: Tanchjim Android app 2.5.8.1, Space2Command, read for interoperability (25.11.2026); the vendor label is "DAC DRE optimization". Space II only.
+     */
+    private val dre = DacSetting(DRE, "DRE", SettingKind.TOGGLE, EvidenceRank.VB, options = listOf("OFF", "ON"), group = 0,
+        readCommand = CMD_DRE, read = SettingRead.WalkPlayGet(CMD_DRE, dreDecode), writeCommand = CMD_DRE, writeVerified = false)
+    /**
+     * The Space II's VOLUME row: LEVEL 0..[VOLUME_MAX], the DAC's own volume register, `80 85` read, `01 85 01 vv` write, then the vendor's flash save `01 04` ([saveVolumeReport]), then the read-back. Source: Tanchjim
+     * Android app 2.5.8.1, Space2Command, read for interoperability (25.11.2026). The Tanchjim app shows raw x 100 / 60 as a percentage, Contour the raw number. Space II only.
+     */
+    private val volume = DacSetting(VOLUME, "VOLUME", SettingKind.LEVEL, EvidenceRank.VB, min = 0, max = VOLUME_MAX, group = 1,
+        readCommand = CMD_VOLUME, read = SettingRead.WalkPlayGet(CMD_VOLUME, volumeDecode), writeCommand = CMD_VOLUME, writeVerified = false)
+
+    /**
      * THE verification flag of the Max's WORK MODE row (`01 1D 01 t`, 0 = Class-H, 1 = Class-AB). True since the phone run 2026-11-10-crinear-protocol-max-22-phone: Class-H written from the app, read back, and kept after an unplug
      * (23:42). False would keep the row to review builds.
      */
@@ -165,7 +197,8 @@ object WalkPlaySettings {
      * channel 1 the right one, as on the TRN and the Max); NON-OS lowers 20 kHz by 2.6 dB, SLOW-LL changes nothing below 20 kHz (0.01 dB); Class-AB against Class-H shows no level difference at line level (as on the Max).
      * Phone (Nothing A065, perf 1.7.1 / 41, 13.11.2026 23:05-23:09): the DAC page read 5/5 rows; SLOW-PC, CLASS AB, LOW, L 6 and mic -5 were written from the app, each `settings write: VERIFIED`; after an unplug and replug
      * all five read back unchanged (200 ms; the gain mode too, so the unit has no physical gain switch that wins, unlike the Max); the factory state (FAST-LL, CLASS H, HIGH, CENTER, mic 0) was written back VERIFIED.
-     * The filter and output names are the WalkPlay web tool's (the TRN capture), not read from the Tanchjim app. True releases FILTER, OUTPUT, GAIN and BALANCE; MIC GAIN has its own flag
+     * The names in this comment are the WalkPlay web tool's (work mode 0 = Class-H); the app shows the Tanchjim app's OUTPUT names, the other way round ([space2WorkMode]). The filter names are the
+     * WalkPlay web tool's (the TRN capture), not read from the Tanchjim app. True releases FILTER, OUTPUT, GAIN and BALANCE; MIC GAIN has its own flag
      * ([SPACE2_MIC_VERIFIED]).
      */
     const val SPACE2_VERIFIED = true
@@ -179,8 +212,29 @@ object WalkPlaySettings {
      */
     const val SPACE2_MIC_VERIFIED = true
 
-    /** The Space II's rows: see [SPACE2_VERIFIED] and [SPACE2_MIC_VERIFIED]. */
-    private val space2Rows = listOf(dacFilter, workMode, gainMode, balance).map { it.copy(writeVerified = SPACE2_VERIFIED) } + maxMic.copy(writeVerified = SPACE2_MIC_VERIFIED)
+    /**
+     * The Space II's OUTPUT names, opposite to the WalkPlay web tool's: on this unit register `0x1D` = 0 is CLASS AB and 1 is CLASS H, as the Tanchjim app shows them. A user report of 22.11.2026
+     * (Discord): CLASS H set in Contour showed as CLASS AB in the Tanchjim app, and the other way round, so the bytes were right and only the names were swapped. It fits the factory state: the unit came
+     * with work mode 0, and Tanchjim gives Class AB as the Space Pro's default (Linsoul). The frames do not change (index = register value); only this row's option order does. The TRN and the Max keep the
+     * WalkPlay tool's names, their own vendor tool. Which class the amplifier is really in was not measured (no level difference at line level, run -07); the names follow the maker's app.
+     */
+    private val space2WorkMode = workMode.copy(options = listOf("CLASS AB", "CLASS H"))
+
+    /**
+     * THE verification flag of the Space II's DRE row (`01 32 01 r`, inverted, no save). True for the release candidate 1.8.1: the bytes are the Tanchjim app's (2.5.8.1, Space2Command), the owner tests the row on his phone
+     * next. One line to withdraw it: set this to false.
+     */
+    const val SPACE2_DRE_VERIFIED = true
+
+    /**
+     * THE verification flag of the Space II's VOLUME row (`01 85 01 vv`, then `01 04`, 0..60). True for the release candidate 1.8.1, like [SPACE2_DRE_VERIFIED]: the bytes are the Tanchjim app's, the owner tests the
+     * row on his phone next. One line to withdraw it: set this to false.
+     */
+    const val SPACE2_VOLUME_VERIFIED = true
+
+    /** The Space II's rows: see [SPACE2_VERIFIED], [SPACE2_DRE_VERIFIED], [SPACE2_VOLUME_VERIFIED], [SPACE2_MIC_VERIFIED] and [space2WorkMode]. */
+    private val space2Rows = listOf(dacFilter, space2WorkMode, gainMode, balance).map { it.copy(writeVerified = SPACE2_VERIFIED) } +
+        dre.copy(writeVerified = SPACE2_DRE_VERIFIED) + volume.copy(writeVerified = SPACE2_VOLUME_VERIFIED) + maxMic.copy(writeVerified = SPACE2_MIC_VERIFIED)
 
     /** The rows of [profile]'s DAC Settings (see the class comment): empty for a DAC the plan does not cover. */
     fun of(profile: WalkPlayProfile): List<DacSetting> = when (profile.id) {
@@ -234,6 +288,8 @@ object WalkPlaySettings {
             WORK_MODE -> listOf(WalkPlay.report(WalkPlay.WRITE, CMD_WORK_MODE, 0x01, value))
             GAIN_MODE -> listOf(WalkPlay.report(WalkPlay.WRITE, CMD_GAIN_MODE, 0x01, value))
             BALANCE -> listOf(balanceFrame(RIGHT, maxOf(-value, 0)), balanceFrame(LEFT, maxOf(value, 0)))
+            DRE -> listOf(WalkPlay.report(WalkPlay.WRITE, CMD_DRE, 0x01, 1 - value))
+            VOLUME -> listOf(WalkPlay.report(WalkPlay.WRITE, CMD_VOLUME, 0x01, value))
             MIC -> listOf(if (isMaxMic(s)) maxMicReport(value) else WalkPlay.report(WalkPlay.WRITE, CMD_MIC, 0x02, 0x80, value and 0xFF))
             else -> throw IllegalArgumentException("${s.label} has no write")
         }
@@ -241,4 +297,7 @@ object WalkPlaySettings {
 
     /** `01 01 00`: the flash save the vendor adds after a mic write (and after a noise-reduction write, which Contour never makes). */
     fun saveReport(): ByteArray = WalkPlay.report(WalkPlay.WRITE, CMD_SAVE, WalkPlay.END)
+
+    /** `01 04`: the flash save the Tanchjim app sends right after a Space II volume write (command 0x04, not the `01 01 00` of the mic). */
+    fun saveVolumeReport(): ByteArray = WalkPlay.report(WalkPlay.WRITE, CMD_VOLUME_SAVE, WalkPlay.END)
 }

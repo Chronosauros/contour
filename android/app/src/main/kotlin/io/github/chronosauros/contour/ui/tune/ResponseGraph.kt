@@ -7,8 +7,10 @@ import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
@@ -74,7 +76,11 @@ class PlotMap(private val w: Float, private val h: Float, private val pad: Float
 private val PAD = 18.dp
 private val NODE_RADIUS = 12.dp
 private val GRAPH_SHAPE = RoundedCornerShape(Radii.L)
-private val LABEL_F = listOf(100.0 to "100", 1000.0 to "1K", 10_000.0 to "10K")
+/**
+ * Frequency labels. 2K and 5K between 1K and 10K (u/dla8 on Reddit, 15.11.2026: "it feels so cramped"; owner's pick 25.11.2026 of three: 1.8.0's 100 / 1K /
+ * 10K, + 2K and 5K, + 2K / 4K / 6K): they sit on grid lines that are already there, so the node and slider haptics tick on them.
+ */
+private val LABEL_F = listOf(100.0 to "100", 1000.0 to "1K", 2000.0 to "2K", 5000.0 to "5K", 10_000.0 to "10K")
 /** Texts the graph keeps laid out between frames: the axis labels (3 + one per 6 dB line) and the node numbers of the largest profile, with room to spare. */
 private const val TEXT_CACHE = 64
 private val NODE_NUMBERS = Array(TEXT_CACHE) { "${it + 1}" }
@@ -296,6 +302,7 @@ fun ResponseGraph(model: AppModel, profile: Profile, modifier: Modifier = Modifi
             val y = map.y(g)
             drawLine(if (g == 0.0) c.track else c.grid, Offset(0f, y), Offset(size.width, y), if (g == 0.0) 1.5.dp.toPx() else 1.dp.toPx())
         }
+        // every label starts just right of its grid line
         for ((f, s) in LABEL_F) {
             drawText(measurer, s, Offset(map.x(f) + 4.dp.toPx(), size.height - pad - 12.dp.toPx()), labelStyle)
         }

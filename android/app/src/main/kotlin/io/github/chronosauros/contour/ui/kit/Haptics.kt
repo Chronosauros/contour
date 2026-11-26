@@ -76,15 +76,63 @@ class Haptics(context: Context, private val view: View) {
     private val prefs = context.getSharedPreferences("ui", Context.MODE_PRIVATE)
 
     /**
-     * HAPTIC FEEDBACK at the foot of the library (owner 14.11.2026, `ui/UsbAttachRow.kt`): off = Contour plays no haptics at all. Every
-     * effect leaves through [vibrate] or [feedback], so those two are the gate. On by default; turning it off stops what is playing.
+     * HAPTIC FEEDBACK at the foot of the library: [OFF] / [LOW] / [MEDIUM] / [HIGH] (owner 16.11.2026: "Haptic Feedback powinien mieć opcję mocy
+     * Off, Low, Medium, High"; before, 14.11.2026, a plain ON / OFF switch - ON is MEDIUM, today's strength, byte for byte). OFF = Contour plays no
+     * haptics at all: every effect leaves through [vibrate] or [feedback], so those two are the gate. LOW and HIGH move every effect one step on the
+     * strength ladder: on [Tier.P] the scale of every primitive ([LEVEL_SCALE]), on [Tier.F] - a phone without amplitude control (the Nothing A065)
+     * - the next softer or firmer predefined effect (TICK < CLICK < HEAVY_CLICK), and the view's constants become predefined effects of that ladder
+     * too. [Tier.V] has nothing to scale: LOW and HIGH feel like MEDIUM there. Turning it off stops what is playing.
      */
-    var enabled: Boolean = prefs.getBoolean(KEY_ENABLED, true)
+    // clamped as the setter clamps: the initializer skips the setter, and a value out of range indexed past LEVEL_SCALE (review 18.11.2026)
+    var level: Int = prefs.getInt(KEY_LEVEL, if (prefs.getBoolean(KEY_ENABLED, true)) MEDIUM else OFF).coerceIn(OFF, HIGH)
         set(value) {
-            field = value
-            prefs.edit().putBoolean(KEY_ENABLED, value).apply()
-            if (!value) vibrator?.cancel()
+            val v = value.coerceIn(OFF, HIGH)
+            field = v
+            prefs.edit().putInt(KEY_LEVEL, v).putBoolean(KEY_ENABLED, v != OFF).apply()
+            if (v == OFF) vibrator?.cancel()
         }
+
+    /** Whether Contour plays any haptics ([level] above [OFF]): the gate of Compose's own haptic feedback ([rememberGatedHapticFeedback]). */
+    val enabled: Boolean get() = level != OFF
+
+    /** [Tier.P]: a primitive's raw scale at the current [level]; MEDIUM leaves it as it is. */
+    private fun lv(scale: Float): Float = if (level == MEDIUM) scale else (scale * LEVEL_SCALE[level]).coerceIn(0f, 1f)
+
+    /**
+     * [Tier.F]: a predefined effect one step softer (LOW) or firmer (HIGH) on the ladder TICK < CLICK < HEAVY_CLICK; MEDIUM leaves it as it is.
+     * DOUBLE_CLICK keeps its two clicks at LOW (it is the failure pattern of a send).
+     */
+    private fun lvEffect(id: Int): Int = when (level) {
+        LOW -> when (id) {
+            VibrationEffect.EFFECT_HEAVY_CLICK, EFFECT_THUD_ID -> VibrationEffect.EFFECT_CLICK
+            VibrationEffect.EFFECT_CLICK -> VibrationEffect.EFFECT_TICK
+            else -> id
+        }
+        HIGH -> when (id) {
+            VibrationEffect.EFFECT_TICK -> VibrationEffect.EFFECT_CLICK
+            VibrationEffect.EFFECT_CLICK -> VibrationEffect.EFFECT_HEAVY_CLICK
+            else -> id
+        }
+        else -> id
+    }.let { if (it == id || effectSupported(it)) it else id }
+
+    /**
+     * A view constant at LOW or HIGH, where the phone has predefined effects: the effect of the same weight on the ladder, moved one step. Null =
+     * play the constant itself: at MEDIUM, on a phone without these effects, a tick-class constant at LOW (the view's own tick is already the
+     * softest there is - a predefined TICK would come out firmer than MEDIUM), and the drag grain at HIGH (it can fire every 30 ms; a CLICK there
+     * would buzz).
+     */
+    private fun lvConstant(constant: Int): Int? {
+        if (level == MEDIUM || tier == Tier.V) return null
+        val base = when (constant) {
+            HapticFeedbackConstants.LONG_PRESS, viewReject -> VibrationEffect.EFFECT_HEAVY_CLICK
+            HapticFeedbackConstants.VIRTUAL_KEY, viewConfirm -> VibrationEffect.EFFECT_CLICK
+            else -> VibrationEffect.EFFECT_TICK
+        }
+        if (base == VibrationEffect.EFFECT_TICK && (level == LOW || constant == viewGrain)) return null
+        if (!effectSupported(base)) return null
+        return lvEffect(base)
+    }
 
     // ---------------------------------------------------------------------------------------------- what plays when
 
@@ -193,7 +241,7 @@ class Haptics(context: Context, private val view: View) {
         for (p in prims) {
             val id = resolve(p.id) ?: continue
             val pause = p.pause.coerceAtLeast(0)
-            c.addPrimitive(id, felt(p.scale), pause)
+            c.addPrimitive(id, felt(lv(p.scale)), pause)
             length += pause + duration(id)
             count++
         }
@@ -236,12 +284,13 @@ class Haptics(context: Context, private val view: View) {
             return
         }
         began(stageMs = if (stage) nominalMs else 0)
-        vibrate(VibrationEffect.createPredefined(id))
+        vibrate(VibrationEffect.createPredefined(lvEffect(id)))
     }
 
     private fun feedback(constant: Int) {
         if (!enabled) return
-        view.performHapticFeedback(constant)
+        val effect = lvConstant(constant)
+        if (effect != null) vibrate(VibrationEffect.createPredefined(effect)) else view.performHapticFeedback(constant)
     }
 
     /** Tier V: one view constant (null: nothing). */
@@ -299,13 +348,13 @@ class Haptics(context: Context, private val view: View) {
         val rid = resolve(id) ?: return
         if (!dragAdmit(grain, click)) return
         val c = VibrationEffect.startComposition()
-        repeat(count.coerceAtLeast(1)) { c.addPrimitive(rid, felt(scale)) }
+        repeat(count.coerceAtLeast(1)) { c.addPrimitive(rid, felt(lv(scale))) }
         vibrate(c.compose())
     }
 
     private fun dragPredefined(id: Int, fallback: Int, click: Boolean) {
         if (!dragAdmit(grain = false, click = click)) return
-        if (effectSupported(id)) vibrate(VibrationEffect.createPredefined(id)) else feedback(fallback)
+        if (effectSupported(id)) vibrate(VibrationEffect.createPredefined(lvEffect(id))) else feedback(fallback)
     }
 
     // ---------------------------------------------------------------------------------------------- tokens: swipes and segmented controls
@@ -583,7 +632,14 @@ class Haptics(context: Context, private val view: View) {
         private const val GRAIN_DROP_MS = 30L  // a grain is dropped if less than this passed since the start of the last effect of any kind
         private const val CLICK_QUIET_MS = 40L // for this long after a click nothing of the drag layer plays
         private const val TOOTH_DROP_MS = 22L  // a tooth is dropped if less than this passed since the start of the last tooth (never queued)
-        private const val KEY_ENABLED = "hapticsOn" // HAPTIC FEEDBACK switch, prefs "ui"
+        private const val KEY_ENABLED = "hapticsOn" // HAPTIC FEEDBACK switch until 16.11.2026, prefs "ui": still written (level != OFF), read once as the start level
+        private const val KEY_LEVEL = "hapticsLevel" // HAPTIC FEEDBACK OFF / LOW / MEDIUM / HIGH, prefs "ui"
+        const val OFF = 0
+        const val LOW = 1
+        const val MEDIUM = 2
+        const val HIGH = 3
+        /** [Tier.P]: the multiplier of every primitive's scale per [level]; LOW and HIGH sit a ratio of 1.5 from MEDIUM (the spec: >= 1.4 to be felt). */
+        private val LEVEL_SCALE = floatArrayOf(0f, 0.66f, 1f, 1.5f)
         private const val LATENCY_MS = 25      // vibrate() to the motor's start, measured 20-30 ms on the Pixel 9 Pro (14.11.2026)
         private const val RING_MS = 25         // a stage holds the motor this long after its end
         private const val VIEW_MS = 30         // nominal length of a view constant

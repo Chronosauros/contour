@@ -510,7 +510,7 @@ internal object CatalogDump {
         "FIIO_JIEZI" to Spec(10, -12.0, 12.0, 0.1, 10.0, 10.0 / sqrt(2.0), 20.0, 20000.0, SEVEN, -12.0, 12.0),
         "KIWI_EARS_AD1" to Spec(5, -12.0, 12.0, 0.2, 10.0, 1.0, 20.0, 20000.0, THREE, 0.0, 0.0),
         "TANCHJIM_SPACE_II" to Spec(10, -12.0, 12.0, 0.1, 10.0, 10.0, 20.0, 20000.0, listOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF, FilterType.LOW_PASS, FilterType.HIGH_PASS), -30.0, 0.0),
-        "EPZ_TP65" to Spec(10, -10.0, 10.0, 0.1, 10.0, 10.0, 20.0, 20000.0, listOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF), -30.0, 0.0),
+        "EPZ_TP65" to Spec(10, -10.0, 10.0, 0.1, 10.0, 10.0, 20.0, 20000.0, listOf(FilterType.PEAK), -30.0, 0.0),
     )
 
     private fun hexTrim(b: ByteArray): String = hex(b.copyOf(b.indexOfLast { it.toInt() != 0 } + 1))

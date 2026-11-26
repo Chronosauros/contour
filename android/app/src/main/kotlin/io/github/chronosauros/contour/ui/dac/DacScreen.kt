@@ -59,12 +59,15 @@ import io.github.chronosauros.contour.core.Proven
 import io.github.chronosauros.contour.core.native.DacSetting
 import io.github.chronosauros.contour.core.native.SettingKind
 import io.github.chronosauros.contour.core.native.SettingWriteOutcome
+import io.github.chronosauros.contour.core.native.VolumeTrim
 import io.github.chronosauros.contour.ui.Grid
 import io.github.chronosauros.contour.ui.Lift
 import io.github.chronosauros.contour.ui.Radii
 import io.github.chronosauros.contour.ui.Type
 import io.github.chronosauros.contour.ui.kit.DacFeel
 import io.github.chronosauros.contour.ui.kit.LiftGuard
+import io.github.chronosauros.contour.ui.kit.placeFill
+import io.github.chronosauros.contour.ui.kit.sliderSign
 import io.github.chronosauros.contour.ui.kit.pressStart
 import io.github.chronosauros.contour.ui.kit.LocalHaptics
 import io.github.chronosauros.contour.ui.kit.LocalPagerLock
@@ -100,7 +103,8 @@ private val FOOTER_H = 22.dp
 fun DacScreen(device: DeviceController, top: Dp, bottom: Dp, onNotSent: (UiText) -> Unit) {
     val context = LocalContext.current
     val target = device.dacTarget ?: return // the DAC went away while the page was leaving
-    val settings = target.settings
+    // the target's own settings, and MAX VOLUME first on the Protocol Micro (DeviceController.pageRows)
+    val settings = device.dacSettings
     val name = target.caps.name
     val preview = device.dacIsPreview
     // a review build names the gate ("not verified"); a release only says the setting is read only (owner 27.10.2026: no gating wording in stable)
@@ -123,18 +127,35 @@ fun DacScreen(device: DeviceController, top: Dp, bottom: Dp, onNotSent: (UiText)
     }
     // The list a long choice (FILTER, SCREEN OFF) has open; null = none.
     var choosing by remember(target) { mutableStateOf<String?>(null) }
-    // A real DAC and a setting that is writeVerified: the value the user just set stays on the control until the write is answered
-    // (the DAC's read-back then replaces it, or the control goes back to the value read). One write at a time; a drag sends only on release.
+    // A real DAC and a setting that is writeVerified: the value the user just set stays on the control until its write is answered
+    // (the DAC's read-back then replaces it, or the control goes back to the value read). Taps made during a write wait their turn in the
+    // controller's queue, the last choice per row wins (owner 16.11.2026: they used to be dropped); a drag sends only on release.
     val pending = remember(target) { mutableStateMapOf<String, Int>() }
-    var writing by remember(target) { mutableStateOf(false) }
     fun valueOf(id: String): Int? = if (preview) local[id] else pending[id] ?: device.settingValues[id]?.value
+    // The newest write asked for each row that has no answer yet: its number and value. An answer settles the control only when it is the answer of that
+    // newest write - an older write of the same value answering first does not (review 18.11.2026: tap 1, tap 2, tap 1 again, the first 1 read back 0).
+    val sending = remember(target) { HashMap<String, Pair<Int, Int>>() }
+    val sendCount = remember(target) { intArrayOf(0) }
     fun send(s: DacSetting, v: Int) {
-        if (writing) { pending.remove(s.id); return }
-        writing = true
-        pending[s.id] = v
-        device.writeSetting(s.id, v) { outcome ->
+        // MAX VOLUME sends the EQ on the DAC again under the new level: a DAC holding an EQ Contour cannot open has none to send, so the slider goes back and says why
+        if (s.id == VolumeTrim.ID && device.trimNeedsSend()) {
             pending.remove(s.id)
-            writing = false
+            sending[s.id]?.let { pending[s.id] = it.second }
+            onNotSent(UiText.res(R.string.dac_max_volume_send_first, name))
+            return
+        }
+        val n = ++sendCount[0]
+        sending[s.id] = n to v
+        pending[s.id] = v
+        // a newer choice for the row keeps the control; an answer for an older one only reports a problem
+        val settle = {
+            if (sending[s.id]?.first == n) {
+                sending.remove(s.id)
+                if (pending[s.id] == v) pending.remove(s.id)
+            }
+        }
+        device.writeSetting(s.id, v, onDropped = { settle() }) { outcome ->
+            settle()
             when (outcome) {
                 SettingWriteOutcome.Verified -> Unit
                 is SettingWriteOutcome.Mismatch -> onNotSent(UiText.res(R.string.dac_not_set_reads, UiText.Core(s.label), format(context, s, outcome.read)))
@@ -205,11 +226,19 @@ fun DacScreen(device: DeviceController, top: Dp, bottom: Dp, onNotSent: (UiText)
                 ) else SettingRow(
                     s, value, shown, dim, preview || writable, levelMax,
                     onMove = { v -> if (preview) local[s.id] = v else pending[s.id] = v },
-                    onCommit = { v -> if (!preview) { if (v == device.settingValues[s.id]?.value) pending.remove(s.id) else send(s, v) } },
+                    // let go on the value the DAC holds: still through the queue, so a write of this row that waits is replaced (the controller sends nothing for it)
+                    onCommit = { v -> if (!preview) send(s, v) },
+                    // a drag the system took away (no lift) sends nothing: the control goes back to the write still waiting for this row, else to what the DAC holds
+                    onCancel = { if (!preview) { pending.remove(s.id); sending[s.id]?.let { pending[s.id] = it.second } } },
                     onPick = { v -> if (preview) local[s.id] = v else send(s, v) },
                     onBlocked = { onNotSent(blocked(s.label)) },
                     onOpen = { choosing = s.id },
                     modifier = Modifier.padding(top = if (section != null) 0.dp else groupGap),
+                )
+                // MAX VOLUME is not a register of its own: one line says what it does (owner's sketch A, 25.11.2026)
+                if (s.id == VolumeTrim.ID) Text(
+                    stringResource(R.string.dac_max_volume_note), style = Type.small, color = c.textDim,
+                    modifier = Modifier.padding(start = 6.dp).testTag("dac_note_${s.id}"),
                 )
             }
             // SnowSky Melody and Tiny A, FiiO KA15 and the WalkPlay Micro, Echo-A and TRN: the factory reset. Dimmed (a tap only says why) until the reset is proven (FiioReset.VERIFIED,
@@ -297,7 +326,7 @@ private fun InlineChoice(s: DacSetting, value: Int?, live: Boolean, dim: Boolean
 @Composable
 private fun SettingRow(
     s: DacSetting, value: Int?, shown: Shown, dim: Boolean, live: Boolean, max: Int,
-    onMove: (Int) -> Unit, onCommit: (Int) -> Unit, onPick: (Int) -> Unit, onBlocked: () -> Unit, onOpen: () -> Unit, modifier: Modifier,
+    onMove: (Int) -> Unit, onCommit: (Int) -> Unit, onCancel: () -> Unit, onPick: (Int) -> Unit, onBlocked: () -> Unit, onOpen: () -> Unit, modifier: Modifier,
 ) {
     val context = LocalContext.current
     val c = pal
@@ -328,8 +357,8 @@ private fun SettingRow(
             else when (s.kind) {
                 SettingKind.TOGGLE, SettingKind.CHOICE ->
                     if (s.longChoice) ChoiceButton(s, value, onOpen) else OptionWell(s, value, live, onPick, onBlocked)
-                SettingKind.LEVEL -> DacSlider(s, value, s.min, max, false, live, onMove, onCommit, onBlocked)
-                SettingKind.BALANCE -> DacSlider(s, value, -s.max, s.max, true, live, onMove, onCommit, onBlocked)
+                SettingKind.LEVEL -> DacSlider(s, value, s.min, max, false, live, onMove, onCommit, onCancel, onBlocked)
+                SettingKind.BALANCE -> DacSlider(s, value, -s.max, s.max, true, live, onMove, onCommit, onCancel, onBlocked)
             }
         }
     }
@@ -445,7 +474,9 @@ private fun OptionWell(s: DacSetting, value: Int?, live: Boolean, onPick: (Int) 
  * control stays on what was read. One finger travel across the track is the whole range.
  */
 @Composable
-private fun DacSlider(s: DacSetting, value: Int?, min: Int, max: Int, centered: Boolean, live: Boolean, onMove: (Int) -> Unit, onCommit: (Int) -> Unit, onBlocked: () -> Unit) {
+private fun DacSlider(
+    s: DacSetting, value: Int?, min: Int, max: Int, centered: Boolean, live: Boolean, onMove: (Int) -> Unit, onCommit: (Int) -> Unit, onCancel: () -> Unit, onBlocked: () -> Unit,
+) {
     val p = pal
     val haptics = LocalHaptics.current
     val pagerLock = LocalPagerLock.current
@@ -453,12 +484,16 @@ private fun DacSlider(s: DacSetting, value: Int?, min: Int, max: Int, centered: 
     val v = rememberUpdatedState(value)
     val move = rememberUpdatedState(onMove)
     val commit = rememberUpdatedState(onCommit)
+    val cancel = rememberUpdatedState(onCancel)
     val blocked = rememberUpdatedState(onBlocked)
     val applies = rememberUpdatedState(live)
     val start = if (centered) 0 else (min + max) / 2
     val pos = if (value == null) 0f else ((value - min).toFloat() / (max - min)).coerceIn(0f, 1f)
     val signed = if (value == null) 0f else (value.toFloat() / max).coerceIn(-1f, 1f)
     val description = stringResource(R.string.slider_description, CoreText.translate(LocalContext.current, s.label))
+    // -1 on a right-to-left phone: a level slider is mirrored there, a finger moving left raises it ([io.github.chronosauros.contour.ui.kit.MIRROR_VALUE_SLIDERS]); BALANCE is physical
+    // (the left ear, the right ear) and never mirrors
+    val sign = if (centered) 1f else sliderSign()
     Box(
         Modifier
             .fillMaxSize()
@@ -468,31 +503,37 @@ private fun DacSlider(s: DacSetting, value: Int?, min: Int, max: Int, centered: 
             .systemGestureExclusion()
             .holdsPager(pagerLock)
             .pointerInput(Unit) { detectTapGestures(onTap = { if (!applies.value) blocked.value() }) }
-            .pointerInput(min, max) {
+            .pointerInput(min, max, sign) {
                 val guard = LiftGuard<Int>(density, s.label)
                 var raw = 0.0
                 val feel = DacFeel(haptics, min, max, centered)
                 var speed = 0f // dp/ms, smoothed like BandDrag
+                // A drag that ends without a lift - cancelled by the system, or this gesture restarted under the finger when a VOLUME STEPS write moved the
+                // slider's top - sends nothing, and the value it showed goes back ([onCancel]); before 1.8.1 it stayed on the control (review 18.11.2026).
+                var dragging = false
+                try {
                 detectHorizontalDragWithEnds(
                     onDown = { if (applies.value) haptics.grab() },
                     onStart = { down ->
                         raw = (v.value ?: start).toDouble()
                         speed = 0f
+                        dragging = true
                         feel.start(raw.roundToInt())
                         guard.start(down.uptimeMillis, down.position, raw.roundToInt())
                         if (!applies.value) blocked.value()
                     },
                     // lifting the finger is the one moment a value is sent (a real DAC); the LiftGuard may take the last jitter back first
                     onEnd = { up ->
+                        dragging = false
                         if (up != null && applies.value) {
                             val settled = guard.release(up)?.also { move.value(it) }
                             (settled ?: v.value)?.let { commit.value(it) }
-                        }
+                        } else if (up == null) cancel.value()
                     },
                 ) { ch, dx ->
                     ch.consume()
                     if (!applies.value) return@detectHorizontalDragWithEnds
-                    raw += dx.toDouble() * (max - min) / size.width.coerceAtLeast(1)
+                    raw += sign * dx.toDouble() * (max - min) / size.width.coerceAtLeast(1)
                     val pastEnd = raw < min || raw > max
                     raw = raw.coerceIn(min.toDouble(), max.toDouble())
                     val next = raw.roundToInt()
@@ -500,6 +541,9 @@ private fun DacSlider(s: DacSetting, value: Int?, min: Int, max: Int, centered: 
                     guard.move(ch.uptimeMillis, ch.position, next)
                     speed = 0.6f * speed + 0.4f * (abs(dx) / density / (ch.uptimeMillis - ch.previousUptimeMillis).coerceAtLeast(1L))
                     if (!guard.settling(ch.uptimeMillis)) feel.move(next, pastEnd, speed.coerceAtMost(1f))
+                }
+                } finally {
+                    if (dragging) cancel.value()
                 }
             }
             .clip(shape)
@@ -519,7 +563,7 @@ private fun DacSlider(s: DacSetting, value: Int?, min: Int, max: Int, centered: 
                     } else {
                         val w = (h + (cs.maxWidth - h) * pos).roundToInt().coerceIn(h, cs.maxWidth)
                         val pl = m.measure(Constraints.fixed(w, h))
-                        layout(w, h) { pl.place(0, 0) }
+                        layout(cs.maxWidth, h) { placeFill(pl) } // from the low end whatever the layout direction
                     }
                 }
                 .lift(shape, Lift.RAISED)

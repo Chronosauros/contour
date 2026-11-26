@@ -35,8 +35,13 @@ class WalkPlayExtrasTest {
         var gain = 0
         var balanceR0 = 0
         var balanceR1 = 0
+        /** The Space II's DRE register (inverted: 0 = ON, 1 = OFF) and its volume register 0..60. */
+        var dreReg = 1
+        var volume = 0
         val silent = HashSet<Int>()
         val ignored = HashSet<Int>()
+        /** Commands whose next write frame the DAC drops once (the Space II lost an output frame now and then on a phone, 16.11.2026). */
+        val dropOnce = HashSet<Int>()
         var resetClearsSettings = true
         /** The DAC takes no notice of band writes (a reset that changes nothing). */
         var ignoreBands = false
@@ -60,6 +65,7 @@ class WalkPlayExtrasTest {
         override fun send(id: Int, kind: NativeHidReports.Kind, payload: ByteArray) {
             val b = byteArrayOf(id.toByte()) + payload
             events += "tx:${hex(b)}"
+            if (dropOnce.remove(b[2].toInt() and 0xFF)) return
             val v = b[5].toInt()          // preamp and mic: `01 03 02 00 g`, `01 02 02 80 e`
             val one = b[4].toInt() and 255 // the one-byte rows: `01 11 01 t`, `01 1D 01 t`, `01 19 01 m` (the balance: the channel)
             when (b[2].toInt() and 0xFF) {
@@ -72,6 +78,8 @@ class WalkPlayExtrasTest {
                 WalkPlaySettings.CMD_DAC_FILTER -> if (WalkPlaySettings.CMD_DAC_FILTER !in ignored) filter = one - 1
                 WalkPlaySettings.CMD_WORK_MODE -> if (WalkPlaySettings.CMD_WORK_MODE !in ignored) work = one
                 WalkPlaySettings.CMD_GAIN_MODE -> if (WalkPlaySettings.CMD_GAIN_MODE !in ignored) gain = one
+                WalkPlaySettings.CMD_DRE -> if (WalkPlaySettings.CMD_DRE !in ignored) dreReg = one
+                WalkPlaySettings.CMD_VOLUME -> if (WalkPlaySettings.CMD_VOLUME !in ignored) volume = one
                 WalkPlaySettings.CMD_BALANCE -> if (WalkPlaySettings.CMD_BALANCE !in ignored) { if (one == 0) balanceR0 = b[6].toInt() and 255 else balanceR1 = b[6].toInt() and 255 }   // `01 16 04 c 00 a 00`
                 0x05 -> if ((b[3].toInt() and 255) in 1..4) resetSteps++
                 0x17 -> if (resetSteps == 4 && resetClearsSettings) { filter = 0; work = 0; gain = 0; mic = 0; balanceR0 = 0; balanceR1 = 0 }
@@ -91,6 +99,8 @@ class WalkPlayExtrasTest {
                 WalkPlaySettings.CMD_DAC_FILTER -> report("4b 80 11 01 00").also { it[4] = (filter + 1).toByte() }
                 WalkPlaySettings.CMD_WORK_MODE -> report("4b 80 1d 01 00").also { it[4] = work.toByte() }
                 WalkPlaySettings.CMD_GAIN_MODE -> report("4b 80 19 01 00").also { it[4] = gain.toByte() }
+                WalkPlaySettings.CMD_DRE -> report("4b 80 32 00 00").also { it[4] = dreReg.toByte() }
+                WalkPlaySettings.CMD_VOLUME -> report("4b 80 85 00 00").also { it[4] = volume.toByte() }
                 WalkPlaySettings.CMD_BALANCE -> report("4b 80 16 02 00 00 00").also { it[4] = b[4]; it[6] = (if (b[4].toInt() == 0) balanceR0 else balanceR1).toByte() }
                 else -> error("unexpected request ${hex(b)}")
             }
@@ -440,6 +450,27 @@ class WalkPlayExtrasTest {
         }
     }
 
+    @Test fun `a Space II setting SET that did not land goes out once more with its save and is read again, the other DACs send it once`() {
+        val space2 = WalkPlayProfiles.space2
+        val dropped = Dac(space2).also { it.gain = 1; it.dropOnce += WalkPlaySettings.CMD_GAIN_MODE }
+        val r = WalkPlaySession(space2, dropped).writeSetting("gain-mode", 0, explicitHold = true)
+        assertTrue(r.verified, r.reason); assertEquals(0, dropped.gain)
+        assertEquals(listOf(hex(report("4b 80 19 00")), hex(report("4b 01 19 01 00")), hex(report("4b 80 19 00")), hex(report("4b 01 19 01 00")), hex(report("4b 80 19 00"))), dropped.sent())
+        // the mic write's flash save goes out again with it
+        val mic = Dac(space2).also { it.dropOnce += WalkPlaySettings.CMD_MIC }
+        WalkPlaySession(space2, mic).writeSetting("mic", 3, explicitHold = true, save = true)
+        val once = WalkPlaySettings.writeReports(WalkPlaySettings.row(space2, "mic"), 3).map(::hex) + hex(WalkPlaySettings.saveReport())
+        assertEquals(once + once, mic.writes())
+        // a SET the DAC never takes: sent twice, then reported with both numbers
+        val deaf = Dac(space2).also { it.ignored += WalkPlaySettings.CMD_WORK_MODE }
+        val d = WalkPlaySession(space2, deaf).writeSetting("work-mode", 1, explicitHold = true)
+        assertFalse(d.verified); assertEquals("the DAC reads 0, wrote 1", d.reason); assertEquals(2, deaf.writes().size)
+        // the TRN (and every other WalkPlay DAC) sends it once, as its proven logs do
+        val trnDrop = Dac(trn).also { it.gain = 1; it.dropOnce += WalkPlaySettings.CMD_GAIN_MODE }
+        val t = WalkPlaySession(trn, trnDrop).writeSetting("gain-mode", 0, explicitHold = true)
+        assertFalse(t.verified); assertEquals("the DAC reads 1, wrote 0", t.reason); assertEquals(1, trnDrop.writes().size)
+    }
+
     @Test fun `a setting write that does not stick is reported with both numbers, a refused one leaves no frame`() {
         val dac = Dac(trn).also { it.ignored += WalkPlaySettings.CMD_WORK_MODE }
         val r = WalkPlaySession(trn, dac).writeSetting("work-mode", 1, explicitHold = true)
@@ -665,5 +696,94 @@ class WalkPlayExtrasTest {
             assertEquals(listOf(3, 1, 1, 0), listOf(dac.filter, dac.work, dac.gain, dac.mic))   // the TRN mic is read only: not written back
             assertEquals(listOf(0, 250), listOf(dac.balanceR0, dac.balanceR1))
         }
+    }
+
+    // ---- the Space II's DRE and VOLUME rows (Tanchjim app 2.5.8.1, Space2Command) ------------------------------------------------------------------------
+
+    @Test fun `the Space II has a DRE toggle and a VOLUME level, both verified, and no other WalkPlay DAC has them`() {
+        val space2 = WalkPlayProfiles.space2
+        assertEquals(listOf("dac-filter", "work-mode", "gain-mode", "balance", "dre", "volume", "mic"), WalkPlaySettings.of(space2).map { it.id })
+        assertTrue(WalkPlaySettings.SPACE2_DRE_VERIFIED && WalkPlaySettings.SPACE2_VOLUME_VERIFIED)
+        val dre = WalkPlaySettings.row(space2, WalkPlaySettings.DRE); val vol = WalkPlaySettings.row(space2, WalkPlaySettings.VOLUME)
+        assertEquals(listOf("DRE", SettingKind.TOGGLE, listOf("OFF", "ON")), listOf(dre.label, dre.kind, dre.options))
+        assertEquals(listOf("VOLUME", SettingKind.LEVEL, 0, 60), listOf(vol.label, vol.kind, vol.min, vol.max))
+        assertTrue(dre.writeVerified && vol.writeVerified)
+        assertEquals(listOf(0x32, 0x85), listOf(dre.writeCommand, vol.writeCommand))
+        assertEquals(WalkPlaySettings.of(space2).map { it.id }, DeviceTarget.SPACE_2.settings.map { it.id })
+        for (p in listOf(trn, micro, echo, WalkPlayProfiles.max)) for (id in listOf("dre", "volume")) assertFailsWith<IllegalArgumentException>("${p.id} $id") { WalkPlaySettings.row(p, id) }
+    }
+
+    @Test fun `the Space II's DRE and VOLUME reads and writes are the vendor's frames, byte for byte, with DRE inverted`() {
+        val space2 = WalkPlayProfiles.space2
+        val dre = WalkPlaySettings.row(space2, WalkPlaySettings.DRE); val vol = WalkPlaySettings.row(space2, WalkPlaySettings.VOLUME)
+        assertEquals(listOf(hex(report("4b 80 32 00"))), WalkPlaySettings.readRequests(dre).map(::hex))
+        assertEquals(listOf(hex(report("4b 80 85 00"))), WalkPlaySettings.readRequests(vol).map(::hex))
+        // ON = `01 32 01 00`, OFF = `01 32 01 01`
+        assertEquals(listOf(hex(report("4b 01 32 01 00"))), WalkPlaySettings.writeReports(dre, 1).map(::hex))
+        assertEquals(listOf(hex(report("4b 01 32 01 01"))), WalkPlaySettings.writeReports(dre, 0).map(::hex))
+        for ((v, frame) in listOf(0 to "4b 01 85 01 00", 32 to "4b 01 85 01 20", 60 to "4b 01 85 01 3c")) assertEquals(listOf(hex(report(frame))), WalkPlaySettings.writeReports(vol, v).map(::hex), "volume $v")
+        assertEquals(hex(report("4b 01 04 00")), hex(WalkPlaySettings.saveVolumeReport()))
+        for (v in listOf(-1, 61, 128, 133)) assertFailsWith<IllegalArgumentException>("volume $v") { WalkPlaySettings.writeReports(vol, v) }
+        for (v in listOf(-1, 2)) assertFailsWith<IllegalArgumentException>("dre $v") { WalkPlaySettings.writeReports(dre, v) }
+        // the replies: `4b 80 32 00 00` = ON (index 1), `00 01` = OFF (index 0), anything else no value; the volume is the raw byte 0..60, unsigned
+        assertEquals(1, WalkPlaySettings.decode(dre, report("4b 80 32 00 00"))); assertEquals(0, WalkPlaySettings.decode(dre, report("4b 80 32 00 01")))
+        for (x in listOf("02", "7f", "80", "ff")) assertNull(WalkPlaySettings.decode(dre, report("4b 80 32 00 $x")), x)
+        assertEquals(32, WalkPlaySettings.decode(vol, report("4b 80 85 00 20")))
+        assertEquals(0, WalkPlaySettings.decode(vol, report("4b 80 85 00 00"))); assertEquals(60, WalkPlaySettings.decode(vol, report("4b 80 85 00 3c")))
+        for (x in listOf("3d", "7f", "80", "ff")) assertNull(WalkPlaySettings.decode(vol, report("4b 80 85 00 $x")), x)
+        // the reply match is by the command byte read unsigned: 0x85 is above 0x7F
+        assertTrue(WalkPlaySettings.isReply(vol, report("4b 80 85 00 20"))); assertFalse(WalkPlaySettings.isReply(vol, report("4b 80 32 00 20")))
+        assertTrue(WalkPlaySettings.isReply(dre, report("4b 80 32 00 01")))
+    }
+
+    @Test fun `a Space II volume write is followed by the 01 04 save and then read back, a DRE write has no save`() {
+        val space2 = WalkPlayProfiles.space2
+        val dac = Dac(space2).also { it.volume = 10 }
+        val s = WalkPlaySession(space2, dac)
+        val r = s.writeSetting("volume", 32, explicitHold = true)
+        assertTrue(r.verified, r.reason); assertEquals(32, r.readback); assertEquals(10, s.lastSettingBefore)
+        assertEquals(listOf(hex(report("4b 01 85 01 20")), hex(report("4b 01 04 00"))), dac.writes())
+        assertEquals(listOf(hex(report("4b 80 85 00")), hex(report("4b 01 85 01 20")), hex(report("4b 01 04 00")), hex(report("4b 80 85 00"))), dac.sent())
+        // the save follows the write by the mic save's gap (200 ms), before the read-back
+        val events = dac.events.filter { it.startsWith("tx:") || it.startsWith("pause:") }
+        assertEquals("pause:200", events[events.indexOf("tx:" + hex(report("4b 01 04 00"))) + 1])
+        // volume 0 and 60 reach the top and the bottom of the register
+        for (v in listOf(0, 60)) { val d = Dac(space2); assertTrue(WalkPlaySession(space2, d).writeSetting("volume", v, explicitHold = true).verified); assertEquals(v, d.volume) }
+        // DRE: ON then OFF, one frame each, no save, read back through the inversion
+        val ddre = Dac(space2)                                   // register 1 = OFF
+        val on = WalkPlaySession(space2, ddre).writeSetting("dre", 1, explicitHold = true)
+        assertTrue(on.verified, on.reason); assertEquals(1, on.readback); assertEquals(0, ddre.dreReg)
+        assertEquals(listOf(hex(report("4b 01 32 01 00"))), ddre.writes())
+        val off = WalkPlaySession(space2, ddre).writeSetting("dre", 0, explicitHold = true)
+        assertTrue(off.verified, off.reason); assertEquals(1, ddre.dreReg)
+        assertEquals(listOf(hex(report("4b 01 32 01 00")), hex(report("4b 01 32 01 01"))), ddre.writes())
+        // the other Space II rows keep their own saves: the gain mode none, the mic its `01 01 00` (and never `01 04`)
+        val m = Dac(space2)
+        WalkPlaySession(space2, m).writeSetting("mic", 3, explicitHold = true, save = true)
+        assertEquals(hex(report("4b 01 01 00")), m.writes().last()); assertFalse(m.writes().any { it == hex(report("4b 01 04 00")) })
+        // a silent DAC (firmware that does not answer 0x32 / 0x85): the read is a null value, the other rows still answer
+        val deaf = Dac(space2).also { it.silent += listOf(0x32, 0x85); it.gain = 1 }
+        val read = WalkPlaySession(space2, deaf).readSettings().associate { it.id to it.value }
+        assertNull(read["dre"]); assertNull(read["volume"]); assertEquals(1, read["gain-mode"])
+    }
+
+    @Test fun `the guard lets 01 32, 01 85 and 01 04 through for the Space II only, 01 04 only as the save right after its volume write (the TRN keeps its own 01 04 00 write step)`() {
+        val space2 = WalkPlayProfiles.space2
+        val dre = payload(0x01, 0x32, 0x01, 0x00); val vol = payload(0x01, 0x85, 0x01, 0x20); val save = payload(0x01, 0x04, 0x00)
+        assertNull(refusal(dre, space2)); assertNull(refusal(vol, space2))
+        assertNotNull(refusal(save, space2)); assertNotNull(refusal(save, space2, WalkPlayGuard.Context.MIC_SAVE))
+        assertNull(refusal(save, space2, WalkPlayGuard.Context.VOLUME_SAVE))
+        for (p in listOf(WalkPlayProfiles.max, trn, micro, echo)) for (ctx in WalkPlayGuard.Context.values()) for (f in listOf(dre, vol))
+            assertNotNull(refusal(f, p, ctx), "${p.id} $ctx ${hex(f.copyOf(3))}")
+        for (p in listOf(WalkPlayProfiles.max, micro, echo)) for (ctx in WalkPlayGuard.Context.values()) assertNotNull(refusal(save, p, ctx), "${p.id} $ctx 01 04")
+        // the Space II refuses it outside the volume save; the TRN's write sequence ends with `01 04 00` (WalkPlay.trnWriteSequence), so the TRN is let through
+        for (ctx in listOf(WalkPlayGuard.Context.NORMAL, WalkPlayGuard.Context.RESET, WalkPlayGuard.Context.MIC_SAVE)) assertNotNull(refusal(save, space2, ctx), "space-2 $ctx 01 04")
+        assertNull(refusal(save, trn))
+        // reads of the two registers are not writes: the guard has nothing against them
+        assertNull(refusal(payload(0x80, 0x32, 0x00), space2)); assertNull(refusal(payload(0x80, 0x85, 0x00), space2))
+        // the session sends the save in that context, and a Max asked to write a volume refuses before the first frame
+        val max = Dac(WalkPlayProfiles.max)
+        assertFailsWith<IllegalArgumentException> { WalkPlaySession(WalkPlayProfiles.max, max).writeSetting("volume", 5, explicitHold = true) }
+        assertTrue(max.events.isEmpty())
     }
 }

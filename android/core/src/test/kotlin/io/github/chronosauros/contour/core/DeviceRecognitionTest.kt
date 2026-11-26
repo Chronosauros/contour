@@ -86,9 +86,9 @@ class DeviceRecognitionTest {
         assertEquals(DeviceTarget.FIIO_JIEZI, DeviceTarget.findDevice(0x2972, 0x0151, "JadeAudio JIEZI")); assertNull(DeviceTarget.findDevice(0x2972, 0x0151, null)); assertNull(DeviceTarget.findDevice(0x2972, 0x0151, "JadeAudio JA11"))
     }
 
-    /** The TP65 tester entry since 1.8.0-tp65test2: read only in a release or beta build, writable only in a review build; its preamp read is `80 03 01` (the form read on a unit), every other WalkPlay DAC keeps `80 03 00`. */
-    @Test fun `the TP65 is read only in a release and asks for its preamp with 80 03 01`() {
-        Proven.asChannel(BuildChannel.RELEASE) { assertTrue(DeviceTarget.EPZ_TP65.readOnly); assertFalse(DeviceTarget.SPACE_2.readOnly); assertFalse(DeviceTarget.MAX.readOnly) }
+    /** The TP65 tester entry since 1.8.1-tp65test3: written in every build (its own sequence, WalkPlaySessionTest); its preamp read is `80 03 01` (the form read on a unit), every other WalkPlay DAC keeps `80 03 00`. */
+    @Test fun `the TP65 writes in a release and asks for its preamp with 80 03 01`() {
+        Proven.asChannel(BuildChannel.RELEASE) { assertFalse(DeviceTarget.EPZ_TP65.readOnly); assertFalse(DeviceTarget.SPACE_2.readOnly); assertFalse(DeviceTarget.MAX.readOnly) }
         Proven.asChannel(BuildChannel.PERF) { assertFalse(DeviceTarget.EPZ_TP65.readOnly) }
         fun head(b: ByteArray) = b.copyOf(5).joinToString(" ") { "%02x".format(it) }
         assertEquals("4b 80 03 01 00", head(DeviceProtocol.EPZ_TP65.preampRequest()))
@@ -98,5 +98,16 @@ class DeviceRecognitionTest {
         val reply = ByteArray(WalkPlay.REPORT_SIZE).also { r -> intArrayOf(0x4B, 0x80, 0x03, 0x02, 0x00, 0x00).forEachIndexed { i, v -> r[i] = v.toByte() } }
         assertTrue(DeviceProtocol.EPZ_TP65.isReply(reply, WalkPlay.CMD_GLOBAL_GAIN))
         assertEquals(0, DeviceProtocol.EPZ_TP65.parsePreamp(reply))
+    }
+
+    @Test fun `every record's target is kept and found again by its record id, one target per record`() {
+        val ids = GeneratedDevices.USB_IDS.map { it.recordId }.distinct()
+        val targets = ids.map { id -> checkNotNull(DeviceTarget.ofRecord(id)) { "no target for $id" } }
+        assertEquals(ids.size, targets.toSet().size)
+        for ((id, t) in ids.zip(targets)) assertEquals(id, DeviceTarget.recordIdOf(t))
+        // the targets the app finds on the bus are the ones kept
+        for (t in expected.values + DeviceTarget.FAMILIES + listOf(DeviceTarget.SPACE_2, DeviceTarget.KIWI_EARS_AD1, DeviceTarget.FIIO_JIEZI, DeviceTarget.RETRO_NANO, DeviceTarget.FIIO_JA11))
+            assertEquals(t, DeviceTarget.ofRecord(checkNotNull(DeviceTarget.recordIdOf(t)) { "no record id for ${t.caps.name}" }))
+        assertNull(DeviceTarget.ofRecord("no-such-dac"))
     }
 }

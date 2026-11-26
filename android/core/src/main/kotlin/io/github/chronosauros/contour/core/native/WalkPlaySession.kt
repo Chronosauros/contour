@@ -67,12 +67,12 @@ object WalkPlayProfiles {
     /** The Tanchjim Space II: written and read back on a unit from the Mac (runs 2026-11-13-tanchjim-space-ii-01-mac to -04-mac-max) and from a phone (edge profile VERIFIED, a replug kept it, 13.11.2026), so it writes in every build. */
     val space2 = stable("space-2", DeviceProtocol.SPACE_2)
     /**
-     * THE write flag of the EPZ TP65, an EXPERIMENTAL tester entry (https://github.com/Chronosauros/contour/issues/6). False since 1.8.0-tp65test2: the unit's owner asked for a read-only
-     * first test, and his Windows evidence (issue attachment, 25.11.2026) validated only one PEAK band write and the RAM apply `01 0A`, never the preamp write, `01 05`, `01 17` or the
-     * flash `01 01 01` of the Space II's sequence. So a release (and beta) build only reads the TP65; a review build still writes it through the Space II's sequence. A TP65 write path
-     * of its own comes after the read test. (1.8.0-tp65test1 had it true.)
+     * THE write flag of the EPZ TP65, an EXPERIMENTAL tester entry (https://github.com/Chronosauros/contour/issues/6). True since 1.8.1-tp65test3: the read-only 1.8.0-tp65test2 passed on
+     * the unit (issue comment of 26.11.2026: firmware 0.4, all ten bands and the preamp as on Windows, byte for byte, over a replug) and its owner asked for the TP65 write. The write is
+     * the TP65's own ([WalkPlay.tp65WriteSequence]): only the band frames and the RAM apply `01 0A` its owner validated (Windows, 25.11.2026), the changed bands only, no preamp, `01 05`,
+     * `01 17` or flash `01 01 01`, and [WalkPlayGuard] refuses every other frame for it. (1.8.0-tp65test1 had it true on the Space II's sequence, 1.8.0-tp65test2 false.)
      */
-    const val TP65_TESTER_WRITE = false
+    const val TP65_TESTER_WRITE = true
     val tp65 = stable("epz-tp65", DeviceProtocol.EPZ_TP65, TP65_TESTER_WRITE)
     val echoA = GeneratedDevices.MOONDROP_ECHO_A.let { d ->
         // The Echo-A runs the Protocol Micro's code, so its record has to agree with that protocol on what the code takes from it.
@@ -244,9 +244,16 @@ class WalkPlaySession(val profile: WalkPlayProfile, private val port: NativePort
         require(explicitHold) { "HOLD TO SEND required" }
         val steps0 = runCatching { p.writeSequence(plan, 0) }.getOrNull() // preflight: nothing leaves if a band does not encode
         requireNotNull(steps0) { "The plan does not encode" }
+        var current: List<WalkPlay.Registers>? = null
         val found = if (p.experimental) {
             require(plan.bands.size == p.caps.bands && plan.bands.indices.all { plan.bands[it].index == it }) { "Plan does not cover every ${profile.name} slot" }
-            read().slot
+            val before = read()
+            if (p == DeviceProtocol.EPZ_TP65) {
+                // No preamp frame leaves for a TP65, so the DAC keeps the preamp it holds: a plan that asks for another one is refused here, before the first write frame.
+                if (plan.preampDb != before.preampDb) throw IOException("the ${profile.name} holds a preamp of ${before.preampDb} dB and Contour does not write it yet; this EQ asks for ${plan.preampDb} dB: nothing was sent")
+                current = before.bands.map { it.registers }
+            }
+            before.slot
         } else {
             request(WalkPlay.versionRequest(), "version") { WalkPlay.isReply(it, WalkPlay.CMD_VERSION) }
             WalkPlay.parseSlot(request(WalkPlay.slotRequest(), "slot") { WalkPlay.isReply(it, WalkPlay.CMD_PEQ) })
@@ -254,7 +261,7 @@ class WalkPlaySession(val profile: WalkPlayProfile, private val port: NativePort
         val slot = slotByte ?: found
         lastPlan = plan
         lastSlot = slot
-        for (step in p.writeSequence(plan, slot)) {
+        for (step in p.writeSequence(plan, slot, current)) {
             send(step.report)
             io.pause(step.delayAfterMs)
         }
@@ -307,15 +314,31 @@ class WalkPlaySession(val profile: WalkPlayProfile, private val port: NativePort
         val s = WalkPlaySettings.row(profile, id)
         val frames = WalkPlaySettings.writeReports(s, value)
         lastSettingBefore = readValue(s)
-        for (f in frames) { send(f); io.pause(SETTING_GAP_MS) }
-        if (save) {
-            // on a Max the save is allowed through the guard as the flash save after a mic write and nowhere else
-            val before = context
-            if (id == WalkPlaySettings.MIC) context = WalkPlayGuard.Context.MIC_SAVE
-            try { send(WalkPlaySettings.saveReport()) } finally { context = before }
-            io.pause(SAVE_GAP_MS)
+        fun write() {
+            for (f in frames) { send(f); io.pause(SETTING_GAP_MS) }
+            if (id == WalkPlaySettings.VOLUME) {
+                // the Space II's volume is always followed by the vendor's flash save `01 04` (not the mic's `01 01 00`); the guard lets it through in this context only
+                val before = context
+                context = WalkPlayGuard.Context.VOLUME_SAVE
+                try { send(WalkPlaySettings.saveVolumeReport()) } finally { context = before }
+                io.pause(SAVE_GAP_MS)
+            } else if (save) {
+                // on a Max the save is allowed through the guard as the flash save after a mic write and nowhere else
+                val before = context
+                if (id == WalkPlaySettings.MIC) context = WalkPlayGuard.Context.MIC_SAVE
+                try { send(WalkPlaySettings.saveReport()) } finally { context = before }
+                io.pause(SAVE_GAP_MS)
+            }
         }
-        val back = readValue(s)
+        write()
+        var back = readValue(s)
+        if (back != value && p == DeviceProtocol.SPACE_2) {
+            // The Space II drops an output frame now and then (a band frame in 3 of 16 A/B switches on a phone, 16.11.2026), so a SET that did not land is sent once
+            // more, with its save, and the row read again; what it reads then is the verdict. Only the Space II: the other DACs' proven frames stay as they are.
+            port.log("setting ${s.id}: the DAC reads ${back ?: "nothing"}, wrote $value: sent once more")
+            write()
+            back = readValue(s)
+        }
         WriteOutcome(back == value, false, if (back == value) null else "the DAC reads ${back ?: "nothing"}, wrote $value", back)
     }
 

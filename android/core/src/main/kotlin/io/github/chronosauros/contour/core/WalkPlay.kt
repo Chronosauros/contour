@@ -383,4 +383,19 @@ object WalkPlay {
             Step(report(WRITE, 0x01, END), 200),
             Step(report(WRITE, 0x04, END), 200),
         )
+
+    /** The RAM apply `01 0A 04 00 00 FF FF` (devicePEQ's TEMP_WRITE), the only frame after the band writes that the EPZ TP65 gets. */
+    val TP65_APPLY: ByteArray get() = report(WRITE, 0x0A, 0x04, 0x00, 0x00, 0xFF, 0xFF, END)
+
+    /**
+     * The EPZ TP65's write (tester builds, https://github.com/Chronosauros/contour/issues/6): only the two frame shapes its owner validated on the unit (Windows, firmware 0.4,
+     * issue attachment of 25.11.2026) - band writes `01 09 18 00 i 00 00` and the RAM apply [TP65_APPLY]. A band whose registers equal [current] (the full read right before the
+     * send) is not sent, so an untouched band keeps its own bytes and a one-band edit is one band frame, as on the unit. 20 ms after each band (120 ms after the last), the
+     * Space II's pacing; 250 ms after the apply before the read-back. No preamp write, no `01 05`, `01 17` or flash `01 01 01`: none of them was tried on a TP65.
+     * [WalkPlayGuard][io.github.chronosauros.contour.core.native.WalkPlayGuard] refuses every other frame for the TP65 whoever builds it.
+     */
+    fun tp65WriteSequence(bands: List<BandWrite>, slot: Int, current: List<Registers>?): List<Step> {
+        val changed = bands.filter { b -> current?.getOrNull(b.index) != b.registers() }
+        return changed.mapIndexed { i, b -> Step(bandWriteReport(b, slot), if (i == changed.lastIndex) 120 else 20) } + Step(TP65_APPLY, 250)
+    }
 }
