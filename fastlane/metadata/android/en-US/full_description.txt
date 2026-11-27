@@ -18,6 +18,7 @@
 <li>Kiwi Ears Allegro Mini</li>
 <li>Kiwi Ears AD1</li>
 <li>Tanchjim Space 2 (Space II)</li>
+<li>EPZ TP65</li>
 <li>JCally JM12</li>
 </ul>
 <p><b>Made for your DAC</b></p>
@@ -26,7 +27,7 @@
 <ul>
 <li>Drag bands on the response graph, or add one with +.</li>
 <li>Fine-tune frequency, gain and Q with sliders, or tap a number to type it.</li>
-<li>Leave the preamp on AUTO, or tap AUTO off and set it by hand with its slider.</li>
+<li>Leave the preamp on AUTO, or set it by hand with its slider.</li>
 <li>PEAK on every DAC, plus LOW SHELF, HIGH SHELF, LOW PASS, HIGH PASS, BAND PASS and ALL PASS where your DAC has them.</li>
 <li>Undo and redo, up to 100 steps per profile.</li>
 </ul>
@@ -35,8 +36,9 @@
 <li>One profile per pair of IEMs or headphones, or per mood.</li>
 <li>Every profile keeps a saved version: save your changes or restore the saved one.</li>
 <li>Archive the profiles you don't use, delete the ones you don't need.</li>
-<li>Import a parametric profile from AutoEQ, squig.link or Equalizer APO (clipboard or .txt file), or read the EQ that is on the DAC now.</li>
+<li>Import a parametric profile from AutoEQ, squig.link or Equalizer APO (clipboard or .txt file), or read the EQ on the DAC now.</li>
 <li>Share a profile as Equalizer APO text or save it as a .txt file.</li>
+<li>BACKUP saves the whole library to one file.</li>
 <li>Three profiles to start from: BASS BOOST, SOFTER VOCALS and TREBLE BOOST.</li>
 </ul>
 <p><b>DAC settings in the same app</b></p>
@@ -48,10 +50,10 @@
 <li>Needs Android 9 or newer and a phone with USB host (OTG) support.</li>
 <li>Contour writes to the DAC only when you hold HOLD TO SEND or change a setting on the DAC page.</li>
 <li>Contour does not update firmware.</li>
-<li>Moondrop Dawn Pro 2: its custom EQ has to be switched on. According to Moondrop it is off after every plug-in; holding both volume buttons for 2 seconds toggles it.</li>
+<li>Moondrop Dawn Pro 2: switch its custom EQ on by holding both volume buttons for 2 seconds; Moondrop says it is off after every plug-in.</li>
 <li>Moondrop DUSK-SP: after every plug-in it plays its DUSK-DEFAULT preset. Tap CUSTOM EQ on the DAC page to hear what you sent.</li>
 <li>TRN Black Pearl: plug your headphones in first. Without them it does not show up on USB.</li>
 </ul>
-<p>Every supported DAC has its own page with its limits and notes: contoureq.app/install</p>
+<p>Each DAC has a page with its limits and notes: contoureq.app/install</p>
 <p>Contour is free and open source (Apache-2.0) and part of Soundblooms, a small audio label by Chronosaur.</p>
-<p>Unofficial. Not affiliated with or endorsed by CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears, Tanchjim or JCally. AutoEQ, squig.link and Equalizer APO are named only as profile formats Contour can read.</p>
+<p>Unofficial. Not affiliated with or endorsed by CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears, Tanchjim, JCally or EPZ. AutoEQ, squig.link and Equalizer APO are named only as profile formats Contour can read.</p>

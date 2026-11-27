@@ -142,6 +142,8 @@ fun ContourApp(
     incoming: Incoming? = null,
     onIncomingDone: () -> Unit = {},
     onSaveTxt: (profileId: String, fileName: String) -> Unit = { _, _ -> },
+    onBackup: () -> Unit = {},
+    onRestoreBackup: () -> Unit = {},
 ) {
     LaunchedEffect(device.protocol) { model.protocol = device.protocol }
     // An import with no DAC attached is fitted to the last DAC found, not to the Micro the editor falls back to (audit 10.11.2026, L7). Nothing reaches a DAC here.
@@ -321,6 +323,8 @@ fun ContourApp(
                 }
                 override fun service() { if (Proven.channel == BuildChannel.PERF) sender.leaveAb { service = true } } // the service screen is a review tool: a release has no long-press
                 override fun licences() { sender.leaveAb { licences = true } }
+                // BACKUP never touches the DAC (no leaveAb: it may write to it); it only asks the system for a file
+                override fun backup() { onBackup() }
             }
         }
         val tuneActions = remember(model) {
@@ -467,7 +471,7 @@ fun ContourApp(
         val close = { sheet = null }
         when (val s = sheet) {
             is Sheet.Edit -> EditSheet(model, s.id, close, onSaveTxt)
-            Sheet.New -> NewProfileSheet(model, device, editor, close)
+            Sheet.New -> NewProfileSheet(model, device, editor, close, onRestoreBackup = { close(); onRestoreBackup() })
             is Sheet.Value -> ValueSheet(model, s.param, close)
             is Sheet.BandActions -> BandSheet(model, s.index, close)
             is Sheet.SendFailure -> SendFailureSheet(s.reason, close)

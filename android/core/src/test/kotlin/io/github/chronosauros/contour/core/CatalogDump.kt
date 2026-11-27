@@ -72,7 +72,8 @@ internal object CatalogDump {
             val fields = v.javaClass.declaredFields.filter { !Modifier.isStatic(it.modifiers) && !it.isSynthetic }
                 .filter { f -> f.name != "shelfLimits" || run { f.isAccessible = true; f.get(v) != null } }
                 .filter { f -> f.name != "wrapQ30" || run { f.isAccessible = true; f.get(v) == true } }
-                .filter { f -> f.name != "bypassPreampAnswersAsCount" || run { f.isAccessible = true; f.get(v) == true } }.sortedBy { it.name }
+                .filter { f -> f.name != "bypassPreampAnswersAsCount" || run { f.isAccessible = true; f.get(v) == true } }
+                .filter { f -> f.name != "freedspMini" || run { f.isAccessible = true; f.get(v) == true } }.sortedBy { it.name }
             JsonObject(fields.associate { f -> f.isAccessible = true; f.name to toJson(f.get(v)) })
         }
     }
@@ -461,6 +462,8 @@ internal object CatalogDump {
         Triple(0x3302, 0x4381, "TANCHJIM-SPACE II"), Triple(0x3302, 0x4381, "TANCHJIM-SPACE PRO"), Triple(0x3302, 0x4381, null), Triple(0x3302, 0x4380, "TANCHJIM-SPACE II"),
         // appended with the EPZ TP65 (3302:4325, an experimental tester entry found by its exact USB name)
         Triple(0x3302, 0x4325, "TP65"), Triple(0x3302, 0x4325, "tp65"), Triple(0x3302, 0x4325, null), Triple(0x3302, 0x4326, "TP65"),
+        // appended with the Moondrop FreeDSP Mini (35D8:98D4, a read-only tester entry found by VID and PID alone, whatever its product string)
+        Triple(0x35D8, 0x98D4, "FreeDSP Mini"), Triple(0x35D8, 0x98D4, "MOONDROP FreeDSP Mini"), Triple(0x35D8, 0x98D4, null), Triple(0x35D8, 0x98D5, "FreeDSP Mini"),
     )
 
     private fun identity(): JsonElement {
@@ -492,7 +495,7 @@ internal object CatalogDump {
     private fun nameOf(t: DeviceTarget): String = when (t) {
         DeviceTarget.MICRO -> "MICRO"; DeviceTarget.MAX -> "MAX"; DeviceTarget.TRN -> "TRN"; DeviceTarget.KA15 -> "KA15"
         DeviceTarget.K13 -> "K13"; DeviceTarget.MELODY -> "MELODY"; DeviceTarget.TINY_A -> "TINY_A"
-        DeviceTarget.DAWN_PRO_2 -> "DAWN_PRO_2"; DeviceTarget.ALLEGRO_MINI -> "ALLEGRO_MINI"; DeviceTarget.JCALLY_JM12 -> "JCALLY_JM12"; DeviceTarget.ECHO_A -> "ECHO_A"; DeviceTarget.FIIO_JA11 -> "FIIO_JA11"; DeviceTarget.MOONDROP_DUSK -> "MOONDROP_DUSK"; DeviceTarget.RETRO_NANO -> "SNOWSKY_RETRO_NANO"; DeviceTarget.FIIO_JIEZI -> "FIIO_JIEZI"; DeviceTarget.KIWI_EARS_AD1 -> "KIWI_EARS_AD1"; DeviceTarget.SPACE_2 -> "TANCHJIM_SPACE_II"; DeviceTarget.EPZ_TP65 -> "EPZ_TP65"
+        DeviceTarget.DAWN_PRO_2 -> "DAWN_PRO_2"; DeviceTarget.ALLEGRO_MINI -> "ALLEGRO_MINI"; DeviceTarget.JCALLY_JM12 -> "JCALLY_JM12"; DeviceTarget.ECHO_A -> "ECHO_A"; DeviceTarget.FIIO_JA11 -> "FIIO_JA11"; DeviceTarget.MOONDROP_DUSK -> "MOONDROP_DUSK"; DeviceTarget.RETRO_NANO -> "SNOWSKY_RETRO_NANO"; DeviceTarget.FIIO_JIEZI -> "FIIO_JIEZI"; DeviceTarget.KIWI_EARS_AD1 -> "KIWI_EARS_AD1"; DeviceTarget.SPACE_2 -> "TANCHJIM_SPACE_II"; DeviceTarget.EPZ_TP65 -> "EPZ_TP65"; DeviceTarget.FREEDSP_MINI -> "MOONDROP_FREEDSP_MINI"
         else -> "UNKNOWN"
     }
 
@@ -511,6 +514,7 @@ internal object CatalogDump {
         "KIWI_EARS_AD1" to Spec(5, -12.0, 12.0, 0.2, 10.0, 1.0, 20.0, 20000.0, THREE, 0.0, 0.0),
         "TANCHJIM_SPACE_II" to Spec(10, -12.0, 12.0, 0.1, 10.0, 10.0, 20.0, 20000.0, listOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF, FilterType.LOW_PASS, FilterType.HIGH_PASS), -30.0, 0.0),
         "EPZ_TP65" to Spec(10, -10.0, 10.0, 0.1, 10.0, 10.0, 20.0, 20000.0, listOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF), -30.0, 0.0),
+        "MOONDROP_FREEDSP_MINI" to Spec(8, -12.0, 12.0, 0.1, 10.0, 10.0, 20.0, 20000.0, listOf(FilterType.PEAK), -30.0, 0.0),
     )
 
     private fun hexTrim(b: ByteArray): String = hex(b.copyOf(b.indexOfLast { it.toInt() != 0 } + 1))
@@ -688,6 +692,38 @@ internal object CatalogDump {
         return JsonObject(entries)
     }
 
+    /**
+     * The Moondrop FreeDSP Mini (read-only tester entry, nothing measured on a Contour unit): the caps, flags and settings of every family entry, its model and read frames, the read of a CONSTRUCTED unit in FreeDSP-Studio's layout
+     * ([FakeFreeDspMini]: nothing here was read from a Mini) and every documented profile, each of which is refused as read only.
+     */
+    private fun freedspMiniJson(t: DeviceTarget): JsonElement {
+        val model = requireNotNull(t.moondrop)
+        val port = FakeFreeDspMini()
+        val read = MoondropSession(model, port).readMini()
+        val entries = familyBase("MOONDROP_FREEDSP_MINI", t)
+        entries["model"] = obj(
+            "config" to toJson(model), "writesBlocked" to toJson(model.writesBlocked), "testerWriteFlag" to toJson(MoondropCatalog.FREEDSP_MINI_TESTER_WRITE),
+            "nativeTypes" to toJson(model.nativeTypes), "offered" to toJson(MoondropCatalog.FREEDSP_MINI_OFFERED_TYPES), "bandCount" to toJson(model.bandCount),
+            "limits" to obj("gain" to s("${d(model.minGainDb)}..${d(model.maxGainDb)}"), "q" to s("${d(model.minQ)}..${d(model.maxQ)}"),
+                "freq" to s("${d(model.minFrequencyHz)}..${d(model.maxFrequencyHz)}"), "preGain" to s("${d(model.preGainMinDb)}..${d(model.preGainMaxDb)}"),
+                "globalGain" to s("${d(model.globalGainMinDb)}..${d(model.globalGainMaxDb)}")),
+            "reportId" to toJson(model.reportId), "reportBytes" to toJson(model.reportBytes), "writableIndex" to toJson(model.writableIndex), "writableIndexes" to toJson(model.writableIndexes),
+            "slotNames" to toJson(FreeDspMiniCodec.SLOT_NAMES), "readOnlyText" to s(t.readOnlyIssue),
+            "readQueries" to strs(FreeDspMiniCodec.readQueries(model).map { hex(it.payload) }),
+        )
+        entries["benchRead"] = obj(
+            "constructed" to s("a FreeDSP-layout unit built by FakeFreeDspMini; not read from a Mini"),
+            "sentFrames" to strs(port.sent.map { hex(it) }),
+            "firmware" to toJson(read.firmware?.text), "slot" to toJson(read.slot), "preGain" to toJson(read.preGain?.db), "unanswered" to strs(read.unanswered),
+            "bands" to strs(read.bands.map { b -> b?.let { "${it.index} slot=${it.slot} ${it.type} ${it.frequencyHz} Hz q256=${it.qQ8} gain256=${it.gainQ8} code=${it.nativeType}" } ?: "no reply" }),
+            "log" to strs(port.notes),
+        )
+        entries["profiles"] = JsonObject(profiles(familySpecs.getValue("MOONDROP_FREEDSP_MINI")).associate { pr ->
+            pr.name to familyProfile(t, pr) { p -> obj("status" to s("refused"), "issues" to strs(t.issues(p))) }
+        })
+        return JsonObject(entries)
+    }
+
     /** A FiiO-family DAC found by its USB name (the JA11, the RETRO NANO, the JIEZI): the family flags and the FiiO block (config, frames of every profile, settings frames). */
     private fun fiioFamilyJson(name: String, t: DeviceTarget): JsonElement {
         val c = requireNotNull(t.fiio)
@@ -762,6 +798,8 @@ internal object CatalogDump {
         "TANCHJIM_SPACE_II" to Proven.asChannel(BuildChannel.PERF) { space2Json(DeviceTarget.SPACE_2) },
         // The EPZ TP65 (experimental tester entry, nothing measured on a Contour unit): dumped as a review build sees it, after the Space II.
         "EPZ_TP65" to Proven.asChannel(BuildChannel.PERF) { tp65Json(DeviceTarget.EPZ_TP65) },
+        // The Moondrop FreeDSP Mini (read-only tester entry, nothing measured on a Contour unit): dumped as a review build sees it (a review build does not lift its read-only), after the TP65.
+        "MOONDROP_FREEDSP_MINI" to Proven.asChannel(BuildChannel.PERF) { freedspMiniJson(DeviceTarget.FREEDSP_MINI) },
     )
 
     /** The whole dump as pretty JSON text, LF line endings, one trailing newline. */

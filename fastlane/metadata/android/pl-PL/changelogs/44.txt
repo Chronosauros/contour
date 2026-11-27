@@ -1,0 +1,2 @@
+Nowy DAC: EPZ TP65. 10 pasm PEAK, LOW SHELF i HIGH SHELF, każda wysyłka odczytana z powrotem. Preamp na razie tylko do odczytu, więc profile wysyłasz z preampem 0 dB (dzięki, jrequiroso, za przetestowanie każdego kroku na TP65).
+Biblioteka: BACKUP zapisuje wszystkie profile do jednego pliku, a RESTORE FROM BACKUP pod + dodaje je z powrotem.

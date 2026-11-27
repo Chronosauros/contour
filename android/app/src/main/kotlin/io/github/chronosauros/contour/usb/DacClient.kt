@@ -469,7 +469,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
         // [trimDb]: the MAX VOLUME to send under (the DAC page's new value); null = the one this DAC is sent with now
         val trim = trimDb ?: trimFor(target)
         // A 1.6 family DAC is read only until its write is proven or the build is a review build (DeviceTarget.readOnly, Proven): this is the guard, and nothing below it builds a frame for a read-only DAC.
-        if (target.readOnly) throw IOException(DeviceTarget.READ_ONLY_ISSUE.format(target.caps.name))
+        if (target.readOnly) throw IOException(target.readOnlyIssue)
         target.echo?.let { return writeEcho(device, profile, target, it, onProgress) }
         target.moondrop?.let { return writeDawn(device, profile, target, it, onProgress) }
         target.ktMicro?.let { return writeAllegro(device, profile, target, it, onProgress) }
@@ -519,6 +519,8 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
         val allegro = target.ktMicro
         val gen1 = target.gen1
         val state: FamilyState = when {
+            // the FreeDSP Mini (read-only tester build): FreeDSP-Studio's three read frames, best effort, never a write frame
+            dawn != null && dawn.freedspMini -> FamilyState.FreeDspMini(dawn, MoondropSession(dawn, port).readMini())
             dawn != null -> FamilyState.Dawn(dawn, MoondropSession(dawn, port).read(withPreGain = true))
             gen1 != null -> FamilyState.Dusk(gen1, MoondropGen1Session(gen1, port).read())
             allegro != null -> KtMicroSession(allegro, port).let { s -> FamilyState.Allegro(allegro, s.read(), if (allegro.globalGainUserSteps != null) s.readGlobalGain() else null) }

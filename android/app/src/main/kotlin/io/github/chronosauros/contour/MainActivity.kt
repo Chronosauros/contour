@@ -35,6 +35,7 @@ import io.github.chronosauros.contour.model.Backup
 import io.github.chronosauros.contour.model.DacEditor
 import io.github.chronosauros.contour.model.ImportFile
 import io.github.chronosauros.contour.model.Incoming
+import io.github.chronosauros.contour.model.Notice
 import io.github.chronosauros.contour.model.Page
 import io.github.chronosauros.contour.model.ProfileNames
 import io.github.chronosauros.contour.model.ProfileStore
@@ -55,6 +56,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.LocalDate
 
 class MainActivity : ComponentActivity() {
     companion object {
@@ -111,6 +113,61 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    /**
+     * BACKUP: the whole library to one file through the system save dialog. Unlike SAVE .TXT there is no payload to remember across process death (the text is made when the dialog
+     * answers, from the model that is by then loaded again), so the dialog's answer is all there is.
+     */
+    private val backupFile = registerForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri -> finishBackup(uri) }
+
+    /** RESTORE FROM BACKUP: the system file picker; picking the file is the user's yes. */
+    private val restoreFile = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> finishRestore(uri) }
+
+    private fun startBackup() {
+        if (model.loading || model.loadError) return
+        backupFile.launch("contour-library-${LocalDate.now()}.json")
+    }
+
+    private fun finishBackup(uri: Uri?) {
+        if (uri == null) return
+        val resolver = contentResolver
+        val app = applicationContext
+        persistenceScope.launch {
+            // after process death the library is still loading: wait for it, "not loaded yet" is not "gone"
+            snapshotFlow { model.loading }.first { !it }
+            // made now, from the library in memory: the files lag behind it by the save delay
+            val export = model.exportLibrary(BuildConfig.VERSION_NAME)
+            val ok = export != null && withContext(Dispatchers.IO) {
+                runCatching { resolver.openOutputStream(uri, "wt")!!.use { it.write(export.text.toByteArray(Charsets.UTF_8)) } }.isSuccess
+            }
+            // the dialog has already created an empty file: never leave it behind
+            if (!ok) withContext(Dispatchers.IO) { runCatching { DocumentsContract.deleteDocument(resolver, uri) } }
+            val words = textContext(app)
+            val n = export?.count ?: 0
+            Toast.makeText(app, if (ok) words.resources.getQuantityString(R.plurals.backup_saved, n, n) else words.getString(R.string.backup_failed), Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun startRestore() {
+        if (model.loading || model.loadError) return
+        restoreFile.launch(arrayOf("application/json", "application/octet-stream", "text/plain", "*/*"))
+    }
+
+    private fun finishRestore(uri: Uri?) {
+        if (uri == null) return
+        val resolver = contentResolver
+        persistenceScope.launch {
+            val (library, error) = withContext(Dispatchers.IO) { ImportFile.libraryFromUri(resolver, uri) }
+            snapshotFlow { model.loading }.first { !it }
+            if (model.loadError) return@launch
+            // adding is the model's one write path, on the main thread; the answer goes to the snackbar
+            if (library != null) model.restoreLibrary(library) else model.notice = Notice(error ?: ImportFile.UNREADABLE, long = true)
+        }
+    }
+
+    /** The app's words with Latin digits where the phone's language writes others, as [attachBaseContext] gives the screens, for a text shown from the process scope (a Toast). */
+    private fun textContext(app: Context): Context =
+        latinDigitLocales(app.resources.configuration)?.let { app.createConfigurationContext(Configuration(app.resources.configuration).apply { setLocales(it) }) } ?: app
+
     private val reviewBuild: Boolean
         get() = packageName.endsWith(".perf") || (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
 
@@ -166,6 +223,8 @@ class MainActivity : ComponentActivity() {
                         model, device, sender, editor, initialPage, sheetRequest, onSheetRequestTaken = { sheetRequest = null },
                         incoming = incoming, onIncomingDone = { incoming = null },
                         onSaveTxt = ::startSaveTxt,
+                        onBackup = ::startBackup,
+                        onRestoreBackup = ::startRestore,
                     )
                 }
             }

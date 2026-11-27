@@ -380,10 +380,14 @@ abstract class GenerateDeviceCatalog : DefaultTask() {
         if (writableIndexes.isEmpty() || writableIndexes.any { it !in 0..255 } || writableIndexes.toSet().size != writableIndexes.size)
             fail("$at.slots.writableIndexes must list distinct EQ indexes 0..255")
         if (int(driver, "peqBank", "$at.driver") !in writableIndexes) fail("$at.driver.peqBank must be one of slots.writableIndexes $writableIndexes")
-        for (k in listOf("reportId", "reportBytes", "peqBank", "globalGainRegister", "preGainRegister", "eqIndexRegister", "saveEqCommand", "designRateHz"))
+        // A record without a Global Gain register (`preamp.globalGain` null: the FreeDSP Mini, which is read only and never asked for it) needs no driver.globalGainRegister either.
+        val hasGlobalGain = field(preamp, "globalGain", "$at.preamp") != null
+        for (k in listOf("reportId", "reportBytes", "peqBank", "preGainRegister", "eqIndexRegister", "saveEqCommand", "designRateHz") + if (hasGlobalGain) listOf("globalGainRegister") else emptyList())
             noUnknown(field(driver, k, "$at.driver"), "$at.driver.$k")
-        for (k in listOf("bands", "freqHz", "gainDb", "q", "types", "heldTypes", "shelfQScale")) noUnknown(field(peq, k, "$at.peq"), "$at.peq.$k")
-        for (k in listOf("present", "db", "globalGain")) noUnknown(field(preamp, k, "$at.preamp"), "$at.preamp.$k")
+        // Two values may stay "unknown" in a moondrop record whose code never sends a frame with them: peq.shelfQScale (only where no shelf is offered) and preamp.db; the code then
+        // takes the placeholder of core/devices/PendingRecords.kt that carries the reason (its constants are <ID>_SHELF_Q_SCALE and <ID>_PRE_GAIN_DB).
+        for (k in listOf("bands", "freqHz", "gainDb", "q", "types", "heldTypes")) noUnknown(field(peq, k, "$at.peq"), "$at.peq.$k")
+        for (k in listOf("present", "globalGain")) noUnknown(field(preamp, k, "$at.preamp"), "$at.preamp.$k")
         for (k in listOf("writeGapMs", "opGapMs", "afterSaveMs", "afterSelectMs")) noUnknown(field(pacing, k, "$at.pacing"), "$at.pacing.$k")
         for (k in listOf("vid", "pid", "productName")) noUnknown(field(usb, k, "$at.usb"), "$at.usb.$k")
         noUnknown(field(rec, "name", at), "$at.name")
@@ -397,18 +401,27 @@ abstract class GenerateDeviceCatalog : DefaultTask() {
         val native = (offered + held).sortedBy { it.second }
         if (native.map { it.second }.toSet().size != native.size) fail("$at.peq.types and heldTypes share a native code")
         if (!bool(preamp, "present", "$at.preamp")) fail("$at.preamp.present must be true for the moondrop record")
-        val preGain = range(preamp, "db", "$at.preamp")
-        val gg = obj(field(preamp, "globalGain", "$at.preamp"), "$at.preamp.globalGain")
-        noUnknown(gg, "$at.preamp.globalGain")
-        val globalGain = range(gg, "rangeDb", "$at.preamp.globalGain")
-        val ggRegister = hexInt(field(gg, "register", "$at.preamp.globalGain"), "$at.preamp.globalGain.register")
-        if (ggRegister != hexInt(field(driver, "globalGainRegister", "$at.driver"), "$at.driver.globalGainRegister")) fail("$at.preamp.globalGain.register differs from driver.globalGainRegister")
+        val preGainUnknown = field(preamp, "db", "$at.preamp") == "unknown"
+        val preGain = if (preGainUnknown) 0.0 to 0.0 else range(preamp, "db", "$at.preamp")
+        val globalGain: Pair<Double, Double>
+        val ggRegister: Int?
+        if (hasGlobalGain) {
+            val gg = obj(field(preamp, "globalGain", "$at.preamp"), "$at.preamp.globalGain")
+            noUnknown(gg, "$at.preamp.globalGain")
+            globalGain = range(gg, "rangeDb", "$at.preamp.globalGain")
+            ggRegister = hexInt(field(gg, "register", "$at.preamp.globalGain"), "$at.preamp.globalGain.register")
+            if (ggRegister != hexInt(field(driver, "globalGainRegister", "$at.driver"), "$at.driver.globalGainRegister")) fail("$at.preamp.globalGain.register differs from driver.globalGainRegister")
+        } else { globalGain = 0.0 to 0.0; ggRegister = null }
+        val shelfQ = if (field(peq, "shelfQScale", "$at.peq") == "unknown") {
+            if (offered.any { it.first != "PEAK" }) fail("$at.peq.shelfQScale is \"unknown\" but peq.types offers a shelf: measure the Q convention on the DAC")
+            "PendingRecords.${name}_SHELF_Q_SCALE"
+        } else qScale(peq, "shelfQScale", "$at.peq")
 
         out.append("\n    // ---- $at (devices/${file}): Moondrop ----\n")
         idConsts(out, name, vid, pid)
         out.append("    const val ${name}_REPORT_ID = ${int(driver, "reportId", "$at.driver")}\n")
         out.append("    const val ${name}_CMD_EQ_ACTIVE = ${hex(hexInt(field(driver, "eqIndexRegister", "$at.driver"), "$at.driver.eqIndexRegister"))}\n")
-        out.append("    const val ${name}_CMD_GLOBAL_GAIN = ${hex(ggRegister)}\n")
+        if (ggRegister != null) out.append("    const val ${name}_CMD_GLOBAL_GAIN = ${hex(ggRegister)}\n")
         out.append("    const val ${name}_CMD_PRE_GAIN = ${hex(hexInt(field(driver, "preGainRegister", "$at.driver"), "$at.driver.preGainRegister"))}\n")
         out.append("    const val ${name}_CMD_EQ_SAVE = ${hex(hexInt(field(driver, "saveEqCommand", "$at.driver"), "$at.driver.saveEqCommand"))}\n")
         out.append("    const val ${name}_DELAY_BAND_MS = ${int(pacing, "writeGapMs", "$at.pacing")}L\n")
@@ -424,9 +437,11 @@ abstract class GenerateDeviceCatalog : DefaultTask() {
         p("gainMinDb", dl(gain.first)); p("gainMaxDb", dl(gain.second)); p("qMin", dl(q.first)); p("qMax", dl(q.second)); p("freqMinHz", dl(freq.first)); p("freqMaxHz", dl(freq.second))
         p("offeredTypes", "setOf(" + offered.joinToString(", ") { "FilterType.${it.first}" } + ")")
         p("nativeTypes", "mapOf(" + native.joinToString(", ") { "${it.second} to FilterType.${it.first}" } + ")")
-        p("shelfQScale", qScale(peq, "shelfQScale", "$at.peq"))
+        p("shelfQScale", shelfQ)
         p("shelfForm", shelfForm(peq, offered.any { it.first != "PEAK" }, "$at.peq"))
-        p("preGainMinDb", dl(preGain.first)); p("preGainMaxDb", dl(preGain.second)); p("globalGainMinDb", dl(globalGain.first)); p("globalGainMaxDb", dl(globalGain.second))
+        if (preGainUnknown) { p("preGainMinDb", "PendingRecords.${name}_PRE_GAIN_DB.start"); p("preGainMaxDb", "PendingRecords.${name}_PRE_GAIN_DB.endInclusive") }
+        else { p("preGainMinDb", dl(preGain.first)); p("preGainMaxDb", dl(preGain.second)) }
+        p("globalGainMinDb", dl(globalGain.first)); p("globalGainMaxDb", dl(globalGain.second))
         out.append("    )\n")
     }
 

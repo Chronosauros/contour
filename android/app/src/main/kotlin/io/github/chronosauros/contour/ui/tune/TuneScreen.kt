@@ -362,6 +362,8 @@ private fun FamilyNotes(device: DeviceController) {
     val dim = pal.textDim
     val review = Proven.channel == BuildChannel.PERF
     when {
+        // the FreeDSP Mini tester build: read only by design in every build, said in every build (a tester has to know that nothing is written)
+        target.moondrop?.writesBlocked == true -> Text(target.readOnlyIssue + ". Contour reads the unit and logs what it holds (tag ContourUsb); the DAC page shows its EQ slot and pre-gain.", color = dim, style = Type.small)
         target.readOnly -> if (review) Text("READ ONLY - NOT VERIFIED ON HARDWARE. Contour reads ${target.caps.name} and sends nothing to it.", color = dim, style = Type.small)
         target.echo != null -> if (review && target.echo?.hardwareVerified != true) Text("Not verified on hardware yet.", color = dim, style = Type.small)
         target.moondrop != null -> {

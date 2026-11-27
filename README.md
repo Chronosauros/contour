@@ -2,7 +2,7 @@
 
 # Contour
 
-**An on-the-go EQ manager for USB DACs from CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears, JCally and Tanchjim.** Keep all your EQ profiles on your phone, plug the
+**An on-the-go EQ manager for USB DACs from CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears, JCally, Tanchjim and EPZ.** Keep all your EQ profiles on your phone, plug the
 DAC in, pick one and send it. Plug in, send, unplug - that is the whole routine. On DACs with their own settings, a DAC page changes those from the phone too.
 
 **Website: [contoureq.app](https://contoureq.app/)** - a 1.5-minute demo film, the full guide film and the install page.
@@ -12,7 +12,7 @@ DAC in, pick one and send it. Plug in, send, unplug - that is the whole routine.
 品牌方：我很乐意测试你的解码器能否适配 Contour，或在 Soundblooms 上评测你的耳机。欢迎来信：chronosaur@soundblooms.com
 
 <!-- facts:start -->
-**Contour 1.8.1, released 26 Nov 2026.** Supported DACs, each with its own page: [CrinEar Protocol Micro](https://contoureq.app/devices/crinear-protocol-micro/), [CrinEar Protocol Max](https://contoureq.app/devices/crinear-protocol-max/), [FiiO KA15](https://contoureq.app/devices/fiio-ka15/), [FiiO K13 R2R](https://contoureq.app/devices/fiio-k13-r2r/), [FiiO JadeAudio JA11](https://contoureq.app/devices/fiio-ja11/), [FiiO JadeAudio JIEZI](https://contoureq.app/devices/fiio-jiezi/), [SnowSky Melody](https://contoureq.app/devices/snowsky-melody/), [SnowSky Tiny A](https://contoureq.app/devices/snowsky-tiny-a/), [SnowSky RETRO NANO](https://contoureq.app/devices/snowsky-retro-nano/), [TRN Black Pearl](https://contoureq.app/devices/trn-black-pearl/), [TANCHJIM SPACE II](https://contoureq.app/devices/tanchjim-space-ii/), [Moondrop Dawn Pro 2](https://contoureq.app/devices/moondrop-dawn-pro-2/), [Moondrop Echo-A](https://contoureq.app/devices/moondrop-echo-a/), [Moondrop DUSK-SP](https://contoureq.app/devices/moondrop-dusk/), [Kiwi Ears Allegro Mini](https://contoureq.app/devices/kiwi-ears-allegro-mini/), [Kiwi Ears AD1](https://contoureq.app/devices/kiwi-ears-ad1/) and [JCally JM12](https://contoureq.app/devices/jcally-jm12/).
+**Contour 1.8.2, released 27 Nov 2026.** Supported DACs, each with its own page: [CrinEar Protocol Micro](https://contoureq.app/devices/crinear-protocol-micro/), [CrinEar Protocol Max](https://contoureq.app/devices/crinear-protocol-max/), [FiiO KA15](https://contoureq.app/devices/fiio-ka15/), [FiiO K13 R2R](https://contoureq.app/devices/fiio-k13-r2r/), [FiiO JadeAudio JA11](https://contoureq.app/devices/fiio-ja11/), [FiiO JadeAudio JIEZI](https://contoureq.app/devices/fiio-jiezi/), [SnowSky Melody](https://contoureq.app/devices/snowsky-melody/), [SnowSky Tiny A](https://contoureq.app/devices/snowsky-tiny-a/), [SnowSky RETRO NANO](https://contoureq.app/devices/snowsky-retro-nano/), [TRN Black Pearl](https://contoureq.app/devices/trn-black-pearl/), [TANCHJIM SPACE II](https://contoureq.app/devices/tanchjim-space-ii/), [EPZ TP65](https://contoureq.app/devices/epz-tp65/), [Moondrop Dawn Pro 2](https://contoureq.app/devices/moondrop-dawn-pro-2/), [Moondrop Echo-A](https://contoureq.app/devices/moondrop-echo-a/), [Moondrop DUSK-SP](https://contoureq.app/devices/moondrop-dusk/), [Kiwi Ears Allegro Mini](https://contoureq.app/devices/kiwi-ears-allegro-mini/), [Kiwi Ears AD1](https://contoureq.app/devices/kiwi-ears-ad1/) and [JCally JM12](https://contoureq.app/devices/jcally-jm12/).
 
 The EQ is written into the DAC itself: it stays there after unplugging and works in every app and on every device you plug the DAC into. Contour does not update firmware. An EQ app on the phone, such as Wavelet or Poweramp, is a different thing: it changes the sound on that phone only.
 <!-- facts:end -->
@@ -30,7 +30,7 @@ you plug in, and the DAC's own settings where it has them - no vendor app for ea
 
 It started smaller: in September 2026 it was a phone stand-in for
 [CrinEar's desktop browser tool](https://eq.hangout.audio/), for the Protocol Micro alone. A month later it works
-with seventeen DACs from eight makers.
+with eighteen DACs from nine makers.
 
 Every one of them keeps its parametric EQ inside the DAC itself, so the EQ works with every app and every device
 you plug the DAC into - no system equaliser, no app running in the background.
@@ -52,7 +52,7 @@ Contour does not process audio, does not need the internet and has no accounts. 
 
 ## Supported hardware
 
-Seventeen DACs from eight makers. Every one of them was tested on real hardware before Contour enabled it.
+Eighteen DACs from nine makers. Every one of them was tested on real hardware before Contour enabled it.
 
 ### EQ limits
 
@@ -71,6 +71,7 @@ Seventeen DACs from eight makers. Every one of them was tested on real hardware 
 | SnowSky RETRO NANO | 10 | PK, LS, HS, LP, HP | -12 to +12 dB | 0.25 to 8 | 20 Hz to 20 kHz | -12 to +12 dB, whole dB |
 | TRN Black Pearl | 10 | PK, LS, HS | -10 to +10 dB | 0.1 to 10 | 20 Hz to 20 kHz | -30 to 0 dB, whole dB |
 | TANCHJIM SPACE II | 10 | PK, LS, HS, LP, HP | -12 to +12 dB | 0.1 to 10 | 20 Hz to 20 kHz | -30 to 0 dB, whole dB |
+| EPZ TP65 | 10 | PK, LS, HS | -10 to +10 dB | 0.1 to 10 | 20 Hz to 20 kHz | Read only: stays at the DAC's 0 dB |
 | Moondrop Dawn Pro 2 | 8 | PK, LS, HS, LP, HP | -18 to +12 dB | 0.1 to 10 | 20 Hz to 20 kHz | pre-gain, stored with the profile |
 | Moondrop Echo-A | 8 | PK, LS, HS, LP, HP | -10 to +10 dB | 0.1 to 10 | 20 Hz to 20 kHz | up to 0 dB |
 | Moondrop DUSK-SP | 9 | PK, LS, HS | -12 to +12 dB | 0.2 to 10 (shelves up to 5.02 at 12 dB of boost or cut) | 20 Hz to 20 kHz | none |
@@ -100,6 +101,7 @@ The pass filters on the Micro, KA15, K13, Melody and Tiny A arrived in 1.6.0.
 | SnowSky RETRO NANO | `0A12:4007` | FiiO | 3 slots | - | developer + test rig |
 | TRN Black Pearl | `3302:43E8` | WalkPlay | 1 EQ | yes | developer + test rig |
 | TANCHJIM SPACE II | `3302:4381` | WalkPlay | 1 EQ | yes | developer + test rig |
+| EPZ TP65 | `3302:4325` | WalkPlay | 1 EQ | - | community tester |
 | Moondrop Dawn Pro 2 | `35D8:011D` | Moondrop | PEQ bank | read-only | developer + test rig |
 | Moondrop Echo-A | `3302:12C5` | WalkPlay | 1 EQ | - | developer + test rig |
 | Moondrop DUSK-SP | `35D8:1499` | Moondrop FreeDSP (gen 1) | 1 EQ | yes | developer |
@@ -152,7 +154,7 @@ confirms one.
    Contour shows. This is how we found the KA15 shelf Q, the K13 PEAK Q and the 93 750 Hz of the Micro and Echo-A
    (notes below); Contour now compensates for them.
 
-Bug reports and confirmations from users of a DAC we do not own count too, as for the Protocol Max. The
+Bug reports and confirmations from users of a DAC we do not own count too, as for the Protocol Max, and the EPZ TP65 came in that way: its owner ran test versions and sent back the logs. The
 protocol notes and measurements are in [`research/protocol/PROTOCOL.md`](research/protocol/PROTOCOL.md).
 
 ### Notes per DAC
@@ -273,6 +275,20 @@ and a reset are not supported.
 </details>
 
 <details>
+<summary><b>EPZ TP65</b></summary>
+
+USB `3302:4325`, on WalkPlay's scheme 16 like the SPACE II. PEAK, LOW SHELF and HIGH SHELF on 10 bands,
+-10 to +10 dB, Q 0.1 to 10, 20 Hz to 20 kHz: these ranges are the WalkPlay catalog's for this chip family, and on
+the tested unit PEAK was written from -6 to +1 dB and both shelves at -6 dB. Every band is read back after a send, and
+the EQ stayed after unplugging on the tested unit. One EQ, no slots. Tested by a TP65 owner on their own unit
+(firmware 0.4) with test versions of Contour in November 2026, not by the developer and not on the test rig;
+nothing was measured. The preamp is read only: Contour reads it (0 dB on the tested unit) but does not write it
+yet, so a profile whose preamp is not 0 dB is not sent, such as AUTO with any boost or an imported file (AutoEQ
+and others) with a negative preamp; Contour says why. Use cuts instead of boosts, or switch AUTO off and set the
+preamp to 0 dB (boosts then have no headroom and may clip). No DAC page, LOW PASS, HIGH PASS or reset.
+</details>
+
+<details>
 <summary><b>Moondrop Dawn Pro 2</b></summary>
 
 USB name `DAWN PRO2`. Contour sends the same frames as Moondrop's own tool (Moondrop Hub) to the DAC's active PEQ
@@ -332,7 +348,7 @@ the Allegro Mini, it works out its filters as if the stream ran at 24 kHz, so Co
 converted for the usual 48 kHz stream.
 </details>
 
-Contour is unofficial and not affiliated with CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears, JCally or Tanchjim. Other WalkPlay, FiiO,
+Contour is unofficial and not affiliated with CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears, JCally, Tanchjim or EPZ. Other WalkPlay, FiiO,
 Moondrop and KT Micro DACs are possible later (see `ROADMAP.md`); they are not enabled until someone confirms one
 on real hardware.
 
@@ -370,6 +386,7 @@ gets a third page, **DAC**, in front of them.
   shows up in Open with and Share for .txt files) or are read from the DAC. SAVE .TXT saves a profile as a
   file in the squig.link format. A user loaded that file in Topping's web interface (DX1ii): the peaking and
   shelf filters and the preamp came through.
+- **BACKUP**, at the bottom of the Library, saves every profile to one file; **RESTORE FROM BACKUP** (the + card) adds back the missing ones.
 - **PREAMP** moves in whole dB on a DAC that keeps whole dB only (the "whole dB" rows in the table above), so the
   number on screen is the number the DAC holds.
 
@@ -417,7 +434,7 @@ cd android
 `android/app/build.gradle.kts`.
 
 Code layout:
-- `android/core` - pure Kotlin/JVM: profile model, DSP, text codecs, the WalkPlay (Protocol Micro, Protocol Max, TRN Black Pearl, TANCHJIM SPACE II, Moondrop Echo-A), FiiO (KA15, K13 R2R, JadeAudio JA11 and JIEZI, SnowSky Melody, Tiny A and RETRO NANO), Moondrop (Dawn Pro 2), Moondrop gen 1 (DUSK-SP) and KT Micro (Kiwi Ears Allegro Mini and AD1, JCally JM12) device protocols, and the device catalog generated from the records in `devices/`;
+- `android/core` - pure Kotlin/JVM: profile model, DSP, text codecs, the WalkPlay (Protocol Micro, Protocol Max, TRN Black Pearl, TANCHJIM SPACE II, EPZ TP65, Moondrop Echo-A), FiiO (KA15, K13 R2R, JadeAudio JA11 and JIEZI, SnowSky Melody, Tiny A and RETRO NANO), Moondrop (Dawn Pro 2), Moondrop gen 1 (DUSK-SP) and KT Micro (Kiwi Ears Allegro Mini and AD1, JCally JM12) device protocols, and the device catalog generated from the records in `devices/`;
 - `android/app` - the Jetpack Compose app, USB HID transport, storage;
 - `research/protocol` - protocol notes, Python reference tools and the device captures the parity test
   checks against.
@@ -443,6 +460,6 @@ The WalkPlay and FiiO protocols and the biquad coefficient maths are ported from
 component and its licence is listed in `THIRD_PARTY_NOTICES.md`; attributions are in `NOTICE`. In the app,
 all of this is under **ABOUT & LICENCES** at the bottom of the Library.
 
-Contour is an unofficial project, not affiliated with or endorsed by CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears, JCally, Tanchjim or any other brand. CrinEar,
-Protocol Micro, Protocol Max, FiiO, JadeAudio, KA15, K13, JA11, JIEZI, SnowSky, Melody, Tiny A, RETRO NANO, TRN, Black Pearl, Tanchjim, SPACE II, Moondrop, Dawn Pro 2, Echo-A, DUSK-SP, Kiwi Ears, Allegro Mini, AD1, JCally, JM12, KT Micro, WalkPlay and other product names belong to their owners
+Contour is an unofficial project, not affiliated with or endorsed by CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears, JCally, Tanchjim, EPZ or any other brand. CrinEar,
+Protocol Micro, Protocol Max, FiiO, JadeAudio, KA15, K13, JA11, JIEZI, SnowSky, Melody, Tiny A, RETRO NANO, TRN, Black Pearl, Tanchjim, SPACE II, EPZ, TP65, Moondrop, Dawn Pro 2, Echo-A, DUSK-SP, Kiwi Ears, Allegro Mini, AD1, JCally, JM12, KT Micro, WalkPlay and other product names belong to their owners
 and are used only to say what Contour works with. Google Play and the Google Play logo are trademarks of Google LLC.

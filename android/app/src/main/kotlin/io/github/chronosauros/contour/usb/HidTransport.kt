@@ -75,9 +75,38 @@ class HidTransport private constructor(
             device.takeIf { it.configurationCount > 0 }?.getConfiguration(0)?.let { c -> (0 until c.interfaceCount).map { c.getInterface(it) } }
                 ?: (0 until device.interfaceCount).map { device.getInterface(it) }
 
+        /**
+         * The Moondrop FreeDSP Mini's identity, once per open, before anything that can throw (the descriptor proof and the session's own checks): VID, PID, the USB strings, bcdDevice (when the platform gives it) and every
+         * interface with its endpoints. Each read is its own try, so a string the platform withholds never stops the others. The serial number is not logged (it is the unit's, and not needed).
+         */
+        private fun logMiniIdentity(device: UsbDevice) {
+            fun read(what: () -> Any?): String = runCatching { what()?.toString() ?: "none" }.getOrElse { "unavailable (${it.javaClass.simpleName})" }
+            UsbLog.line("FreeDSP Mini identity: VID 0x%04X, PID 0x%04X, manufacturer \"%s\", product \"%s\", bcdDevice %s, device class %d, %d configuration(s), %d interface(s)".format(
+                device.vendorId, device.productId, read { device.manufacturerName }, read { device.productName }, read { device.version }, device.deviceClass, device.configurationCount, device.interfaceCount))
+            runCatching {
+                firstConfigInterfaces(device).forEach { i ->
+                    val eps = (0 until i.endpointCount).joinToString(", ") { k -> i.getEndpoint(k).let { "%s 0x%02x type %d max %d".format(if (it.direction == UsbConstants.USB_DIR_IN) "IN" else "OUT", it.address, it.type, it.maxPacketSize) } }
+                    UsbLog.line("FreeDSP Mini interface ${i.id} alt ${i.alternateSetting}: class ${i.interfaceClass}, subclass ${i.interfaceSubclass}, protocol ${i.interfaceProtocol}, ${i.endpointCount} endpoint(s): ${eps.ifEmpty { "none" }}")
+                }
+            }.onFailure { UsbLog.line("FreeDSP Mini interfaces could not be listed: ${it.message}") }
+        }
+
+        /** The report sizes the FreeDSP Mini's HID descriptor declares (report 0x4B Input and Output, with the ID), logged next to the descriptor's hex and before it is judged; a descriptor that does not parse is said so. */
+        private fun logMiniReports(interfaceId: Int, descriptor: ByteArray) {
+            runCatching { NativeHidReports.inventory(descriptor, undefinedDesktop = true) }
+                .onSuccess { reports ->
+                    UsbLog.line("FreeDSP Mini HID if $interfaceId reports: " + reports.joinToString("; ") { "0x%02x %s %s (collection %d%s)".format(it.id, it.kind.name.lowercase(), if (it.bytes < 0) "not whole bytes" else "${it.bytes} B with the ID", it.owner, if (it.vendor) ", vendor page" else "") }.ifEmpty { "none" })
+                    val size = { kind: NativeHidReports.Kind -> reports.firstOrNull { it.id == WalkPlay.REPORT_ID && it.kind == kind }?.bytes?.takeIf { it >= 0 }?.let { "$it B with the ID" } ?: "absent" }
+                    UsbLog.line("FreeDSP Mini HID if $interfaceId report 0x%02x: Input %s, Output %s".format(WalkPlay.REPORT_ID, size(NativeHidReports.Kind.INPUT), size(NativeHidReports.Kind.OUTPUT)))
+                }
+                .onFailure { UsbLog.line("FreeDSP Mini HID if $interfaceId descriptor does not parse: ${it.message}") }
+        }
+
         fun open(manager: UsbManager, device: UsbDevice, guard: () -> Unit = {}): HidTransport {
             val hids = firstConfigInterfaces(device).filter { it.interfaceClass == UsbConstants.USB_CLASS_HID }
             val target = DeviceIdentity.target(device) ?: throw IOException("Unsupported DAC")
+            // The FreeDSP Mini (read-only tester build): its identity goes to the log first, before anything below can throw.
+            if (target.moondrop?.freedspMini == true) logMiniIdentity(device)
             target.fiio?.let { return openNative(manager, device, hids, target, it.reportId, guard) }
             // Moondrop gen 1 (DUSK-SP): report 1 on the Consumer page, control pipe only; opened through the descriptor that proves its 62-byte report.
             target.gen1?.let { return openNative(manager, device, hids, target, MoondropGen1Catalog.REPORT_ID, guard, gen1 = it) }
@@ -136,6 +165,7 @@ class HidTransport private constructor(
                         guard()
                         require(n == length) { "Short HID descriptor read ($n of $length)" }
                         UsbLog.line("HID if ${h.id} report descriptor ${UsbLog.hex(descriptor)}")
+                        if (target.moondrop?.freedspMini == true) logMiniReports(h.id, descriptor)
                         val eps = (0 until h.endpointCount).map { h.getEndpoint(it) }.filter { it.type == UsbConstants.USB_ENDPOINT_XFER_INT }
                         // gen 1: report 1 is on the Consumer page and exactly 62 bytes each way (its own rule); every other family: a vendor page and at least the size the protocol needs
                         val shape = if (gen1 != null) NativeHidReports.parseGen1(descriptor) else NativeHidReports.parse(descriptor, undefinedDesktop = true)

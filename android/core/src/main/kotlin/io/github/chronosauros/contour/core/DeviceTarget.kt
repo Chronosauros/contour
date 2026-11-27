@@ -50,13 +50,16 @@ data class DeviceTarget private constructor(
      */
     val readOnly: Boolean get() = when {
         echo != null -> !echo.writeOn
-        moondrop != null -> !Proven.on(moondrop.hardwareVerified)
+        // the FreeDSP Mini tester build never writes, whatever the channel (MoondropCatalog.FREEDSP_MINI_TESTER_WRITE): a review build does not lift it
+        moondrop != null -> moondrop.writesBlocked || !Proven.on(moondrop.hardwareVerified)
         ktMicro != null -> !Proven.on(ktMicro.hardwareVerified)
         gen1 != null -> !Proven.on(gen1.hardwareVerified)
         walkplay != null -> !WalkPlayProfiles.of(walkplay).writeOn
         fiioRecord != null -> !Proven.on(fiioRecord.hardwareVerified)
         else -> false
     }
+    /** Why this read-only DAC is not written: the FreeDSP Mini tester build says so in its own words (always, in every build); every other DAC uses [READ_ONLY_ISSUE]. */
+    val readOnlyIssue: String get() = if (moondrop?.writesBlocked == true) MoondropCatalog.FREEDSP_MINI_READ_ONLY_TEXT else READ_ONLY_ISSUE.format(caps.name)
     /** The DAC has a preamp the app writes; the Allegro Mini has none (its Global Gain is the analog DAC gain, never written). */
     val hasPreamp: Boolean get() = ktMicro == null && gen1 == null
     /** What the preamp is called on this DAC: the Moondrop manufacturer's name for register 0x23. */
@@ -99,6 +102,9 @@ data class DeviceTarget private constructor(
     } ?: familyCaps()
     /** The limits of the 1.6 families, from their :core catalogs; only what Contour offers is in [DeviceCapabilities.types] (the Dawn Pro 2: PEAK, plus its shelves and pass filters behind their flags). */
     private fun familyCaps(): DeviceCapabilities = when {
+        // the FreeDSP Mini: its own name and what it offers (PEAK; its shelves are held), the record's ranges
+        moondrop != null && moondrop.freedspMini -> DeviceCapabilities(MoondropCatalog.FREEDSP_MINI_NAME, MoondropCatalog.VENDOR_ID, moondrop.productIds.min(), moondrop.bandCount,
+            moondrop.minGainDb, moondrop.maxGainDb, moondrop.minQ, moondrop.maxQ, moondrop.minFrequencyHz, moondrop.maxFrequencyHz, MoondropCatalog.FREEDSP_MINI_OFFERED_TYPES, false, shelfForm = moondrop.shelfForm, shelfQScale = moondrop.shelfQScale)
         moondrop != null -> DeviceCapabilities(MOONDROP_NAME, MoondropCatalog.VENDOR_ID, moondrop.productIds.min(), moondrop.bandCount,
             moondrop.minGainDb, moondrop.maxGainDb, moondrop.minQ, moondrop.maxQ, moondrop.minFrequencyHz, moondrop.maxFrequencyHz, MOONDROP_TYPES, false, shelfForm = moondrop.shelfForm, shelfQScale = moondrop.shelfQScale)
         ktMicro != null -> DeviceCapabilities(ktMicro.name, ktMicro.data.vendorId, ktMicro.productIds.min(), ktMicro.bandCount,
@@ -222,7 +228,7 @@ data class DeviceTarget private constructor(
     }
     /** Why [profile] cannot be sent to a 1.6 family DAC (empty = it can): the ranges of the DAC's catalog in the wording of the FiiO block, then the codec's own checks. */
     private fun familyIssues(profile: Profile): List<String> {
-        if (readOnly) return listOf(READ_ONLY_ISSUE.format(caps.name))
+        if (readOnly) return listOf(readOnlyIssue)
         // A writable Echo-A is planned by the Protocol Micro's planner with its own limits, exactly as the session writes it.
         echo?.let { return (ProtocolMicro.plan(profile, it.caps, it.preampMaxDb) as? DevicePlan.Rejected)?.issues.orEmpty() }
         val found = mutableListOf<String>()
@@ -308,6 +314,8 @@ data class DeviceTarget private constructor(
         /** The Melody as the app plans with it now is [MELODY]; this is it with LP, HP, BP and AP offered whatever the flag says (the bench's `--pass-filters` and the tests). */
         fun melody(passFilters: Boolean): DeviceTarget = if (passFilters) MELODY_WITH_PASS else MELODY
         val DAWN_PRO_2 = DeviceTarget(moondrop = MoondropCatalog.dawnPro2)
+        /** The Moondrop FreeDSP Mini (35D8:98D4, found by VID and PID): an EXPERIMENTAL READ-ONLY tester entry (1.8.2-freedsptest1, issue 2), [readOnly] in every build ([MoondropCatalog.FREEDSP_MINI_TESTER_WRITE]); nothing was measured on a Contour unit. */
+        val FREEDSP_MINI = DeviceTarget(moondrop = MoondropCatalog.freedspMini)
         val ALLEGRO_MINI = DeviceTarget(ktMicro = KtMicroCatalog.models.first())
         /** The JCally JM12 (KT02H20, same VID:PID as the Allegro Mini, found by its USB name): written and read back from a phone on 10.11.2026 (run 2026-11-10-jcally-jm12-11-phone), so it writes in every build. */
         val JCALLY_JM12 = DeviceTarget(ktMicro = KtMicroCatalog.jm12Models.first())
@@ -315,7 +323,7 @@ data class DeviceTarget private constructor(
         val KIWI_EARS_AD1 = DeviceTarget(ktMicro = KtMicroCatalog.ad1Models.first())
         /** The Tanchjim Space II (3302:4381, WalkPlay SchemeNo16 on the Protocol Max's code, found by its USB name): written and read back from a phone on 13.11.2026, so it writes in every build. */
         val SPACE_2 = DeviceTarget(walkplay = DeviceProtocol.SPACE_2)
-        /** The EPZ TP65 (3302:4325, found by its USB name): an EXPERIMENTAL tester entry, read by Contour on its owner's unit (1.8.0-tp65test2) and written with its own sequence since 1.8.1-tp65test3 ([WalkPlayProfiles.TP65_TESTER_WRITE]; PEAK passed there, shelves since tp65test4); no DAC settings. */
+        /** The EPZ TP65 (3302:4325, found by its USB name; supported since 1.8.2): read by Contour on a TP65 owner's unit (1.8.0-tp65test2) and written there with its own sequence ([WalkPlayProfiles.TP65_TESTER_WRITE]; PEAK with 1.8.1-tp65test3, the shelves with tp65test4, each VERIFIED); no DAC settings, the preamp read only. */
         val EPZ_TP65 = DeviceTarget(walkplay = DeviceProtocol.EPZ_TP65)
         val ECHO_A = DeviceTarget(echo = WalkPlayProfiles.echoA)
         /** The Moondrop DUSK-SP (35D8:1499, found by its USB name; [readOnly] in a release until its record says `hardwareVerified`). */
@@ -352,6 +360,7 @@ data class DeviceTarget private constructor(
             GeneratedDevices.EPZ_TP65_USB.recordId to EPZ_TP65,
             GeneratedDevices.MOONDROP_ECHO_A_USB.recordId to ECHO_A,
             GeneratedDevices.MOONDROP_DUSK_USB.recordId to MOONDROP_DUSK,
+            GeneratedDevices.MOONDROP_FREEDSP_MINI_USB.recordId to FREEDSP_MINI,
         ).also { m -> require(m.keys == GeneratedDevices.USB_IDS.map { it.recordId }.toSet()) { "a device record has no DeviceTarget (or the other way round)" } }
 
         /**

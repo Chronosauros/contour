@@ -983,4 +983,230 @@ class NativeFamilyTest {
         val manual = MoondropCodec.planFor(dawn, p.bands, -3.0)
         assertEquals(planned.bands.map { listOf(it.index, it.frequencyHz, it.qQ8, it.gainQ8, it.nativeType, hex(it.coefficients)) }, manual.bands.map { listOf(it.index, it.frequencyHz, it.qQ8, it.gainQ8, it.nativeType, hex(it.coefficients)) })
     }
+
+    // ---- Moondrop FreeDSP Mini: the READ-ONLY tester entry (1.8.2-freedsptest1) ------------------------------------------------------------------------------------------------------
+    // SYNTHETIC: FakeFreeDspMini answers in FreeDSP-Studio's layout (dsp2.rs 47-58); nothing here was read from a Mini.
+
+    private val mini = requireNotNull(MoondropCatalog.find(0x35D8, 0x98D4, null))
+
+    /** The read of the Mini: FreeDSP-Studio's frames byte for byte, the report ID not included. */
+    private val miniReadFrames = listOf("80 0c 01 00") + (0..7).map { "80 09 03 00 0$it 00" } + listOf("80 23 00")
+
+    @Test fun `the FreeDSP Mini read sends FreeDSP-Studio's frames byte for byte and nothing else`() {
+        val dac = FakeFreeDspMini()
+        MoondropSession(mini, dac).readMini()
+        assertEquals(miniReadFrames, dac.sent.map { hex(it) })
+        assertEquals(listOf("80 0c 01 00"), dac.sent.take(1).map { hex(it) })
+        assertTrue(dac.sent.none { (it[0].toInt() and 255) == 0x01 }, "no frame with OP 0x01")
+        assertTrue(dac.sent.none { hex(it).startsWith("80 0f") || hex(it).startsWith("80 03") }, "neither the EQ index query nor the global gain")
+        assertEquals(listOf(4, 6, 6, 6, 6, 6, 6, 6, 6, 3), dac.sent.map { it.size })
+    }
+
+    @Test fun `the FreeDSP Mini read gives firmware, the active slot, eight bands and the pre-gain, the slot from byte 35 of a band reply`() {
+        val dac = FakeFreeDspMini(slot = 7, preGainQ8 = -768, version = "0.7")
+        val r = MoondropSession(mini, dac).readMini()
+        assertEquals("0.7", r.firmware?.text)
+        assertEquals(7, r.slot)
+        assertEquals("Custom EQ", FreeDspMiniCodec.slotName(7))
+        assertEquals(8, r.bands.size)
+        assertTrue(r.bands.all { it != null })
+        assertEquals(-3.0, r.preGain?.db)
+        assertEquals(emptyList(), r.unanswered)
+        val b3 = r.bands[3]!!
+        assertEquals(listOf(3, 600, 256, 768, 2, 7), listOf(b3.index, b3.frequencyHz, b3.qQ8, b3.gainQ8, b3.nativeType, b3.slot))
+        assertEquals(FilterType.PEAK, b3.type)
+        assertEquals(3.0, b3.gainDb)
+        // the slot is the byte at index 35 of the payload (FreeDSP-Studio OFF_SLOT, the report ID not counted): a reply with another byte there reads another slot
+        assertEquals(35, FreeDspMiniCodec.OFF_SLOT)
+        val reply = FakeFreeDspMini(slot = 3).bandReply(0)
+        assertEquals(3, reply[35].toInt())
+        assertEquals(3, MoondropSession(mini, FakeFreeDspMini(slot = 3)).readMini().slot)
+        assertEquals("Space", FreeDspMiniCodec.slotName(3))
+        // the same read through the family state: the page's two rows
+        val state = FamilyState.FreeDspMini(mini, r)
+        assertEquals(7, state.slot); assertEquals(-3.0, state.preampDb); assertFalse(state.importable)
+        assertEquals(listOf(SettingReading(FamilySettings.EQ_INDEX, 7, null), SettingReading(FamilySettings.PRE_GAIN, -30, null)), state.readings())
+        assertEquals("7 Custom EQ", freedspSlotText(7)); assertEquals("5", freedspSlotText(5)); assertEquals("2 Bass Enhance+", freedspSlotText(2))
+        assertTrue(dac.notes.any { it.startsWith("FreeDSP Mini RX band 0: 80 09") }, "the raw reply is logged before it is parsed")
+        assertTrue(dac.notes.any { it.contains("firmware 0.7, active slot 7 (Custom EQ), pre-gain -3.0 dB") })
+    }
+
+    @Test fun `a FreeDSP Mini read with the pre-gain and one band unanswered still returns what came`() {
+        val dac = FakeFreeDspMini(silentPre = true, silentBands = setOf(4))
+        val r = MoondropSession(mini, dac).readMini()
+        assertNull(r.preGain); assertNull(r.bands[4]); assertEquals(7, r.bands.count { it != null })
+        assertEquals(7, r.slot); assertEquals("0.7", r.firmware?.text)
+        assertEquals(listOf("band 4", "pre-gain"), r.unanswered)
+        assertTrue(dac.notes.any { it.contains("band 4: no valid reply, left unknown") } && dac.notes.any { it.contains("pre-gain: no valid reply") })
+        // a silent query is asked twice at most
+        assertEquals(2, dac.sent.count { hex(it) == "80 09 03 00 04 00" }); assertEquals(2, dac.sent.count { hex(it) == "80 23 00" })
+        // nothing answers but the bands: the slot comes from them; with band 0 silent too, the first band that came names it
+        val r2 = MoondropSession(mini, FakeFreeDspMini(silentPre = true, silentVersion = true, silentBands = setOf(0))).readMini()
+        assertNull(r2.firmware); assertNull(r2.preGain); assertEquals(7, r2.slot)
+        // an unreadable device: everything unknown, no exception
+        val nothing = MoondropSession(mini, FakeFreeDspMini(silentPre = true, silentVersion = true, silentBands = (0..7).toSet())).readMini()
+        assertNull(nothing.slot); assertNull(nothing.firmware); assertEquals(10, nothing.unanswered.size)
+        assertEquals(0, FamilyState.FreeDspMini(mini, nothing).slot); assertEquals(emptyList(), FamilyState.FreeDspMini(mini, nothing).readings())
+        // an unparseable reply is no reply: the session logs it and the read goes on
+        val garbled = FakeFreeDspMini(garbleVersion = true)
+        val g = MoondropSession(mini, garbled).readMini()
+        assertNull(g.firmware); assertEquals(7, g.slot)
+        assertTrue(garbled.notes.any { it.contains("version: the reply does not parse") })
+    }
+
+    @Test fun `the bands of a firmware voicing are shown as read, whatever their gain, Q or type code`() {
+        val wild = listOf(intArrayOf(31, 90, 18 * 256, 2), intArrayOf(62, 3000, -20 * 256, 1), intArrayOf(125, 256, 0, 9), intArrayOf(250, 256, 5 * 256, 0), intArrayOf(500, 256, 0, 3),
+            intArrayOf(1000, 256, 0, 4), intArrayOf(2000, 256, 0, 5), intArrayOf(65535, 1, -32768, 255))
+        val dac = FakeFreeDspMini(slot = 3, bands = wild)
+        val r = MoondropSession(mini, dac).readMini()
+        assertEquals(3, r.slot)
+        assertEquals(listOf(18.0, -20.0, 0.0, 5.0, 0.0, 0.0, 0.0, -128.0), r.bands.map { it!!.gainDb })
+        assertEquals(listOf(FilterType.PEAK, FilterType.LOW_SHELF, null, null, FilterType.HIGH_SHELF, FilterType.LOW_PASS, FilterType.HIGH_PASS, null), r.bands.map { it!!.type })
+        val text = FamilyState.FreeDspMini(mini, r).describe()
+        assertTrue(text.contains("code 9") && text.contains("code 255") && text.contains("+18.0 dB"), text)
+        // the lines the DAC page shows: firmware, slot with its name, pre-gain, one line per band in order, "no reply" for a band that did not answer
+        assertEquals(listOf("Firmware 0.7", "EQ slot 3 Space", "Pre-gain -3.0 dB"), FamilyState.FreeDspMini(mini, r).pageLines().take(3))
+        assertEquals("1  PK  31 Hz  +18.0 dB  Q 0.35", FamilyState.FreeDspMini(mini, r).pageLines()[3])
+        assertEquals("2  LS  62 Hz  -20.0 dB  Q 11.72", FamilyState.FreeDspMini(mini, r).pageLines()[4])
+        val partial = MoondropSession(mini, FakeFreeDspMini(silentPre = true, silentBands = setOf(1))).readMini()
+        assertEquals("Pre-gain not read", FamilyState.FreeDspMini(mini, partial).pageLines()[2]); assertEquals("2  no reply", FamilyState.FreeDspMini(mini, partial).pageLines()[4])
+        assertEquals("1  PK  20 Hz  +0.0 dB  Q 1.00", FamilyState.FreeDspMini(mini, partial).pageLines()[3])
+    }
+
+    @Test fun `the FreeDSP Mini read needs no exact lengths and no descriptor - an odd LEN byte, a short reply or an unknown port still read`() {
+        val odd = FakeFreeDspMini(bandLen = 0x18, inputPayload = 40, knowsDescriptor = false)
+        val r = MoondropSession(mini, odd).readMini()
+        assertEquals(7, r.slot); assertEquals(8, r.bands.count { it != null }); assertEquals(-3.0, r.preGain?.db)
+        assertTrue(odd.notes.any { it.contains("sizes not known to this port") })
+        // a band reply that stops before the slot byte (35 payload bytes) is no band reply
+        val short = FakeFreeDspMini(inputPayload = 35)
+        val s = MoondropSession(mini, short).readMini()
+        assertEquals(0, s.bands.count { it != null }); assertNull(s.slot)
+    }
+
+    @Test fun `every public method of a FreeDSP Mini session that can send an OP 0x01 frame refuses before any I-O, in every build`() {
+        val bands = List(8) { MoondropCodec.neutralBand(it) }
+        for (channel in BuildChannel.entries) Proven.asChannel(channel) {
+            val dac = FakeFreeDspMini()
+            val s = MoondropSession(mini, dac)
+            assertTrue(mini.writesBlocked); assertFalse(MoondropCatalog.FREEDSP_MINI_TESTER_WRITE)
+            val refusals = listOf<() -> Any?>(
+                { s.write(bands, -3.0, explicitHold = true) },
+                { s.write(bands, null, explicitHold = true) },
+                { s.writeGain(MoondropCodec.GainRegister.PRE, -3.0, explicitHold = true) },
+                { s.writeGain(MoondropCodec.GainRegister.GLOBAL, -3.0, explicitHold = true, persist = true) },
+                { s.selectIndex(7, explicitUserAction = true) },
+                { s.selectIndex(7, explicitUserAction = true, persist = false) },
+                { s.enableAllPeq(0, persist = false, explicitUserAction = true) },
+                { s.enableAllPeq(0, persist = true, explicitUserAction = true) },
+                { s.readWritableBank(explicitUserAction = true) },
+                { s.readWritableBank(explicitUserAction = true, withPreGain = true) },
+            )
+            for ((i, call) in refusals.withIndex()) {
+                val e = assertFailsWith<IllegalStateException>("refusal $i in $channel") { call() }
+                assertEquals(MoondropCatalog.FREEDSP_MINI_READ_ONLY_TEXT, e.message)
+            }
+            // the Dawn's two reads ask for the EQ index and the global gain: the Mini is read with readMini only
+            assertFailsWith<IllegalArgumentException> { s.read() }
+            assertFailsWith<IllegalArgumentException> { s.read(withPreGain = true) }
+            assertFailsWith<IllegalArgumentException> { s.readFirmware() }
+            assertEquals(emptyList(), dac.sent.map { hex(it) }, "not one frame of any kind was sent ($channel)")
+            assertEquals(0, dac.guards, "the port was not touched")
+            // the read of the Mini sends no write frame either (the fake fails the test on one)
+            s.readMini(); assertEquals(miniReadFrames, dac.sent.map { hex(it) })
+        }
+        // and the model says it is the Mini that is blocked, nobody else
+        assertFalse(dawn.writesBlocked); assertFalse(dawn.freedspMini); assertTrue(mini.freedspMini)
+    }
+
+    @Test fun `the FreeDSP Mini is read only in every build and says so, the Dawn Pro 2 is untouched`() {
+        for (channel in BuildChannel.entries) Proven.asChannel(channel) {
+            val t = DeviceTarget.FREEDSP_MINI
+            assertTrue(t.readOnly, "$channel")
+            assertEquals(MoondropCatalog.FREEDSP_MINI_READ_ONLY_TEXT, t.readOnlyIssue)
+            assertEquals("Moondrop FreeDSP Mini", t.caps.name)
+            assertEquals(setOf(FilterType.PEAK), t.caps.types)
+            assertEquals(listOf(MoondropCatalog.FREEDSP_MINI_READ_ONLY_TEXT), t.issues(eqOf(Band("a", FilterType.PEAK, 1000.0, 3.0, 1.0))))
+            assertEquals(listOf(MoondropCatalog.FREEDSP_MINI_READ_ONLY_TEXT), FamilyDevices.stateIssues(t, null))
+            assertEquals(listOf(MoondropCatalog.FREEDSP_MINI_READ_ONLY_TEXT), FamilyDevices.stateIssues(t, FamilyState.FreeDspMini(mini, MoondropSession(mini, FakeFreeDspMini()).readMini())))
+            assertEquals("READ ONLY", FamilyDevices.readOnlyLabel(t))
+            assertEquals(8, t.caps.bands); assertEquals(-12.0, t.caps.gainMinDb); assertEquals(12.0, t.caps.gainMaxDb)
+            // the DAC page: the active slot and the pre-gain, both without a control; no GLOBAL GAIN row
+            assertEquals(listOf(FamilySettings.EQ_INDEX, FamilySettings.PRE_GAIN), t.settings.map { it.id })
+            assertTrue(t.settings.all { it.readOnly && !it.writeEnabled })
+            assertFalse(DeviceTarget.DAWN_PRO_2.readOnly, "the Dawn Pro 2 writes in every build")
+            assertEquals(DeviceTarget.READ_ONLY_ISSUE.format("Moondrop Dawn Pro 2"), DeviceTarget.DAWN_PRO_2.readOnlyIssue)
+            assertEquals(listOf(FamilySettings.EQ_INDEX, FamilySettings.GLOBAL_GAIN, FamilySettings.PRE_GAIN), DeviceTarget.DAWN_PRO_2.settings.map { it.id })
+            assertEquals("Moondrop Dawn Pro 2", DeviceTarget.DAWN_PRO_2.caps.name)
+        }
+        // the HID descriptor the app opens it through: Input up to the slot byte, Output the longest query
+        assertEquals(1 + 36, NativeHidReports.minimumRawBytes(DeviceTarget.FREEDSP_MINI, NativeHidReports.Kind.INPUT))
+        assertEquals(1 + 6, NativeHidReports.minimumRawBytes(DeviceTarget.FREEDSP_MINI, NativeHidReports.Kind.OUTPUT))
+        assertEquals(1 + 36, NativeHidReports.minimumRawBytes(DeviceTarget.DAWN_PRO_2, NativeHidReports.Kind.INPUT))
+        assertEquals(1 + 37, NativeHidReports.minimumRawBytes(DeviceTarget.DAWN_PRO_2, NativeHidReports.Kind.OUTPUT))
+        // the Dawn Pro 2's read still asks the Dawn's questions
+        assertEquals(listOf("80 0f 00", "80 09 18 00 00 00"), MoondropCodec.readQueries(dawn).take(2).map { hex(it.payload) })
+    }
+}
+
+/**
+ * SYNTHETIC FreeDSP Mini for the tests and the catalog dump: it answers FreeDSP-Studio's three read frames (version `80 0C 01 00`, band `80 09 03 00 i 00`, pre-gain `80 23 00`) with replies in FreeDSP-Studio's layout
+ * (report ID excluded: index at 4, frequency at 27, Q at 29, gain at 31, type at 33, slot at 35; dsp2.rs 47-58), and refuses anything else. Nothing here was read from a Mini. [sent] is every payload it is sent, in order;
+ * a frame with OP 0x01 makes it throw (no read of the Mini may send one). [silentBands], [silentPre] and [silentVersion] are queries it does not answer, [garbleVersion] answers the version with no text.
+ */
+internal class FakeFreeDspMini(
+    var slot: Int = 7,
+    /** Per band: frequency Hz, Q as Q8.8, gain as Q8.8, type code. */
+    val bands: List<IntArray> = List(8) { i -> intArrayOf(listOf(20, 60, 200, 600, 1000, 5400, 14000, 20000)[i], 256, if (i == 3) 768 else 0, 2) },
+    var preGainQ8: Int = -768,
+    val version: String = "0.7",
+    val bandLen: Int = 0x21,
+    val inputPayload: Int = 63,
+    val knowsDescriptor: Boolean = true,
+    val silentBands: Set<Int> = emptySet(),
+    val silentPre: Boolean = false,
+    val silentVersion: Boolean = false,
+    val garbleVersion: Boolean = false,
+) : NativePort {
+    override val deviceKey = "freedsp-mini"
+    val sent = ArrayList<ByteArray>()
+    val notes = ArrayList<String>()
+    var guards = 0
+    override fun guard() { guards++ }
+    override fun pause(ms: Long) {}
+    override fun log(message: String) { notes += message }
+    override fun payloadSize(id: Int, kind: NativeHidReports.Kind): Int = if (knowsDescriptor) 63 else error("This port does not know the HID report descriptor")
+
+    private fun refuseWrite(payload: ByteArray) { if ((payload[0].toInt() and 255) == 0x01) error("a frame with OP 0x01 was sent to the FreeDSP Mini: ${hex(payload)}") }
+    override fun send(id: Int, kind: NativeHidReports.Kind, payload: ByteArray) { sent += payload; refuseWrite(payload) }
+
+    /** The reply to band [i] in FreeDSP-Studio's layout, [inputPayload] bytes long. */
+    fun bandReply(i: Int): ByteArray {
+        val b = bands[i]
+        return ByteArray(inputPayload).also { o ->
+            fun put(at: Int, v: Int, bytes: Int = 1) { for (k in 0 until bytes) if (at + k < o.size) o[at + k] = (v shr (8 * k)).toByte() }
+            put(0, 0x80); put(1, 0x09); put(2, bandLen); put(4, i)
+            put(27, b[0], 2); put(29, b[1], 2); put(31, b[2], 2); put(33, b[3]); put(35, slot)
+        }
+    }
+
+    override fun request(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean): ByteArray {
+        assertEquals(0x4B, id)
+        sent += payload
+        refuseWrite(payload)
+        val timeout = IOException("Native request timed out or returned invalid state")
+        val out = when (hex(payload.copyOf(2))) {
+            "80 0c" -> if (silentVersion) throw timeout else ByteArray(inputPayload).also { o ->
+                o[0] = 0x80.toByte(); o[1] = 0x0C; o[2] = 0x03
+                if (garbleVersion) o[3] = 0 else version.forEachIndexed { k, c -> o[3 + k] = c.code.toByte() }
+            }
+            "80 09" -> { check(payload.size == 6 && payload[2].toInt() == 3 && payload[3].toInt() == 0 && payload[5].toInt() == 0) { "not FreeDSP-Studio's band query: ${hex(payload)}" }
+                val i = payload[4].toInt(); if (i in silentBands) throw timeout else bandReply(i) }
+            "80 23" -> if (silentPre) throw timeout else ByteArray(inputPayload).also { o ->
+                o[0] = 0x80.toByte(); o[1] = 0x23; o[2] = 2; o[3] = preGainQ8.toByte(); o[4] = (preGainQ8 shr 8).toByte() }
+            else -> error("the FreeDSP Mini is not asked this: ${hex(payload)}")
+        }
+        if (!matches(out)) throw timeout
+        return out
+    }
 }

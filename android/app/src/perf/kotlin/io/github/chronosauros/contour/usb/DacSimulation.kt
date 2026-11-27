@@ -4,6 +4,7 @@ import io.github.chronosauros.contour.core.DeviceTarget
 import io.github.chronosauros.contour.core.native.NativePort
 import io.github.chronosauros.contour.usb.sim.SimDusk
 import io.github.chronosauros.contour.usb.sim.SimFiio
+import io.github.chronosauros.contour.usb.sim.SimFreeDspMini
 import io.github.chronosauros.contour.usb.sim.SimIo
 import io.github.chronosauros.contour.usb.sim.SimKtMicro
 import io.github.chronosauros.contour.usb.sim.SimMoondrop
@@ -13,7 +14,7 @@ import io.github.chronosauros.contour.usb.sim.SimWalkPlay
  * The simulated DACs of the review builds (perf and debug; release and beta compile a stub of this object that makes none): `--es simulate <dac>` makes the app behave as if that DAC
  * were attached and connected, with no USB involved (see MainActivity and [DeviceController.simulate]). Each unit is a fake DAC speaking the real protocol, so the real sessions, the
  * real read and the real send run on it; its registers, slots and settings stay in memory for the process, so a read after a send shows what the send wrote, until the app is
- * force-stopped. Names: micro, max, trn, ka15, k13, melody, tinya, dawn, allegro, echo, dusk.
+ * force-stopped. Names: micro, max, trn, ka15, k13, melody, tinya, dawn, allegro, echo, dusk, freedsp (the read-only FreeDSP Mini tester entry: it answers its three read frames and fails on any write frame).
  */
 object DacSimulation {
     private val units = HashMap<String, NativePort>()
@@ -29,6 +30,7 @@ object DacSimulation {
             "melody" -> DeviceTarget.MELODY
             "tinya" -> DeviceTarget.TINY_A
             "dawn" -> DeviceTarget.DAWN_PRO_2
+            "freedsp" -> DeviceTarget.FREEDSP_MINI
             "allegro" -> DeviceTarget.ALLEGRO_MINI
             "dusk" -> DeviceTarget.MOONDROP_DUSK
             "echo" -> DeviceTarget.ECHO_A
@@ -38,6 +40,7 @@ object DacSimulation {
             units.getOrPut(name) {
                 when {
                     target.fiio != null -> SimFiio(target)
+                    target.moondrop?.freedspMini == true -> SimFreeDspMini()
                     target.moondrop != null -> SimMoondrop()
                     target.ktMicro != null -> SimKtMicro()
                     target.gen1 != null -> SimDusk()

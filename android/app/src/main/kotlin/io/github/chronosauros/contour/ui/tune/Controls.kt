@@ -254,7 +254,7 @@ fun holdView(p: Profile, device: DeviceController, sender: Sender): HoldView {
     if (device.tapToConnect) return HoldView(HoldKind.TAP_TO_CONNECT, UiText.res(R.string.hold_tap_to_connect))
     if (device.link == Link.NO_DAC) return HoldView(HoldKind.NO_DAC, UiText.res(R.string.hold_no_dac))
     // A read-only DAC (the Echo-A until its write flag is set) is read, never written: no hold, no send.
-    if (device.protocol.readOnly) return HoldView(HoldKind.READ_ONLY, UiText.Core(FamilyDevices.READ_ONLY_LABEL), eqBlocked = true, issues = device.sendIssues(p))
+    if (device.protocol.readOnly) return HoldView(HoldKind.READ_ONLY, UiText.Core(FamilyDevices.readOnlyLabel(device.protocol)), eqBlocked = true, issues = device.sendIssues(p))
     // A slot DAC with no slot chosen yet (a SnowSky right after plug-in, a stock preset): a tap on a slot chooses where HOLD TO SEND writes.
     if (device.slotPicker && device.chosenSlot == null) return HoldView(HoldKind.CHOOSE_SLOT, UiText.res(R.string.hold_choose_slot), eqBlocked = true)
     // DUSK-SP: until a profile is picked, imported or edited after the last read or send, the foot names the cable's preset instead of offering a send (this is the foot label logic of that cable)

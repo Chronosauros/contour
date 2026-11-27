@@ -74,6 +74,7 @@ object CoreText {
         rule("""^(.+) band (\d+) cannot be represented safely\. Reduce the boost or adjust frequency/Q\.$""", R.string.core_issue_band_unsafe),
         rule("""^this EQ needs (\S+) dB; Contour supports down to (\S+) dB for this device\. Reduce the combined boosts\.$""", R.string.core_issue_auto_needs),
         rule("""^AUTO preamp: no finite response; cannot send to (.+)$""", R.string.core_issue_auto_no_response),
+        rule("""^Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for (\S+) dB\. Reduce the boosts, or set the preamp to 0 dB \(boosts may then clip\)\.$""", R.string.core_issue_tp65_preamp),
         rule("""^The DAC is on EQ index (\d+), one of its own presets\. Switch the DAC to its PEQ mode \(EQ index (.+)\): HOLD TO SEND writes the EQ the DAC is on\.$""", R.string.core_note_dawn_bank),
         // import: lines of the file whose values could not be read (ApoText.parse)
         rule("""^filter (\S+) unreadable, skipped$""", R.string.core_import_filter_unreadable),

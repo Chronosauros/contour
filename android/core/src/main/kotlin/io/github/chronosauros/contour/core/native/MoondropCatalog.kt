@@ -18,6 +18,7 @@ import io.github.chronosauros.contour.core.devices.GeneratedDevices
 object MoondropCatalog {
     // Every number below is the record's (devices/moondrop-dawn-pro-2.json via GeneratedDevices); what stays here is the shape of the model and the lookup.
     private val dawn = GeneratedDevices.MOONDROP_DAWN_PRO_2
+    private val mini = GeneratedDevices.MOONDROP_FREEDSP_MINI
     const val VENDOR_ID = GeneratedDevices.MOONDROP_DAWN_PRO_2_VENDOR_ID
     const val REPORT_ID = GeneratedDevices.MOONDROP_DAWN_PRO_2_REPORT_ID
     /** Native type codes: 1 LS, 2 PK, 3 HS, 4 LP, 5 HP (0 = disabled exists in the manufacturer's table; never written). */
@@ -50,6 +51,16 @@ object MoondropCatalog {
     val OFFERED_TYPES: Set<FilterType> get() = RECORD_OFFERED_TYPES +
         (if (passFiltersOn) setOf(FilterType.LOW_PASS, FilterType.HIGH_PASS) else emptySet()) +
         (if (shelvesOn) setOf(FilterType.LOW_SHELF, FilterType.HIGH_SHELF) else emptySet())
+    /**
+     * THE write gate of the Moondrop FreeDSP Mini (record `moondrop-freedsp-mini`, tester build 1.8.2-freedsptest1, https://github.com/Chronosauros/contour/issues/2): false, so not one frame with OP 0x01 ever
+     * reaches the unit. It is checked in every public [MoondropSession] method that can send one and again at the port the session talks through, whatever [Proven.on], the build type or the caller says, and the app
+     * reports the unit as read only ([io.github.chronosauros.contour.core.DeviceTarget.readOnly]). A later write test is a separate build on the owner's decision; this constant is the one line it changes.
+     */
+    const val FREEDSP_MINI_TESTER_WRITE = false
+
+    /** What the app and the session say when something would write to the FreeDSP Mini ([FREEDSP_MINI_TESTER_WRITE] is false). */
+    const val FREEDSP_MINI_READ_ONLY_TEXT = "Read-only test build: nothing is written to the FreeDSP Mini"
+
     data class Model(
         val productName: String,
         val productIds: Set<Int>,
@@ -74,7 +85,11 @@ object MoondropCatalog {
         val reportBytes: Int,
         /** True once the unit has taken an EQ write from the phone app and read it back (Dawn Pro 2: Nothing Phone 25.10.2026, run 2026-10-25-moondrop-dawn-pro-2-07-phone-nothing, Write Cfg on index 9, VERIFIED twice). Pass filters and pre-gain have their own flags. */
         val hardwareVerified: Boolean = false,
+        /** The Moondrop FreeDSP Mini route (record `moondrop-freedsp-mini`): read with FreeDSP-Studio's Mini frames ([FreeDspMiniCodec]), written with none while [FREEDSP_MINI_TESTER_WRITE] is false. Every other model: false. */
+        val freedspMini: Boolean = false,
     ) {
+        /** Every frame with OP 0x01 is refused for this model, before any I/O ([MoondropSession]): the FreeDSP Mini while [FREEDSP_MINI_TESTER_WRITE] is false. */
+        val writesBlocked: Boolean get() = freedspMini && !FREEDSP_MINI_TESTER_WRITE
         /** The active EQ index [index] is a bank Contour writes. */
         fun isWritable(index: Int): Boolean = index in writableIndexes
         val nativeTypes: Set<Int> get() = TYPES.keys
@@ -86,7 +101,21 @@ object MoondropCatalog {
         dawn.preGainMinDb, dawn.preGainMaxDb, dawn.globalGainMinDb, dawn.globalGainMaxDb, dawn.reportBytes, hardwareVerified = true)
     val models = listOf(dawnPro2)
 
-    /** Exact VID, exact PID and the literal USB product name ("DAWN PRO 2" with a space is another, WalkPlay-routed name): the record's `usb` identity, name match included. */
-    fun find(vendorId: Int, productId: Int, productName: String?): Model? =
-        if (GeneratedDevices.MOONDROP_DAWN_PRO_2_USB.matches(vendorId, productId, productName)) dawnPro2 else null
+    /**
+     * The Moondrop FreeDSP Mini (35D8:98D4), a read-only tester entry: found by VID and PID only, whatever product string it reports (the record's `usb.matchByName` is false: the string is logged, not trusted).
+     * Never in [models]: its caps, read frames and refusals have their own paths ([FreeDspMiniCodec], [MoondropSession.readMini]); the Dawn Pro 2's values and frames are not touched by it.
+     */
+    val freedspMini = Model(mini.productName, setOf(mini.productId), mini.bands, mini.reportId, mini.writableIndex, mini.writableIndexes,
+        mini.gainMinDb, mini.gainMaxDb, mini.qMin, mini.qMax, mini.shelfQScale, mini.shelfForm, mini.freqMinHz, mini.freqMaxHz,
+        mini.preGainMinDb, mini.preGainMaxDb, mini.globalGainMinDb, mini.globalGainMaxDb, mini.reportBytes, hardwareVerified = false, freedspMini = true)
+    /** The Mini's display name (record `name`) and what Contour offers on it (PEAK; its shelves are the record's `heldTypes`). */
+    val FREEDSP_MINI_NAME: String = mini.name
+    val FREEDSP_MINI_OFFERED_TYPES: Set<FilterType> = mini.offeredTypes
+
+    /** Exact VID, exact PID and the literal USB product name ("DAWN PRO 2" with a space is another, WalkPlay-routed name): the record's `usb` identity, name match included. The FreeDSP Mini is found by VID and PID alone. */
+    fun find(vendorId: Int, productId: Int, productName: String?): Model? = when {
+        GeneratedDevices.MOONDROP_DAWN_PRO_2_USB.matches(vendorId, productId, productName) -> dawnPro2
+        GeneratedDevices.MOONDROP_FREEDSP_MINI_USB.matches(vendorId, productId, productName) -> freedspMini
+        else -> null
+    }
 }

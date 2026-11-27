@@ -191,6 +191,8 @@ fun DacScreen(device: DeviceController, top: Dp, bottom: Dp, onNotSent: (UiText)
                     Text(header, style = Type.small, color = c.textDim, maxLines = 1, modifier = Modifier.testTag("dac_header"))
                 }
             }
+            // the FreeDSP Mini tester build: nothing on this page is ever written to the unit, and the page says so
+            if (target.moondrop?.writesBlocked == true) Text(target.readOnlyIssue, style = Type.small, color = c.textDim, modifier = Modifier.padding(start = 6.dp).testTag("dac_read_only_note"))
             settings.forEachIndexed { i, s ->
                 val shown: Shown
                 val value: Int?
@@ -240,6 +242,10 @@ fun DacScreen(device: DeviceController, top: Dp, bottom: Dp, onNotSent: (UiText)
                     stringResource(R.string.dac_max_volume_note), style = Type.small, color = c.textDim,
                     modifier = Modifier.padding(start = 6.dp).testTag("dac_note_${s.id}"),
                 )
+            }
+            // the FreeDSP Mini tester build: what was read (firmware, slot, pre-gain, every band) as plain text, so a tester without adb can screenshot it; it wraps and the page scrolls
+            (device.snapshot?.familyState as? io.github.chronosauros.contour.core.native.FamilyState.FreeDspMini)?.let { mini ->
+                Text(mini.pageLines().joinToString("\n"), style = Type.small, color = c.textDim, modifier = Modifier.padding(start = 6.dp, top = 8.dp).testTag("dac_mini_read"))
             }
             // SnowSky Melody and Tiny A, FiiO KA15 and the WalkPlay Micro, Echo-A and TRN: the factory reset. Dimmed (a tap only says why) until the reset is proven (FiioReset.VERIFIED,
             // WalkPlayReset.VERIFIED) or the build is a review build, which opens it and still says NOT VERIFIED; the sheet (ContourApp) runs the flow.

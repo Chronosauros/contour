@@ -7,6 +7,8 @@ import android.provider.OpenableColumns
 import androidx.core.content.IntentCompat
 import io.github.chronosauros.contour.core.ApoText
 import io.github.chronosauros.contour.core.ImportedEq
+import io.github.chronosauros.contour.core.LibraryFile
+import io.github.chronosauros.contour.core.LibraryRead
 import io.github.chronosauros.contour.R
 import io.github.chronosauros.contour.ui.UiText
 import java.io.ByteArrayOutputStream
@@ -31,10 +33,16 @@ object ImportFile {
     /** An EQ text is a few KB; anything bigger is not one. */
     const val MAX_BYTES = 256 * 1024
 
+    /** A library backup holds every profile twice (working copy and SAVED version): its own, bigger cap. */
+    const val MAX_LIBRARY_BYTES = 8 * 1024 * 1024
+
     val UNREADABLE: UiText get() = UiText.res(R.string.import_error_unreadable)
     val NOT_CONTENT: UiText get() = UiText.res(R.string.import_error_not_content)
     val TOO_BIG: UiText get() = UiText.res(R.string.import_error_too_big)
     val NO_FILTERS: UiText get() = UiText.res(R.string.import_error_no_filters)
+    val IS_BACKUP: UiText get() = UiText.res(R.string.import_error_is_backup)
+    val NOT_BACKUP: UiText get() = UiText.res(R.string.restore_not_backup)
+    val BACKUP_TOO_BIG: UiText get() = UiText.res(R.string.restore_too_big)
 
     /** UTF-8 (a BOM is dropped); the UTF-16 files Windows Notepad can save are read too. */
     fun decode(bytes: ByteArray): String {
@@ -46,15 +54,15 @@ object ImportFile {
         }.removePrefix("﻿")
     }
 
-    /** The file's text, or null with the reason in the second value. Blocking: call off the main thread. */
-    private fun read(resolver: ContentResolver, uri: Uri): Pair<String?, UiText?> = try {
+    /** The file's text, or null with the reason in the second value ([tooBig] when it is over [max] bytes). Blocking: call off the main thread. */
+    private fun read(resolver: ContentResolver, uri: Uri, max: Int = MAX_BYTES, tooBig: UiText = TOO_BIG): Pair<String?, UiText?> = try {
         resolver.openInputStream(uri)?.use { input ->
             val out = ByteArrayOutputStream()
             val chunk = ByteArray(8192)
             while (true) {
                 val n = input.read(chunk)
                 if (n < 0) break
-                if (out.size() + n > MAX_BYTES) return null to TOO_BIG
+                if (out.size() + n > max) return null to tooBig
                 out.write(chunk, 0, n)
             }
             decode(out.toByteArray()) to null
@@ -77,6 +85,8 @@ object ImportFile {
     /** Parse [text] for import; [fileName] only names the profile. */
     fun fromText(text: String?, fileName: String?): Incoming {
         val name = ApoText.nameFromFile(fileName, AppModel.NAME_MAX)
+        // a whole-library backup is no EQ: say what it is and where it goes (RESTORE FROM BACKUP), not "no filters"
+        if (text != null && LibraryFile.decode(text) is LibraryRead.Library) return Incoming(name, null, IS_BACKUP)
         val eq = Importer.parse(text) ?: return Incoming(name, null, NO_FILTERS)
         return Incoming(name, eq, null, text = text, subject = fileName)
     }
@@ -88,6 +98,20 @@ object ImportFile {
         val (text, error) = read(resolver, uri)
         if (text == null) return Incoming(null, null, error ?: UNREADABLE)
         return fromText(text, displayName(resolver, uri)).copy(uri = uri.toString(), text = null, subject = null)
+    }
+
+    /**
+     * RESTORE FROM BACKUP: the library file at [uri] (content:// only, up to [MAX_LIBRARY_BYTES]), read and decoded; the reason as the second value when it is not one.
+     * Blocking (file IO): call off the main thread.
+     */
+    fun libraryFromUri(resolver: ContentResolver, uri: Uri): Pair<LibraryRead.Library?, UiText?> {
+        if (uri.scheme != ContentResolver.SCHEME_CONTENT) return null to NOT_CONTENT
+        val (text, error) = read(resolver, uri, MAX_LIBRARY_BYTES, BACKUP_TOO_BIG)
+        if (text == null) return null to (error ?: UNREADABLE)
+        return when (val library = LibraryFile.decode(text)) {
+            is LibraryRead.Library -> library to null
+            LibraryRead.NotLibrary -> null to NOT_BACKUP
+        }
     }
 
     /**

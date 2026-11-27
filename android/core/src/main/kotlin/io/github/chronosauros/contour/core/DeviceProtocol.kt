@@ -24,10 +24,10 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
     // The Tanchjim Space II (WalkPlay SchemeNo16, found by its USB name): the Protocol Max's code and write sequence with its own record (shelf Q = register, measured), proven on a unit from the Mac and a phone
     // (13.11.2026; [WalkPlayProfiles.space2]).
     SPACE_2(GeneratedDevices.TANCHJIM_SPACE_II),
-    // The EPZ TP65 (WalkPlay SchemeNo16, found by its USB name): EXPERIMENTAL TESTER ENTRY (tester versions 1.8.0-tp65test1 to 1.8.1-tp65test4, issue #6). The Space II's read code with the
-    // catalog's range and types (+-10 dB; PEAK, verified on the unit with tp65test3, and the two shelves, offered since tp65test4 with the Space II's shelf Q convention, not measured on a TP65),
-    // no DAC settings, its own preamp read ([preampRequest]) and its own write ([writeSequence]: band frames and the RAM apply, no preamp, no flash), the only frames its owner validated on the
-    // unit (devices/epz-tp65.json). Its preamp reply header is read the Space II's lenient way.
+    // The EPZ TP65 (WalkPlay SchemeNo16, found by its USB name; supported since 1.8.2, tested by a TP65 owner on their unit with the tester versions 1.8.0-tp65test2 to 1.8.1-tp65test4,
+    // issue #6, nothing measured by Contour): the Space II's read code with the catalog's range and types (+-10 dB; PEAK and the two shelves, each written and read back on the unit, the shelves
+    // with the Space II's shelf Q convention, not measured on a TP65), no DAC settings, its own preamp read ([preampRequest]) and its own write ([writeSequence]: band frames and the RAM apply,
+    // no preamp, no flash), the only frames validated on the unit (devices/epz-tp65.json). Its preamp reply header is read the Space II's lenient way.
     EPZ_TP65(GeneratedDevices.EPZ_TP65);
 
     /** The record's caps; the Micro's, the TRN's and the Max's follow their verification flags ([ProtocolMicro.PASS_FILTERS_VERIFIED], [ProtocolTrn.PASS_FILTERS_VERIFIED], [ProtocolMax.CANDIDATES_VERIFIED]). */
@@ -315,7 +315,7 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
 
     companion object {
         /** The EPZ TP65's send refusal ([plan]) when the profile's device preamp (%d, whole dB) is not 0. */
-        internal const val TP65_PREAMP_REFUSAL = "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for %d dB. Reduce the boosts or set the preamp to 0 dB."
+        internal const val TP65_PREAMP_REFUSAL = "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for %d dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
 
         /** Strict VID/PID pairs only. */
         fun find(vendorId: Int, productId: Int): DeviceProtocol? =

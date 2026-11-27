@@ -44,6 +44,18 @@ object FamilySettings {
     )
 
     /**
+     * The FreeDSP Mini's rows (tester build, read only, nothing is ever written to it): the active EQ slot from the band replies, and the PRE GAIN register 0x23 when it answered. No GLOBAL GAIN row (register 0x03 is not
+     * asked). Neither row has a write command, so the page shows a value with no control ([DacSetting.readOnly]). The PRE GAIN bounds are the placeholder of PendingRecords (Contour's -30 dB floor to 0); the register's own range is unknown.
+     */
+    private val freedspMini = listOf(
+        DacSetting(EQ_INDEX, "EQ INDEX", SettingKind.LEVEL, EvidenceRank.VB, min = PendingRecords.DAWN_EQ_INDEX_RANGE.first, max = PendingRecords.DAWN_EQ_INDEX_RANGE.last, group = 0,
+            read = mark(FreeDspMiniCodec.CMD_BAND), valueText = ::freedspSlotText),
+        DacSetting(PRE_GAIN, "PRE GAIN", SettingKind.LEVEL, EvidenceRank.VB, min = (MoondropCatalog.freedspMini.preGainMinDb * 10).roundToInt(),
+            max = (MoondropCatalog.freedspMini.preGainMaxDb * 10).roundToInt(), unit = "dB", group = 0,
+            read = mark(FreeDspMiniCodec.CMD_PRE_GAIN), writeCommand = null, writeVerified = false, scale = 10),
+    )
+
+    /**
      * The EQ switch row of a KT model, register 0x24. writeVerified here means: a write is accepted by the page and then proven by a read after the DAC re-enumerates
      * (KtMicroSession.writeSwitch). Allegro Mini: PC bench passed; the first phone run (runs/2026-10-22-kiwi-ears-allegro-mini-01-phone) could not open the 10-byte HID report, fixed in 289fbfb, and the phone then
      * switched EQ OFF and ON with a VERIFIED read-back each time (Pixel run 2026-10-24-kiwi-ears-allegro-mini-04-phone): on in every build. The JM12's register was only READ on the unit (10.11.2026): its
@@ -88,7 +100,7 @@ object FamilySettings {
     private val dusk = gen1(MoondropGen1Catalog.duskSp)
 
     fun of(target: DeviceTarget): List<DacSetting> = when {
-        target.moondrop != null -> dawn
+        target.moondrop != null -> if (target.moondrop.freedspMini) freedspMini else dawn
         target.gen1 != null -> dusk
         target.ktMicro != null -> when {
             target.ktMicro.globalGainUserSteps == null -> ktSwitchOnly
@@ -110,3 +122,6 @@ internal fun globalGainText(step: Int): String {
     val db = KtMicroCodec.globalGainDb(step)
     return if (db > 0) String.format(java.util.Locale.ROOT, "+%.1f", db) else String.format(java.util.Locale.ROOT, "%.1f", db + 0.0)
 }
+
+/** How the page words the FreeDSP Mini's active EQ slot: the number and, for the slots FreeDSP-Studio names (0-4 and 7), the name ("7 Custom EQ"); any other number stays the number. Display only. */
+internal fun freedspSlotText(slot: Int): String = FreeDspMiniCodec.slotName(slot)?.let { "$slot $it" } ?: slot.toString()

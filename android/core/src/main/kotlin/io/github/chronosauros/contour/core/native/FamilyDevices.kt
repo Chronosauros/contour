@@ -94,6 +94,48 @@ sealed interface FamilyState {
                 snapshot.bands.joinToString("\n") { b -> "${b.index + 1}  ${b.type?.name?.take(2) ?: "--"} ${b.frequencyHz} Hz ${"%.2f".format(java.util.Locale.ROOT, b.gainDb)} dB Q ${"%.3f".format(java.util.Locale.ROOT, b.q)}" }
     }
 
+    /**
+     * The Moondrop FreeDSP Mini (tester build, READ ONLY): what [MoondropSession.readMini] got, field by field as the unit said it: the firmware string, the active EQ slot (from the band replies; [slot] is 0 where none
+     * answered), the bands of that slot and the pre-gain; a field no reply gave is unknown. It is only shown and logged: never [importable], never ON DAC ([holds] and [matches] are false), nothing is written to the unit
+     * ([MoondropCatalog.FREEDSP_MINI_TESTER_WRITE]). The bands of a firmware voicing (slots 0-4) are shown as read, whatever their gain or type code.
+     */
+    data class FreeDspMini(val model: MoondropCatalog.Model, val read: FreeDspMiniCodec.Read) : FamilyState {
+        override val slot: Int get() = read.slot ?: 0
+        override val preampDb: Double? get() = read.preGain?.db
+        override val importable: Boolean get() = false
+        override fun holds(profile: Profile): Boolean = false
+        override fun matches(profile: Profile): Boolean = false
+        override fun importExact(): ImportedEq = throw IllegalStateException(MoondropCatalog.FREEDSP_MINI_READ_ONLY_TEXT + ": the unit's EQ is shown and logged only")
+        /** The two rows of the DAC page: the active slot when a band reply named it, the pre-gain in tenths of a dB when it answered ([FamilySettings]). */
+        override fun readings(): List<SettingReading> = listOfNotNull(
+            read.slot?.let { SettingReading(FamilySettings.EQ_INDEX, it, null) },
+            read.preGain?.let { SettingReading(FamilySettings.PRE_GAIN, (it.db * 10).roundToInt(), null) },
+        )
+        /** The short names of the types the Mini's bands carry; a code Contour has no name for is shown as `code N`. */
+        private fun typeText(b: FreeDspMiniCodec.Band): String = when (b.type) {
+            FilterType.PEAK -> "PK"; FilterType.LOW_SHELF -> "LS"; FilterType.HIGH_SHELF -> "HS"; FilterType.LOW_PASS -> "LP"; FilterType.HIGH_PASS -> "HP"
+            else -> "code ${b.nativeType}"
+        }
+        /**
+         * What was read, one plain line each, as the DAC page shows it to a tester who cannot read the log: firmware, the active slot with its full name, the pre-gain, then one line per band in order
+         * (`1  PK  105 Hz  +4.0 dB  Q 0.70`; a band that did not answer says `no reply`). Raw values as read: nothing is clamped or judged.
+         */
+        fun pageLines(): List<String> {
+            val loc = java.util.Locale.ROOT
+            return listOf(
+                "Firmware ${read.firmware?.text ?: "not read"}",
+                "EQ slot ${read.slot?.let { s -> FreeDspMiniCodec.slotName(s)?.let { "$s $it" } ?: "$s" } ?: "not read"}",
+                "Pre-gain ${read.preGain?.let { "${"%+.1f".format(loc, it.db)} dB" } ?: "not read"}",
+            ) + read.bands.mapIndexed { i, b ->
+                if (b == null) "${i + 1}  no reply"
+                else "${b.index + 1}  ${typeText(b)}  ${b.frequencyHz} Hz  ${"%+.1f".format(loc, b.gainDb)} dB  Q ${"%.2f".format(loc, b.q)}"
+            }
+        }
+        override fun describe(): String =
+            "${model.productName}: READ ONLY test build, firmware ${read.firmware?.text ?: "unknown"}, EQ slot ${read.slot?.let { s -> "$s" + (FreeDspMiniCodec.slotName(s)?.let { " ($it)" } ?: "") } ?: "unknown"}\n" +
+                pageLines().drop(2).joinToString("\n")
+    }
+
     /** A KT Micro DAC (Kiwi Ears Allegro Mini, JCally JM12): the five bands, the EQ switch, the digital DAC gain, and for a model with Global Gain the register (raw, read only) when it answered. */
     data class Allegro(val model: KtMicroCatalog.Model, val snapshot: KtMicroCodec.Snapshot, val globalGain: KtMicroCodec.RegisterValue? = null) : FamilyState {
         override val slot: Int get() = 0
@@ -251,6 +293,9 @@ object FamilyDevices {
     /** What HOLD TO SEND says on a read-only DAC. */
     val READ_ONLY_LABEL: String get() = if (Proven.channel == BuildChannel.PERF) "READ ONLY - NOT VERIFIED" else "READ ONLY"
 
+    /** What HOLD TO SEND says on [target] when it is read only: the FreeDSP Mini tester build is read only by design in every build, so it never says "NOT VERIFIED". */
+    fun readOnlyLabel(target: DeviceTarget): String = if (target.moondrop?.writesBlocked == true) "READ ONLY" else READ_ONLY_LABEL
+
     /** The Moondrop Echo-A, read through [WalkPlaySession] with the Micro SchemeNo11 profile: the version, slot, every band and the preamp. No session object
      * leaves here; the write (only when [WalkPlayProfiles.ECHO_A_HARDWARE_VERIFIED] is true) is the app's own session in `DacClient.writeProfile`. */
     fun readEchoA(port: NativePort): FamilyState.EchoA {
@@ -260,7 +305,9 @@ object FamilyDevices {
 
     /** Why HOLD TO SEND may not write [target] given what was last read ([state], null = nothing read); empty = it may. The profile's own limits are [DeviceTarget.issues]. */
     fun stateIssues(target: DeviceTarget, state: FamilyState?): List<String> = when (target.family) {
-        DeviceTarget.Family.MOONDROP -> if (state is FamilyState.Dawn) emptyList() else listOf(READ_FIRST)
+        DeviceTarget.Family.MOONDROP ->
+            if (target.moondrop?.writesBlocked == true) listOf(target.readOnlyIssue) // the FreeDSP Mini tester build: nothing is written, whatever was read
+            else if (state is FamilyState.Dawn) emptyList() else listOf(READ_FIRST)
         DeviceTarget.Family.KT_MICRO ->
             if (target.readOnly) listOf(DeviceTarget.READ_ONLY_ISSUE.format(target.caps.name))
             else if (state is FamilyState.Allegro) listOfNotNull(state.snapshot.writeBlocker) else listOf(READ_FIRST)

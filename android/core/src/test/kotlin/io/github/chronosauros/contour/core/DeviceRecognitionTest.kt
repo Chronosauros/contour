@@ -55,14 +55,14 @@ class DeviceRecognitionTest {
         val xml = java.io.File(requireNotNull(System.getProperty("contour.usbFilterXml"))).readText()
         val listed = Regex("""<usb-device\s+vendor-id="(\d+)"\s+product-id="(\d+)"""").findAll(xml)
             .map { it.groupValues[1].toInt() to it.groupValues[2].toInt() }.toList()
-        val added = listOf(0x35D8 to 0x011D, 0x31B2 to 0x0111, 0x3302 to 0x12C5, 0x2972 to 0x0102, 0x35D8 to 0x1499, 0x0A12 to 0x4007, 0x2972 to 0x0151, 0x3302 to 0x20E3, 0x3302 to 0x4381, 0x3302 to 0x4325) // Dawn Pro 2, Allegro Mini, Echo-A, FiiO JA11, Moondrop DUSK-SP, SnowSky RETRO NANO, FiiO JIEZI, Kiwi Ears AD1, Tanchjim Space II, EPZ TP65 (experimental tester entry)
+        val added = listOf(0x35D8 to 0x011D, 0x31B2 to 0x0111, 0x3302 to 0x12C5, 0x2972 to 0x0102, 0x35D8 to 0x1499, 0x0A12 to 0x4007, 0x2972 to 0x0151, 0x3302 to 0x20E3, 0x3302 to 0x4381, 0x3302 to 0x4325, 0x35D8 to 0x98D4) // Dawn Pro 2, Allegro Mini, Echo-A, FiiO JA11, Moondrop DUSK-SP, SnowSky RETRO NANO, FiiO JIEZI, Kiwi Ears AD1, Tanchjim Space II, EPZ TP65 (experimental tester entry), Moondrop FreeDSP Mini (read-only tester entry)
         assertEquals(expected.keys.toList() + added, listed)
         assertEquals(GeneratedDevices.USB_IDS.map { it.vendorId to it.productId }.distinct(), listed) // one line per VID:PID: the JM12 shares the Allegro Mini's
         for ((vid, pid) in added) assertNull(DeviceTarget.find(vid, pid), "%04X:%04X is not in the 1.5 list".format(vid, pid))
     }
 
-    /** `findDevice` knows all eighteen records; the Dawn Pro 2, the Allegro Mini, the JM12 (the last two share 31B2:0111), the JA11, the DUSK-SP, the RETRO NANO, the JIEZI, the AD1, the Space II and the TP65 need their exact USB product name, the Echo-A does not. */
-    @Test fun `findDevice recognises the eighteen records, the JM12 and the Allegro Mini told apart by the USB name`() {
+    /** `findDevice` knows all nineteen records; the Dawn Pro 2, the Allegro Mini, the JM12 (the last two share 31B2:0111), the JA11, the DUSK-SP, the RETRO NANO, the JIEZI, the AD1, the Space II and the TP65 need their exact USB product name, the Echo-A and the FreeDSP Mini (VID and PID only) do not. */
+    @Test fun `findDevice recognises the nineteen records, the JM12 and the Allegro Mini told apart by the USB name`() {
         expected.forEach { (id, target) -> assertEquals(target, DeviceTarget.findDevice(id.first, id.second, null)) }
         assertEquals(DeviceTarget.DAWN_PRO_2, DeviceTarget.findDevice(0x35D8, 0x011D, GeneratedDevices.MOONDROP_DAWN_PRO_2.productName))
         assertEquals(DeviceTarget.ALLEGRO_MINI, DeviceTarget.findDevice(0x31B2, 0x0111, GeneratedDevices.KIWI_EARS_ALLEGRO_MINI.productName))
@@ -75,7 +75,7 @@ class DeviceRecognitionTest {
         assertNull(DeviceTarget.findDevice(0x31B2, 0x0112, "KT02H20 HIFI Audio")); assertNull(DeviceTarget.find(0x31B2, 0x0111))
         // Every identity of the records resolves to its own target, and no two records resolve to one target.
         val targets = GeneratedDevices.USB_IDS.map { u -> DeviceTarget.findDevice(u.vendorId, u.productId, u.productName) ?: error("${u.recordId} is not recognised") }
-        assertEquals(18, targets.toSet().size)
+        assertEquals(19, targets.toSet().size)
         assertEquals(DeviceTarget.MOONDROP_DUSK, DeviceTarget.findDevice(0x35D8, 0x1499, "DUSK-SP")); assertNull(DeviceTarget.findDevice(0x35D8, 0x1499, null))
         assertEquals(DeviceTarget.RETRO_NANO, DeviceTarget.findDevice(0x0A12, 0x4007, "RETRO NANO")); assertNull(DeviceTarget.findDevice(0x0A12, 0x4007, null)); assertNull(DeviceTarget.findDevice(0x0A12, 0x4007, "Retro Nano"))
         assertEquals(DeviceTarget.KIWI_EARS_AD1, DeviceTarget.findDevice(0x3302, 0x20E3, "AD1")); assertNull(DeviceTarget.findDevice(0x3302, 0x20E3, null)); assertNull(DeviceTarget.find(0x3302, 0x20E3))
@@ -84,6 +84,14 @@ class DeviceRecognitionTest {
         assertEquals(DeviceTarget.EPZ_TP65, DeviceTarget.findDevice(0x3302, 0x4325, "TP65")); assertNull(DeviceTarget.findDevice(0x3302, 0x4325, null)); assertNull(DeviceTarget.find(0x3302, 0x4325))
         assertNull(DeviceTarget.findDevice(0x3302, 0x4325, "tp65")); assertNull(DeviceTarget.findDevice(0x3302, 0x4325, "TANCHJIM-SPACE II")); assertNull(DeviceTarget.findDevice(0x3302, 0x4381, "TP65"))
         assertEquals(DeviceTarget.FIIO_JIEZI, DeviceTarget.findDevice(0x2972, 0x0151, "JadeAudio JIEZI")); assertNull(DeviceTarget.findDevice(0x2972, 0x0151, null)); assertNull(DeviceTarget.findDevice(0x2972, 0x0151, "JadeAudio JA11"))
+        // The FreeDSP Mini (read-only tester entry): VID 35D8 and PID 98D4 alone, whatever the product string says (it is logged, not trusted); another PID, another VID and the 1.5 list match nothing
+        for (name in listOf(null, "FreeDSP Mini", "MOONDROP FreeDSP Mini", "FREEDSP MINI", "")) assertEquals(DeviceTarget.FREEDSP_MINI, DeviceTarget.findDevice(0x35D8, 0x98D4, name), "name $name")
+        assertNull(DeviceTarget.find(0x35D8, 0x98D4)); assertNull(DeviceTarget.findDevice(0x35D8, 0x98D5, "FreeDSP Mini")); assertNull(DeviceTarget.findDevice(0x3302, 0x98D4, "FreeDSP Mini"))
+        assertEquals(io.github.chronosauros.contour.core.native.MoondropCatalog.freedspMini, io.github.chronosauros.contour.core.native.MoondropCatalog.find(0x35D8, 0x98D4, "MOONDROP FreeDSP Mini"))
+        // the Dawn Pro 2 is recognised as it was: its exact name only, and the Mini's names do not reach it
+        assertEquals(DeviceTarget.DAWN_PRO_2, DeviceTarget.findDevice(0x35D8, 0x011D, "DAWN PRO2")); assertNull(DeviceTarget.findDevice(0x35D8, 0x011D, "FreeDSP Mini")); assertNull(DeviceTarget.findDevice(0x35D8, 0x011D, "DAWN PRO 2"))
+        assertEquals(io.github.chronosauros.contour.core.native.MoondropCatalog.dawnPro2, io.github.chronosauros.contour.core.native.MoondropCatalog.find(0x35D8, 0x011D, "DAWN PRO2"))
+        assertNull(io.github.chronosauros.contour.core.native.MoondropCatalog.find(0x35D8, 0x011D, null))
     }
 
     /** The TP65 tester entry since 1.8.1-tp65test3: written in every build (its own sequence, WalkPlaySessionTest); its preamp read is `80 03 01` (the form read on a unit), every other WalkPlay DAC keeps `80 03 00`. */

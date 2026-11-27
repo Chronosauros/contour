@@ -49,6 +49,13 @@ notes, and the devices and ideas for later; nothing new is enabled until it is c
 - Done in 1.8.1: DRE (OFF, ON) and VOLUME (the DAC's own volume, 0-60, as in the Tanchjim app 2.5.8.1), read back and kept after unplugging; checked on a phone on firmware 1.3, the effect not measured on the rig.
 - Not yet: a UAC 1.0 / 2.0 switch (no frame is known; the Tanchjim app 2.5.8.1 does not offer it) and reset.
 
+## EPZ TP65 (WalkPlay SchemeNo16)
+- Supported since Contour 1.8.2, tested by a TP65 owner on their unit with test versions (firmware 0.4, November 2026); not on a test rig and not by the developer, who has no TP65, so nothing was measured. USB `3302:4325`, the same protocol family as the SPACE II. 10 bands, PEAK, LOW SHELF and HIGH SHELF, -10..+10 dB, Q 0.1-10, 20-20000 Hz: the WalkPlay catalog's ranges for this chip family; on the unit PEAK was written from -6 to +1 dB and both shelves at -6 dB. Every band is read back after a send, and the EQ stayed after unplugging on the tested unit. One EQ, no slots.
+- Protocol: details in `research/protocol/PROTOCOL.md`.
+- The preamp is read only (0 dB on the tested unit): a profile whose preamp is not 0 dB is not sent (AUTO with any boost, or an imported file with a negative preamp), and Contour says why.
+- No DAC page (no DAC settings), LOW PASS, HIGH PASS or reset.
+- Left: the preamp write, and a measurement on a test rig.
+
 ## High pass, low pass, band pass, all pass
 - Done in 1.6.0: HIGH PASS, LOW PASS, BAND PASS and ALL PASS on the FiiO KA15, FiiO K13 R2R, SnowSky Melody and Tiny A (FiiO type bytes PK 0, LS 1, HS 2, BP 3, LP 4, HP 5, AP 6, captured from FiiO's web app on 14.10.2026); LOW PASS and HIGH PASS on the CrinEar Protocol Micro, Moondrop Dawn Pro 2 and Echo-A. Contour keeps the gain of a pass filter at 0 dB and refuses to import one that the DAC holds with a gain. Evidence table: research/filter-support-2026-10-14/FINDINGS.md.
 - Done in 1.7.0: LOW PASS and HIGH PASS on the CrinEar Protocol Max and the FiiO JadeAudio JA11, each measured on a test rig.

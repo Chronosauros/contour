@@ -1,0 +1,100 @@
+{
+  "id": "moondrop-freedsp-mini",
+  "name": "Moondrop FreeDSP Mini",
+  "shortName": "FreeDSP Mini",
+  "productName": "FreeDSP Mini",
+  "vendor": "Moondrop",
+  "status": "records-only",
+  "usb": {
+    "vid": "0x35D8",
+    "pid": "0x98D4",
+    "productName": "FreeDSP Mini",
+    "hidInterface": "unknown",
+    "matchByName": false,
+    "recognisedBy": "findDevice",
+    "listOrder": 19,
+    "notes": [
+      "EXPERIMENTAL READ-ONLY TESTER ENTRY: nothing of this record was measured on a Contour unit. It exists so that one owner of a FreeDSP Mini can plug it in and let Contour READ it (identity, HID report descriptor, firmware, active EQ slot, the eight bands of that slot, pre-gain) and share the ContourUsb log (https://github.com/Chronosauros/contour/issues/2). Not one write frame is sent to it: MoondropCatalog.FREEDSP_MINI_TESTER_WRITE is false. It is not a supported device.",
+      "found by VID 0x35D8 and PID 0x98D4 only, whatever product string it reports (FreeDSP-Studio matches by VID and PID too, tools/app/src/dsp2.rs:233); the product string is not known for certain: the issue form says \"MOONDROP FreeDSP Mini\", devicePEQ and FreeDSP-Studio key on \"FreeDSP Mini\" (devicePEQ usbDeviceConfig.js:863, https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/usbDeviceConfig.js#L863); this build logs the manufacturer and product strings, bcdDevice, the interfaces and the HID report descriptor",
+      "the Dawn Pro 2's closest relative on the same Moondrop gen-2 protocol (report 0x4B, 64 bytes, frame after the report id: OP CMD LEN payload; OP read 0x80, write 0x01; values Q8.8 int16 little-endian), but its read frames are FreeDSP-Studio's Mini frames, not the Dawn's: version 80 0C 01 00, band 80 09 03 00 i 00 (LEN 0x03), pre-gain 80 23 00 (tools/app/src/dsp2.rs:483-499, 501-540, 625-640); the Dawn's band query has LEN 0x18 and is not used for the Mini",
+      "reply layout (report id excluded, FreeDSP-Studio dsp2.rs:47-58): band index at 4, frequency u16 at 27, Q Q8.8 at 29, gain Q8.8 at 31, type at 33, active EQ slot at 35 (OFF_SLOT, read from the band reply: dsp2.rs:501-520); the slot is the same byte Contour's Dawn code calls the bank",
+      "never queried in this build: 80 0F 00 (EQ index) and 80 03 .. (global gain): the Mini's answers to them are not documented; never sent: any frame with OP 0x01, the flash clear 01 05 and the firmware entry 01 FF",
+      "FreeDSP-Studio's profile for it (dsp2.rs:231-256, tested: true by its author, who owns a Mini): 8 bands, +-12 dB, Q 0.1-10, types PK, LSQ (code 1) and HSQ (code 3), a real 0.1 dB preamp register (PRE_GAIN 0x23), five firmware voicings in slots 0-4 (Default, Bass Enhance, Bass Enhance+, Space, Treble Enhance) and the editable bank in slot 7 (Custom EQ); devicePEQ lists it with peq8Band12dBFullShelves (usbDeviceConfig.js:863-869)",
+      "the Mini rejects a band write with a short LEN 0x18 (the Protocol Micro takes it): the band frame needs LEN 33 (FreeDSP-Studio dsp2.rs:727-729); the Contour build that reads it writes none",
+      "no source states the Mini's frequency range, shelf Q convention or pre-gain range: 20-20000 Hz is the general limit of the catalogs (FreeDSP-Studio gives no frequency limit for it) and 96 kHz is FreeDSP-Studio's gen-2 coefficient rate (dsp2.rs:60-63), both only so that the record is complete; the pre-gain range and the shelf Q scale are \"unknown\" (the code holds placeholders in core/devices/PendingRecords.kt that no frame uses); shelves and pass filters are not offered"
+    ]
+  },
+  "family": "moondrop",
+  "driver": {
+    "reportId": 75,
+    "reportBytes": 64,
+    "peqBank": 7,
+    "enableAfterWrite": "unknown",
+    "preampRegister": "unknown",
+    "globalGainRegister": "unknown",
+    "preGainRegister": "0x23",
+    "writeLenByte": 33,
+    "eqIndexRegister": "0x0F",
+    "saveEqCommand": "0x01",
+    "saveOffsetsCommand": "unknown",
+    "forbiddenCommands": ["01 05 (flash clear)", "01 FF (firmware upgrade)", "every frame with OP 0x01 while MoondropCatalog.FREEDSP_MINI_TESTER_WRITE is false"],
+    "designRateHz": 96000
+  },
+  "peq": {
+    "bands": 8,
+    "fixedBandCount": "unknown",
+    "freqHz": [20, 20000],
+    "gainDb": [-12, 12],
+    "q": [0.1, 10],
+    "types": { "PEAK": 2 },
+    "heldTypes": { "LOW_SHELF": 1, "HIGH_SHELF": 3 },
+    "shelfQScale": "unknown",
+    "shelfForm": "unknown",
+    "emulation": null
+  },
+  "preamp": {
+    "present": true,
+    "db": "unknown",
+    "step": 0.1,
+    "wholeDb": false,
+    "registerOffsetDb": "unknown",
+    "globalGain": null
+  },
+  "slots": {
+    "user": [7],
+    "declaredWritable": [7],
+    "writableIndexes": [7],
+    "stock": [0, 1, 2, 3, 4],
+    "bypass": null,
+    "labels": { "0": "Default", "1": "Bass Enhance", "2": "Bass Enhance+", "3": "Space", "4": "Treble Enhance", "7": "Custom EQ" },
+    "picker": false,
+    "names": "none"
+  },
+  "pacing": {
+    "writeGapMs": 25,
+    "consumeEchoes": "unknown",
+    "checksum": false,
+    "needsAudioStream": "unknown",
+    "probeGapMs": null,
+    "afterSelectMs": 150,
+    "afterSaveMs": 200,
+    "opGapMs": 50
+  },
+  "readback": { "qSlack": "unknown" },
+  "settings": [],
+  "info": [],
+  "preview": {},
+  "reset": { "offered": false, "src": "nothing read from a Mini by Contour; 01 05 and 01 FF are never sent, and this build sends no OP 0x01 frame at all" },
+  "hwVolume": { "inScope": "unknown", "src": "nothing recorded about a vendor volume control or a UAC Feature Unit of the Mini" },
+  "upstream": {
+    "sourceUrl": "https://github.com/EffectiveEquivalent/FreeDSP-Studio",
+    "source": "tools/app/src/dsp2.rs (MIT, (c) 2026 EffectiveEquivalent), upstream HEAD 1b42f63: Mini profile 231-256, frame() 336-344, field offsets 47-58, read_version 483-499, read_slot and band_reply 501-520, read_band 532-540, read_preamp 625-640, test note 727-729",
+    "devicePeqUrl": "https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/usbDeviceConfig.js#L863",
+    "status": "beta-unverified",
+    "experimental": true,
+    "evidenceCaveats": [
+      "Two catalog entries (FreeDSP-Studio, whose author owns a Mini and marked the profile tested, and devicePEQ) and nothing measured with Contour: the frames, the reply layout, the slot names and the ranges are theirs, not read from a Mini by this app.",
+      "The unit's USB product string, its HID interface number, its report sizes and its answers to the three read frames are unknown until a tester's ContourUsb log shows them."
+    ]
+  }
+}

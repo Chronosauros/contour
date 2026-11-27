@@ -39,7 +39,8 @@
             "2972:0151",
             "3302:20E3",
             "3302:4381",
-            "3302:4325"
+            "3302:4325",
+            "35D8:98D4"
         ],
         "findDevice": [
             "3302:C20F name=null -> MICRO",
@@ -99,7 +100,11 @@
             "3302:4325 name=TP65 -> EPZ_TP65",
             "3302:4325 name=tp65 -> null",
             "3302:4325 name=null -> null",
-            "3302:4326 name=TP65 -> null"
+            "3302:4326 name=TP65 -> null",
+            "35D8:98D4 name=FreeDSP Mini -> MOONDROP_FREEDSP_MINI",
+            "35D8:98D4 name=MOONDROP FreeDSP Mini -> MOONDROP_FREEDSP_MINI",
+            "35D8:98D4 name=null -> MOONDROP_FREEDSP_MINI",
+            "35D8:98D5 name=FreeDSP Mini -> null"
         ],
         "walkplayConstants": {
             "vendorId": 13058,
@@ -50123,7 +50128,7 @@
                             "preampDb": null
                         },
                         "issues": [
-                            "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -3 dB. Reduce the boosts or set the preamp to 0 dB."
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                         ],
                         "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - EDIT BAND",
@@ -50138,7 +50143,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -3 dB. Reduce the boosts or set the preamp to 0 dB."
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                             ]
                         }
                     },
@@ -50151,7 +50156,7 @@
                             "preampDb": -30.0
                         },
                         "issues": [
-                            "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -30 dB. Reduce the boosts or set the preamp to 0 dB."
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -30 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                         ],
                         "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - EDIT BAND",
@@ -50170,7 +50175,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -30 dB. Reduce the boosts or set the preamp to 0 dB."
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -30 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                             ]
                         }
                     },
@@ -50320,7 +50325,7 @@
                             "preampDb": -3.47
                         },
                         "issues": [
-                            "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -4 dB. Reduce the boosts or set the preamp to 0 dB."
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -4 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                         ],
                         "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - EDIT BAND",
@@ -50339,7 +50344,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -4 dB. Reduce the boosts or set the preamp to 0 dB."
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -4 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                             ]
                         }
                     },
@@ -50352,7 +50357,7 @@
                             "preampDb": null
                         },
                         "issues": [
-                            "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -10 dB. Reduce the boosts or set the preamp to 0 dB."
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -10 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                         ],
                         "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - EDIT BAND",
@@ -50367,7 +50372,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -10 dB. Reduce the boosts or set the preamp to 0 dB."
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -10 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                             ]
                         }
                     },
@@ -50937,7 +50942,7 @@
                             "preampDb": -3.0
                         },
                         "issues": [
-                            "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -3 dB. Reduce the boosts or set the preamp to 0 dB."
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                         ],
                         "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - EDIT BAND",
@@ -50956,7 +50961,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -3 dB. Reduce the boosts or set the preamp to 0 dB."
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                             ]
                         }
                     },
@@ -50969,7 +50974,7 @@
                             "preampDb": -3.0
                         },
                         "issues": [
-                            "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -3 dB. Reduce the boosts or set the preamp to 0 dB."
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                         ],
                         "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - EDIT BAND",
@@ -50988,7 +50993,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -3 dB. Reduce the boosts or set the preamp to 0 dB."
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                             ]
                         }
                     },
@@ -51161,7 +51166,7 @@
                             "preampDb": -2.0
                         },
                         "issues": [
-                            "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -2 dB. Reduce the boosts or set the preamp to 0 dB."
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -2 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                         ],
                         "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - EDIT BAND",
@@ -51180,7 +51185,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -2 dB. Reduce the boosts or set the preamp to 0 dB."
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -2 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                             ]
                         }
                     },
@@ -51354,7 +51359,7 @@
                             "preampDb": null
                         },
                         "issues": [
-                            "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -4 dB. Reduce the boosts or set the preamp to 0 dB."
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -4 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                         ],
                         "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - EDIT BAND",
@@ -51369,7 +51374,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -4 dB. Reduce the boosts or set the preamp to 0 dB."
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -4 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                             ]
                         }
                     },
@@ -51383,7 +51388,7 @@
                             "preampDb": -2.5
                         },
                         "issues": [
-                            "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -3 dB. Reduce the boosts or set the preamp to 0 dB."
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                         ],
                         "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - EDIT BAND",
@@ -51402,7 +51407,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -3 dB. Reduce the boosts or set the preamp to 0 dB."
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                             ]
                         }
                     },
@@ -51417,7 +51422,7 @@
                             "preampDb": null
                         },
                         "issues": [
-                            "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -14 dB. Reduce the boosts or set the preamp to 0 dB."
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -14 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                         ],
                         "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - EDIT BAND",
@@ -51432,7 +51437,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -14 dB. Reduce the boosts or set the preamp to 0 dB."
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -14 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                             ]
                         }
                     },
@@ -51584,7 +51589,7 @@
                             "preampDb": null
                         },
                         "issues": [
-                            "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -3 dB. Reduce the boosts or set the preamp to 0 dB."
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                         ],
                         "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - EDIT BAND",
@@ -51599,7 +51604,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -3 dB. Reduce the boosts or set the preamp to 0 dB."
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                             ]
                         }
                     },
@@ -51621,7 +51626,7 @@
                             "preampDb": null
                         },
                         "issues": [
-                            "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -3 dB. Reduce the boosts or set the preamp to 0 dB."
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                         ],
                         "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - EDIT BAND",
@@ -51636,7 +51641,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -3 dB. Reduce the boosts or set the preamp to 0 dB."
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                             ]
                         }
                     },
@@ -51658,7 +51663,7 @@
                             "preampDb": -6.0
                         },
                         "issues": [
-                            "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -6 dB. Reduce the boosts or set the preamp to 0 dB."
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -6 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                         ],
                         "blockLabel": "PREAMP OUT OF RANGE",
                         "headline": "INVALID EQ - EDIT BAND",
@@ -51677,7 +51682,7 @@
                         "plan": {
                             "status": "rejected",
                             "issues": [
-                                "Contour does not write the EPZ TP65 preamp yet, so a send keeps it at 0 dB; this EQ asks for -6 dB. Reduce the boosts or set the preamp to 0 dB."
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -6 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
                             ]
                         }
                     },
@@ -51800,6 +51805,1274 @@
                                 "11 enabled bands; EPZ TP65 has 10"
                             ]
                         }
+                    }
+                }
+            }
+        },
+        "MOONDROP_FREEDSP_MINI": {
+            "family": "MOONDROP",
+            "caps": {
+                "bands": 8,
+                "coefficientRateHz": 96000.0,
+                "freqMaxHz": 20000.0,
+                "freqMinHz": 20.0,
+                "gainMaxDb": 12.0,
+                "gainMinDb": -12.0,
+                "name": "Moondrop FreeDSP Mini",
+                "peakQScale": 1.0,
+                "preampWholeDb": false,
+                "productId": 39124,
+                "qMax": 10.0,
+                "qMin": 0.1,
+                "shelfForm": "SLOPE",
+                "shelfQScale": 1.0,
+                "types": [
+                    "PEAK"
+                ],
+                "vendorId": 13784
+            },
+            "flags": {
+                "isFamily": true,
+                "readOnly": true,
+                "readOnlyInRelease": true,
+                "readOnlyInReview": true,
+                "hasPreamp": true,
+                "preampLabel": "PRE GAIN",
+                "stable": false,
+                "native": true,
+                "experimental": true,
+                "supportsAb": false,
+                "preampMin": -30.0,
+                "preampMax": 0.0,
+                "preampStep": 0.1,
+                "destinationSlot": null,
+                "settingsCount": 2,
+                "infoCount": 0
+            },
+            "settings": [
+                {
+                    "id": "eq-index",
+                    "label": "EQ INDEX",
+                    "kind": "LEVEL",
+                    "evidence": "VB",
+                    "options": [],
+                    "shortOptions": [],
+                    "min": 0,
+                    "max": 15,
+                    "step": 1,
+                    "unit": "",
+                    "group": 0,
+                    "section": null,
+                    "readCommand": null,
+                    "read": {
+                        "type": "WalkPlayGet",
+                        "command": 9
+                    },
+                    "readProbe": [
+                        "a6=0 -> null",
+                        "a6=1 -> null",
+                        "a6=2 -> null",
+                        "a6=3 -> null",
+                        "a6=4 -> null",
+                        "a6=5 -> null",
+                        "a6=6 -> null",
+                        "a6=7 -> null",
+                        "a6=59 -> null",
+                        "a6=60 -> null",
+                        "a6=61 -> null",
+                        "a6=119 -> null",
+                        "a6=120 -> null",
+                        "a6=121 -> null",
+                        "a6=200 -> null",
+                        "a6=255 -> null",
+                        "a6=0,a7=3 -> null",
+                        "a6=3,a7=0 -> null",
+                        "a6=2,a7=2 -> null",
+                        "a6=0,a7=12 -> null",
+                        "a6=12,a7=0 -> null",
+                        "a6=255,a7=255 -> null"
+                    ],
+                    "writeCommand": null,
+                    "writeVerified": false,
+                    "maxRule": null,
+                    "longChoice": false
+                },
+                {
+                    "id": "pre-gain",
+                    "label": "PRE GAIN",
+                    "kind": "LEVEL",
+                    "evidence": "VB",
+                    "options": [],
+                    "shortOptions": [],
+                    "min": -300,
+                    "max": 0,
+                    "step": 1,
+                    "unit": "dB",
+                    "group": 0,
+                    "section": null,
+                    "readCommand": null,
+                    "read": {
+                        "type": "WalkPlayGet",
+                        "command": 35
+                    },
+                    "readProbe": [
+                        "a6=0 -> null",
+                        "a6=1 -> null",
+                        "a6=2 -> null",
+                        "a6=3 -> null",
+                        "a6=4 -> null",
+                        "a6=5 -> null",
+                        "a6=6 -> null",
+                        "a6=7 -> null",
+                        "a6=59 -> null",
+                        "a6=60 -> null",
+                        "a6=61 -> null",
+                        "a6=119 -> null",
+                        "a6=120 -> null",
+                        "a6=121 -> null",
+                        "a6=200 -> null",
+                        "a6=255 -> null",
+                        "a6=0,a7=3 -> null",
+                        "a6=3,a7=0 -> null",
+                        "a6=2,a7=2 -> null",
+                        "a6=0,a7=12 -> null",
+                        "a6=12,a7=0 -> null",
+                        "a6=255,a7=255 -> null"
+                    ],
+                    "writeCommand": null,
+                    "writeVerified": false,
+                    "maxRule": null,
+                    "longChoice": false
+                }
+            ],
+            "qRange": {
+                "PEAK": "0.1..10.0",
+                "LOW_SHELF": "0.1..10.0",
+                "HIGH_SHELF": "0.1..10.0",
+                "LOW_PASS": "0.1..10.0",
+                "HIGH_PASS": "0.1..10.0",
+                "BAND_PASS": "0.1..10.0",
+                "ALL_PASS": "0.1..10.0"
+            },
+            "profileSpec": {
+                "bands": 8,
+                "gain": "-12.0..12.0",
+                "q": "0.1..10.0",
+                "freq": "20.0..20000.0",
+                "offered": [
+                    "PEAK"
+                ],
+                "preamp": "-30.0..0.0"
+            },
+            "model": {
+                "config": {
+                    "bandCount": 8,
+                    "freedspMini": true,
+                    "globalGainMaxDb": 0.0,
+                    "globalGainMinDb": 0.0,
+                    "hardwareVerified": false,
+                    "maxFrequencyHz": 20000.0,
+                    "maxGainDb": 12.0,
+                    "maxQ": 10.0,
+                    "minFrequencyHz": 20.0,
+                    "minGainDb": -12.0,
+                    "minQ": 0.1,
+                    "preGainMaxDb": 0.0,
+                    "preGainMinDb": -30.0,
+                    "productIds": [
+                        39124
+                    ],
+                    "productName": "FreeDSP Mini",
+                    "reportBytes": 64,
+                    "reportId": 75,
+                    "shelfForm": "SLOPE",
+                    "shelfQScale": 1.0,
+                    "writableIndex": 7,
+                    "writableIndexes": [
+                        7
+                    ]
+                },
+                "writesBlocked": true,
+                "testerWriteFlag": false,
+                "nativeTypes": [
+                    1,
+                    2,
+                    3,
+                    4,
+                    5
+                ],
+                "offered": [
+                    "PEAK"
+                ],
+                "bandCount": 8,
+                "limits": {
+                    "gain": "-12.0..12.0",
+                    "q": "0.1..10.0",
+                    "freq": "20.0..20000.0",
+                    "preGain": "-30.0..0.0",
+                    "globalGain": "0.0..0.0"
+                },
+                "reportId": 75,
+                "reportBytes": 64,
+                "writableIndex": 7,
+                "writableIndexes": [
+                    7
+                ],
+                "slotNames": {
+                    "0": "Default",
+                    "1": "Bass Enhance",
+                    "2": "Bass Enhance+",
+                    "3": "Space",
+                    "4": "Treble Enhance",
+                    "7": "Custom EQ"
+                },
+                "readOnlyText": "Read-only test build: nothing is written to the FreeDSP Mini",
+                "readQueries": [
+                    "800c0100",
+                    "800903000000",
+                    "800903000100",
+                    "800903000200",
+                    "800903000300",
+                    "800903000400",
+                    "800903000500",
+                    "800903000600",
+                    "800903000700",
+                    "802300"
+                ]
+            },
+            "benchRead": {
+                "constructed": "a FreeDSP-layout unit built by FakeFreeDspMini; not read from a Mini",
+                "sentFrames": [
+                    "800c0100",
+                    "800903000000",
+                    "800903000100",
+                    "800903000200",
+                    "800903000300",
+                    "800903000400",
+                    "800903000500",
+                    "800903000600",
+                    "800903000700",
+                    "802300"
+                ],
+                "firmware": "0.7",
+                "slot": 7,
+                "preGain": -3.0,
+                "unanswered": [],
+                "bands": [
+                    "0 slot=7 PEAK 20 Hz q256=256 gain256=0 code=2",
+                    "1 slot=7 PEAK 60 Hz q256=256 gain256=0 code=2",
+                    "2 slot=7 PEAK 200 Hz q256=256 gain256=0 code=2",
+                    "3 slot=7 PEAK 600 Hz q256=256 gain256=768 code=2",
+                    "4 slot=7 PEAK 1000 Hz q256=256 gain256=0 code=2",
+                    "5 slot=7 PEAK 5400 Hz q256=256 gain256=0 code=2",
+                    "6 slot=7 PEAK 14000 Hz q256=256 gain256=0 code=2",
+                    "7 slot=7 PEAK 20000 Hz q256=256 gain256=0 code=2"
+                ],
+                "log": [
+                    "FreeDSP Mini read: report 0x4b, input 63, output 63 payload bytes",
+                    "FreeDSP Mini RX version: 80 0c 03 30 2e 37 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+                    "FreeDSP Mini RX band 0: 80 09 21 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 14 00 00 01 00 00 02 00 07 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+                    "FreeDSP Mini RX band 1: 80 09 21 00 01 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 3c 00 00 01 00 00 02 00 07 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+                    "FreeDSP Mini RX band 2: 80 09 21 00 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 c8 00 00 01 00 00 02 00 07 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+                    "FreeDSP Mini RX band 3: 80 09 21 00 03 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 58 02 00 01 00 03 02 00 07 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+                    "FreeDSP Mini RX band 4: 80 09 21 00 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 e8 03 00 01 00 00 02 00 07 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+                    "FreeDSP Mini RX band 5: 80 09 21 00 05 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 18 15 00 01 00 00 02 00 07 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+                    "FreeDSP Mini RX band 6: 80 09 21 00 06 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 b0 36 00 01 00 00 02 00 07 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+                    "FreeDSP Mini RX band 7: 80 09 21 00 07 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 20 4e 00 01 00 00 02 00 07 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+                    "FreeDSP Mini RX pre-gain: 80 23 02 00 fd 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00",
+                    "FreeDSP Mini read: firmware 0.7, active slot 7 (Custom EQ), pre-gain -3.0 dB (raw -768), 8/8 bands",
+                    "FreeDSP Mini band 0: type code 2 (PEAK), 20 Hz, gain 0.0 dB (raw 0), Q 1.0 (raw 256), slot 7",
+                    "FreeDSP Mini band 1: type code 2 (PEAK), 60 Hz, gain 0.0 dB (raw 0), Q 1.0 (raw 256), slot 7",
+                    "FreeDSP Mini band 2: type code 2 (PEAK), 200 Hz, gain 0.0 dB (raw 0), Q 1.0 (raw 256), slot 7",
+                    "FreeDSP Mini band 3: type code 2 (PEAK), 600 Hz, gain 3.0 dB (raw 768), Q 1.0 (raw 256), slot 7",
+                    "FreeDSP Mini band 4: type code 2 (PEAK), 1000 Hz, gain 0.0 dB (raw 0), Q 1.0 (raw 256), slot 7",
+                    "FreeDSP Mini band 5: type code 2 (PEAK), 5400 Hz, gain 0.0 dB (raw 0), Q 1.0 (raw 256), slot 7",
+                    "FreeDSP Mini band 6: type code 2 (PEAK), 14000 Hz, gain 0.0 dB (raw 0), Q 1.0 (raw 256), slot 7",
+                    "FreeDSP Mini band 7: type code 2 (PEAK), 20000 Hz, gain 0.0 dB (raw 0), Q 1.0 (raw 256), slot 7"
+                ]
+            },
+            "profiles": {
+                "one-peak-zero-manual": {
+                    "profile": {
+                        "name": "one-peak-zero-manual",
+                        "bands": [
+                            "b0 PEAK 1000.0 Hz 0.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": 0.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": 0.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "one-peak-boost-auto": {
+                    "profile": {
+                        "name": "one-peak-boost-auto",
+                        "bands": [
+                            "b0 PEAK 1000.0 Hz 3.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": null
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": null,
+                    "shownPreamp": -3.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "one-peak-cut-preamp-min": {
+                    "profile": {
+                        "name": "one-peak-cut-preamp-min",
+                        "bands": [
+                            "b0 PEAK 1000.0 Hz -3.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": -30.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": -30.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "preamp-above-max": {
+                    "profile": {
+                        "name": "preamp-above-max",
+                        "bands": [
+                            "b0 PEAK 1000.0 Hz 0.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": 1.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": false,
+                    "shownPreamp": 1.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "preamp-below-min": {
+                    "profile": {
+                        "name": "preamp-below-min",
+                        "bands": [
+                            "b0 PEAK 1000.0 Hz 0.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": -31.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": false,
+                    "shownPreamp": -31.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "preamp-just-above-max": {
+                    "profile": {
+                        "name": "preamp-just-above-max",
+                        "bands": [
+                            "b0 PEAK 1000.0 Hz 0.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": 0.1
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": false,
+                    "shownPreamp": 0.1,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "preamp-off-grid-manual": {
+                    "profile": {
+                        "name": "preamp-off-grid-manual",
+                        "bands": [
+                            "b0 PEAK 1000.0 Hz -2.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": -3.47
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": -3.47,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "gain-max-auto": {
+                    "profile": {
+                        "name": "gain-max-auto",
+                        "bands": [
+                            "b0 PEAK 1000.0 Hz 12.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": null
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": null,
+                    "shownPreamp": -12.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "gain-min-manual0": {
+                    "profile": {
+                        "name": "gain-min-manual0",
+                        "bands": [
+                            "b0 PEAK 1000.0 Hz -12.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": 0.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": 0.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "gain-over-max": {
+                    "profile": {
+                        "name": "gain-over-max",
+                        "bands": [
+                            "b0 PEAK 1000.0 Hz 12.1 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": 0.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": 0.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "gain-under-min": {
+                    "profile": {
+                        "name": "gain-under-min",
+                        "bands": [
+                            "b0 PEAK 1000.0 Hz -12.1 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": 0.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": 0.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "q-min": {
+                    "profile": {
+                        "name": "q-min",
+                        "bands": [
+                            "b0 PEAK 1000.0 Hz 0.0 dB Q 0.1 enabled=true"
+                        ],
+                        "preampDb": 0.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": 0.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "q-max": {
+                    "profile": {
+                        "name": "q-max",
+                        "bands": [
+                            "b0 PEAK 1000.0 Hz 0.0 dB Q 10.0 enabled=true"
+                        ],
+                        "preampDb": 0.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": 0.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "q-over-max": {
+                    "profile": {
+                        "name": "q-over-max",
+                        "bands": [
+                            "b0 PEAK 1000.0 Hz 0.0 dB Q 10.1 enabled=true"
+                        ],
+                        "preampDb": 0.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": 0.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "q-under-min": {
+                    "profile": {
+                        "name": "q-under-min",
+                        "bands": [
+                            "b0 PEAK 1000.0 Hz 0.0 dB Q 0.05 enabled=true"
+                        ],
+                        "preampDb": 0.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": 0.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "freq-min": {
+                    "profile": {
+                        "name": "freq-min",
+                        "bands": [
+                            "b0 PEAK 20.0 Hz 0.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": 0.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": 0.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "freq-max": {
+                    "profile": {
+                        "name": "freq-max",
+                        "bands": [
+                            "b0 PEAK 20000.0 Hz 0.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": 0.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": 0.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "freq-over-max": {
+                    "profile": {
+                        "name": "freq-over-max",
+                        "bands": [
+                            "b0 PEAK 20001.0 Hz 0.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": 0.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": 0.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "freq-under-min": {
+                    "profile": {
+                        "name": "freq-under-min",
+                        "bands": [
+                            "b0 PEAK 19.0 Hz 0.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": 0.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": 0.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "type-PEAK": {
+                    "profile": {
+                        "name": "type-PEAK",
+                        "bands": [
+                            "b0 PEAK 1000.0 Hz 3.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": -3.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": -3.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "type-LOW_SHELF": {
+                    "profile": {
+                        "name": "type-LOW_SHELF",
+                        "bands": [
+                            "b0 LOW_SHELF 1000.0 Hz 3.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": -3.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": -3.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "type-HIGH_SHELF": {
+                    "profile": {
+                        "name": "type-HIGH_SHELF",
+                        "bands": [
+                            "b0 HIGH_SHELF 1000.0 Hz 3.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": -3.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": -3.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "type-LOW_PASS": {
+                    "profile": {
+                        "name": "type-LOW_PASS",
+                        "bands": [
+                            "b0 LOW_PASS 1000.0 Hz 0.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": -3.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": -3.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "type-HIGH_PASS": {
+                    "profile": {
+                        "name": "type-HIGH_PASS",
+                        "bands": [
+                            "b0 HIGH_PASS 1000.0 Hz 0.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": -3.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": -3.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "type-BAND_PASS": {
+                    "profile": {
+                        "name": "type-BAND_PASS",
+                        "bands": [
+                            "b0 BAND_PASS 1000.0 Hz 0.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": -3.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": -3.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "type-ALL_PASS": {
+                    "profile": {
+                        "name": "type-ALL_PASS",
+                        "bands": [
+                            "b0 ALL_PASS 1000.0 Hz 0.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": -3.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": -3.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "shelf-q-ceiling-LOW_SHELF": {
+                    "profile": {
+                        "name": "shelf-q-ceiling-LOW_SHELF",
+                        "bands": [
+                            "b0 LOW_SHELF 1000.0 Hz 2.0 dB Q 10.0 enabled=true"
+                        ],
+                        "preampDb": -2.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": -2.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "shelf-q-over-ceiling-LOW_SHELF": {
+                    "profile": {
+                        "name": "shelf-q-over-ceiling-LOW_SHELF",
+                        "bands": [
+                            "b0 LOW_SHELF 1000.0 Hz 2.0 dB Q 10.01 enabled=true"
+                        ],
+                        "preampDb": -2.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": -2.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "shelf-q-ceiling-HIGH_SHELF": {
+                    "profile": {
+                        "name": "shelf-q-ceiling-HIGH_SHELF",
+                        "bands": [
+                            "b0 HIGH_SHELF 1000.0 Hz 2.0 dB Q 10.0 enabled=true"
+                        ],
+                        "preampDb": -2.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": -2.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "shelf-q-over-ceiling-HIGH_SHELF": {
+                    "profile": {
+                        "name": "shelf-q-over-ceiling-HIGH_SHELF",
+                        "bands": [
+                            "b0 HIGH_SHELF 1000.0 Hz 2.0 dB Q 10.01 enabled=true"
+                        ],
+                        "preampDb": -2.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": -2.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "pass-stored-gain-LOW_PASS": {
+                    "profile": {
+                        "name": "pass-stored-gain-LOW_PASS",
+                        "bands": [
+                            "b0 LOW_PASS 1000.0 Hz 17.0 dB Q 0.7 enabled=true"
+                        ],
+                        "preampDb": 0.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": 0.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "pass-stored-gain-ALL_PASS": {
+                    "profile": {
+                        "name": "pass-stored-gain-ALL_PASS",
+                        "bands": [
+                            "b0 ALL_PASS 1000.0 Hz 17.0 dB Q 0.7 enabled=true"
+                        ],
+                        "preampDb": 0.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": 0.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "hs-plus-peak-auto": {
+                    "profile": {
+                        "name": "hs-plus-peak-auto",
+                        "bands": [
+                            "b0 HIGH_SHELF 8000.0 Hz 4.0 dB Q 0.7 enabled=true",
+                            "b1 PEAK 1000.0 Hz -2.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": null
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": null,
+                    "shownPreamp": -4.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "hs-plus-peak-manual": {
+                    "profile": {
+                        "name": "hs-plus-peak-manual",
+                        "bands": [
+                            "b0 HIGH_SHELF 8000.0 Hz 4.0 dB Q 0.7 enabled=true",
+                            "b1 PEAK 1000.0 Hz -2.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": -2.5
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": -2.5,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "overlapping-boosts-auto": {
+                    "profile": {
+                        "name": "overlapping-boosts-auto",
+                        "bands": [
+                            "b0 PEAK 100.0 Hz 6.0 dB Q 0.5 enabled=true",
+                            "b1 PEAK 120.0 Hz 6.0 dB Q 0.5 enabled=true",
+                            "b2 LOW_SHELF 80.0 Hz 4.0 dB Q 0.7 enabled=true"
+                        ],
+                        "preampDb": null
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": null,
+                    "shownPreamp": -14.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "empty-manual0": {
+                    "profile": {
+                        "name": "empty-manual0",
+                        "bands": [],
+                        "preampDb": 0.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": 0.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "empty-auto": {
+                    "profile": {
+                        "name": "empty-auto",
+                        "bands": [],
+                        "preampDb": null
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": null,
+                    "shownPreamp": 0.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "two-bands-one-disabled-auto": {
+                    "profile": {
+                        "name": "two-bands-one-disabled-auto",
+                        "bands": [
+                            "b0 PEAK 1000.0 Hz 3.0 dB Q 1.0 enabled=true",
+                            "b1 PEAK 2000.0 Hz 6.0 dB Q 1.0 enabled=false"
+                        ],
+                        "preampDb": null
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": null,
+                    "shownPreamp": -3.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "full-peaks-auto": {
+                    "profile": {
+                        "name": "full-peaks-auto",
+                        "bands": [
+                            "b0 PEAK 31.0 Hz 2.5 dB Q 0.7 enabled=true",
+                            "b1 PEAK 62.0 Hz -1.5 dB Q 1.0 enabled=true",
+                            "b2 PEAK 125.0 Hz 3.0 dB Q 1.4 enabled=true",
+                            "b3 PEAK 250.0 Hz -2.0 dB Q 2.0 enabled=true",
+                            "b4 PEAK 500.0 Hz 1.0 dB Q 0.9 enabled=true",
+                            "b5 PEAK 1000.0 Hz -3.0 dB Q 3.0 enabled=true",
+                            "b6 PEAK 2000.0 Hz 2.0 dB Q 1.1 enabled=true",
+                            "b7 PEAK 4000.0 Hz -1.0 dB Q 0.8 enabled=true"
+                        ],
+                        "preampDb": null
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": null,
+                    "shownPreamp": -3.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "full-peaks-manual": {
+                    "profile": {
+                        "name": "full-peaks-manual",
+                        "bands": [
+                            "b0 PEAK 31.0 Hz 2.5 dB Q 0.7 enabled=true",
+                            "b1 PEAK 62.0 Hz -1.5 dB Q 1.0 enabled=true",
+                            "b2 PEAK 125.0 Hz 3.0 dB Q 1.4 enabled=true",
+                            "b3 PEAK 250.0 Hz -2.0 dB Q 2.0 enabled=true",
+                            "b4 PEAK 500.0 Hz 1.0 dB Q 0.9 enabled=true",
+                            "b5 PEAK 1000.0 Hz -3.0 dB Q 3.0 enabled=true",
+                            "b6 PEAK 2000.0 Hz 2.0 dB Q 1.1 enabled=true",
+                            "b7 PEAK 4000.0 Hz -1.0 dB Q 0.8 enabled=true"
+                        ],
+                        "preampDb": -6.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": -6.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "full-mixed-types-manual": {
+                    "profile": {
+                        "name": "full-mixed-types-manual",
+                        "bands": [
+                            "b0 PEAK 31.0 Hz 2.5 dB Q 0.7 enabled=true",
+                            "b1 PEAK 62.0 Hz -1.5 dB Q 1.0 enabled=true",
+                            "b2 PEAK 125.0 Hz 3.0 dB Q 1.4 enabled=true",
+                            "b3 PEAK 250.0 Hz -2.0 dB Q 2.0 enabled=true",
+                            "b4 PEAK 500.0 Hz 1.0 dB Q 0.9 enabled=true",
+                            "b5 PEAK 1000.0 Hz -3.0 dB Q 3.0 enabled=true",
+                            "b6 PEAK 2000.0 Hz 2.0 dB Q 1.1 enabled=true",
+                            "b7 PEAK 4000.0 Hz -1.0 dB Q 0.8 enabled=true"
+                        ],
+                        "preampDb": -6.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": -6.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "full-mixed-types-auto": {
+                    "profile": {
+                        "name": "full-mixed-types-auto",
+                        "bands": [
+                            "b0 PEAK 31.0 Hz 2.5 dB Q 0.7 enabled=true",
+                            "b1 PEAK 62.0 Hz -1.5 dB Q 1.0 enabled=true",
+                            "b2 PEAK 125.0 Hz 3.0 dB Q 1.4 enabled=true",
+                            "b3 PEAK 250.0 Hz -2.0 dB Q 2.0 enabled=true",
+                            "b4 PEAK 500.0 Hz 1.0 dB Q 0.9 enabled=true",
+                            "b5 PEAK 1000.0 Hz -3.0 dB Q 3.0 enabled=true",
+                            "b6 PEAK 2000.0 Hz 2.0 dB Q 1.1 enabled=true",
+                            "b7 PEAK 4000.0 Hz -1.0 dB Q 0.8 enabled=true"
+                        ],
+                        "preampDb": null
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": null,
+                    "shownPreamp": -3.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
+                    }
+                },
+                "one-band-too-many": {
+                    "profile": {
+                        "name": "one-band-too-many",
+                        "bands": [
+                            "b0 PEAK 31.0 Hz 0.0 dB Q 1.0 enabled=true",
+                            "b1 PEAK 63.0 Hz 0.0 dB Q 1.0 enabled=true",
+                            "b2 PEAK 127.0 Hz 0.0 dB Q 1.0 enabled=true",
+                            "b3 PEAK 253.0 Hz 0.0 dB Q 1.0 enabled=true",
+                            "b4 PEAK 504.0 Hz 0.0 dB Q 1.0 enabled=true",
+                            "b5 PEAK 1005.0 Hz 0.0 dB Q 1.0 enabled=true",
+                            "b6 PEAK 2006.0 Hz 0.0 dB Q 1.0 enabled=true",
+                            "b7 PEAK 4007.0 Hz 0.0 dB Q 1.0 enabled=true",
+                            "b8 PEAK 8008.0 Hz 0.0 dB Q 1.0 enabled=true"
+                        ],
+                        "preampDb": 0.0
+                    },
+                    "issues": [
+                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                    ],
+                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "headline": "INVALID EQ - EDIT BAND",
+                    "preampFits": true,
+                    "shownPreamp": 0.0,
+                    "plan": {
+                        "status": "refused",
+                        "issues": [
+                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        ]
                     }
                 }
             }

@@ -23,4 +23,16 @@ internal object PendingRecords {
      * page shows the index the DAC reports; this range only bounds the row and is provisional (0..15 held since the first Dawn Pro 2 code).
      */
     val DAWN_EQ_INDEX_RANGE: IntRange = 0..15
+
+    /**
+     * `moondrop-freedsp-mini` peq.shelfQScale ("unknown"): no source states the Q convention of the Mini's shelves. 1.0 (the register is the Q) is only a placeholder for the model: the record offers no shelf and
+     * this build of the Mini sends no frame at all (MoondropCatalog.FREEDSP_MINI_TESTER_WRITE is false), so no register is ever computed with it.
+     */
+    const val MOONDROP_FREEDSP_MINI_SHELF_Q_SCALE: Double = 1.0
+
+    /**
+     * `moondrop-freedsp-mini` preamp.db ("unknown"): the range of the Mini's PRE_GAIN register (0x23) is not documented (FreeDSP-Studio clamps what it writes to -128..0 dB without a source). -30..0 dB is Contour's own floor
+     * and the top a preamp can have; it only bounds the read-only PRE GAIN row of the DAC page and the editor's preamp control. Nothing is written, so no register value is derived from it.
+     */
+    val MOONDROP_FREEDSP_MINI_PRE_GAIN_DB: ClosedFloatingPointRange<Double> = -30.0..0.0
 }

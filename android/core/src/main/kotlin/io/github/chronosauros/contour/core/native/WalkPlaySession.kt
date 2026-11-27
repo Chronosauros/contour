@@ -67,11 +67,12 @@ object WalkPlayProfiles {
     /** The Tanchjim Space II: written and read back on a unit from the Mac (runs 2026-11-13-tanchjim-space-ii-01-mac to -04-mac-max) and from a phone (edge profile VERIFIED, a replug kept it, 13.11.2026), so it writes in every build. */
     val space2 = stable("space-2", DeviceProtocol.SPACE_2)
     /**
-     * THE write flag of the EPZ TP65, an EXPERIMENTAL tester entry (https://github.com/Chronosauros/contour/issues/6). True since 1.8.1-tp65test3: the read-only 1.8.0-tp65test2 passed on
+     * THE write flag of the EPZ TP65 (supported since 1.8.2; tested by a TP65 owner, https://github.com/Chronosauros/contour/issues/6). True since 1.8.1-tp65test3: the read-only 1.8.0-tp65test2 passed on
      * the unit (issue comment of 26.11.2026: firmware 0.4, all ten bands and the preamp as on Windows, byte for byte, over a replug) and its owner asked for the TP65 write. The write is
      * the TP65's own ([WalkPlay.tp65WriteSequence]): only the band frames and the RAM apply `01 0A` its owner validated (Windows, 25.11.2026), the changed bands only, no preamp, `01 05`,
      * `01 17` or flash `01 01 01`, and [WalkPlayGuard] refuses every other frame for it. (1.8.0-tp65test1 had it true on the Space II's sequence, 1.8.0-tp65test2 false.) The tp65test3
-     * PEAK sends passed on the unit (issue comment of 26.11.2026, five sends VERIFIED, byte for byte after a replug and on Windows); 1.8.1-tp65test4 adds the two shelves on the same frames.
+     * PEAK sends passed on the unit (issue comment of 26.11.2026, five sends VERIFIED, byte for byte after a replug and on Windows); 1.8.1-tp65test4 added the two shelves on the same frames,
+     * and they passed too (issue comment of 27.11.2026: LOW SHELF 100 Hz and HIGH SHELF 4000 Hz at -6 dB, then flat, each VERIFIED, the frames byte for byte as planned). 1.8.2 ships it unchanged.
      */
     const val TP65_TESTER_WRITE = true
     val tp65 = stable("epz-tp65", DeviceProtocol.EPZ_TP65, TP65_TESTER_WRITE)

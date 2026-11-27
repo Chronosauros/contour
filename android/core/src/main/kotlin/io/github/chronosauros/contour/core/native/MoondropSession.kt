@@ -12,9 +12,21 @@ import io.github.chronosauros.contour.core.WalkPlay
  * back and comparing them (and the pre-gain when it reads), whatever index the unit reports after. The index found before ([lastBefore]) and the one found after are logged and are
  * in [Snapshot.activeIndex] of the read-back.
  * [selectIndex], [readWritableBank] and [enableAllPeq] stay as bench tools.
+ *
+ * The FreeDSP Mini ([MoondropCatalog.freedspMini], tester build 1.8.2-freedsptest1) is a READ-ONLY model: [readMini] is its only operation. While [MoondropCatalog.FREEDSP_MINI_TESTER_WRITE] is false every
+ * public method that can send a frame with OP 0x01 ([write], [writeGain], [selectIndex], [enableAllPeq], [readWritableBank]) throws before any I/O, and the port the session talks through refuses such a frame as
+ * well, so no caller, build type or [io.github.chronosauros.contour.core.Proven] channel can get one out. [read] and [readFirmware], which ask the Dawn's questions (EQ index, global gain), refuse for it too.
  */
-class MoondropSession(val model: MoondropCatalog.Model, private val port: NativePort) {
-    private val io = NativeIo(port)
+class MoondropSession(val model: MoondropCatalog.Model, port: NativePort) {
+    /** The port the session talks through: for a model whose writes are blocked, a port that throws on a frame with OP 0x01 whoever built it ([BlockedWritesPort]). */
+    private val port: NativePort = if (model.writesBlocked) BlockedWritesPort(port) else port
+    private val io = NativeIo(this.port)
+
+    private fun refuseBlockedWrites() = check(!model.writesBlocked) { MoondropCatalog.FREEDSP_MINI_READ_ONLY_TEXT }
+    /** Every method that can send OP 0x01 starts here: refused before the port is touched. */
+    private fun <T> writing(op: () -> T): T { refuseBlockedWrites(); return io.guarded(op) }
+    /** The Dawn's reads ask for the EQ index and the global gain; the FreeDSP Mini is read through [readMini] only. */
+    private fun <T> dawnRead(op: () -> T): T { require(!model.freedspMini) { "The FreeDSP Mini is read with readMini only" }; return io.guarded(op) }
 
     private fun reply(frame: MoondropCodec.Frame, inputBytes: Int, bank: () -> Int?): MoondropCodec.Reply {
         val bytes = io.request(frame.reportId, frame.payload) { p -> runCatching {
@@ -42,7 +54,7 @@ class MoondropSession(val model: MoondropCatalog.Model, private val port: Native
 
     /** EQ index, all eight bands of the active bank, global gain, EQ index again; with [withPreGain] the pre-gain (0x23) as a last,
      * best-effort read (its reply layout is unproven: no valid answer leaves [MoondropCodec.Snapshot.preGain] null). */
-    fun read(withPreGain: Boolean = false): MoondropCodec.Snapshot = io.guarded {
+    fun read(withPreGain: Boolean = false): MoondropCodec.Snapshot = dawnRead {
         val inBytes = inputBytes()
         var slot: Int? = null
         val replies = MoondropCodec.readQueries(model).map { frame ->
@@ -63,7 +75,7 @@ class MoondropSession(val model: MoondropCatalog.Model, private val port: Native
 
     /** Switches the active EQ to [index] (`01 0F 01 i`, 150 ms), with [persist] saves it (`01 01 00`, 200 ms), and returns the index one
      * read confirms. Nothing else is written; the caller compares the answer with [index]. */
-    fun selectIndex(index: Int, explicitUserAction: Boolean, persist: Boolean = true): Int = io.guarded {
+    fun selectIndex(index: Int, explicitUserAction: Boolean, persist: Boolean = true): Int = writing {
         require(explicitUserAction) { "Switching the EQ index requires an explicit user action" }
         require(index in 0..255) { "EQ index $index out of range" }
         MoondropCodec.selectSteps(index, persist).forEach { io.send(model.reportId, it.payload); io.pause(it.delayAfterMs) }
@@ -76,12 +88,66 @@ class MoondropSession(val model: MoondropCatalog.Model, private val port: Native
     }
 
     /** The firmware version (`80 0C`, the read MDHUB's `readFirmwareVersion` makes), decoded as MDHUB does ([MoondropCodec.parseVersion]); read only. */
-    fun readFirmware(): MoondropCodec.Firmware = io.guarded {
+    fun readFirmware(): MoondropCodec.Firmware = dawnRead {
         val inBytes = inputBytes()
         val frame = MoondropCodec.versionQuery()
         MoondropCodec.requireSendable(frame.payload)
         val r = io.retryTimeouts { reply(frame, inBytes) { null } }
         MoondropCodec.parseVersion(r, port.deviceKey, inBytes)
+    }
+
+    /**
+     * The FreeDSP Mini's read, the only thing this build does with it: FreeDSP-Studio's frames byte for byte ([FreeDspMiniCodec.readQueries]): the version `80 0C 01 00`, the eight bands `80 09 03 00 i 00` (the active EQ
+     * slot is the slot byte of their replies) and the pre-gain `80 23 00`; never `80 0F 00` or `80 03`. Each query is best effort: a reply that does not come, or does not parse, is logged and leaves that field unknown, and the
+     * read returns what came (a query is asked twice at most, as FreeDSP-Studio does). The raw payload of every reply is logged before it is parsed, and the descriptor's report sizes are logged when the port knows them but never
+     * required. A band of any slot is taken as the unit reports it: no range, no type table. It throws only when the session is over or the connection fails (an IOException that is not a missing reply).
+     */
+    fun readMini(): FreeDspMiniCodec.Read = io.guarded {
+        require(model.freedspMini) { "readMini is the read of the FreeDSP Mini" }
+        val sizes = runCatching { "input ${port.payloadSize(model.reportId, NativeHidReports.Kind.INPUT)}, output ${port.payloadSize(model.reportId, NativeHidReports.Kind.OUTPUT)} payload bytes" }.getOrDefault("sizes not known to this port")
+        port.log("FreeDSP Mini read: report 0x%02x, %s".format(model.reportId, sizes))
+        var firmware: FreeDspMiniCodec.Firmware? = null
+        var preGain: MoondropCodec.Gain? = null
+        val bands = ArrayList<FreeDspMiniCodec.Band?>()
+        val unanswered = ArrayList<String>()
+        for (q in FreeDspMiniCodec.readQueries(model)) {
+            val got: Any? = when (q.kind) {
+                FreeDspMiniCodec.Kind.VERSION -> miniAsk(q, FreeDspMiniCodec::parseVersion).also { firmware = it }
+                FreeDspMiniCodec.Kind.BAND -> miniAsk(q) { FreeDspMiniCodec.parseBand(it, requireNotNull(q.index)) }.also { bands += it }
+                FreeDspMiniCodec.Kind.PRE_GAIN -> miniAsk(q, FreeDspMiniCodec::parsePreGain).also { preGain = it }
+            }
+            if (got == null) unanswered += q.label
+        }
+        val slots = bands.filterNotNull().map { it.slot }.distinct()
+        if (slots.size > 1) port.log("FreeDSP Mini read: the band replies name different slots $slots; the first is taken")
+        val slot = slots.firstOrNull()
+        port.log("FreeDSP Mini read: firmware ${firmware?.text ?: "unknown"}, active slot ${slot?.let { s -> "$s" + (FreeDspMiniCodec.slotName(s)?.let { " ($it)" } ?: "") } ?: "unknown"}, " +
+            "pre-gain ${preGain?.let { "${it.db} dB (raw ${it.rawQ8})" } ?: "unknown"}, ${bands.count { it != null }}/${model.bandCount} bands" + if (unanswered.isEmpty()) "" else "; no valid reply to: ${unanswered.joinToString(", ")}")
+        bands.filterNotNull().forEach { b ->
+            port.log("FreeDSP Mini band ${b.index}: type code ${b.nativeType} (${b.type?.name ?: "unnamed"}), ${b.frequencyHz} Hz, gain ${b.gainDb} dB (raw ${b.gainQ8}), Q ${b.q} (raw ${b.qQ8}), slot ${b.slot}")
+        }
+        FreeDspMiniCodec.Read(firmware, slot, bands.toList(), preGain, unanswered)
+    }
+
+    /** One FreeDSP Mini query: the frame, the first reply [parse] accepts (the raw payload of each candidate is logged first), asked again once when none comes; null when there is no valid reply. */
+    private fun <T : Any> miniAsk(q: FreeDspMiniCodec.Query, parse: (ByteArray) -> T): T? {
+        var parsed: T? = null
+        var lastLogged: ByteArray? = null
+        try {
+            io.retryTimeouts(attempts = 2, gapMs = 50) {
+                val bytes = io.request(model.reportId, q.payload) { p ->
+                    val last = lastLogged
+                    if (last == null || !last.contentEquals(p)) { lastLogged = p.copyOf(); port.log("FreeDSP Mini RX ${q.label}: ${p.joinToString(" ") { "%02x".format(it.toInt() and 255) }}") }
+                    runCatching { parse(p) }.onFailure { port.log("FreeDSP Mini ${q.label}: the reply does not parse (${it.message})") }.isSuccess
+                }
+                parsed = parse(bytes)
+            }
+        } catch (e: java.io.IOException) {
+            port.guard()
+            if (!io.isReplyTimeout(e)) throw e
+            port.log("FreeDSP Mini ${q.label}: no valid reply, left unknown")
+        }
+        return parsed
     }
 
     /** What [enableAllPeq] saw: the whole read before and the whole read after the one frame. */
@@ -93,7 +159,7 @@ class MoondropSession(val model: MoondropCatalog.Model, private val port: Native
      * unit followed to another EQ index, or any band changed, is the finding. [persist] saves the active bank whatever it is (as `select --persist`): whether that is safe on a
      * bank that is not Contour's is unknown, so it is off unless asked for.
      */
-    fun enableAllPeq(index: Int, persist: Boolean, explicitUserAction: Boolean): EnableAllPeqResult = io.guarded {
+    fun enableAllPeq(index: Int, persist: Boolean, explicitUserAction: Boolean): EnableAllPeqResult = writing {
         require(explicitUserAction) { "An explicit user action is required" }
         val steps = MoondropCodec.enableAllPeqSteps(index, persist) // preflight everything before the first frame
         steps.forEach { MoondropCodec.requireSendable(it.payload, enableIndex = index) }
@@ -103,7 +169,7 @@ class MoondropSession(val model: MoondropCatalog.Model, private val port: Native
     }
 
     /** Switches to the writable bank (no save) and reads it: a tap on the slot before a backup. */
-    fun readWritableBank(explicitUserAction: Boolean, withPreGain: Boolean = false): MoondropCodec.Snapshot = io.guarded {
+    fun readWritableBank(explicitUserAction: Boolean, withPreGain: Boolean = false): MoondropCodec.Snapshot = writing {
         require(explicitUserAction) { "Reading another EQ index requires an explicit user action" }
         val now = read().also { lastBefore = it }
         if (now.activeIndex != model.writableIndex) {
@@ -138,7 +204,7 @@ class MoondropSession(val model: MoondropCatalog.Model, private val port: Native
      * the new raw value, the same active index and the same bands. With [persist] `01 01 00` follows, and only on the writable index (the save is the active
      * bank's). The persistence of a gain over a power cycle is not proven: it takes a read after replugging.
      */
-    fun writeGain(register: MoondropCodec.GainRegister, db: Double, explicitHold: Boolean, persist: Boolean = false): WriteOutcome<MoondropCodec.Snapshot> = io.guarded {
+    fun writeGain(register: MoondropCodec.GainRegister, db: Double, explicitHold: Boolean, persist: Boolean = false): WriteOutcome<MoondropCodec.Snapshot> = writing {
         require(explicitHold) { "An explicit user action is required" }
         val steps = MoondropCodec.gainSteps(model, register, db, persist) // preflight everything before the first frame
         val want = MoondropCodec.gainRawQ8(model, register, db)
@@ -169,7 +235,7 @@ class MoondropSession(val model: MoondropCatalog.Model, private val port: Native
      * with what was sent, whatever EQ index the unit reports after (both are logged; [lastBefore] holds the first). Nothing is sent when the preflight fails, and a write that reads
      * back different bands sends nothing more. The offset save `01 04 00` is never sent.
      */
-    fun write(bands: List<MoondropCodec.BandWrite>, preGainDb: Double?, explicitHold: Boolean): WriteOutcome<MoondropCodec.Snapshot> = io.guarded {
+    fun write(bands: List<MoondropCodec.BandWrite>, preGainDb: Double?, explicitHold: Boolean): WriteOutcome<MoondropCodec.Snapshot> = writing {
         require(explicitHold) { "HOLD TO SEND required" }
         val full = padBands(bands)
         MoondropCodec.writeSteps(model, full, preGainDb) // preflight everything before the first frame
@@ -196,4 +262,14 @@ class MoondropSession(val model: MoondropCatalog.Model, private val port: Native
         val reason = (problems + listOfNotNull(note)).joinToString("; ").ifEmpty { null }
         WriteOutcome(problems.isEmpty(), false, reason, back)
     }
+}
+
+/**
+ * The port a [MoondropSession] of a model whose writes are blocked ([MoondropCatalog.Model.writesBlocked]: the FreeDSP Mini while [MoondropCatalog.FREEDSP_MINI_TESTER_WRITE] is false) talks through: every frame
+ * with OP 0x01 is refused with an exception before it reaches the real port, in [send] and in [request] alike, whatever the session, the build type or [io.github.chronosauros.contour.core.Proven] says.
+ */
+private class BlockedWritesPort(private val inner: NativePort) : NativePort by inner {
+    private fun refuseWrite(payload: ByteArray) = check(payload.isEmpty() || (payload[0].toInt() and 255) != 0x01) { MoondropCatalog.FREEDSP_MINI_READ_ONLY_TEXT }
+    override fun send(id: Int, kind: NativeHidReports.Kind, payload: ByteArray) { refuseWrite(payload); inner.send(id, kind, payload) }
+    override fun request(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean): ByteArray { refuseWrite(payload); return inner.request(id, payload, matches) }
 }

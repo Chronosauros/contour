@@ -1,0 +1,2 @@
+New DAC: EPZ TP65. 10 bands of PEAK, LOW SHELF and HIGH SHELF, every send read back. Its preamp is read only for now, so send profiles with the preamp at 0 dB (thanks, jrequiroso, for testing every step on a TP65).
+Library: BACKUP saves all your profiles to one file, and RESTORE FROM BACKUP under + adds them back.
