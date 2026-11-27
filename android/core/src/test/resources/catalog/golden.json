@@ -38,7 +38,8 @@
             "0A12:4007",
             "2972:0151",
             "3302:20E3",
-            "3302:4381"
+            "3302:4381",
+            "3302:4325"
         ],
         "findDevice": [
             "3302:C20F name=null -> MICRO",
@@ -94,7 +95,11 @@
             "3302:4381 name=TANCHJIM-SPACE II -> TANCHJIM_SPACE_II",
             "3302:4381 name=TANCHJIM-SPACE PRO -> null",
             "3302:4381 name=null -> null",
-            "3302:4380 name=TANCHJIM-SPACE II -> null"
+            "3302:4380 name=TANCHJIM-SPACE II -> null",
+            "3302:4325 name=TP65 -> EPZ_TP65",
+            "3302:4325 name=tp65 -> null",
+            "3302:4325 name=null -> null",
+            "3302:4326 name=TP65 -> null"
         ],
         "walkplayConstants": {
             "vendorId": 13058,
@@ -49881,6 +49886,1918 @@
                             "status": "rejected",
                             "issues": [
                                 "11 enabled bands; TANCHJIM SPACE II has 10"
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "EPZ_TP65": {
+            "family": "WALKPLAY",
+            "caps": {
+                "bands": 10,
+                "coefficientRateHz": 96000.0,
+                "freqMaxHz": 20000.0,
+                "freqMinHz": 20.0,
+                "gainMaxDb": 10.0,
+                "gainMinDb": -10.0,
+                "name": "EPZ TP65",
+                "peakQScale": 1.0,
+                "preampWholeDb": true,
+                "productId": 17189,
+                "qMax": 10.0,
+                "qMin": 0.1,
+                "shelfForm": "Q",
+                "shelfQScale": 1.0,
+                "types": [
+                    "PEAK",
+                    "LOW_SHELF",
+                    "HIGH_SHELF"
+                ],
+                "vendorId": 13058
+            },
+            "flags": {
+                "isFamily": false,
+                "readOnly": false,
+                "readOnlyInRelease": false,
+                "readOnlyInReview": false,
+                "hasPreamp": true,
+                "preampLabel": "PREAMP",
+                "stable": true,
+                "native": false,
+                "experimental": true,
+                "supportsAb": false,
+                "preampMin": -30.0,
+                "preampMax": 0.0,
+                "preampStep": 1.0,
+                "destinationSlot": null,
+                "settingsCount": 0,
+                "infoCount": 0
+            },
+            "settings": [],
+            "qRange": {
+                "PEAK": "0.1..10.0",
+                "LOW_SHELF": "0.1..10.0",
+                "HIGH_SHELF": "0.1..10.0",
+                "LOW_PASS": "0.1..10.0",
+                "HIGH_PASS": "0.1..10.0",
+                "BAND_PASS": "0.1..10.0",
+                "ALL_PASS": "0.1..10.0"
+            },
+            "profileSpec": {
+                "bands": 10,
+                "gain": "-10.0..10.0",
+                "q": "0.1..10.0",
+                "freq": "20.0..20000.0",
+                "offered": [
+                    "PEAK",
+                    "LOW_SHELF",
+                    "HIGH_SHELF"
+                ],
+                "preamp": "-30.0..0.0"
+            },
+            "walkplay": {
+                "entry": "EPZ_TP65",
+                "experimentalStrictPath": true,
+                "supportsAb": false,
+                "preampMin": -30,
+                "preampMax": 0,
+                "settings": [],
+                "flatPlan": {
+                    "preampDb": 0,
+                    "bandWrites": [
+                        "0:31.0:0.0:0.7109375:2",
+                        "1:62.0:0.0:0.7109375:2",
+                        "2:125.0:0.0:0.7109375:2",
+                        "3:250.0:0.0:0.7109375:2",
+                        "4:500.0:0.0:0.7109375:2",
+                        "5:1000.0:0.0:0.7109375:2",
+                        "6:2000.0:0.0:0.7109375:2",
+                        "7:4000.0:0.0:0.7109375:2",
+                        "8:8000.0:0.0:0.7109375:2",
+                        "9:16000.0:0.0:0.7109375:2"
+                    ],
+                    "registers": [
+                        "0:31:182:0:2",
+                        "1:62:182:0:2",
+                        "2:125:182:0:2",
+                        "3:250:182:0:2",
+                        "4:500:182:0:2",
+                        "5:1000:182:0:2",
+                        "6:2000:182:0:2",
+                        "7:4000:182:0:2",
+                        "8:8000:182:0:2",
+                        "9:16000:182:0:2"
+                    ],
+                    "sequenceSlot0": [
+                        "4b01091800000000000000404ec22e80f04ed13fb23dd17f10b12ec01f00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                        "4b0109180001000000000040ef845d80f0bfa23f117ba27f10405dc03e00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                        "4b01091800020000000000401d8dbc80048a443fe372437ffc75bbc07d00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                        "4b0109180003000000000040fe1c798127398b3e02e3867ed9c674c1fa00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                        "4b01091800040000000000407a38f282dced1e3d86c70d7d2412e1c2f401b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                        "4b0109180005000000000040490ce4858c065f3ab7f31b7a74f9a0c5e803b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                        "4b010918000600000000004069e7c38b38dc3c3597183c74c823c3cad007b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                        "4b010918000700000000004029b866977de1492cd7479968831eb6d3a00fb6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                        "4b010918000800000000004003f4fcadebfdb21efd0b035215024de1401fb6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                        "4b010918000900000000004014bd39d8d8858c0fec42c627287a73f0803eb6000000020000000000000000000000000000000000000000000000000000000000 +120",
+                        "4b010a040000ffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 +250"
+                    ],
+                    "isFlat": true
+                },
+                "readProbes": [
+                    "freq=0 -> enabled=false type=PEAK freq=0.0 gain=0.0 q=1.0 regs=3:0:256:0:2",
+                    "freq=19 -> enabled=true type=PEAK freq=19.0 gain=0.0 q=1.0 regs=3:19:256:0:2",
+                    "freq=20 -> enabled=true type=PEAK freq=20.0 gain=0.0 q=1.0 regs=3:20:256:0:2",
+                    "freq=1000 -> enabled=true type=PEAK freq=1000.0 gain=0.0 q=1.0 regs=3:1000:256:0:2",
+                    "freq=20000 -> enabled=true type=PEAK freq=20000.0 gain=0.0 q=1.0 regs=3:20000:256:0:2",
+                    "freq=20001 -> enabled=true type=PEAK freq=20001.0 gain=0.0 q=1.0 regs=3:20001:256:0:2",
+                    "freq=48000 -> enabled=true type=PEAK freq=48000.0 gain=0.0 q=1.0 regs=3:48000:256:0:2",
+                    "freq=48001 -> error IllegalArgumentException: Malformed EPZ TP65 registers",
+                    "freq=65535 -> enabled=false type=PEAK freq=65535.0 gain=0.0 q=1.0 regs=3:65535:256:0:2",
+                    "gain256=0 -> enabled=true type=PEAK freq=1000.0 gain=0.0 q=1.0 regs=3:1000:256:0:2",
+                    "gain256=2560 -> enabled=true type=PEAK freq=1000.0 gain=10.0 q=1.0 regs=3:1000:256:2560:2",
+                    "gain256=2561 -> enabled=true type=PEAK freq=1000.0 gain=10.0 q=1.0 regs=3:1000:256:2561:2",
+                    "gain256=-2560 -> enabled=true type=PEAK freq=1000.0 gain=-10.0 q=1.0 regs=3:1000:256:-2560:2",
+                    "gain256=-2561 -> enabled=true type=PEAK freq=1000.0 gain=-10.0 q=1.0 regs=3:1000:256:-2561:2",
+                    "gain256=15360 -> enabled=true type=PEAK freq=1000.0 gain=60.0 q=1.0 regs=3:1000:256:15360:2",
+                    "gain256=15361 -> error IllegalArgumentException: Malformed EPZ TP65 registers",
+                    "gain256=-15360 -> enabled=true type=PEAK freq=1000.0 gain=-60.0 q=1.0 regs=3:1000:256:-15360:2",
+                    "gain256=-15361 -> error IllegalArgumentException: Malformed EPZ TP65 registers",
+                    "q256=0 -> enabled=false type=PEAK freq=1000.0 gain=0.0 q=0.0 regs=3:1000:0:0:2",
+                    "q256=25 -> enabled=true type=PEAK freq=1000.0 gain=0.0 q=0.1 regs=3:1000:25:0:2",
+                    "q256=26 -> enabled=true type=PEAK freq=1000.0 gain=0.0 q=0.1 regs=3:1000:26:0:2",
+                    "q256=255 -> enabled=true type=PEAK freq=1000.0 gain=0.0 q=1.0 regs=3:1000:255:0:2",
+                    "q256=256 -> enabled=true type=PEAK freq=1000.0 gain=0.0 q=1.0 regs=3:1000:256:0:2",
+                    "q256=2560 -> enabled=true type=PEAK freq=1000.0 gain=0.0 q=10.0 regs=3:1000:2560:0:2",
+                    "q256=2561 -> enabled=true type=PEAK freq=1000.0 gain=0.0 q=10.0 regs=3:1000:2561:0:2",
+                    "q256=65535 -> enabled=true type=PEAK freq=1000.0 gain=0.0 q=256.0 regs=3:1000:65535:0:2",
+                    "type=0 -> error IllegalArgumentException: Unsupported EPZ TP65 native type",
+                    "type=1 -> enabled=true type=LOW_SHELF freq=1000.0 gain=0.0 q=1.0 regs=3:1000:256:0:1",
+                    "type=2 -> enabled=true type=PEAK freq=1000.0 gain=0.0 q=1.0 regs=3:1000:256:0:2",
+                    "type=3 -> enabled=true type=HIGH_SHELF freq=1000.0 gain=0.0 q=1.0 regs=3:1000:256:0:3",
+                    "type=4 -> enabled=true type=LOW_PASS freq=1000.0 gain=0.0 q=1.0 regs=3:1000:256:0:4",
+                    "type=5 -> enabled=true type=HIGH_PASS freq=1000.0 gain=0.0 q=1.0 regs=3:1000:256:0:5",
+                    "type=6 -> error IllegalArgumentException: Unsupported EPZ TP65 native type",
+                    "type=7 -> error IllegalArgumentException: Unsupported EPZ TP65 native type"
+                ],
+                "profiles": {
+                    "one-peak-zero-manual": {
+                        "profile": {
+                            "name": "one-peak-zero-manual",
+                            "bands": [
+                                "b0 PEAK 1000.0 Hz 0.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": 0.0
+                        },
+                        "issues": [],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": 0,
+                            "shownPreamp": 0.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": 0.0
+                            }
+                        },
+                        "plan": {
+                            "status": "ready",
+                            "preampDb": 0,
+                            "bandWrites": [
+                                "0:1000.0:0.0:1.0:2",
+                                "1:62.0:0.0:0.7109375:2",
+                                "2:125.0:0.0:0.7109375:2",
+                                "3:250.0:0.0:0.7109375:2",
+                                "4:500.0:0.0:0.7109375:2",
+                                "5:1000.0:0.0:0.7109375:2",
+                                "6:2000.0:0.0:0.7109375:2",
+                                "7:4000.0:0.0:0.7109375:2",
+                                "8:8000.0:0.0:0.7109375:2",
+                                "9:16000.0:0.0:0.7109375:2"
+                            ],
+                            "registers": [
+                                "0:1000:256:0:2",
+                                "1:62:182:0:2",
+                                "2:125:182:0:2",
+                                "3:250:182:0:2",
+                                "4:500:182:0:2",
+                                "5:1000:182:0:2",
+                                "6:2000:182:0:2",
+                                "7:4000:182:0:2",
+                                "8:8000:182:0:2",
+                                "9:16000:182:0:2"
+                            ],
+                            "selfMatch": true,
+                            "sequenceSlot0": [
+                                "4b0109180000000000000040df9151840a5ef23b216eae7bf6a10dc4e80300010000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180001000000000040ef845d80f0bfa23f117ba27f10405dc03e00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b01091800020000000000401d8dbc80048a443fe372437ffc75bbc07d00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180003000000000040fe1c798127398b3e02e3867ed9c674c1fa00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b01091800040000000000407a38f282dced1e3d86c70d7d2412e1c2f401b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180005000000000040490ce4858c065f3ab7f31b7a74f9a0c5e803b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000600000000004069e7c38b38dc3c3597183c74c823c3cad007b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000700000000004029b866977de1492cd7479968831eb6d3a00fb6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000800000000004003f4fcadebfdb21efd0b035215024de1401fb6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000900000000004014bd39d8d8858c0fec42c627287a73f0803eb6000000020000000000000000000000000000000000000000000000000000000000 +120",
+                                "4b010a040000ffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 +250"
+                            ],
+                            "import": {
+                                "ready": [
+                                    "PEAK 1000.0 0.0 1.0 true"
+                                ],
+                                "preampDb": 0.0,
+                                "warning": null
+                            }
+                        }
+                    },
+                    "one-peak-boost-auto": {
+                        "profile": {
+                            "name": "one-peak-boost-auto",
+                            "bands": [
+                                "b0 PEAK 1000.0 Hz 3.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": null
+                        },
+                        "issues": [
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                        ],
+                        "blockLabel": "PREAMP OUT OF RANGE",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": -3,
+                            "shownPreamp": -3.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": -3.0,
+                            "autoRefusal": null,
+                            "explicit": null
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                            ]
+                        }
+                    },
+                    "one-peak-cut-preamp-min": {
+                        "profile": {
+                            "name": "one-peak-cut-preamp-min",
+                            "bands": [
+                                "b0 PEAK 1000.0 Hz -3.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": -30.0
+                        },
+                        "issues": [
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -30 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                        ],
+                        "blockLabel": "PREAMP OUT OF RANGE",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": -30,
+                            "shownPreamp": -30.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": -30.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -30 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                            ]
+                        }
+                    },
+                    "preamp-above-max": {
+                        "profile": {
+                            "name": "preamp-above-max",
+                            "bands": [
+                                "b0 PEAK 1000.0 Hz 0.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": 1.0
+                        },
+                        "issues": [
+                            "Preamp 1 dB outside -30..0 dB policy"
+                        ],
+                        "blockLabel": "PREAMP OUT OF RANGE",
+                        "headline": "INVALID EQ - adjust preamp",
+                        "preampPolicy": {
+                            "devicePreamp": 0,
+                            "shownPreamp": 0.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": false,
+                                "refusal": "Preamp 1 dB outside -30..0 dB policy",
+                                "fitImported": 1.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Preamp 1 dB outside -30..0 dB policy"
+                            ]
+                        }
+                    },
+                    "preamp-below-min": {
+                        "profile": {
+                            "name": "preamp-below-min",
+                            "bands": [
+                                "b0 PEAK 1000.0 Hz 0.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": -31.0
+                        },
+                        "issues": [
+                            "Preamp -31 dB outside -30..0 dB policy"
+                        ],
+                        "blockLabel": "PREAMP OUT OF RANGE",
+                        "headline": "INVALID EQ - adjust preamp",
+                        "preampPolicy": {
+                            "devicePreamp": -30,
+                            "shownPreamp": -30.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": false,
+                                "refusal": "Preamp -31 dB outside -30..0 dB policy",
+                                "fitImported": -31.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Preamp -31 dB outside -30..0 dB policy"
+                            ]
+                        }
+                    },
+                    "preamp-just-above-max": {
+                        "profile": {
+                            "name": "preamp-just-above-max",
+                            "bands": [
+                                "b0 PEAK 1000.0 Hz 0.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": 0.1
+                        },
+                        "issues": [],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": 0,
+                            "shownPreamp": 0.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": 0.1
+                            }
+                        },
+                        "plan": {
+                            "status": "ready",
+                            "preampDb": 0,
+                            "bandWrites": [
+                                "0:1000.0:0.0:1.0:2",
+                                "1:62.0:0.0:0.7109375:2",
+                                "2:125.0:0.0:0.7109375:2",
+                                "3:250.0:0.0:0.7109375:2",
+                                "4:500.0:0.0:0.7109375:2",
+                                "5:1000.0:0.0:0.7109375:2",
+                                "6:2000.0:0.0:0.7109375:2",
+                                "7:4000.0:0.0:0.7109375:2",
+                                "8:8000.0:0.0:0.7109375:2",
+                                "9:16000.0:0.0:0.7109375:2"
+                            ],
+                            "registers": [
+                                "0:1000:256:0:2",
+                                "1:62:182:0:2",
+                                "2:125:182:0:2",
+                                "3:250:182:0:2",
+                                "4:500:182:0:2",
+                                "5:1000:182:0:2",
+                                "6:2000:182:0:2",
+                                "7:4000:182:0:2",
+                                "8:8000:182:0:2",
+                                "9:16000:182:0:2"
+                            ],
+                            "selfMatch": true,
+                            "sequenceSlot0": [
+                                "4b0109180000000000000040df9151840a5ef23b216eae7bf6a10dc4e80300010000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180001000000000040ef845d80f0bfa23f117ba27f10405dc03e00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b01091800020000000000401d8dbc80048a443fe372437ffc75bbc07d00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180003000000000040fe1c798127398b3e02e3867ed9c674c1fa00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b01091800040000000000407a38f282dced1e3d86c70d7d2412e1c2f401b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180005000000000040490ce4858c065f3ab7f31b7a74f9a0c5e803b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000600000000004069e7c38b38dc3c3597183c74c823c3cad007b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000700000000004029b866977de1492cd7479968831eb6d3a00fb6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000800000000004003f4fcadebfdb21efd0b035215024de1401fb6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000900000000004014bd39d8d8858c0fec42c627287a73f0803eb6000000020000000000000000000000000000000000000000000000000000000000 +120",
+                                "4b010a040000ffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 +250"
+                            ],
+                            "import": {
+                                "ready": [
+                                    "PEAK 1000.0 0.0 1.0 true"
+                                ],
+                                "preampDb": 0.0,
+                                "warning": null
+                            }
+                        }
+                    },
+                    "preamp-off-grid-manual": {
+                        "profile": {
+                            "name": "preamp-off-grid-manual",
+                            "bands": [
+                                "b0 PEAK 1000.0 Hz -2.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": -3.47
+                        },
+                        "issues": [
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -4 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                        ],
+                        "blockLabel": "PREAMP OUT OF RANGE",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": -4,
+                            "shownPreamp": -4.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": -3.5
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -4 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                            ]
+                        }
+                    },
+                    "gain-max-auto": {
+                        "profile": {
+                            "name": "gain-max-auto",
+                            "bands": [
+                                "b0 PEAK 1000.0 Hz 10.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": null
+                        },
+                        "issues": [
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -10 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                        ],
+                        "blockLabel": "PREAMP OUT OF RANGE",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": -10,
+                            "shownPreamp": -10.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": -10.0,
+                            "autoRefusal": null,
+                            "explicit": null
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -10 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                            ]
+                        }
+                    },
+                    "gain-min-manual0": {
+                        "profile": {
+                            "name": "gain-min-manual0",
+                            "bands": [
+                                "b0 PEAK 1000.0 Hz -10.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": 0.0
+                        },
+                        "issues": [],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": 0,
+                            "shownPreamp": 0.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": 0.0
+                            }
+                        },
+                        "plan": {
+                            "status": "ready",
+                            "preampDb": 0,
+                            "bandWrites": [
+                                "0:1000.0:-10.0:1.0:2",
+                                "1:62.0:0.0:0.7109375:2",
+                                "2:125.0:0.0:0.7109375:2",
+                                "3:250.0:0.0:0.7109375:2",
+                                "4:500.0:0.0:0.7109375:2",
+                                "5:1000.0:0.0:0.7109375:2",
+                                "6:2000.0:0.0:0.7109375:2",
+                                "7:4000.0:0.0:0.7109375:2",
+                                "8:8000.0:0.0:0.7109375:2",
+                                "9:16000.0:0.0:0.7109375:2"
+                            ],
+                            "registers": [
+                                "0:1000:256:-2560:2",
+                                "1:62:182:0:2",
+                                "2:125:182:0:2",
+                                "3:250:182:0:2",
+                                "4:500:182:0:2",
+                                "5:1000:182:0:2",
+                                "6:2000:182:0:2",
+                                "7:4000:182:0:2",
+                                "8:8000:182:0:2",
+                                "9:16000:182:0:2"
+                            ],
+                            "selfMatch": true,
+                            "sequenceSlot0": [
+                                "4b010918000000002653983d671f4b870cdb5e3b99e0b478ced108c7e803000100f6020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180001000000000040ef845d80f0bfa23f117ba27f10405dc03e00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b01091800020000000000401d8dbc80048a443fe372437ffc75bbc07d00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180003000000000040fe1c798127398b3e02e3867ed9c674c1fa00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b01091800040000000000407a38f282dced1e3d86c70d7d2412e1c2f401b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180005000000000040490ce4858c065f3ab7f31b7a74f9a0c5e803b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000600000000004069e7c38b38dc3c3597183c74c823c3cad007b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000700000000004029b866977de1492cd7479968831eb6d3a00fb6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000800000000004003f4fcadebfdb21efd0b035215024de1401fb6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000900000000004014bd39d8d8858c0fec42c627287a73f0803eb6000000020000000000000000000000000000000000000000000000000000000000 +120",
+                                "4b010a040000ffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 +250"
+                            ],
+                            "import": {
+                                "ready": [
+                                    "PEAK 1000.0 -10.0 1.0 true"
+                                ],
+                                "preampDb": 0.0,
+                                "warning": null
+                            }
+                        }
+                    },
+                    "gain-over-max": {
+                        "profile": {
+                            "name": "gain-over-max",
+                            "bands": [
+                                "b0 PEAK 1000.0 Hz 10.1 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": 0.0
+                        },
+                        "issues": [
+                            "Band 1: outside EPZ TP65 supported types/ranges"
+                        ],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - adjust gain",
+                        "preampPolicy": {
+                            "devicePreamp": 0,
+                            "shownPreamp": 0.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": -11.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": 0.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Band 1: outside EPZ TP65 supported types/ranges"
+                            ]
+                        }
+                    },
+                    "gain-under-min": {
+                        "profile": {
+                            "name": "gain-under-min",
+                            "bands": [
+                                "b0 PEAK 1000.0 Hz -10.1 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": 0.0
+                        },
+                        "issues": [
+                            "Band 1: outside EPZ TP65 supported types/ranges"
+                        ],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - adjust gain",
+                        "preampPolicy": {
+                            "devicePreamp": 0,
+                            "shownPreamp": 0.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": 0.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Band 1: outside EPZ TP65 supported types/ranges"
+                            ]
+                        }
+                    },
+                    "q-min": {
+                        "profile": {
+                            "name": "q-min",
+                            "bands": [
+                                "b0 PEAK 1000.0 Hz 0.0 dB Q 0.1 enabled=true"
+                            ],
+                            "preampDb": 0.0
+                        },
+                        "issues": [],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": 0,
+                            "shownPreamp": 0.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": 0.0
+                            }
+                        },
+                        "plan": {
+                            "status": "ready",
+                            "preampDb": 0,
+                            "bandWrites": [
+                                "0:1000.0:0.0:0.1:2",
+                                "1:62.0:0.0:0.7109375:2",
+                                "2:125.0:0.0:0.7109375:2",
+                                "3:250.0:0.0:0.7109375:2",
+                                "4:500.0:0.0:0.7109375:2",
+                                "5:1000.0:0.0:0.7109375:2",
+                                "6:2000.0:0.0:0.7109375:2",
+                                "7:4000.0:0.0:0.7109375:2",
+                                "8:8000.0:0.0:0.7109375:2",
+                                "9:16000.0:0.0:0.7109375:2"
+                            ],
+                            "registers": [
+                                "0:1000:26:0:2",
+                                "1:62:182:0:2",
+                                "2:125:182:0:2",
+                                "3:250:182:0:2",
+                                "4:500:182:0:2",
+                                "5:1000:182:0:2",
+                                "6:2000:182:0:2",
+                                "7:4000:182:0:2",
+                                "8:8000:182:0:2",
+                                "9:16000:182:0:2"
+                            ],
+                            "selfMatch": true,
+                            "sequenceSlot0": [
+                                "4b01091800000000000000401cdebf9f83007520e42140607dff8adfe8031a000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180001000000000040ef845d80f0bfa23f117ba27f10405dc03e00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b01091800020000000000401d8dbc80048a443fe372437ffc75bbc07d00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180003000000000040fe1c798127398b3e02e3867ed9c674c1fa00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b01091800040000000000407a38f282dced1e3d86c70d7d2412e1c2f401b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180005000000000040490ce4858c065f3ab7f31b7a74f9a0c5e803b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000600000000004069e7c38b38dc3c3597183c74c823c3cad007b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000700000000004029b866977de1492cd7479968831eb6d3a00fb6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000800000000004003f4fcadebfdb21efd0b035215024de1401fb6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000900000000004014bd39d8d8858c0fec42c627287a73f0803eb6000000020000000000000000000000000000000000000000000000000000000000 +120",
+                                "4b010a040000ffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 +250"
+                            ],
+                            "import": {
+                                "ready": [
+                                    "PEAK 1000.0 0.0 0.1015625 true"
+                                ],
+                                "preampDb": 0.0,
+                                "warning": null
+                            }
+                        }
+                    },
+                    "q-max": {
+                        "profile": {
+                            "name": "q-max",
+                            "bands": [
+                                "b0 PEAK 1000.0 Hz 0.0 dB Q 10.0 enabled=true"
+                            ],
+                            "preampDb": 0.0
+                        },
+                        "issues": [],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": 0,
+                            "shownPreamp": 0.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": 0.0
+                            }
+                        },
+                        "plan": {
+                            "status": "ready",
+                            "preampDb": 0,
+                            "bandWrites": [
+                                "0:1000.0:0.0:10.0:2",
+                                "1:62.0:0.0:0.7109375:2",
+                                "2:125.0:0.0:0.7109375:2",
+                                "3:250.0:0.0:0.7109375:2",
+                                "4:500.0:0.0:0.7109375:2",
+                                "5:1000.0:0.0:0.7109375:2",
+                                "6:2000.0:0.0:0.7109375:2",
+                                "7:4000.0:0.0:0.7109375:2",
+                                "8:8000.0:0.0:0.7109375:2",
+                                "9:16000.0:0.0:0.7109375:2"
+                            ],
+                            "registers": [
+                                "0:1000:2560:0:2",
+                                "1:62:182:0:2",
+                                "2:125:182:0:2",
+                                "3:250:182:0:2",
+                                "4:500:182:0:2",
+                                "5:1000:182:0:2",
+                                "6:2000:182:0:2",
+                                "7:4000:182:0:2",
+                                "8:8000:182:0:2",
+                                "9:16000:182:0:2"
+                            ],
+                            "selfMatch": true,
+                            "sequenceSlot0": [
+                                "4b0109180000000000000040c2bcb0805b31953f3e434f7fa5ce6ac0e803000a0000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180001000000000040ef845d80f0bfa23f117ba27f10405dc03e00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b01091800020000000000401d8dbc80048a443fe372437ffc75bbc07d00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180003000000000040fe1c798127398b3e02e3867ed9c674c1fa00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b01091800040000000000407a38f282dced1e3d86c70d7d2412e1c2f401b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180005000000000040490ce4858c065f3ab7f31b7a74f9a0c5e803b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000600000000004069e7c38b38dc3c3597183c74c823c3cad007b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000700000000004029b866977de1492cd7479968831eb6d3a00fb6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000800000000004003f4fcadebfdb21efd0b035215024de1401fb6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000900000000004014bd39d8d8858c0fec42c627287a73f0803eb6000000020000000000000000000000000000000000000000000000000000000000 +120",
+                                "4b010a040000ffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 +250"
+                            ],
+                            "import": {
+                                "ready": [
+                                    "PEAK 1000.0 0.0 10.0 true"
+                                ],
+                                "preampDb": 0.0,
+                                "warning": null
+                            }
+                        }
+                    },
+                    "q-over-max": {
+                        "profile": {
+                            "name": "q-over-max",
+                            "bands": [
+                                "b0 PEAK 1000.0 Hz 0.0 dB Q 10.1 enabled=true"
+                            ],
+                            "preampDb": 0.0
+                        },
+                        "issues": [
+                            "Band 1: outside EPZ TP65 supported types/ranges"
+                        ],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - adjust Q",
+                        "preampPolicy": {
+                            "devicePreamp": 0,
+                            "shownPreamp": 0.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": 0.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Band 1: outside EPZ TP65 supported types/ranges"
+                            ]
+                        }
+                    },
+                    "q-under-min": {
+                        "profile": {
+                            "name": "q-under-min",
+                            "bands": [
+                                "b0 PEAK 1000.0 Hz 0.0 dB Q 0.05 enabled=true"
+                            ],
+                            "preampDb": 0.0
+                        },
+                        "issues": [
+                            "Band 1: outside EPZ TP65 supported types/ranges"
+                        ],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - adjust Q",
+                        "preampPolicy": {
+                            "devicePreamp": 0,
+                            "shownPreamp": 0.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": 0.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Band 1: outside EPZ TP65 supported types/ranges"
+                            ]
+                        }
+                    },
+                    "freq-min": {
+                        "profile": {
+                            "name": "freq-min",
+                            "bands": [
+                                "b0 PEAK 20.0 Hz 0.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": 0.0
+                        },
+                        "issues": [],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": 0,
+                            "shownPreamp": 0.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": 0.0
+                            }
+                        },
+                        "plan": {
+                            "status": "ready",
+                            "preampDb": 0,
+                            "bandWrites": [
+                                "0:20.0:0.0:1.0:2",
+                                "1:62.0:0.0:0.7109375:2",
+                                "2:125.0:0.0:0.7109375:2",
+                                "3:250.0:0.0:0.7109375:2",
+                                "4:500.0:0.0:0.7109375:2",
+                                "5:1000.0:0.0:0.7109375:2",
+                                "6:2000.0:0.0:0.7109375:2",
+                                "7:4000.0:0.0:0.7109375:2",
+                                "8:8000.0:0.0:0.7109375:2",
+                                "9:16000.0:0.0:0.7109375:2"
+                            ],
+                            "registers": [
+                                "0:20:256:0:2",
+                                "1:62:182:0:2",
+                                "2:125:182:0:2",
+                                "3:250:182:0:2",
+                                "4:500:182:0:2",
+                                "5:1000:182:0:2",
+                                "6:2000:182:0:2",
+                                "7:4000:182:0:2",
+                                "8:8000:182:0:2",
+                                "9:16000:182:0:2"
+                            ],
+                            "selfMatch": true,
+                            "sequenceSlot0": [
+                                "4b0109180000000000000040ec7515804391ea3f148aea7fbd6e15c0140000010000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180001000000000040ef845d80f0bfa23f117ba27f10405dc03e00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b01091800020000000000401d8dbc80048a443fe372437ffc75bbc07d00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180003000000000040fe1c798127398b3e02e3867ed9c674c1fa00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b01091800040000000000407a38f282dced1e3d86c70d7d2412e1c2f401b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180005000000000040490ce4858c065f3ab7f31b7a74f9a0c5e803b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000600000000004069e7c38b38dc3c3597183c74c823c3cad007b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000700000000004029b866977de1492cd7479968831eb6d3a00fb6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000800000000004003f4fcadebfdb21efd0b035215024de1401fb6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000900000000004014bd39d8d8858c0fec42c627287a73f0803eb6000000020000000000000000000000000000000000000000000000000000000000 +120",
+                                "4b010a040000ffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 +250"
+                            ],
+                            "import": {
+                                "ready": [
+                                    "PEAK 20.0 0.0 1.0 true"
+                                ],
+                                "preampDb": 0.0,
+                                "warning": null
+                            }
+                        }
+                    },
+                    "freq-max": {
+                        "profile": {
+                            "name": "freq-max",
+                            "bands": [
+                                "b0 PEAK 20000.0 Hz 0.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": 0.0
+                        },
+                        "issues": [],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": 0,
+                            "shownPreamp": 0.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": 0.0
+                            }
+                        },
+                        "plan": {
+                            "status": "ready",
+                            "preampDb": 0,
+                            "bandWrites": [
+                                "0:20000.0:0.0:1.0:2",
+                                "1:62.0:0.0:0.7109375:2",
+                                "2:125.0:0.0:0.7109375:2",
+                                "3:250.0:0.0:0.7109375:2",
+                                "4:500.0:0.0:0.7109375:2",
+                                "5:1000.0:0.0:0.7109375:2",
+                                "6:2000.0:0.0:0.7109375:2",
+                                "7:4000.0:0.0:0.7109375:2",
+                                "8:8000.0:0.0:0.7109375:2",
+                                "9:16000.0:0.0:0.7109375:2"
+                            ],
+                            "registers": [
+                                "0:20000:256:0:2",
+                                "1:62:182:0:2",
+                                "2:125:182:0:2",
+                                "3:250:182:0:2",
+                                "4:500:182:0:2",
+                                "5:1000:182:0:2",
+                                "6:2000:182:0:2",
+                                "7:4000:182:0:2",
+                                "8:8000:182:0:2",
+                                "9:16000:182:0:2"
+                            ],
+                            "selfMatch": true,
+                            "sequenceSlot0": [
+                                "4b01091800000000000000403b0ea9e9f04d5016c5f1561610b2afe9204e00010000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180001000000000040ef845d80f0bfa23f117ba27f10405dc03e00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b01091800020000000000401d8dbc80048a443fe372437ffc75bbc07d00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180003000000000040fe1c798127398b3e02e3867ed9c674c1fa00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b01091800040000000000407a38f282dced1e3d86c70d7d2412e1c2f401b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180005000000000040490ce4858c065f3ab7f31b7a74f9a0c5e803b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000600000000004069e7c38b38dc3c3597183c74c823c3cad007b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000700000000004029b866977de1492cd7479968831eb6d3a00fb6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000800000000004003f4fcadebfdb21efd0b035215024de1401fb6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000900000000004014bd39d8d8858c0fec42c627287a73f0803eb6000000020000000000000000000000000000000000000000000000000000000000 +120",
+                                "4b010a040000ffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 +250"
+                            ],
+                            "import": {
+                                "ready": [
+                                    "PEAK 20000.0 0.0 1.0 true"
+                                ],
+                                "preampDb": 0.0,
+                                "warning": null
+                            }
+                        }
+                    },
+                    "freq-over-max": {
+                        "profile": {
+                            "name": "freq-over-max",
+                            "bands": [
+                                "b0 PEAK 20001.0 Hz 0.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": 0.0
+                        },
+                        "issues": [
+                            "Band 1: outside EPZ TP65 supported types/ranges"
+                        ],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - adjust frequency",
+                        "preampPolicy": {
+                            "devicePreamp": 0,
+                            "shownPreamp": 0.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": 0.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Band 1: outside EPZ TP65 supported types/ranges"
+                            ]
+                        }
+                    },
+                    "freq-under-min": {
+                        "profile": {
+                            "name": "freq-under-min",
+                            "bands": [
+                                "b0 PEAK 19.0 Hz 0.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": 0.0
+                        },
+                        "issues": [
+                            "Band 1: outside EPZ TP65 supported types/ranges"
+                        ],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - adjust frequency",
+                        "preampPolicy": {
+                            "devicePreamp": 0,
+                            "shownPreamp": 0.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": 0.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Band 1: outside EPZ TP65 supported types/ranges"
+                            ]
+                        }
+                    },
+                    "type-PEAK": {
+                        "profile": {
+                            "name": "type-PEAK",
+                            "bands": [
+                                "b0 PEAK 1000.0 Hz 3.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": -3.0
+                        },
+                        "issues": [
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                        ],
+                        "blockLabel": "PREAMP OUT OF RANGE",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": -3,
+                            "shownPreamp": -3.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": -3.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": -3.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                            ]
+                        }
+                    },
+                    "type-LOW_SHELF": {
+                        "profile": {
+                            "name": "type-LOW_SHELF",
+                            "bands": [
+                                "b0 LOW_SHELF 1000.0 Hz 3.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": -3.0
+                        },
+                        "issues": [
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                        ],
+                        "blockLabel": "PREAMP OUT OF RANGE",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": -3,
+                            "shownPreamp": -3.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": -4.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": -3.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                            ]
+                        }
+                    },
+                    "type-HIGH_SHELF": {
+                        "profile": {
+                            "name": "type-HIGH_SHELF",
+                            "bands": [
+                                "b0 HIGH_SHELF 1000.0 Hz 3.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": -3.0
+                        },
+                        "issues": [
+                            "EPZ TP65 band 1 cannot be represented safely. Reduce the boost, raise the shelf frequency or adjust Q."
+                        ],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - adjust shelf gain or Q",
+                        "preampPolicy": {
+                            "devicePreamp": -3,
+                            "shownPreamp": -3.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": -4.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": -3.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "EPZ TP65 band 1 cannot be represented safely. Reduce the boost, raise the shelf frequency or adjust Q."
+                            ]
+                        }
+                    },
+                    "type-LOW_PASS": {
+                        "profile": {
+                            "name": "type-LOW_PASS",
+                            "bands": [
+                                "b0 LOW_PASS 1000.0 Hz 0.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": -3.0
+                        },
+                        "issues": [
+                            "Band 1: outside EPZ TP65 supported types/ranges"
+                        ],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": -3,
+                            "shownPreamp": -3.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": -2.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": -3.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Band 1: outside EPZ TP65 supported types/ranges"
+                            ]
+                        }
+                    },
+                    "type-HIGH_PASS": {
+                        "profile": {
+                            "name": "type-HIGH_PASS",
+                            "bands": [
+                                "b0 HIGH_PASS 1000.0 Hz 0.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": -3.0
+                        },
+                        "issues": [
+                            "Band 1: outside EPZ TP65 supported types/ranges"
+                        ],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": -3,
+                            "shownPreamp": -3.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": -2.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": -3.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Band 1: outside EPZ TP65 supported types/ranges"
+                            ]
+                        }
+                    },
+                    "type-BAND_PASS": {
+                        "profile": {
+                            "name": "type-BAND_PASS",
+                            "bands": [
+                                "b0 BAND_PASS 1000.0 Hz 0.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": -3.0
+                        },
+                        "issues": [
+                            "Band 1: outside EPZ TP65 supported types/ranges"
+                        ],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": -3,
+                            "shownPreamp": -3.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": -3.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Band 1: outside EPZ TP65 supported types/ranges"
+                            ]
+                        }
+                    },
+                    "type-ALL_PASS": {
+                        "profile": {
+                            "name": "type-ALL_PASS",
+                            "bands": [
+                                "b0 ALL_PASS 1000.0 Hz 0.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": -3.0
+                        },
+                        "issues": [
+                            "Band 1: outside EPZ TP65 supported types/ranges"
+                        ],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": -3,
+                            "shownPreamp": -3.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": -3.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Band 1: outside EPZ TP65 supported types/ranges"
+                            ]
+                        }
+                    },
+                    "shelf-q-ceiling-LOW_SHELF": {
+                        "profile": {
+                            "name": "shelf-q-ceiling-LOW_SHELF",
+                            "bands": [
+                                "b0 LOW_SHELF 1000.0 Hz 2.0 dB Q 10.0 enabled=true"
+                            ],
+                            "preampDb": -2.0
+                        },
+                        "issues": [
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -2 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                        ],
+                        "blockLabel": "PREAMP OUT OF RANGE",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": -2,
+                            "shownPreamp": -2.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": -10.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": -2.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -2 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                            ]
+                        }
+                    },
+                    "shelf-q-over-ceiling-LOW_SHELF": {
+                        "profile": {
+                            "name": "shelf-q-over-ceiling-LOW_SHELF",
+                            "bands": [
+                                "b0 LOW_SHELF 1000.0 Hz 2.0 dB Q 10.01 enabled=true"
+                            ],
+                            "preampDb": -2.0
+                        },
+                        "issues": [
+                            "Band 1: outside EPZ TP65 supported types/ranges"
+                        ],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - adjust Q",
+                        "preampPolicy": {
+                            "devicePreamp": -2,
+                            "shownPreamp": -2.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": -10.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": -2.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Band 1: outside EPZ TP65 supported types/ranges"
+                            ]
+                        }
+                    },
+                    "shelf-q-ceiling-HIGH_SHELF": {
+                        "profile": {
+                            "name": "shelf-q-ceiling-HIGH_SHELF",
+                            "bands": [
+                                "b0 HIGH_SHELF 1000.0 Hz 2.0 dB Q 10.0 enabled=true"
+                            ],
+                            "preampDb": -2.0
+                        },
+                        "issues": [
+                            "EPZ TP65 band 1 cannot be represented safely. Reduce the boost, raise the shelf frequency or adjust Q."
+                        ],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - adjust shelf gain or Q",
+                        "preampPolicy": {
+                            "devicePreamp": -2,
+                            "shownPreamp": -2.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": -10.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": -2.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "EPZ TP65 band 1 cannot be represented safely. Reduce the boost, raise the shelf frequency or adjust Q."
+                            ]
+                        }
+                    },
+                    "shelf-q-over-ceiling-HIGH_SHELF": {
+                        "profile": {
+                            "name": "shelf-q-over-ceiling-HIGH_SHELF",
+                            "bands": [
+                                "b0 HIGH_SHELF 1000.0 Hz 2.0 dB Q 10.01 enabled=true"
+                            ],
+                            "preampDb": -2.0
+                        },
+                        "issues": [
+                            "Band 1: outside EPZ TP65 supported types/ranges"
+                        ],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - adjust Q",
+                        "preampPolicy": {
+                            "devicePreamp": -2,
+                            "shownPreamp": -2.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": -10.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": -2.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Band 1: outside EPZ TP65 supported types/ranges"
+                            ]
+                        }
+                    },
+                    "pass-stored-gain-LOW_PASS": {
+                        "profile": {
+                            "name": "pass-stored-gain-LOW_PASS",
+                            "bands": [
+                                "b0 LOW_PASS 1000.0 Hz 15.0 dB Q 0.7 enabled=true"
+                            ],
+                            "preampDb": 0.0
+                        },
+                        "issues": [
+                            "Band 1: outside EPZ TP65 supported types/ranges"
+                        ],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": 0,
+                            "shownPreamp": 0.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": 0.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Band 1: outside EPZ TP65 supported types/ranges"
+                            ]
+                        }
+                    },
+                    "pass-stored-gain-ALL_PASS": {
+                        "profile": {
+                            "name": "pass-stored-gain-ALL_PASS",
+                            "bands": [
+                                "b0 ALL_PASS 1000.0 Hz 15.0 dB Q 0.7 enabled=true"
+                            ],
+                            "preampDb": 0.0
+                        },
+                        "issues": [
+                            "Band 1: outside EPZ TP65 supported types/ranges"
+                        ],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": 0,
+                            "shownPreamp": 0.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": 0.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Band 1: outside EPZ TP65 supported types/ranges"
+                            ]
+                        }
+                    },
+                    "hs-plus-peak-auto": {
+                        "profile": {
+                            "name": "hs-plus-peak-auto",
+                            "bands": [
+                                "b0 HIGH_SHELF 8000.0 Hz 4.0 dB Q 0.7 enabled=true",
+                                "b1 PEAK 1000.0 Hz -2.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": null
+                        },
+                        "issues": [
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -4 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                        ],
+                        "blockLabel": "PREAMP OUT OF RANGE",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": -4,
+                            "shownPreamp": -4.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": -4.0,
+                            "autoRefusal": null,
+                            "explicit": null
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -4 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                            ]
+                        }
+                    },
+                    "hs-plus-peak-manual": {
+                        "profile": {
+                            "name": "hs-plus-peak-manual",
+                            "bands": [
+                                "b0 HIGH_SHELF 8000.0 Hz 4.0 dB Q 0.7 enabled=true",
+                                "b1 PEAK 1000.0 Hz -2.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": -2.5
+                        },
+                        "issues": [
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                        ],
+                        "blockLabel": "PREAMP OUT OF RANGE",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": -3,
+                            "shownPreamp": -3.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": -4.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": -2.5
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                            ]
+                        }
+                    },
+                    "overlapping-boosts-auto": {
+                        "profile": {
+                            "name": "overlapping-boosts-auto",
+                            "bands": [
+                                "b0 PEAK 100.0 Hz 6.0 dB Q 0.5 enabled=true",
+                                "b1 PEAK 120.0 Hz 6.0 dB Q 0.5 enabled=true",
+                                "b2 LOW_SHELF 80.0 Hz 4.0 dB Q 0.7 enabled=true"
+                            ],
+                            "preampDb": null
+                        },
+                        "issues": [
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -14 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                        ],
+                        "blockLabel": "PREAMP OUT OF RANGE",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": -14,
+                            "shownPreamp": -14.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": -14.0,
+                            "autoRefusal": null,
+                            "explicit": null
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -14 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                            ]
+                        }
+                    },
+                    "empty-manual0": {
+                        "profile": {
+                            "name": "empty-manual0",
+                            "bands": [],
+                            "preampDb": 0.0
+                        },
+                        "issues": [],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": 0,
+                            "shownPreamp": 0.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": 0.0
+                            }
+                        },
+                        "plan": {
+                            "status": "ready",
+                            "preampDb": 0,
+                            "bandWrites": [
+                                "0:31.0:0.0:0.7109375:2",
+                                "1:62.0:0.0:0.7109375:2",
+                                "2:125.0:0.0:0.7109375:2",
+                                "3:250.0:0.0:0.7109375:2",
+                                "4:500.0:0.0:0.7109375:2",
+                                "5:1000.0:0.0:0.7109375:2",
+                                "6:2000.0:0.0:0.7109375:2",
+                                "7:4000.0:0.0:0.7109375:2",
+                                "8:8000.0:0.0:0.7109375:2",
+                                "9:16000.0:0.0:0.7109375:2"
+                            ],
+                            "registers": [
+                                "0:31:182:0:2",
+                                "1:62:182:0:2",
+                                "2:125:182:0:2",
+                                "3:250:182:0:2",
+                                "4:500:182:0:2",
+                                "5:1000:182:0:2",
+                                "6:2000:182:0:2",
+                                "7:4000:182:0:2",
+                                "8:8000:182:0:2",
+                                "9:16000:182:0:2"
+                            ],
+                            "selfMatch": true,
+                            "sequenceSlot0": [
+                                "4b01091800000000000000404ec22e80f04ed13fb23dd17f10b12ec01f00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180001000000000040ef845d80f0bfa23f117ba27f10405dc03e00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b01091800020000000000401d8dbc80048a443fe372437ffc75bbc07d00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180003000000000040fe1c798127398b3e02e3867ed9c674c1fa00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b01091800040000000000407a38f282dced1e3d86c70d7d2412e1c2f401b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180005000000000040490ce4858c065f3ab7f31b7a74f9a0c5e803b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000600000000004069e7c38b38dc3c3597183c74c823c3cad007b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000700000000004029b866977de1492cd7479968831eb6d3a00fb6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000800000000004003f4fcadebfdb21efd0b035215024de1401fb6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000900000000004014bd39d8d8858c0fec42c627287a73f0803eb6000000020000000000000000000000000000000000000000000000000000000000 +120",
+                                "4b010a040000ffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 +250"
+                            ],
+                            "import": {
+                                "ready": [
+                                    "PEAK 31.0 0.0 0.7109375 true"
+                                ],
+                                "preampDb": 0.0,
+                                "warning": null
+                            }
+                        }
+                    },
+                    "empty-auto": {
+                        "profile": {
+                            "name": "empty-auto",
+                            "bands": [],
+                            "preampDb": null
+                        },
+                        "issues": [],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": 0,
+                            "shownPreamp": 0.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": null
+                        },
+                        "plan": {
+                            "status": "ready",
+                            "preampDb": 0,
+                            "bandWrites": [
+                                "0:31.0:0.0:0.7109375:2",
+                                "1:62.0:0.0:0.7109375:2",
+                                "2:125.0:0.0:0.7109375:2",
+                                "3:250.0:0.0:0.7109375:2",
+                                "4:500.0:0.0:0.7109375:2",
+                                "5:1000.0:0.0:0.7109375:2",
+                                "6:2000.0:0.0:0.7109375:2",
+                                "7:4000.0:0.0:0.7109375:2",
+                                "8:8000.0:0.0:0.7109375:2",
+                                "9:16000.0:0.0:0.7109375:2"
+                            ],
+                            "registers": [
+                                "0:31:182:0:2",
+                                "1:62:182:0:2",
+                                "2:125:182:0:2",
+                                "3:250:182:0:2",
+                                "4:500:182:0:2",
+                                "5:1000:182:0:2",
+                                "6:2000:182:0:2",
+                                "7:4000:182:0:2",
+                                "8:8000:182:0:2",
+                                "9:16000:182:0:2"
+                            ],
+                            "selfMatch": true,
+                            "sequenceSlot0": [
+                                "4b01091800000000000000404ec22e80f04ed13fb23dd17f10b12ec01f00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180001000000000040ef845d80f0bfa23f117ba27f10405dc03e00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b01091800020000000000401d8dbc80048a443fe372437ffc75bbc07d00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180003000000000040fe1c798127398b3e02e3867ed9c674c1fa00b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b01091800040000000000407a38f282dced1e3d86c70d7d2412e1c2f401b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b0109180005000000000040490ce4858c065f3ab7f31b7a74f9a0c5e803b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000600000000004069e7c38b38dc3c3597183c74c823c3cad007b6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000700000000004029b866977de1492cd7479968831eb6d3a00fb6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000800000000004003f4fcadebfdb21efd0b035215024de1401fb6000000020000000000000000000000000000000000000000000000000000000000 +20",
+                                "4b010918000900000000004014bd39d8d8858c0fec42c627287a73f0803eb6000000020000000000000000000000000000000000000000000000000000000000 +120",
+                                "4b010a040000ffff0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 +250"
+                            ],
+                            "import": {
+                                "ready": [
+                                    "PEAK 31.0 0.0 0.7109375 true"
+                                ],
+                                "preampDb": 0.0,
+                                "warning": null
+                            }
+                        }
+                    },
+                    "two-bands-one-disabled-auto": {
+                        "profile": {
+                            "name": "two-bands-one-disabled-auto",
+                            "bands": [
+                                "b0 PEAK 1000.0 Hz 3.0 dB Q 1.0 enabled=true",
+                                "b1 PEAK 2000.0 Hz 6.0 dB Q 1.0 enabled=false"
+                            ],
+                            "preampDb": null
+                        },
+                        "issues": [
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                        ],
+                        "blockLabel": "PREAMP OUT OF RANGE",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": -3,
+                            "shownPreamp": -3.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": -3.0,
+                            "autoRefusal": null,
+                            "explicit": null
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                            ]
+                        }
+                    },
+                    "full-peaks-auto": {
+                        "profile": {
+                            "name": "full-peaks-auto",
+                            "bands": [
+                                "b0 PEAK 31.0 Hz 2.5 dB Q 0.7 enabled=true",
+                                "b1 PEAK 62.0 Hz -1.5 dB Q 1.0 enabled=true",
+                                "b2 PEAK 125.0 Hz 3.0 dB Q 1.4 enabled=true",
+                                "b3 PEAK 250.0 Hz -2.0 dB Q 2.0 enabled=true",
+                                "b4 PEAK 500.0 Hz 1.0 dB Q 0.9 enabled=true",
+                                "b5 PEAK 1000.0 Hz -3.0 dB Q 3.0 enabled=true",
+                                "b6 PEAK 2000.0 Hz 2.0 dB Q 1.1 enabled=true",
+                                "b7 PEAK 4000.0 Hz -1.0 dB Q 0.8 enabled=true",
+                                "b8 PEAK 8000.0 Hz 1.5 dB Q 1.6 enabled=true",
+                                "b9 PEAK 16000.0 Hz -2.5 dB Q 2.5 enabled=true"
+                            ],
+                            "preampDb": null
+                        },
+                        "issues": [
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                        ],
+                        "blockLabel": "PREAMP OUT OF RANGE",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": -3,
+                            "shownPreamp": -3.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": -3.0,
+                            "autoRefusal": null,
+                            "explicit": null
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -3 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                            ]
+                        }
+                    },
+                    "full-peaks-manual": {
+                        "profile": {
+                            "name": "full-peaks-manual",
+                            "bands": [
+                                "b0 PEAK 31.0 Hz 2.5 dB Q 0.7 enabled=true",
+                                "b1 PEAK 62.0 Hz -1.5 dB Q 1.0 enabled=true",
+                                "b2 PEAK 125.0 Hz 3.0 dB Q 1.4 enabled=true",
+                                "b3 PEAK 250.0 Hz -2.0 dB Q 2.0 enabled=true",
+                                "b4 PEAK 500.0 Hz 1.0 dB Q 0.9 enabled=true",
+                                "b5 PEAK 1000.0 Hz -3.0 dB Q 3.0 enabled=true",
+                                "b6 PEAK 2000.0 Hz 2.0 dB Q 1.1 enabled=true",
+                                "b7 PEAK 4000.0 Hz -1.0 dB Q 0.8 enabled=true",
+                                "b8 PEAK 8000.0 Hz 1.5 dB Q 1.6 enabled=true",
+                                "b9 PEAK 16000.0 Hz -2.5 dB Q 2.5 enabled=true"
+                            ],
+                            "preampDb": -6.0
+                        },
+                        "issues": [
+                            "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -6 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                        ],
+                        "blockLabel": "PREAMP OUT OF RANGE",
+                        "headline": "INVALID EQ - EDIT BAND",
+                        "preampPolicy": {
+                            "devicePreamp": -6,
+                            "shownPreamp": -6.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": -3.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": -6.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for -6 dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+                            ]
+                        }
+                    },
+                    "full-mixed-types-manual": {
+                        "profile": {
+                            "name": "full-mixed-types-manual",
+                            "bands": [
+                                "b0 PEAK 31.0 Hz 2.5 dB Q 0.7 enabled=true",
+                                "b1 LOW_SHELF 62.0 Hz -1.5 dB Q 1.0 enabled=true",
+                                "b2 HIGH_SHELF 125.0 Hz 3.0 dB Q 1.4 enabled=true",
+                                "b3 PEAK 250.0 Hz -2.0 dB Q 2.0 enabled=true",
+                                "b4 LOW_SHELF 500.0 Hz 1.0 dB Q 0.9 enabled=true",
+                                "b5 HIGH_SHELF 1000.0 Hz -3.0 dB Q 3.0 enabled=true",
+                                "b6 PEAK 2000.0 Hz 2.0 dB Q 1.1 enabled=true",
+                                "b7 LOW_SHELF 4000.0 Hz -1.0 dB Q 0.8 enabled=true",
+                                "b8 HIGH_SHELF 8000.0 Hz 1.5 dB Q 1.6 enabled=true",
+                                "b9 PEAK 16000.0 Hz -2.5 dB Q 2.5 enabled=true"
+                            ],
+                            "preampDb": -6.0
+                        },
+                        "issues": [
+                            "EPZ TP65 band 3 cannot be represented safely. Reduce the boost, raise the shelf frequency or adjust Q."
+                        ],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - adjust shelf gain or Q",
+                        "preampPolicy": {
+                            "devicePreamp": -6,
+                            "shownPreamp": -6.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": -6.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": -6.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "EPZ TP65 band 3 cannot be represented safely. Reduce the boost, raise the shelf frequency or adjust Q."
+                            ]
+                        }
+                    },
+                    "full-mixed-types-auto": {
+                        "profile": {
+                            "name": "full-mixed-types-auto",
+                            "bands": [
+                                "b0 LOW_SHELF 31.0 Hz 2.5 dB Q 0.7 enabled=true",
+                                "b1 HIGH_SHELF 62.0 Hz -1.5 dB Q 1.0 enabled=true",
+                                "b2 PEAK 125.0 Hz 3.0 dB Q 1.4 enabled=true",
+                                "b3 LOW_SHELF 250.0 Hz -2.0 dB Q 2.0 enabled=true",
+                                "b4 HIGH_SHELF 500.0 Hz 1.0 dB Q 0.9 enabled=true",
+                                "b5 PEAK 1000.0 Hz -3.0 dB Q 3.0 enabled=true",
+                                "b6 LOW_SHELF 2000.0 Hz 2.0 dB Q 1.1 enabled=true",
+                                "b7 HIGH_SHELF 4000.0 Hz -1.0 dB Q 0.8 enabled=true",
+                                "b8 PEAK 8000.0 Hz 1.5 dB Q 1.6 enabled=true",
+                                "b9 LOW_SHELF 16000.0 Hz -2.5 dB Q 2.5 enabled=true"
+                            ],
+                            "preampDb": null
+                        },
+                        "issues": [
+                            "EPZ TP65 band 5 cannot be represented safely. Reduce the boost, raise the shelf frequency or adjust Q."
+                        ],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - adjust shelf gain or Q",
+                        "preampPolicy": {
+                            "devicePreamp": -1,
+                            "shownPreamp": -1.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": -1.0,
+                            "autoRefusal": null,
+                            "explicit": null
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "EPZ TP65 band 5 cannot be represented safely. Reduce the boost, raise the shelf frequency or adjust Q."
+                            ]
+                        }
+                    },
+                    "one-band-too-many": {
+                        "profile": {
+                            "name": "one-band-too-many",
+                            "bands": [
+                                "b0 PEAK 31.0 Hz 0.0 dB Q 1.0 enabled=true",
+                                "b1 PEAK 63.0 Hz 0.0 dB Q 1.0 enabled=true",
+                                "b2 PEAK 127.0 Hz 0.0 dB Q 1.0 enabled=true",
+                                "b3 PEAK 253.0 Hz 0.0 dB Q 1.0 enabled=true",
+                                "b4 PEAK 504.0 Hz 0.0 dB Q 1.0 enabled=true",
+                                "b5 PEAK 1005.0 Hz 0.0 dB Q 1.0 enabled=true",
+                                "b6 PEAK 2006.0 Hz 0.0 dB Q 1.0 enabled=true",
+                                "b7 PEAK 4007.0 Hz 0.0 dB Q 1.0 enabled=true",
+                                "b8 PEAK 8008.0 Hz 0.0 dB Q 1.0 enabled=true",
+                                "b9 PEAK 16009.0 Hz 0.0 dB Q 1.0 enabled=true",
+                                "b10 PEAK 41.0 Hz 0.0 dB Q 1.0 enabled=true"
+                            ],
+                            "preampDb": 0.0
+                        },
+                        "issues": [
+                            "11 enabled bands; EPZ TP65 has 10"
+                        ],
+                        "blockLabel": "INVALID EQ - EDIT BAND",
+                        "headline": "INVALID EQ - adjust band count",
+                        "preampPolicy": {
+                            "devicePreamp": 0,
+                            "shownPreamp": 0.0,
+                            "shelfOffset": 0.0,
+                            "manualForAuto": 0.0,
+                            "autoRefusal": null,
+                            "explicit": {
+                                "fits": true,
+                                "refusal": null,
+                                "fitImported": 0.0
+                            }
+                        },
+                        "plan": {
+                            "status": "rejected",
+                            "issues": [
+                                "11 enabled bands; EPZ TP65 has 10"
                             ]
                         }
                     }

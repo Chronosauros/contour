@@ -459,6 +459,8 @@ internal object CatalogDump {
         // appended with the Kiwi Ears AD1 (3302:20E3, the WalkPlay VID, a KT register DAC) and the Tanchjim Space II (3302:4381): both found by VID, PID and the exact USB name
         Triple(0x3302, 0x20E3, "AD1"), Triple(0x3302, 0x20E3, "ad1"), Triple(0x3302, 0x20E3, null), Triple(0x3302, 0x20E4, "AD1"),
         Triple(0x3302, 0x4381, "TANCHJIM-SPACE II"), Triple(0x3302, 0x4381, "TANCHJIM-SPACE PRO"), Triple(0x3302, 0x4381, null), Triple(0x3302, 0x4380, "TANCHJIM-SPACE II"),
+        // appended with the EPZ TP65 (3302:4325, an experimental tester entry found by its exact USB name)
+        Triple(0x3302, 0x4325, "TP65"), Triple(0x3302, 0x4325, "tp65"), Triple(0x3302, 0x4325, null), Triple(0x3302, 0x4326, "TP65"),
     )
 
     private fun identity(): JsonElement {
@@ -490,7 +492,7 @@ internal object CatalogDump {
     private fun nameOf(t: DeviceTarget): String = when (t) {
         DeviceTarget.MICRO -> "MICRO"; DeviceTarget.MAX -> "MAX"; DeviceTarget.TRN -> "TRN"; DeviceTarget.KA15 -> "KA15"
         DeviceTarget.K13 -> "K13"; DeviceTarget.MELODY -> "MELODY"; DeviceTarget.TINY_A -> "TINY_A"
-        DeviceTarget.DAWN_PRO_2 -> "DAWN_PRO_2"; DeviceTarget.ALLEGRO_MINI -> "ALLEGRO_MINI"; DeviceTarget.JCALLY_JM12 -> "JCALLY_JM12"; DeviceTarget.ECHO_A -> "ECHO_A"; DeviceTarget.FIIO_JA11 -> "FIIO_JA11"; DeviceTarget.MOONDROP_DUSK -> "MOONDROP_DUSK"; DeviceTarget.RETRO_NANO -> "SNOWSKY_RETRO_NANO"; DeviceTarget.FIIO_JIEZI -> "FIIO_JIEZI"; DeviceTarget.KIWI_EARS_AD1 -> "KIWI_EARS_AD1"; DeviceTarget.SPACE_2 -> "TANCHJIM_SPACE_II"
+        DeviceTarget.DAWN_PRO_2 -> "DAWN_PRO_2"; DeviceTarget.ALLEGRO_MINI -> "ALLEGRO_MINI"; DeviceTarget.JCALLY_JM12 -> "JCALLY_JM12"; DeviceTarget.ECHO_A -> "ECHO_A"; DeviceTarget.FIIO_JA11 -> "FIIO_JA11"; DeviceTarget.MOONDROP_DUSK -> "MOONDROP_DUSK"; DeviceTarget.RETRO_NANO -> "SNOWSKY_RETRO_NANO"; DeviceTarget.FIIO_JIEZI -> "FIIO_JIEZI"; DeviceTarget.KIWI_EARS_AD1 -> "KIWI_EARS_AD1"; DeviceTarget.SPACE_2 -> "TANCHJIM_SPACE_II"; DeviceTarget.EPZ_TP65 -> "EPZ_TP65"
         else -> "UNKNOWN"
     }
 
@@ -508,6 +510,7 @@ internal object CatalogDump {
         "FIIO_JIEZI" to Spec(10, -12.0, 12.0, 0.1, 10.0, 10.0 / sqrt(2.0), 20.0, 20000.0, SEVEN, -12.0, 12.0),
         "KIWI_EARS_AD1" to Spec(5, -12.0, 12.0, 0.2, 10.0, 1.0, 20.0, 20000.0, THREE, 0.0, 0.0),
         "TANCHJIM_SPACE_II" to Spec(10, -12.0, 12.0, 0.1, 10.0, 10.0, 20.0, 20000.0, listOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF, FilterType.LOW_PASS, FilterType.HIGH_PASS), -30.0, 0.0),
+        "EPZ_TP65" to Spec(10, -10.0, 10.0, 0.1, 10.0, 10.0, 20.0, 20000.0, listOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF), -30.0, 0.0),
     )
 
     private fun hexTrim(b: ByteArray): String = hex(b.copyOf(b.indexOfLast { it.toInt() != 0 } + 1))
@@ -678,6 +681,13 @@ internal object CatalogDump {
         return JsonObject(entries)
     }
 
+    /** The EPZ TP65 (experimental tester entry, the Space II's code with the catalog's range): the same dump as the Space II's. */
+    private fun tp65Json(t: DeviceTarget): JsonElement {
+        val entries = familyBase("EPZ_TP65", t)
+        entries["walkplay"] = walkplayJson("EPZ_TP65", requireNotNull(t.walkplay), familySpecs.getValue("EPZ_TP65"))
+        return JsonObject(entries)
+    }
+
     /** A FiiO-family DAC found by its USB name (the JA11, the RETRO NANO, the JIEZI): the family flags and the FiiO block (config, frames of every profile, settings frames). */
     private fun fiioFamilyJson(name: String, t: DeviceTarget): JsonElement {
         val c = requireNotNull(t.fiio)
@@ -750,6 +760,8 @@ internal object CatalogDump {
         // The Kiwi Ears AD1 and the Tanchjim Space II (read on a unit, nothing written): dumped as a review build sees them. The AD1's read is the JM12's constructed log: the unit answered the register reads with the same values.
         "KIWI_EARS_AD1" to Proven.asChannel(BuildChannel.PERF) { ktJson("KIWI_EARS_AD1", DeviceTarget.KIWI_EARS_AD1, KtMicroCatalog.ad1Models, "jm12-read-constructed.log") },
         "TANCHJIM_SPACE_II" to Proven.asChannel(BuildChannel.PERF) { space2Json(DeviceTarget.SPACE_2) },
+        // The EPZ TP65 (experimental tester entry, nothing measured on a Contour unit): dumped as a review build sees it, after the Space II.
+        "EPZ_TP65" to Proven.asChannel(BuildChannel.PERF) { tp65Json(DeviceTarget.EPZ_TP65) },
     )
 
     /** The whole dump as pretty JSON text, LF line endings, one trailing newline. */

@@ -1,6 +1,6 @@
 # Privacy policy
 
-Last updated: 26 October 2026
+Last updated: 27 November 2026
 
 Contour is an offline Android app. It collects no personal data and sends nothing anywhere.
 
@@ -22,9 +22,11 @@ Contour is an offline Android app. It collects no personal data and sends nothin
 - **Clipboard.** When you open the new-profile sheet, the app reads the clipboard on the phone to offer pasting an
   EQ profile, and reads it again if you plug in a different DAC while the sheet is open. Nothing leaves the phone.
 - **Sharing.** If you use SHARE on a profile, Android's share sheet sends the profile text to the app you pick.
-- **Files.** SAVE .TXT writes a profile to the file and place you pick in Android's file dialog. When you open or
-  share a .txt file with Contour, it reads only that file, shows you what it found and imports it after you
-  confirm; OPEN FILE in the new-profile sheet reads the file you pick. The app has no storage permission.
+- **Files.** SAVE .TXT writes a profile to the file and place you pick in Android's file dialog, and BACKUP writes
+  all your profiles to one file at the place you pick there. When you open or share a .txt file with Contour, it
+  reads only that file, shows you what it found and imports it after you confirm; OPEN FILE in the new-profile sheet
+  reads the file you pick, and RESTORE FROM BACKUP, under it, reads only the backup file you pick. The app has no
+  storage permission.
 - **Permissions.** Vibration, for haptic feedback. Access to the DAC is granted in Android's USB dialog (see USB
   above). Nothing else.
 - **This website.** contoureq.app counts anonymous visits with Vercel Web Analytics, without cookies. According to

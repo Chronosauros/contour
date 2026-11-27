@@ -471,4 +471,204 @@ class WalkPlaySessionTest {
         assertTrue(FamilyState.EchoA(on, snapshot).matches(flat))
         assertFalse(FamilyState.EchoA(WalkPlayProfiles.echoA.copy(hardwareVerified = false), snapshot).matches(flat))
     }
+
+    // ---- EPZ TP65 (tester entry, https://github.com/Chronosauros/contour/issues/6): its own write, band frames and the RAM apply only ----------------------------
+
+    /**
+     * The ten band replies Contour read from the TP65 unit (1.8.0-tp65test2; ContourUsb log its owner attached to issue #6 on 26.11.2026): the factory flat, coefficients
+     * included (a 96 kHz RBJ peak at Q 0.75 under register Q 0x00B6). The fake below answers with these bytes until a band is written.
+     */
+    private val tp65Factory = listOf(
+        "4b 80 09 00 00 00 00 00 00 00 00 40 98 54 2c 80 a7 bc d3 3f 68 ab d3 7f 59 43 2c c0 1f 00 b6 00 00 00 02",
+        "4b 80 09 00 00 01 00 00 00 00 00 40 f6 ac 58 80 eb 97 a7 3f 0a 53 a7 7f 15 68 58 c0 3e 00 b6 00 00 00 02",
+        "4b 80 09 00 00 02 00 00 00 00 00 40 47 d7 b2 80 ef 3f 4e 3f b9 28 4d 7f 11 c0 b1 c0 7d 00 b6 00 00 00 02",
+        "4b 80 09 00 00 03 00 00 00 00 00 40 ec e8 65 81 e0 6d 9e 3e 14 17 9a 7e 20 92 61 c1 fa 00 b6 00 00 00 02",
+        "4b 80 09 00 00 04 00 00 00 00 00 40 cf ab cc 82 ae 7f 44 3d 31 54 33 7d 52 80 bb c2 f4 01 b6 00 00 00 02",
+        "4b 80 09 00 00 05 00 00 00 00 00 40 70 49 9c 85 d1 f0 a6 3a 90 b6 63 7a 2f 0f 59 c5 e8 03 b6 00 00 00 02",
+        "4b 80 09 00 00 06 00 00 00 00 00 40 0b 06 41 8b b4 de c0 35 f5 f9 be 74 4c 21 3f ca d0 07 b6 00 00 00 02",
+        "4b 80 09 00 00 07 00 00 00 00 00 40 98 36 8e 96 41 06 2a 2d 68 c9 71 69 bf f9 d5 d2 a0 0f b6 00 00 00 02",
+        "4b 80 09 00 00 08 00 00 00 00 00 40 47 8f dc ac 00 00 00 20 b9 70 23 53 00 00 00 e0 40 1f b6 00 00 00 02",
+        "4b 80 09 00 00 09 00 00 00 00 00 40 d1 f5 6c d7 5f 14 26 11 2f 0a 93 28 a1 eb d9 ee 80 3e b6 00 00 00 02",
+    )
+
+    private fun tp65Unit() = FakeDac(WalkPlayProfiles.tp65).also { d -> tp65Factory.forEachIndexed { i, h -> d.replies[i] = report(h) } }
+    private fun writesTo(d: FakeDac) = d.sentReports().filter { it.startsWith("4b 01 ") }
+
+    /** The unit's ten factory bands as PEAK rows (31 Hz .. 16 kHz, register Q 182/256) with [gain] per row: what FROM DAC gives back once a band is edited. */
+    private fun tp65Eq(preamp: Double? = 0.0, gain: (Int) -> Double) = Profile("tp65", "t", bands = listOf(31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000)
+        .mapIndexed { i, f -> Band("b$i", FilterType.PEAK, f.toDouble(), gain(i), 182 / 256.0) }, preampDb = preamp, createdAt = 0, updatedAt = 0)
+
+    @Test fun `the TP65 send of its owner's Windows edit is that one band frame and the RAM apply`() = Proven.asChannel(BuildChannel.RELEASE) {
+        val d = tp65Unit()
+        val s = WalkPlaySession(WalkPlayProfiles.tp65, d)
+        assertTrue(s.profile.writeOn)
+        val r = s.write(tp65Eq { if (it == 5) -1.0 else 0.0 }, explicitHold = true)
+        assertTrue(r.verified, r.reason)
+        val w = writesTo(d)
+        assertEquals(2, w.size, w.joinToString("\n"))
+        // the frame its owner validated: 4B 01 09 18 00 05 00 00, five Q30 coefficients, then 1000 Hz, the Q field 0x00B6, -1 dB, PEAK, 00, slot 0
+        assertTrue(w[0].startsWith("4b 01 09 18 00 05 00 00 "), w[0])
+        assertEquals("e8 03 b6 00 00 ff 02 00 00", hex(report(w[0]).copyOfRange(28, 37)))
+        assertEquals(hex(WalkPlay.TP65_APPLY), w[1])
+        // reads: the full state before and after, the preamp always as 80 03 01
+        assertEquals(2, d.sentReports().count { it.startsWith("4b 80 03 01 ") })
+        assertTrue(d.sentReports().none { it.startsWith("4b 80 03 00") })
+        // the nine untouched bands keep the unit's own bytes (no Contour coefficients written over them)
+        for (i in (0 until 10) - 5) assertEquals(hex(report(tp65Factory[i])), hex(d.replies.getValue(i)), "band $i")
+    }
+
+    @Test fun `a TP65 band that does not read back is NOT VERIFIED and is not sent again`() {
+        val d = tp65Unit().also { it.ignoredBands += 5 }
+        val r = WalkPlaySession(WalkPlayProfiles.tp65, d).write(tp65Eq { if (it == 5) -1.0 else 0.0 }, explicitHold = true)
+        assertFalse(r.verified)
+        assertTrue(r.reason!!.startsWith("band 6: "), r.reason)
+        assertEquals(2, writesTo(d).size)
+    }
+
+    @Test fun `no preamp frame leaves for a TP65 and a send that needs one is refused before the first write`() {
+        val s = WalkPlaySession(WalkPlayProfiles.tp65, tp65Unit())
+        // AUTO for a boost (-3 dB) and a manual -3 dB: refused by the plan, nothing at all on the wire
+        for (eq in listOf(tp65Eq(preamp = null) { if (it == 5) 3.0 else 0.0 }, tp65Eq(preamp = -3.0) { 0.0 })) {
+            val plan = s.plan(eq)
+            assertTrue(plan is DevicePlan.Rejected && plan.issues.single() == DeviceProtocol.TP65_PREAMP_REFUSAL.format(-3), plan.toString())
+            val d = tp65Unit()
+            assertFailsWith<IOException> { WalkPlaySession(WalkPlayProfiles.tp65, d).write(eq, explicitHold = true) }
+            assertTrue(d.events.isEmpty())
+        }
+        // a cut at AUTO needs no preamp: accepted
+        assertTrue(s.plan(tp65Eq(preamp = null) { if (it == 5) -1.0 else 0.0 }) is DevicePlan.Ready)
+        // the DAC holds -2 dB (another tool set it): the read runs, the send stops before its first write frame
+        val d = tp65Unit().also { it.preamp = -2 }
+        val e = assertFailsWith<IOException> { WalkPlaySession(WalkPlayProfiles.tp65, d).write(tp65Eq { if (it == 5) -1.0 else 0.0 }, explicitHold = true) }
+        assertTrue(e.message!!.contains("nothing was sent"), e.message)
+        assertTrue(writesTo(d).isEmpty())
+        assertEquals(1, d.sentReports().count { it.startsWith("4b 80 03 01 ") })
+    }
+
+    @Test fun `the flat restore of a TP65 writes back only the bands that changed`() {
+        val d = tp65Unit()
+        val s = WalkPlaySession(WalkPlayProfiles.tp65, d)
+        assertTrue(s.write(tp65Eq { if (it == 5 || it == 7) -1.5 else 0.0 }, explicitHold = true).verified)
+        assertEquals(3, writesTo(d).size)
+        d.events.clear()
+        val r = s.writePlan(DeviceProtocol.EPZ_TP65.flatPlan(), explicitHold = true)
+        assertTrue(r.verified, r.reason)
+        val w = writesTo(d)
+        assertEquals(listOf("4b 01 09 18 00 05 00 00", "4b 01 09 18 00 07 00 00"), w.dropLast(1).map { it.take(23) })
+        assertEquals(hex(WalkPlay.TP65_APPLY), w.last())
+        // a send that changes nothing is the RAM apply alone
+        d.events.clear()
+        assertTrue(s.writePlan(DeviceProtocol.EPZ_TP65.flatPlan(), explicitHold = true).verified)
+        assertEquals(listOf(hex(WalkPlay.TP65_APPLY)), writesTo(d))
+    }
+
+    @Test fun `the guard lets only the validated frames out to a TP65, in every context`() {
+        val tp65 = WalkPlayProfiles.tp65
+        fun payload(h: String) = report(h).copyOfRange(1, WalkPlay.REPORT_SIZE)
+        val never = listOf(
+            "4b 01 03 02 00 00", "4b 01 03 02 00 fa", "4b 01 05 00", "4b 01 17 00", "4b 01 01 01", "4b 01 01 00", "4b 01 04 00", "4b 01 05 01", "4b 01 02 00 01",
+            "4b 01 11 01 01", "4b 01 1d 01 01", "4b 01 16 04 00", "4b 01 19 01", "4b 01 0a 04 00 00 ff fe", "4b 01 0a 00", "4b 01 09 18 00 0a 00 00", "4b 01 09 21 00 00 00 00",
+            "4b 01 ff", "4b 05 01 02 00 ff", "4b 80 03 00", "4b 80 11 01", "4b 80 16 04 00", "4b 80 1d 01", "4b 80 19 01", "4b 80 09 00 00 0a 00", "4b 80 0c 01", "4b 80 54",
+        )
+        for (ctx in WalkPlayGuard.Context.entries) {
+            for (h in never) assertNotNull(WalkPlayGuard.refusal(payload(h), tp65, ctx), "$h in $ctx")
+            for (h in listOf("4b 80 0c 00", "4b 80 09 00", "4b 80 09 00 00 09 00", "4b 80 03 01", "4b 01 0a 04 00 00 ff ff"))
+                assertNull(WalkPlayGuard.refusal(payload(h), tp65, ctx), "$h in $ctx")
+            val band = WalkPlay.bandWriteReport(DeviceProtocol.EPZ_TP65.flatPlan().bands[9], 0)
+            assertNull(WalkPlayGuard.refusal(band.copyOfRange(1, WalkPlay.REPORT_SIZE), tp65, ctx), "band frame in $ctx")
+        }
+        // the other WalkPlay DACs keep their own rules: 01 05 00 and the preamp write are steps of the Space II's and the Max's commit
+        for (p in listOf(WalkPlayProfiles.space2, WalkPlayProfiles.max)) for (h in listOf("4b 01 05 00", "4b 01 17 00", "4b 01 03 02 00 fa"))
+            assertNull(WalkPlayGuard.refusal(payload(h), p, WalkPlayGuard.Context.NORMAL), "${p.id} $h")
+    }
+
+    @Test fun `Contour's 96 kHz PEAK coefficients equal the TP65's factory bytes at the Q they were designed with`() {
+        // The unit's factory bands are 0 dB PEAKs whose coefficient bytes (8-27) are a 96 kHz RBJ peak at Q 0.75 (the Q field says 182/256). Contour's band frame for the same
+        // band at Q 0.75 must carry the same five Q30 numbers in the same order and sign (b0, b1, b2, -a1, -a2), at most 1 LSB apart; Contour's own write uses the Q field (0.711).
+        val freqs = listOf(31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000)
+        fun q30(b: ByteArray, at: Int) = (0 until 5).map { k -> (0 until 4).fold(0) { acc, j -> acc or ((b[at + 4 * k + j].toInt() and 0xFF) shl (8 * j)) } }
+        for ((i, f) in freqs.withIndex()) {
+            val unit = q30(report(tp65Factory[i]), 8)
+            val ours = q30(WalkPlay.bandWriteReport(WalkPlay.BandWrite(i, f.toDouble(), 0.0, 0.75, WalkPlay.TYPE_PK, rateHz = 96_000.0), 0), 8)
+            for (k in 0 until 5) assertTrue(kotlin.math.abs(unit[k].toLong() - ours[k].toLong()) <= 1, "band $i ($f Hz) coefficient $k: unit ${unit[k]}, Contour ${ours[k]}")
+        }
+    }
+
+    // ---- EPZ TP65 shelves (1.8.1-tp65test4): the catalog's LOW SHELF 1 and HIGH SHELF 3 on the same band frame, the Space II's shelf Q convention (not measured on a TP65) ----
+
+    /** The unit's factory rows with row [i] replaced by [edit] where it gives one: the shelf test of tp65test4 as the tester sends it. */
+    private fun tp65Rows(preamp: Double? = 0.0, edit: (Int) -> Band?) = Profile("tp65", "t", bands = listOf(31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000)
+        .mapIndexed { i, f -> edit(i) ?: Band("b$i", FilterType.PEAK, f.toDouble(), 0.0, 182 / 256.0) }, preampDb = preamp, createdAt = 0, updatedAt = 0)
+
+    /** The suggested first shelf send: LOW SHELF 100 Hz -6 dB and HIGH SHELF 4000 Hz -6 dB, Q 0.71 (the factory rows' Q), on rows 1 and 7. */
+    private fun tp65ShelfCuts(preamp: Double? = 0.0) = tp65Rows(preamp) { i ->
+        when (i) { 1 -> Band("ls", FilterType.LOW_SHELF, 100.0, -6.0, 0.71); 7 -> Band("hs", FilterType.HIGH_SHELF, 4000.0, -6.0, 0.71); else -> null }
+    }
+
+    /** |H| in dB of the five Q30 numbers of a band frame (b0, b1, b2, -a1, -a2 at bytes 8-27) at z = 1 (DC) or z = -1 (Nyquist). */
+    private fun frameGainDb(frame: ByteArray, nyquist: Boolean): Double {
+        val c = (0 until 5).map { k -> (0 until 4).fold(0) { acc, j -> acc or ((frame[8 + 4 * k + j].toInt() and 0xFF) shl (8 * j)) } / 1073741824.0 }
+        val z = if (nyquist) -1.0 else 1.0
+        val num = c[0] + c[1] * z + c[2]
+        val den = 1.0 - c[3] * z - c[4]
+        return 20 * kotlin.math.log10(kotlin.math.abs(num / den))
+    }
+
+    @Test fun `the TP65 offers PEAK and both shelves, no pass filter, and never wraps a biquad`() {
+        assertEquals(setOf(FilterType.PEAK, FilterType.LOW_SHELF, FilterType.HIGH_SHELF), DeviceProtocol.EPZ_TP65.caps.types.toSet())
+        assertFalse(DeviceProtocol.EPZ_TP65.caps.wrapQ30)
+        assertEquals(1.0, DeviceProtocol.EPZ_TP65.caps.qScale(FilterType.LOW_SHELF)); assertEquals(1.0, DeviceProtocol.EPZ_TP65.caps.qScale(FilterType.HIGH_SHELF))
+        val lp = DeviceProtocol.EPZ_TP65.plan(tp65Rows { i -> if (i == 9) Band("lp", FilterType.LOW_PASS, 16000.0, 0.0, 0.71) else null }.bands, 0.0)
+        assertTrue(lp is DevicePlan.Rejected, lp.toString())
+    }
+
+    @Test fun `the TP65 shelf cuts go out as two band frames and the RAM apply, read back VERIFIED`() = Proven.asChannel(BuildChannel.RELEASE) {
+        // the suggested send needs no preamp at AUTO or at 0 dB
+        for (pre in listOf(null, 0.0)) {
+            val plan = DeviceProtocol.EPZ_TP65.plan(tp65ShelfCuts(pre).bands, pre)
+            assertTrue(plan is DevicePlan.Ready && plan.preampDb == 0, plan.toString())
+        }
+        val d = tp65Unit()
+        val r = WalkPlaySession(WalkPlayProfiles.tp65, d).write(tp65ShelfCuts(preamp = null), explicitHold = true)
+        assertTrue(r.verified, r.reason)
+        val w = writesTo(d)
+        assertEquals(3, w.size, w.joinToString("\n"))
+        val ls = report(w[0]); val hs = report(w[1])
+        assertTrue(w[0].startsWith("4b 01 09 18 00 01 00 00 "), w[0]); assertTrue(w[1].startsWith("4b 01 09 18 00 07 00 00 "), w[1])
+        // 100 Hz, the Q field 0x00B6 (round(0.71 x 256), the Q shown), -6 dB, type 01 / 4000 Hz, 0x00B6, -6 dB, type 03; 00, slot 0
+        assertEquals("64 00 b6 00 00 fa 01 00 00", hex(ls.copyOfRange(28, 37)))
+        assertEquals("a0 0f b6 00 00 fa 03 00 00", hex(hs.copyOfRange(28, 37)))
+        assertEquals(hex(WalkPlay.TP65_APPLY), w[2])
+        // the coefficient bytes are those shelves: a low shelf cuts 6 dB at DC and leaves Nyquist, a high shelf the other way round
+        assertEquals(-6.0, frameGainDb(ls, nyquist = false), 0.05); assertEquals(0.0, frameGainDb(ls, nyquist = true), 0.05)
+        assertEquals(0.0, frameGainDb(hs, nyquist = false), 0.05); assertEquals(-6.0, frameGainDb(hs, nyquist = true), 0.05)
+        // the other eight bands keep the unit's own bytes
+        for (i in (0 until 10) - 1 - 7) assertEquals(hex(report(tp65Factory[i])), hex(d.replies.getValue(i)), "band $i")
+        // the guard lets both shelf frames out in every context
+        for (ctx in WalkPlayGuard.Context.entries) for (f in listOf(ls, hs)) assertNull(WalkPlayGuard.refusal(f.copyOfRange(1, WalkPlay.REPORT_SIZE), WalkPlayProfiles.tp65, ctx), "$ctx")
+        // back to flat: the two rows go out again as the factory PEAKs (62 Hz and 4000 Hz, 0 dB, 0x00B6, type 02) and nothing else
+        d.events.clear()
+        val s = WalkPlaySession(WalkPlayProfiles.tp65, d)
+        assertTrue(s.writePlan(DeviceProtocol.EPZ_TP65.flatPlan(), explicitHold = true).verified)
+        val back = writesTo(d)
+        assertEquals(listOf("4b 01 09 18 00 01 00 00", "4b 01 09 18 00 07 00 00"), back.dropLast(1).map { it.take(23) })
+        assertEquals("3e 00 b6 00 00 00 02 00 00", hex(report(back[0]).copyOfRange(28, 37)))
+        assertEquals("a0 0f b6 00 00 00 02 00 00", hex(report(back[1]).copyOfRange(28, 37)))
+        assertEquals(hex(WalkPlay.TP65_APPLY), back.last())
+    }
+
+    @Test fun `a TP65 shelf that needs a preamp, leaves signed Q30 or has no finite biquad is refused before anything is sent`() {
+        val boost = tp65Rows(preamp = null) { i -> if (i == 1) Band("ls", FilterType.LOW_SHELF, 100.0, 6.0, 0.71) else null }
+        val tooSteep = tp65Rows { i -> if (i == 7) Band("hs", FilterType.HIGH_SHELF, 1000.0, -10.0, 9.0) else null }
+        val overflow = tp65Rows { i -> if (i == 0) Band("hs", FilterType.HIGH_SHELF, 20.0, 10.0, 0.1) else null }
+        assertTrue(WalkPlay.shelfQCeiling(10.0)!! < 9.0)
+        val p0 = DeviceProtocol.EPZ_TP65.plan(boost.bands, null)
+        assertTrue(p0 is DevicePlan.Rejected && p0.issues.single() == DeviceProtocol.TP65_PREAMP_REFUSAL.format(-6), p0.toString())
+        for (eq in listOf(tooSteep, overflow)) assertTrue(DeviceProtocol.EPZ_TP65.plan(eq.bands, eq.preampDb) is DevicePlan.Rejected, eq.bands.toString())
+        for (eq in listOf(boost, tooSteep, overflow)) {
+            val d = tp65Unit()
+            assertFailsWith<IOException> { WalkPlaySession(WalkPlayProfiles.tp65, d).write(eq, explicitHold = true) }
+            assertTrue(d.events.isEmpty(), eq.bands.toString())
+        }
+    }
 }

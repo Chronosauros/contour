@@ -66,6 +66,16 @@ object WalkPlayProfiles {
     val trn = stable("trn", DeviceProtocol.TRN)
     /** The Tanchjim Space II: written and read back on a unit from the Mac (runs 2026-11-13-tanchjim-space-ii-01-mac to -04-mac-max) and from a phone (edge profile VERIFIED, a replug kept it, 13.11.2026), so it writes in every build. */
     val space2 = stable("space-2", DeviceProtocol.SPACE_2)
+    /**
+     * THE write flag of the EPZ TP65 (supported since 1.8.2; tested by a TP65 owner, https://github.com/Chronosauros/contour/issues/6). True since 1.8.1-tp65test3: the read-only 1.8.0-tp65test2 passed on
+     * the unit (issue comment of 26.11.2026: firmware 0.4, all ten bands and the preamp as on Windows, byte for byte, over a replug) and its owner asked for the TP65 write. The write is
+     * the TP65's own ([WalkPlay.tp65WriteSequence]): only the band frames and the RAM apply `01 0A` its owner validated (Windows, 25.11.2026), the changed bands only, no preamp, `01 05`,
+     * `01 17` or flash `01 01 01`, and [WalkPlayGuard] refuses every other frame for it. (1.8.0-tp65test1 had it true on the Space II's sequence, 1.8.0-tp65test2 false.) The tp65test3
+     * PEAK sends passed on the unit (issue comment of 26.11.2026, five sends VERIFIED, byte for byte after a replug and on Windows); 1.8.1-tp65test4 added the two shelves on the same frames,
+     * and they passed too (issue comment of 27.11.2026: LOW SHELF 100 Hz and HIGH SHELF 4000 Hz at -6 dB, then flat, each VERIFIED, the frames byte for byte as planned). 1.8.2 ships it unchanged.
+     */
+    const val TP65_TESTER_WRITE = true
+    val tp65 = stable("epz-tp65", DeviceProtocol.EPZ_TP65, TP65_TESTER_WRITE)
     val echoA = GeneratedDevices.MOONDROP_ECHO_A.let { d ->
         // The Echo-A runs the Protocol Micro's code, so its record has to agree with that protocol on what the code takes from it.
         require(d.bands == DeviceProtocol.MICRO.caps.bands && d.schemeNo == DeviceProtocol.MICRO.data.schemeNo && d.reportId == WalkPlay.REPORT_ID) {
@@ -77,7 +87,7 @@ object WalkPlayProfiles {
             shelfForm = d.shelfForm, coefficientRateHz = d.coefficientRateHz)
         WalkPlayProfile("echo-a", d.name, d.vendorId, d.productId, DeviceProtocol.MICRO, d.types, d.schemeNo, ECHO_A_HARDWARE_VERIFIED, usbName = d.usbName, capsOverride = caps)
     }
-    val all = listOf(micro, max, trn, echoA, space2)
+    val all = listOf(micro, max, trn, echoA, space2, tp65)
 
     fun find(vendorId: Int, productId: Int): WalkPlayProfile? = all.singleOrNull { it.vendorId == vendorId && it.productId == productId }
 
@@ -87,6 +97,7 @@ object WalkPlayProfiles {
         DeviceProtocol.MAX -> max
         DeviceProtocol.TRN -> trn
         DeviceProtocol.SPACE_2 -> space2
+        DeviceProtocol.EPZ_TP65 -> tp65
     }
 }
 
@@ -168,7 +179,7 @@ class WalkPlaySession(val profile: WalkPlayProfile, private val port: NativePort
         val version = p.parseVersion(request(WalkPlay.versionRequest(), "version") { p.isReply(it, WalkPlay.CMD_VERSION) })
         val slot = p.parseSlot(request(WalkPlay.slotRequest(), "slot") { p.isSlotReply(it) }, profile.caps)
         val bands = (0 until profile.bands).map { i -> p.parseBand(bandReply(i), i, profile.caps) }
-        val preamp = p.parsePreamp(request(WalkPlay.preampRequest(), "preamp") { p.isReply(it, WalkPlay.CMD_GLOBAL_GAIN) })
+        val preamp = p.parsePreamp(request(p.preampRequest(), "preamp") { p.isReply(it, WalkPlay.CMD_GLOBAL_GAIN) })
         WalkPlaySnapshot(version, slot, bands, preamp)
     }
 
@@ -235,9 +246,16 @@ class WalkPlaySession(val profile: WalkPlayProfile, private val port: NativePort
         require(explicitHold) { "HOLD TO SEND required" }
         val steps0 = runCatching { p.writeSequence(plan, 0) }.getOrNull() // preflight: nothing leaves if a band does not encode
         requireNotNull(steps0) { "The plan does not encode" }
+        var current: List<WalkPlay.Registers>? = null
         val found = if (p.experimental) {
             require(plan.bands.size == p.caps.bands && plan.bands.indices.all { plan.bands[it].index == it }) { "Plan does not cover every ${profile.name} slot" }
-            read().slot
+            val before = read()
+            if (p == DeviceProtocol.EPZ_TP65) {
+                // No preamp frame leaves for a TP65, so the DAC keeps the preamp it holds: a plan that asks for another one is refused here, before the first write frame.
+                if (plan.preampDb != before.preampDb) throw IOException("the ${profile.name} holds a preamp of ${before.preampDb} dB and Contour does not write it yet; this EQ asks for ${plan.preampDb} dB: nothing was sent")
+                current = before.bands.map { it.registers }
+            }
+            before.slot
         } else {
             request(WalkPlay.versionRequest(), "version") { WalkPlay.isReply(it, WalkPlay.CMD_VERSION) }
             WalkPlay.parseSlot(request(WalkPlay.slotRequest(), "slot") { WalkPlay.isReply(it, WalkPlay.CMD_PEQ) })
@@ -245,7 +263,7 @@ class WalkPlaySession(val profile: WalkPlayProfile, private val port: NativePort
         val slot = slotByte ?: found
         lastPlan = plan
         lastSlot = slot
-        for (step in p.writeSequence(plan, slot)) {
+        for (step in p.writeSequence(plan, slot, current)) {
             send(step.report)
             io.pause(step.delayAfterMs)
         }

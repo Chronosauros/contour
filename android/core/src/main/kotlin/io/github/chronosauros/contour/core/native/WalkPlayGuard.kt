@@ -37,9 +37,38 @@ object WalkPlayGuard {
     private val CB1300D_READS = setOf(0xDA, 0x22, 0xD3, 0x24, 0x26, 0x25)
 
     private fun u(p: ByteArray, i: Int) = if (i < p.size) p[i].toInt() and 255 else 0
+    private fun zerosFrom(p: ByteArray, from: Int) = (from until p.size).all { p[it].toInt() == 0 }
+
+    /**
+     * The EPZ TP65 (tester entry, issue #6) gets an allow-list instead, in every context: the reads its owner saw answered on the unit (version `80 0C 00`, the slot byte `80 09 00`,
+     * band `80 09 00 00 i 00`, the preamp `80 03 01`) and the two writes validated on it, a band frame `01 09 18 00 i 00 00` (i 0..9) and the RAM apply `01 0A 04 00 00 FF FF`.
+     * Anything else (the preamp write, `01 05`, `01 17`, the flash `01 01 x`, `01 04`, every setting, reset and probe frame) never leaves for it.
+     */
+    private fun tp65Refusal(p: ByteArray, profile: WalkPlayProfile): String? {
+        val op = u(p, 0)
+        val cmd = u(p, 1)
+        val bands = profile.bands
+        val ok = when (op) {
+            WalkPlay.READ -> when (cmd) {
+                WalkPlay.CMD_VERSION -> zerosFrom(p, 2)
+                // band i: 80 09 00 00 i 00; the slot byte request 80 09 00 is band 0's, byte for byte (zero padded)
+                WalkPlay.CMD_PEQ -> u(p, 2) == 0 && u(p, 3) == 0 && u(p, 4) in 0 until bands && zerosFrom(p, 5)
+                WalkPlay.CMD_GLOBAL_GAIN -> u(p, 2) == 0x01 && zerosFrom(p, 3)
+                else -> false
+            }
+            WalkPlay.WRITE -> when (cmd) {
+                WalkPlay.CMD_PEQ -> u(p, 2) == WalkPlay.BAND_LEN && u(p, 3) == 0 && u(p, 4) in 0 until bands && u(p, 5) == 0 && u(p, 6) == 0
+                0x0A -> p.contentEquals(WalkPlay.TP65_APPLY.copyOfRange(1, WalkPlay.REPORT_SIZE))
+                else -> false
+            }
+            else -> false
+        }
+        return if (ok) null else "${hex(p.take(7).map { it.toInt() and 255 })} is not a frame validated on the ${profile.name} (only its band reads and writes, the version, the slot byte, the preamp read 80 03 01 and the RAM apply 01 0A leave for it): never sent"
+    }
 
     /** Why [payload] (the bytes after the report id, `d[0]` first) must not leave in [context] for [profile], or null. */
     fun refusal(payload: ByteArray, profile: WalkPlayProfile, context: Context): String? {
+        if (profile.protocol == DeviceProtocol.EPZ_TP65) return tp65Refusal(payload, profile)
         val op = u(payload, 0)
         val cmd = u(payload, 1)
         for (c in CANDIDATES) if (c.indices.all { u(payload, it) == c[it] }) return "reset/probe candidate of another WalkPlay class (${hex(c)}): never sent"

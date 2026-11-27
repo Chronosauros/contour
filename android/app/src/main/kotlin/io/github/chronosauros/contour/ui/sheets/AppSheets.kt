@@ -354,9 +354,9 @@ private fun IconBoard(current: String, onPick: (String) -> Unit, onDismiss: () -
     }
 }
 
-/** FLAT (one 1 kHz band), PASTE (clipboard APO / AutoEQ / EQ by Ear JSON), OPEN FILE (a .txt), FROM DAC (the library profile for what plays, or a new one). The profile opens in Tune. */
+/** FLAT (one 1 kHz band), PASTE (clipboard APO / AutoEQ / EQ by Ear JSON), OPEN FILE (a .txt), RESTORE FROM BACKUP (every profile of a BACKUP file, added; owner 27.11.2026), FROM DAC (the library profile for what plays, or a new one). The profile opens in Tune. */
 @Composable
-fun NewProfileSheet(model: AppModel, device: DeviceController, editor: DacEditor, onDone: () -> Unit) {
+fun NewProfileSheet(model: AppModel, device: DeviceController, editor: DacEditor, onDone: () -> Unit, onRestoreBackup: () -> Unit = {}) {
     val context = LocalContext.current
     var clip by remember { mutableStateOf<Pair<ImportedEq, UiText?>?>(null) }
     val scope = rememberCoroutineScope()
@@ -429,6 +429,8 @@ fun NewProfileSheet(model: AppModel, device: DeviceController, editor: DacEditor
             fileMessage = null
             picker.launch(arrayOf("text/plain", "application/octet-stream", "*/*"))
         }
+        // the way back of the Library's BACKUP: the sheet closes, the system picker opens, the snackbar says what came in
+        Option(stringResource(R.string.library_restore_backup), stringResource(R.string.new_restore_backup_detail), true, "new_backup", onRestoreBackup)
         Option(
             stringResource(R.string.new_from_dac),
             when (dacImport) {

@@ -18,6 +18,7 @@
 <li>Kiwi Ears Allegro Mini</li>
 <li>Kiwi Ears AD1</li>
 <li>Tanchjim Space 2 (Space II)</li>
+<li>EPZ TP65</li>
 <li>JCally JM12</li>
 </ul>
 <p><b>Dopasowany do przetwornika</b></p>
@@ -35,6 +36,7 @@
 <li>Każdy profil ma zapisaną wersję: zapisz zmiany albo przywróć zapisaną.</li>
 <li>Wklej albo otwórz profil parametryczny AutoEQ, squig.link lub Equalizer APO (schowek albo plik .txt) albo odczytaj EQ, które jest teraz w przetworniku.</li>
 <li>Udostępnij profil jako tekst Equalizer APO albo zapisz go jako plik .txt.</li>
+<li>Zapisz kopię całej biblioteki w jednym pliku.</li>
 <li>Trzy profile na start: BASS BOOST, SOFTER VOCALS i TREBLE BOOST.</li>
 </ul>
 <p><b>Ustawienia przetwornika w tej samej aplikacji</b></p>
@@ -51,4 +53,4 @@
 </ul>
 <p>Każdy obsługiwany przetwornik ma swoją stronę z limitami i uwagami (po angielsku): contoureq.app/install</p>
 <p>Contour jest darmowy i open source (Apache-2.0) i należy do Soundblooms, małej marki audio, którą prowadzi Chronosaur.</p>
-<p>Aplikacja nieoficjalna, niezwiązana z CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears, Tanchjim ani JCally. AutoEQ, squig.link i Equalizer APO są wymienione tylko jako formaty profili, które Contour potrafi odczytać.</p>
+<p>Aplikacja nieoficjalna, niezwiązana z CrinEar, FiiO, SnowSky, TRN, Moondrop, Kiwi Ears, Tanchjim, JCally ani EPZ. AutoEQ, squig.link i Equalizer APO są wymienione tylko jako formaty profili, które Contour potrafi odczytać.</p>

@@ -23,7 +23,12 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
     TRN(GeneratedDevices.TRN_BLACK_PEARL),
     // The Tanchjim Space II (WalkPlay SchemeNo16, found by its USB name): the Protocol Max's code and write sequence with its own record (shelf Q = register, measured), proven on a unit from the Mac and a phone
     // (13.11.2026; [WalkPlayProfiles.space2]).
-    SPACE_2(GeneratedDevices.TANCHJIM_SPACE_II);
+    SPACE_2(GeneratedDevices.TANCHJIM_SPACE_II),
+    // The EPZ TP65 (WalkPlay SchemeNo16, found by its USB name; supported since 1.8.2, tested by a TP65 owner on their unit with the tester versions 1.8.0-tp65test2 to 1.8.1-tp65test4,
+    // issue #6, nothing measured by Contour): the Space II's read code with the catalog's range and types (+-10 dB; PEAK and the two shelves, each written and read back on the unit, the shelves
+    // with the Space II's shelf Q convention, not measured on a TP65), no DAC settings, its own preamp read ([preampRequest]) and its own write ([writeSequence]: band frames and the RAM apply,
+    // no preamp, no flash), the only frames validated on the unit (devices/epz-tp65.json). Its preamp reply header is read the Space II's lenient way.
+    EPZ_TP65(GeneratedDevices.EPZ_TP65);
 
     /** The record's caps; the Micro's, the TRN's and the Max's follow their verification flags ([ProtocolMicro.PASS_FILTERS_VERIFIED], [ProtocolTrn.PASS_FILTERS_VERIFIED], [ProtocolMax.CANDIDATES_VERIFIED]). */
     val caps: DeviceCapabilities get() = when {
@@ -113,9 +118,13 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
      */
     private fun flatBand(index: Int): WalkPlay.BandWrite = WalkPlay.flatWrite(index, data.factoryFlat[index])
 
-    /** The reports of one send and the pause after each: Micro and Max as 1.3.x, the TRN with its own sequence. */
-    fun writeSequence(plan: DevicePlan.Ready, slot: Int): List<WalkPlay.Step> =
+    /**
+     * The reports of one send and the pause after each: Micro and Max as 1.3.x, the TRN with its own sequence, the EPZ TP65 with its own ([WalkPlay.tp65WriteSequence]: band frames and
+     * the RAM apply only; [current], the registers read right before the send, leaves out the bands that do not change; null sends every band). [current] is the TP65's only.
+     */
+    fun writeSequence(plan: DevicePlan.Ready, slot: Int, current: List<WalkPlay.Registers>? = null): List<WalkPlay.Step> =
         if (this == TRN) WalkPlay.trnWriteSequence(plan.bands, plan.preampDb.toDouble(), slot)
+        else if (this == EPZ_TP65) WalkPlay.tp65WriteSequence(plan.bands, slot, current)
         else WalkPlay.writeSequence(plan.bands, plan.preampDb.toDouble(), slot, commit = true)
 
     fun flatPlan(): DevicePlan.Ready = if (this == MICRO) ProtocolMicro.flatPlan()
@@ -173,7 +182,11 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
                 val needed = Preamp.auto(active, caps.shelfForm)
                 if (needed < preampMin) return@runCatching DevicePlan.Rejected(listOf(SendBlocked.auto(needed, preampMin)))
             }
-            DevicePlan.Ready(writes, devicePreamp(active, preampDb))
+            val device = devicePreamp(active, preampDb)
+            // The TP65's preamp write was never tried on a unit, so Contour sends none ([WalkPlay.tp65WriteSequence]): a send leaves the DAC's preamp as it is (0 dB on the
+            // tested unit) and is refused when the profile asks for another one, AUTO's cut for a boost included.
+            if (this == EPZ_TP65 && device != 0) return@runCatching DevicePlan.Rejected(listOf(TP65_PREAMP_REFUSAL.format(device)))
+            DevicePlan.Ready(writes, device)
         }.getOrElse { DevicePlan.Rejected(listOf("Invalid EQ: ${it.message}")) }
     }
 
@@ -283,6 +296,12 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
         return version
     }
 
+    /**
+     * The preamp read: `80 03 00` (devicePEQ's, proven on the Micro, the Max, the TRN and the Space II). The EPZ TP65 gets `80 03 01`, the form its owner's Windows tool read on the unit
+     * (reply `80 03 02 00 00`, offset 0; issue #6 attachment, 25.11.2026); `80 03 00` was never sent to a TP65.
+     */
+    fun preampRequest(): ByteArray = if (this == EPZ_TP65) WalkPlay.report(WalkPlay.READ, WalkPlay.CMD_GLOBAL_GAIN, 0x01) else WalkPlay.preampRequest()
+
     fun parsePreamp(buf: ByteArray): Int {
         if (this == MICRO) return WalkPlay.parsePreamp(buf)
         require(isReply(buf, WalkPlay.CMD_GLOBAL_GAIN)) { "Invalid preamp reply" }
@@ -290,11 +309,14 @@ enum class DeviceProtocol private constructor(internal val data: WalkPlayData, v
         // not checked. A tester's Black Pearl on firmware 0.5 (09.11.2026) answered `80 03 02 32 01`, and with the 0x32 every
         // read and every send stopped at "Invalid preamp header". The TRN fills that position with stale bytes in its settings
         // replies too (research/trn-settings-walkplay-2026-10-27/FINDINGS.md). The Max keeps the strict header (no unit to test).
-        if (this != TRN && this != SPACE_2) require(buf[3].toInt() == 2 && buf[4].toInt() == 0) { "Invalid preamp header" }
+        if (this != TRN && this != SPACE_2 && this != EPZ_TP65) require(buf[3].toInt() == 2 && buf[4].toInt() == 0) { "Invalid preamp header" }
         return WalkPlay.parsePreamp(buf)
     }
 
     companion object {
+        /** The EPZ TP65's send refusal ([plan]) when the profile's device preamp (%d, whole dB) is not 0. */
+        internal const val TP65_PREAMP_REFUSAL = "Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for %d dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip)."
+
         /** Strict VID/PID pairs only. */
         fun find(vendorId: Int, productId: Int): DeviceProtocol? =
             entries.firstOrNull { it.caps.vendorId == vendorId && it.caps.productId == productId }

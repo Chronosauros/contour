@@ -161,6 +161,8 @@ interface LibraryActions {
     fun delete(p: Profile)
     fun service()
     fun licences()
+    /** BACKUP: the whole library to one file, through the system save dialog. */
+    fun backup()
 }
 
 /** A row of the index: one quiet block of 64 dp rows, the lines between them across its full width (owner 25.11.2026). */
@@ -489,10 +491,10 @@ fun LibraryScreen(
                 }
             }
             item(key = "foot") {
-                // The bottom (owner 26.11.2026): REORDER PROFILES, the two settings and ABOUT on the app's grid - every row 64 dp, every control 48 dp with 8 dp of air.
+                // The bottom (owner 26.11.2026): REORDER PROFILES, BACKUP, the two settings and ABOUT on the app's grid - every row 64 dp, every control 48 dp with 8 dp of air.
                 // Away while the cards are apart.
                 AnimatedVisibility(!reorder, enter = fadeIn(tween(220)), exit = fadeOut(tween(220))) {
-                    LibraryBottom(optionW, onReorder = { openId = null; onReorder(true) }, onAbout = { openId = null; actions.licences() })
+                    LibraryBottom(optionW, onReorder = { openId = null; onReorder(true) }, onBackup = { openId = null; actions.backup() }, onAbout = { openId = null; actions.licences() })
                 }
             }
         }
@@ -529,17 +531,30 @@ private fun ReorderRow(onClick: () -> Unit) {
     }
 }
 
+/** A full-width grey button row of the bottom, as REORDER PROFILES. */
+@Composable
+private fun FootButtonRow(text: String, tag: String, onClick: () -> Unit) {
+    Box(Modifier.fillMaxWidth().height(ROW_H).padding(Grid.GAP)) {
+        GreyButton(Modifier.fillMaxSize().testTag(tag), onClick) {
+            Text(text, style = Type.segment, color = pal.accent, maxLines = 1)
+        }
+    }
+}
+
 /**
  * The bottom of the Library (owner 26.11.2026): one block in the language of the profile list, [Grid.GROUP] under the lists as the EQ and DAC pages separate their groups,
- * with full-width lines between its rows - REORDER PROFILES (the same grey button as the "+" of the list), OPEN CONTOUR with an OFF | ON well and HAPTIC FEEDBACK as a menu
+ * with full-width lines between its rows - REORDER PROFILES (the same grey button as the "+" of the list), BACKUP (the whole library to one file, the same kind of row; owner 27.11.2026 -
+ * its way back, RESTORE FROM BACKUP, is in NEW PROFILE under the "+"), OPEN CONTOUR with an OFF | ON well and HAPTIC FEEDBACK as a menu
  * like FILTER on the DAC page, rows like those of the DAC page - and under it the ABOUT line.
  */
 @Composable
-private fun LibraryBottom(optionW: Dp, onReorder: () -> Unit, onAbout: () -> Unit) {
+private fun LibraryBottom(optionW: Dp, onReorder: () -> Unit, onBackup: () -> Unit, onAbout: () -> Unit) {
     val c = pal
     Column(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().padding(start = SIDE, end = SIDE, top = Grid.GROUP).lift(BLOCK, Lift.CARD).background(c.surface, BLOCK).testTag("library_foot")) {
             ReorderRow(onReorder)
+            FootHairline()
+            FootButtonRow(stringResource(R.string.library_backup), "library_backup", onBackup)
             FootHairline()
             UsbAttachRow(optionW)
             FootHairline()

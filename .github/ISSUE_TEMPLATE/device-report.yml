@@ -40,6 +40,7 @@ body:
     attributes:
       label: App
       options:
+        - Contour 1.8.2
         - Contour 1.8.1
         - Contour 1.8.0
         - Contour 1.7.0
@@ -89,5 +90,5 @@ body:
     id: logs
     attributes:
       label: Logs (optional)
-      description: Long-press the status pill in the Library to open the service screen and paste what its log shows. Remove anything private.
+      description: Contour logs every USB report it sends and receives under the tag ContourUsb. Turn on USB debugging in Developer options, try the DAC in Contour, then connect the phone to a computer and run `adb logcat -d -s ContourUsb > contour-log.txt` soon after (the log is a ring buffer). Paste the file here. Remove anything private.
       render: text

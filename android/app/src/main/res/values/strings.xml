@@ -37,6 +37,7 @@
     <string name="import_error_not_content">Contour only opens files handed over by the system (content://), not file paths.</string>
     <string name="import_error_too_big">That file is too big for an EQ text (over 256 KB).</string>
     <string name="import_error_no_filters">No EQ filters found in that file. Contour reads .txt from squig.link, graph.hangout.audio, AutoEQ and Equalizer APO.</string>
+    <string name="import_error_is_backup">That file is a Contour backup. Use RESTORE FROM BACKUP under OPEN FILE.</string>
     <string name="import_nothing">NOTHING TO IMPORT</string>
     <string name="import_nothing_report">NOTHING TO IMPORT - %1$s</string>
     <plurals name="import_imported">
@@ -300,6 +301,9 @@
     <string name="haptics_high">HIGH</string>
     <!-- First row of the foot of the Library: the profiles come apart into cards that can be dragged into a new order; DONE (action_done) glues them back -->
     <string name="library_reorder_profiles">REORDER PROFILES</string>
+    <!-- The two rows under REORDER PROFILES: the whole library to one file, and back from such a file (not SAVE ALL: that saves every profile's EQ as its SAVED version) -->
+    <string name="library_backup">BACKUP</string>
+    <string name="library_restore_backup">RESTORE FROM BACKUP</string>
     <!-- Under the LIBRARY title while the profiles can be dragged -->
     <string name="library_drag_to_reorder">DRAG TO REORDER</string>
     <!-- Accessibility actions of a profile row: one place up or down in the library -->
@@ -432,6 +436,7 @@
     <string name="new_open_file">OPEN FILE</string>
     <string name="new_open_file_reading">Reading the file...</string>
     <string name="new_open_file_detail">A .txt from squig.link, graph.hangout.audio or AutoEQ</string>
+    <string name="new_restore_backup_detail">Every profile from a Contour BACKUP file, added to the library</string>
     <string name="new_from_dac">FROM DAC</string>
     <!-- %1$s = the DAC\'s warning -->
     <string name="new_from_dac_warning">WARNING: %1$s</string>
@@ -506,6 +511,36 @@
     <string name="save_txt_saved">FILE SAVED</string>
     <string name="save_txt_failed">COULD NOT SAVE THE FILE</string>
 
+    <!-- Toast after BACKUP (the system file dialog) -->
+    <plurals name="backup_saved">
+        <item quantity="one">BACKUP SAVED: %d PROFILE</item>
+        <item quantity="other">BACKUP SAVED: %d PROFILES</item>
+    </plurals>
+    <string name="backup_failed">COULD NOT SAVE THE BACKUP</string>
+
+    <!-- What RESTORE FROM BACKUP says in the snackbar: %1$d = profiles added, %2$s = the report (already in the library, could not be read) -->
+    <plurals name="restore_added">
+        <item quantity="one">ADDED %d PROFILE FROM THE BACKUP</item>
+        <item quantity="other">ADDED %d PROFILES FROM THE BACKUP</item>
+    </plurals>
+    <plurals name="restore_added_report">
+        <item quantity="one">ADDED %1$d PROFILE FROM THE BACKUP - %2$s</item>
+        <item quantity="other">ADDED %1$d PROFILES FROM THE BACKUP - %2$s</item>
+    </plurals>
+    <plurals name="restore_already">
+        <item quantity="one">%d already in the library</item>
+        <item quantity="other">%d already in the library</item>
+    </plurals>
+    <plurals name="restore_unreadable">
+        <item quantity="one">%d could not be read</item>
+        <item quantity="other">%d could not be read</item>
+    </plurals>
+    <string name="restore_nothing_new">NOTHING NEW: EVERY PROFILE IN THE BACKUP IS ALREADY IN THE LIBRARY</string>
+    <string name="restore_nothing_report">NOTHING ADDED - %1$s</string>
+    <string name="restore_empty">THE BACKUP HAS NO PROFILES</string>
+    <string name="restore_not_backup">That file is not a Contour backup.</string>
+    <string name="restore_too_big">That file is too big for a Contour backup (over 8 MB).</string>
+
     <!-- ===== Messages of :core that reach the screen. :core stays English; when `translate_core_text` is true the app finds each message (or its pattern) and shows these instead.
          The English words below equal the messages of :core exactly. %1$s, %2$s ... are the numbers and names that stand in the message (bands, Hz, dB, the DAC\'s name). ===== -->
     <!-- Labels of HOLD TO SEND when the EQ cannot be sent, and the headline the graph shows for an EQ it cannot draw -->
@@ -576,6 +611,8 @@
     <string name="core_issue_auto_needs">this EQ needs %1$s dB; Contour supports down to %2$s dB for this device. Reduce the combined boosts.</string>
     <!-- %1$s = the DAC\'s name -->
     <string name="core_issue_auto_no_response">AUTO preamp: no finite response; cannot send to %1$s</string>
+    <!-- EPZ TP65: Contour sends no preamp frame to it, so a profile whose preamp is not 0 dB is refused. %1$s = the preamp the profile asks for, in whole dB -->
+    <string name="core_issue_tp65_preamp">Contour does not write the EPZ TP65 preamp yet, so it stays at 0 dB; this EQ asks for %1$s dB. Reduce the boosts, or set the preamp to 0 dB (boosts may then clip).</string>
     <!-- Note of a Moondrop Dawn Pro 2 that is on one of its own presets. %1$s = the EQ index it is on, %2$s = the index (or "7 or 9") Contour writes -->
     <string name="core_note_dawn_bank">The DAC is on EQ index %1$s, one of its own presets. Switch the DAC to its PEQ mode (EQ index %2$s): HOLD TO SEND writes the EQ the DAC is on.</string>
     <!-- Import report: a filter line of the file whose values could not be read was left out. %1$s = its number in the file -->

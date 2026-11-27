@@ -88,6 +88,14 @@
     "dongle": true
   },
   {
+    "id": "epz-tp65",
+    "name": "EPZ TP65",
+    "url": "https://contoureq.app/devices/epz-tp65/",
+    "soundbloomsSlug": "epz-tp65",
+    "since": "1.8.2",
+    "dongle": true
+  },
+  {
     "id": "moondrop-dawn-pro-2",
     "name": "Moondrop Dawn Pro 2",
     "url": "https://contoureq.app/devices/moondrop-dawn-pro-2/",

@@ -38,6 +38,7 @@
     <string name="import_error_not_content">Contour 只能打开通过系统分享或文件选择器传入的文件（content://），无法直接打开文件路径。</string>
     <string name="import_error_too_big">该文件超过 EQ 文本的大小上限（256 KB）。</string>
     <string name="import_error_no_filters">该文件中没有找到 EQ 滤波器。Contour 可以读取来自 squig.link、graph.hangout.audio、AutoEQ 和 Equalizer APO 的 .txt 文件。</string>
+    <string name="import_error_is_backup">该文件是 Contour 备份。请使用“打开文件”下方的“从备份恢复”。</string>
     <string name="import_nothing">没有可导入的内容</string>
     <string name="import_nothing_report">没有可导入的内容（%1$s）</string>
     <plurals name="import_imported">
@@ -301,6 +302,9 @@
     <string name="haptics_high">高</string>
     <!-- First row of the foot of the Library: the profiles come apart into cards that can be dragged into a new order; DONE (action_done) glues them back -->
     <string name="library_reorder_profiles">调整配置顺序</string>
+    <!-- The two rows under REORDER PROFILES: the whole library to one file, and back from such a file (not SAVE ALL: that saves every profile's EQ as its SAVED version) -->
+    <string name="library_backup">备份配置库</string>
+    <string name="library_restore_backup">从备份恢复</string>
     <!-- Under the LIBRARY title while the profiles can be dragged -->
     <string name="library_drag_to_reorder">拖动以调整顺序</string>
     <!-- Accessibility actions of a profile row: one place up or down in the library -->
@@ -433,6 +437,7 @@
     <string name="new_open_file">打开文件</string>
     <string name="new_open_file_reading">正在读取文件…</string>
     <string name="new_open_file_detail">来自 squig.link、graph.hangout.audio 或 AutoEQ 的 .txt 文件</string>
+    <string name="new_restore_backup_detail">将 Contour 备份文件中的全部配置添加到配置库</string>
     <string name="new_from_dac">从 DAC 导入</string>
     <!-- %1$s = the DAC\'s warning -->
     <string name="new_from_dac_warning">警告：%1$s</string>
@@ -507,6 +512,36 @@
     <string name="save_txt_saved">文件已保存</string>
     <string name="save_txt_failed">无法保存文件</string>
 
+    <!-- Toast after BACKUP (the system file dialog) -->
+    <plurals name="backup_saved">
+        <item quantity="one">已备份 %d 个配置</item>
+        <item quantity="other">已备份 %d 个配置</item>
+    </plurals>
+    <string name="backup_failed">无法保存备份</string>
+
+    <!-- What RESTORE FROM BACKUP says in the snackbar: %1$d = profiles added, %2$s = the report (already in the library, could not be read) -->
+    <plurals name="restore_added">
+        <item quantity="one">已从备份添加 %d 个配置</item>
+        <item quantity="other">已从备份添加 %d 个配置</item>
+    </plurals>
+    <plurals name="restore_added_report">
+        <item quantity="one">已从备份添加 %1$d 个配置（%2$s）</item>
+        <item quantity="other">已从备份添加 %1$d 个配置（%2$s）</item>
+    </plurals>
+    <plurals name="restore_already">
+        <item quantity="one">%d 个已在配置库中</item>
+        <item quantity="other">%d 个已在配置库中</item>
+    </plurals>
+    <plurals name="restore_unreadable">
+        <item quantity="one">%d 个无法读取</item>
+        <item quantity="other">%d 个无法读取</item>
+    </plurals>
+    <string name="restore_nothing_new">没有新内容：备份中的配置都已在配置库中</string>
+    <string name="restore_nothing_report">未添加任何配置（%1$s）</string>
+    <string name="restore_empty">备份中没有配置</string>
+    <string name="restore_not_backup">该文件不是 Contour 备份。</string>
+    <string name="restore_too_big">该文件超过 Contour 备份的大小上限（8 MB）。</string>
+
     <!-- ===== Messages of :core that reach the screen. :core stays English; when `translate_core_text` is true the app finds each message (or its pattern) and shows these instead.
          The English words below equal the messages of :core exactly. %1$s, %2$s ... are the numbers and names that stand in the message (bands, Hz, dB, the DAC\'s name). ===== -->
     <!-- Labels of HOLD TO SEND when the EQ cannot be sent, and the headline the graph shows for an EQ it cannot draw -->
@@ -577,6 +612,8 @@
     <string name="core_issue_auto_needs">这个 EQ 需要 %1$s dB；在这台设备上 Contour 最低只支持 %2$s dB。请减少叠加的提升量。</string>
     <!-- %1$s = the DAC\'s name -->
     <string name="core_issue_auto_no_response">自动前置增益：无法算出有效的频响，不能写入 %1$s</string>
+    <!-- EPZ TP65: Contour sends no preamp frame to it, so a profile whose preamp is not 0 dB is refused. %1$s = the preamp the profile asks for, in whole dB -->
+    <string name="core_issue_tp65_preamp">Contour 暂不支持写入 EPZ TP65 的前置增益，因此它保持 0 dB；这个 EQ 需要 %1$s dB。请降低提升量，或把前置增益设为 0 dB（这样提升可能会削波）。</string>
     <!-- Note of a Moondrop Dawn Pro 2 that is on one of its own presets. %1$s = the EQ index it is on, %2$s = the index (or "7 or 9") Contour writes -->
     <string name="core_note_dawn_bank">DAC 当前在 EQ 序号 %1$s，这是它自带的预设之一。请把 DAC 切换到 PEQ 模式（EQ 序号 %2$s）：“按住写入”会写入 DAC 当前所在的 EQ。</string>
     <!-- Import report: a filter line of the file whose values could not be read was left out. %1$s = its number in the file -->

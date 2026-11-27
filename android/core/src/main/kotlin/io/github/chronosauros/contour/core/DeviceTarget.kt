@@ -315,6 +315,8 @@ data class DeviceTarget private constructor(
         val KIWI_EARS_AD1 = DeviceTarget(ktMicro = KtMicroCatalog.ad1Models.first())
         /** The Tanchjim Space II (3302:4381, WalkPlay SchemeNo16 on the Protocol Max's code, found by its USB name): written and read back from a phone on 13.11.2026, so it writes in every build. */
         val SPACE_2 = DeviceTarget(walkplay = DeviceProtocol.SPACE_2)
+        /** The EPZ TP65 (3302:4325, found by its USB name; supported since 1.8.2): read by Contour on a TP65 owner's unit (1.8.0-tp65test2) and written there with its own sequence ([WalkPlayProfiles.TP65_TESTER_WRITE]; PEAK with 1.8.1-tp65test3, the shelves with tp65test4, each VERIFIED); no DAC settings, the preamp read only. */
+        val EPZ_TP65 = DeviceTarget(walkplay = DeviceProtocol.EPZ_TP65)
         val ECHO_A = DeviceTarget(echo = WalkPlayProfiles.echoA)
         /** The Moondrop DUSK-SP (35D8:1499, found by its USB name; [readOnly] in a release until its record says `hardwareVerified`). */
         val MOONDROP_DUSK = DeviceTarget(gen1 = MoondropGen1Catalog.duskSp)
@@ -327,6 +329,7 @@ data class DeviceTarget private constructor(
             DeviceProtocol.MAX -> MAX
             DeviceProtocol.TRN -> TRN
             DeviceProtocol.SPACE_2 -> SPACE_2
+            DeviceProtocol.EPZ_TP65 -> EPZ_TP65
         }
 
         /** The target of each device record, by record id; the identities themselves are [GeneratedDevices.USB_IDS], the records' `usb` sections. */
@@ -346,6 +349,7 @@ data class DeviceTarget private constructor(
             GeneratedDevices.JCALLY_JM12_USB.recordId to JCALLY_JM12,
             GeneratedDevices.KIWI_EARS_AD1_USB.recordId to KIWI_EARS_AD1,
             GeneratedDevices.TANCHJIM_SPACE_II_USB.recordId to SPACE_2,
+            GeneratedDevices.EPZ_TP65_USB.recordId to EPZ_TP65,
             GeneratedDevices.MOONDROP_ECHO_A_USB.recordId to ECHO_A,
             GeneratedDevices.MOONDROP_DUSK_USB.recordId to MOONDROP_DUSK,
         ).also { m -> require(m.keys == GeneratedDevices.USB_IDS.map { it.recordId }.toSet()) { "a device record has no DeviceTarget (or the other way round)" } }

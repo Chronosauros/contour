@@ -3,7 +3,7 @@
 One strict-JSON file per supported or candidate device, named `<vendor>-<model>.json`. A record states what is
 known about a device: how it is found on USB, which driver family talks to it, what the PEQ can do, which
 settings the vendor software offers, and what was tested on the unit. Records are data only, and every device
-fact the app uses lives here once: the USB identity of all seventeen devices, the capabilities, preamp policy, factory flats
+fact the app uses lives here once: the USB identity of all eighteen devices, the capabilities, preamp policy, factory flats
 and read bounds of the WalkPlay devices, the registers, ranges and delays of the Moondrop and KT Micro drivers, the ranges, presets, factory bank and pacing of the Moondrop gen-1 cable (DUSK-SP), and
 the FiiO configuration are generated from the records at build time (below). Codecs, write sequences, parsers and the
 Micro high-shelf emulation stay code. A golden test keeps the whole catalog from drifting.
@@ -33,6 +33,7 @@ One row per record, generated from `devices/*.json` by `python3 android/tools/ca
 | FiiO JadeAudio JIEZI (`fiio-jiezi`, stable) | fiio | 10 | PK, LS, HS, BP, LP, HP, AP | -12 to +12 | PK BP LP HP AP 0.1-10; LS HS 0.0707-7.07 | 20-20000 | -12 to +12 dB, whole dB | 3 (USER1 to USER3) | volume, volume-steps (read only), balance, mic, uac (read only) | 2026-11-13: ranges pass, acoustic pass, persistence pass, settings partial |
 | Kiwi Ears AD1 (`kiwi-ears-ad1`, stable) | ktmicro | 5 | PK, LS, HS | PK -12 to +12; LS HS -6 to +6 | PK 0.2-10; LS HS 0.7-1 | 20-20000 | none; Global Gain -18 to +3 dB, 1.5 dB steps | 1 (Custom) | eq-switch, global-gain | 2026-11-13: ranges pass, acoustic partial, persistence pass, settings pass |
 | TANCHJIM SPACE II (`tanchjim-space-ii`, stable) | walkplay | 10 | PK, LS, HS, LP, HP | -12 to +12 | 0.1-10 | 20-20000 | -30 to 0 dB, whole dB | 1 (Custom) | none | 2026-11-13: ranges partial, acoustic pass, persistence pass, settings pass |
+| EPZ TP65 (`epz-tp65`, stable) | walkplay | 10 | PK, LS, HS | -10 to +10 | 0.1-10 | 20-20000 | read only (the DAC's 0 dB; a send needs 0 dB) | 1 (Custom) | none | 2026-11-27: by a community tester on their unit, no bench run |
 
 <!-- capability-table:end -->
 
@@ -43,7 +44,7 @@ The Echo-A is the one exception: its EQ write ships since 25.10.2026 (`WalkPlayP
 its record still holds `"unknown"` for the fields a `stable` walkplay record needs (band length, write sequence, slots, pacing); its `peq.freqHz` and `preamp` hold what the code applies (the Micro's 20-20000 Hz and -30..0 dB whole-dB preamp; the generator does not read them for a read-only record), so it stays `records-only` and the generator builds the
 `ReadOnlyWalkPlayData` for it. It becomes `stable` when those fields are measured. The Dawn Pro 2 and the Allegro Mini write in 1.6 and are `stable`.
 
-The JCally JM12 (chip KT02H20) shares 31B2:0111 with the Allegro Mini and was the first record in the new shape; all seventeen records have it now (no `evidence`, `conflicts` or top-level `src` blocks; a `tested` block and short `usb.notes` lines instead). Its record states what the unit was measured to play (peaks +-12 dB with Q 0.2-10, shelves +-6 dB with Q 0.7-1.0). A phone wrote and read back its EQ on 10.11.2026 (run 2026-11-10-jcally-jm12-11-phone), so `hardwareVerified` is true in code and it writes in every build.
+The JCally JM12 (chip KT02H20) shares 31B2:0111 with the Allegro Mini and was the first record in the new shape; all eighteen records have it now (no `evidence`, `conflicts` or top-level `src` blocks; a `tested` block and short `usb.notes` lines instead). Its record states what the unit was measured to play (peaks +-12 dB with Q 0.2-10, shelves +-6 dB with Q 0.7-1.0). A phone wrote and read back its EQ on 10.11.2026 (run 2026-11-10-jcally-jm12-11-phone), so `hardwareVerified` is true in code and it writes in every build.
 
 ## Schema summary
 
@@ -80,7 +81,7 @@ The JCally JM12 (chip KT02H20) shares 31B2:0111 with the Allegro Mini and was th
 - `settings`, `info`, `preview`: the non-PEQ controls the vendor software offers and how they are shown.
 - `reset.offered`: the reset is on offer for the device, by the vendor software or by Contour although the vendor hides it (KA15; a KT Micro record: the generator reads it; false = Contour never builds CLEAR 0x43 for that model). Contour 1.6.0 ships FACTORY RESET for the FiiO KA15 and the SnowSky Melody, with a saved copy first. The Tiny A ignores the command, so it has none in the app although its record says `true`; the resets of the other DACs stay off in the release build until they are proven on hardware.
 - `hwVolume.inScope`: whether a hardware volume control belongs to the vendor scope.
-- `tested` (every record; the generator does not read it, it is the one place for what was checked on the unit): `date` (ISO date or null), `firmware` (the unit's firmware string), `contour` (the Contour build the runs used, or null), then four verdict objects `rangesAccepted` (does the unit take the ranges the record offers), `acoustic` (does the EQ it plays match the request), `persistence` (does the EQ survive a power cycle), `settings` (the DAC Settings rows), each `{ "result": "not-run" | "pass" | "fail" | "partial", "note": "" }`; `beyondVendor` (free text: what the record offers beyond the vendor tool or devicePEQ, and what the unit did with it) and `runs` (run ids, the evidence).
+- `tested` (every record; the generator does not read it, it is the one place for what was checked on the unit): `date` (ISO date or null), `firmware` (the unit's firmware string), `contour` (the Contour build the runs used, or null), then four verdict objects `rangesAccepted` (does the unit take the ranges the record offers), `acoustic` (does the EQ it plays match the request), `persistence` (does the EQ survive a power cycle), `settings` (the DAC Settings rows), each `{ "result": "not-run" | "pass" | "fail" | "partial", "note": "" }`; `beyondVendor` (free text: what the record offers beyond the vendor tool or devicePEQ, and what the unit did with it) and `runs` (run ids, the evidence). Optional `by`: `"community"` when the checks were run by someone else on their own unit and not by the maintainer (the EPZ TP65, tested by a TP65 owner with tester versions, issue #6): every verdict is then `"not-run"`, its note says what that person saw, and the README's Tested column says "community tester".
 - `reset.src` and `hwVolume.src` (optional): one short free-text line on why that answer is what it is.
 
 ## Rules

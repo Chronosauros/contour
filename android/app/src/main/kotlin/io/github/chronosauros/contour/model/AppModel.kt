@@ -10,6 +10,10 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import io.github.chronosauros.contour.core.Band
 import io.github.chronosauros.contour.core.FilterType
+import io.github.chronosauros.contour.core.LibraryEntry
+import io.github.chronosauros.contour.core.LibraryFile
+import io.github.chronosauros.contour.core.LibraryRead
+import io.github.chronosauros.contour.core.LibrarySaved
 import io.github.chronosauros.contour.core.isPass
 import io.github.chronosauros.contour.core.Preamp
 import io.github.chronosauros.contour.core.Profile
@@ -669,6 +673,76 @@ class AppModel(private val store: ProfileStore, private val scope: CoroutineScop
         val next = profiles.map { if (it.archived) it else moved[k++] }
         for (i in next.indices) if (profiles[i].id != next[i].id) profiles[i] = next[i]
         scheduleState()
+    }
+
+    // ---- the whole library as one file (BACKUP / RESTORE FROM BACKUP) ----------------------------------
+
+    /** What [exportLibrary] made: the text of the library file and how many profiles are in it. */
+    class LibraryExport(val text: String, val count: Int)
+
+    /**
+     * BACKUP: every profile, archived ones included, in library order, each with its SAVED version, as the text of a library file ([LibraryFile]). Made from the profiles in memory, not from
+     * the files, which lag behind them by the save delay; a profile whose delete is under way is left out, as it is from state.json. Null while the library is not loaded.
+     */
+    fun exportLibrary(app: String, exportedAt: Long = System.currentTimeMillis()): LibraryExport? {
+        if (loading || loadError) return null
+        val entries = profiles.filterNot { it.id in pendingDeletes }.map { p ->
+            val saved = history[p.id]?.sent ?: EqState(p)
+            LibraryEntry(p, LibrarySaved(saved.bands, saved.preampDb))
+        }
+        return LibraryExport(LibraryFile.encode(entries, app, exportedAt), entries.size)
+    }
+
+    /** A profile as RESTORE FROM BACKUP compares it: everything the person sees of it, the band ids left out. */
+    private data class ProfileShape(val name: String, val subtitle: String, val icon: String, val archived: Boolean, val preampDb: Double?, val bands: List<Band>)
+
+    private fun shapeOf(p: Profile) = ProfileShape(p.name, p.subtitle, p.icon, p.archived, p.preampDb, p.bands.map { it.copy(id = "") })
+
+    /**
+     * RESTORE FROM BACKUP: adds the profiles of a library file after the existing ones, in the file's order, and says what it did in [notice]. Nothing is removed or replaced: a profile that is
+     * already in the library (same name, headphones line, icon, archived flag, preamp and bands, band ids aside) is skipped, so restoring the same backup twice adds nothing. Every added
+     * profile and band gets a new id (a reused profile id could be a deleted one, which the next start would delete again), the SAVED version comes with it with the same band ids as the working
+     * copy (so EDITED shows as it did), an archived profile comes back archived. The page, the selected band, ON DAC and the touches stay as they are - only a library with no active
+     * profile makes the first added active one current. Nothing here goes near the DAC.
+     */
+    fun restoreLibrary(read: LibraryRead.Library) {
+        if (loading || loadError) return
+        val noActive = profiles.none { !it.archived }
+        val known = profiles.mapTo(HashSet()) { shapeOf(it) }
+        var added = 0
+        var already = 0
+        var firstActive: Profile? = null
+        for (e in read.entries) {
+            val src = e.profile
+            val ids = src.bands.associate { it.id to bandId() }
+            val bands = src.bands.map { it.copy(id = ids.getValue(it.id)) }
+            val name = src.name.trim().take(NAME_MAX).ifEmpty { nextDefaultName() }
+            val p = Profile(newId(), name, src.subtitle.take(40), src.icon, bands, src.preampDb, src.createdAt, src.updatedAt, src.archived)
+            if (!known.add(shapeOf(p))) { already++; continue }
+            val saved = e.saved?.let { s -> EqState(s.bands.map { it.copy(id = ids[it.id] ?: bandId()) }, s.preampDb) } ?: EqState(p)
+            profiles.add(p)
+            history[p.id] = ProfileHistory(sent = saved)
+            scheduleSave(p, p.id)
+            added++
+            if (firstActive == null && !p.archived) firstActive = p
+        }
+        if (noActive) firstActive?.let { currentId = it.id; selectedBand = 0; clampSelection() }
+        if (added > 0) saveStateNow()
+        notice = restoreNotice(added, already, read.skipped, read.entries.size)
+    }
+
+    private fun restoreNotice(added: Int, already: Int, unreadable: Int, entries: Int): Notice {
+        val report = listOfNotNull(
+            if (already > 0) UiText.plural(R.plurals.restore_already, already, already) else null,
+            if (unreadable > 0) UiText.plural(R.plurals.restore_unreadable, unreadable, unreadable) else null,
+        )
+        return when {
+            added > 0 && report.isEmpty() -> Notice(UiText.plural(R.plurals.restore_added, added, added))
+            added > 0 -> Notice(UiText.plural(R.plurals.restore_added_report, added, added, UiText.Joined(report)), long = true)
+            entries + unreadable == 0 -> Notice(UiText.res(R.string.restore_empty))
+            unreadable == 0 -> Notice(UiText.res(R.string.restore_nothing_new))
+            else -> Notice(UiText.res(R.string.restore_nothing_report, UiText.Joined(report)), long = true)
+        }
     }
 
     /** Keep the row visible until the tombstone is written; only then announce deletion/UNDO. */
