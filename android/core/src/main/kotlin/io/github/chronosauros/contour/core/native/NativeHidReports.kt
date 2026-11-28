@@ -67,8 +67,8 @@ object NativeHidReports {
     fun minimumRawBytes(target: DeviceTarget, kind: Kind): Int = when (target.family) {
         DeviceTarget.Family.FIIO -> FIIO_MINIMUM_RAW_BYTES
         DeviceTarget.Family.KT_MICRO -> 1 + KtMicroCodec.PAYLOAD_BYTES
-        // the FreeDSP Mini (read only): Input up to the slot byte of a band reply, Output the longest query (it never sends a band write)
-        DeviceTarget.Family.MOONDROP -> if (target.moondrop?.freedspMini == true) 1 + if (kind == Kind.INPUT) FreeDspMiniCodec.MINIMUM_BAND_PAYLOAD_BYTES else FreeDspMiniCodec.QUERY_PAYLOAD_BYTES
+        // the FreeDSP Mini: Input up to the slot byte of a band reply, Output the band write (37 payload bytes, as the Dawn Pro 2's)
+        DeviceTarget.Family.MOONDROP -> if (target.moondrop?.freedspMini == true) 1 + if (kind == Kind.INPUT) FreeDspMiniCodec.MINIMUM_BAND_PAYLOAD_BYTES else MoondropCodec.BAND_PAYLOAD_BYTES
             else 1 + if (kind == Kind.INPUT) MoondropCodec.MINIMUM_INPUT_PAYLOAD_BYTES else MoondropCodec.BAND_PAYLOAD_BYTES
         DeviceTarget.Family.WALKPLAY_READ_ONLY -> WalkPlay.REPORT_SIZE
         DeviceTarget.Family.MOONDROP_GEN1 -> MoondropGen1Catalog.REPORT_BYTES

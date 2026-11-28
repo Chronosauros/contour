@@ -95,17 +95,31 @@ sealed interface FamilyState {
     }
 
     /**
-     * The Moondrop FreeDSP Mini (tester build, READ ONLY): what [MoondropSession.readMini] got, field by field as the unit said it: the firmware string, the active EQ slot (from the band replies; [slot] is 0 where none
-     * answered), the bands of that slot and the pre-gain; a field no reply gave is unknown. It is only shown and logged: never [importable], never ON DAC ([holds] and [matches] are false), nothing is written to the unit
-     * ([MoondropCatalog.FREEDSP_MINI_TESTER_WRITE]). The bands of a firmware voicing (slots 0-4) are shown as read, whatever their gain or type code.
+     * The Moondrop FreeDSP Mini (tester build 1.8.3-freedsptest2): what [MoondropSession.readMini] got, field by field as the unit said it: the firmware string, the active EQ slot (from the band replies; [slot] is 0 where none
+     * answered), the bands of that slot and the pre-gain; a field no reply gave is unknown. The bands of a firmware voicing (slots 0-4) are shown as read, whatever their gain or type code, and are never opened in the editor.
+     * Contour's own bank is Custom EQ (slot 7): when the unit shows it on all eight bands and every band is a PEAK ([onCustomEq], [importable]) the bands open in the editor (FROM DAC) and a send ([MoondropSession.writeMini]) goes
+     * back to it; [holds] and [matches] say whether the profile's bands are the registers read. The pre-gain is shown only: it is never written.
      */
     data class FreeDspMini(val model: MoondropCatalog.Model, val read: FreeDspMiniCodec.Read) : FamilyState {
         override val slot: Int get() = read.slot ?: 0
         override val preampDb: Double? get() = read.preGain?.db
-        override val importable: Boolean get() = false
-        override fun holds(profile: Profile): Boolean = false
-        override fun matches(profile: Profile): Boolean = false
-        override fun importExact(): ImportedEq = throw IllegalStateException(MoondropCatalog.FREEDSP_MINI_READ_ONLY_TEXT + ": the unit's EQ is shown and logged only")
+        /** All eight bands came back and every one names slot 7 (Custom EQ). */
+        val onCustomEq: Boolean get() = read.bands.size == model.bandCount && read.bands.all { it != null && it.slot == FreeDspMiniCodec.SLOT_CUSTOM }
+        /** Custom EQ with PEAK bands only: what a send can write back unchanged. A shelf or any other type on slot 7 is shown, not opened. */
+        override val importable: Boolean get() = onCustomEq && read.bands.all { it?.type == FilterType.PEAK }
+        override fun holds(profile: Profile): Boolean = runCatching {
+            importable && FreeDspMiniCodec.plan(model, profile.bands, read.bands).let { planned ->
+                planned.indices.all { i -> val b = requireNotNull(read.bands[i]); val e = planned[i]
+                    e.frequencyHz == b.frequencyHz && e.qQ8 == b.qQ8 && e.gainQ8 == b.gainQ8 && e.nativeType == b.nativeType }
+            }
+        }.getOrDefault(false)
+        /** ON DAC: the bands read are exactly what a send would write (the pre-gain is not Contour's to write). */
+        override fun matches(profile: Profile): Boolean = holds(profile)
+        override fun importExact(): ImportedEq {
+            require(importable) { "${model.productName} does not show eight PEAK bands on Custom EQ (slot ${FreeDspMiniCodec.SLOT_CUSTOM}): nothing to open" }
+            val bands = read.bands.map { b -> val r = requireNotNull(b); Band("dac${r.index}", FilterType.PEAK, r.frequencyHz.toDouble(), r.gainDb, r.q) }
+            return ImportedEq(bands, read.preGain?.db?.takeIf { it in model.preGainMinDb..model.preGainMaxDb })
+        }
         /** The two rows of the DAC page: the active slot when a band reply named it, the pre-gain in tenths of a dB when it answered ([FamilySettings]). */
         override fun readings(): List<SettingReading> = listOfNotNull(
             read.slot?.let { SettingReading(FamilySettings.EQ_INDEX, it, null) },
@@ -132,7 +146,7 @@ sealed interface FamilyState {
             }
         }
         override fun describe(): String =
-            "${model.productName}: READ ONLY test build, firmware ${read.firmware?.text ?: "unknown"}, EQ slot ${read.slot?.let { s -> "$s" + (FreeDspMiniCodec.slotName(s)?.let { " ($it)" } ?: "") } ?: "unknown"}\n" +
+            "${model.productName}: test build, firmware ${read.firmware?.text ?: "unknown"}, EQ slot ${read.slot?.let { s -> "$s" + (FreeDspMiniCodec.slotName(s)?.let { " ($it)" } ?: "") } ?: "unknown"}\n" +
                 pageLines().drop(2).joinToString("\n")
     }
 
@@ -306,8 +320,8 @@ object FamilyDevices {
     /** Why HOLD TO SEND may not write [target] given what was last read ([state], null = nothing read); empty = it may. The profile's own limits are [DeviceTarget.issues]. */
     fun stateIssues(target: DeviceTarget, state: FamilyState?): List<String> = when (target.family) {
         DeviceTarget.Family.MOONDROP ->
-            if (target.moondrop?.writesBlocked == true) listOf(target.readOnlyIssue) // the FreeDSP Mini tester build: nothing is written, whatever was read
-            else if (state is FamilyState.Dawn) emptyList() else listOf(READ_FIRST)
+            if (target.moondrop?.writesBlocked == true) listOf(target.readOnlyIssue) // the FreeDSP Mini with its write switch off (test 1): nothing is written, whatever was read
+            else if (state is FamilyState.Dawn || state is FamilyState.FreeDspMini) emptyList() else listOf(READ_FIRST)
         DeviceTarget.Family.KT_MICRO ->
             if (target.readOnly) listOf(DeviceTarget.READ_ONLY_ISSUE.format(target.caps.name))
             else if (state is FamilyState.Allegro) listOfNotNull(state.snapshot.writeBlocker) else listOf(READ_FIRST)

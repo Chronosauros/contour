@@ -9,18 +9,23 @@
     "vid": "0x35D8",
     "pid": "0x98D4",
     "productName": "FreeDSP Mini",
-    "hidInterface": "unknown",
+    "hidInterface": 3,
     "matchByName": false,
     "recognisedBy": "findDevice",
     "listOrder": 19,
     "notes": [
-      "EXPERIMENTAL READ-ONLY TESTER ENTRY: nothing of this record was measured on a Contour unit. It exists so that one owner of a FreeDSP Mini can plug it in and let Contour READ it (identity, HID report descriptor, firmware, active EQ slot, the eight bands of that slot, pre-gain) and share the ContourUsb log (https://github.com/Chronosauros/contour/issues/2). Not one write frame is sent to it: MoondropCatalog.FREEDSP_MINI_TESTER_WRITE is false. It is not a supported device.",
+      "EXPERIMENTAL TESTER ENTRY, NOT VERIFIED ON HARDWARE, not a supported device. Test 1 (1.8.2-freedsptest1) only READ a tester's unit (identity, HID report descriptor, firmware, active EQ slot, the eight bands of that slot, pre-gain) and passed on two units (https://github.com/Chronosauros/contour/issues/2#issuecomment-7237190133). Test 2 (1.8.3-freedsptest2) writes PEAK bands to Custom EQ (slot 7) and nothing else: see the notes below; the tester shares the ContourUsb log (https://github.com/Chronosauros/contour/issues/2). MoondropCatalog.FREEDSP_MINI_TESTER_WRITE is the one switch: false = every frame with OP 0x01 is refused (test 1), true = the allow-list of MoondropSession.",
+      "observed on a tester's unit (test 1 log, https://github.com/Chronosauros/contour/issues/2#issuecomment-7237190133): USB manufacturer string \"MOONDROP\", product string \"FreeDSP Mini\" (not the issue form's \"MOONDROP FreeDSP Mini\"), bcdDevice 0.01; matchByName stays false because there is one log",
+      "observed (same source): HID interface 3 (class 3) with the vendor-page report 0x4B, Input 64 bytes and Output 64 bytes with the report ID, and report 0x54 as well; the interrupt OUT endpoint is 0x05 (IN 0x86); firmware 0.7 on both testers' units (second unit: comment of the same thread)",
+      "observed (same source): active slot 7 \"Custom EQ\" with eight PEAK bands (31, 62, 125, 200, 500, 1000, 3000, 10000 Hz) as the maker's app had written them; one band holds gain raw -691 (-2.69921875 dB), so the registers are Q8.8 integers and not 0.1 dB steps; the pre-gain read 0.0 dB on one unit and -2.0 dB on the other; a lost band reply happened once, so band writes need a read-back (they are un-acknowledged)",
+      "observed (same source, checked offline in Contour's tests): PEAK coefficients designed at 96 kHz in Q30 from the REGISTER values (whole-Hz frequency, gain and Q as Q8.8) equal the 20 coefficient bytes the unit holds, 8 of 8 bands, 0 LSB; designed from -2.7 dB instead of raw -691 they differ by up to 1776 LSB",
+      "writes (test 2, NOT verified on hardware): PEAK to slot 7 only, FreeDSP-Studio's write_bank order without its pre-gain, 01 04 and slot-switch parts: the eight band frames (01 09 21 00 i 00 00 + 20 coefficient bytes + frequency, Q, gain, type 02, 00, slot 07; 25 ms after each), the commit 01 0A 04 00 00 FF FF (50 ms), a read of the eight bands compared byte for byte with the frames sent, and only when all eight are equal the flash save 01 01 00 (200 ms) and a read again; a unit on another slot, or a read before that misses a band, sends nothing; a read-back that differs sends no save, so unplugging brings back the saved EQ; the pre-gain row and the slot row stay read only; LS and HS stay held",
       "found by VID 0x35D8 and PID 0x98D4 only, whatever product string it reports (FreeDSP-Studio matches by VID and PID too, tools/app/src/dsp2.rs:233); the product string is not known for certain: the issue form says \"MOONDROP FreeDSP Mini\", devicePEQ and FreeDSP-Studio key on \"FreeDSP Mini\" (devicePEQ usbDeviceConfig.js:863, https://github.com/jeromeof/devicePEQ/blob/0617f382e76629792a5933e6933e4b396a756a93/devicePEQ/usbDeviceConfig.js#L863); this build logs the manufacturer and product strings, bcdDevice, the interfaces and the HID report descriptor",
       "the Dawn Pro 2's closest relative on the same Moondrop gen-2 protocol (report 0x4B, 64 bytes, frame after the report id: OP CMD LEN payload; OP read 0x80, write 0x01; values Q8.8 int16 little-endian), but its read frames are FreeDSP-Studio's Mini frames, not the Dawn's: version 80 0C 01 00, band 80 09 03 00 i 00 (LEN 0x03), pre-gain 80 23 00 (tools/app/src/dsp2.rs:483-499, 501-540, 625-640); the Dawn's band query has LEN 0x18 and is not used for the Mini",
       "reply layout (report id excluded, FreeDSP-Studio dsp2.rs:47-58): band index at 4, frequency u16 at 27, Q Q8.8 at 29, gain Q8.8 at 31, type at 33, active EQ slot at 35 (OFF_SLOT, read from the band reply: dsp2.rs:501-520); the slot is the same byte Contour's Dawn code calls the bank",
-      "never queried in this build: 80 0F 00 (EQ index) and 80 03 .. (global gain): the Mini's answers to them are not documented; never sent: any frame with OP 0x01, the flash clear 01 05 and the firmware entry 01 FF",
+      "never queried in this build: 80 0F 00 (EQ index) and 80 03 .. (global gain): the Mini's answers to them are not documented; never sent (test 2): the slot switch 01 0F, the pre-gain 01 23, the global gain 01 03, the offset save 01 04, the flash clear 01 05 and the firmware entry 01 FF; the only OP 0x01 frames are the band, commit and save frames of the write note above",
       "FreeDSP-Studio's profile for it (dsp2.rs:231-256, tested: true by its author, who owns a Mini): 8 bands, +-12 dB, Q 0.1-10, types PK, LSQ (code 1) and HSQ (code 3), a real 0.1 dB preamp register (PRE_GAIN 0x23), five firmware voicings in slots 0-4 (Default, Bass Enhance, Bass Enhance+, Space, Treble Enhance) and the editable bank in slot 7 (Custom EQ); devicePEQ lists it with peq8Band12dBFullShelves (usbDeviceConfig.js:863-869)",
-      "the Mini rejects a band write with a short LEN 0x18 (the Protocol Micro takes it): the band frame needs LEN 33 (FreeDSP-Studio dsp2.rs:727-729); the Contour build that reads it writes none",
+      "the Mini rejects a band write with a short LEN 0x18 (the Protocol Micro takes it): the band frame needs LEN 33 (FreeDSP-Studio dsp2.rs:727-729); the test 2 band frame has LEN 33 (0x21), as the maker's tool sends it",
       "no source states the Mini's frequency range, shelf Q convention or pre-gain range: 20-20000 Hz is the general limit of the catalogs (FreeDSP-Studio gives no frequency limit for it) and 96 kHz is FreeDSP-Studio's gen-2 coefficient rate (dsp2.rs:60-63), both only so that the record is complete; the pre-gain range and the shelf Q scale are \"unknown\" (the code holds placeholders in core/devices/PendingRecords.kt that no frame uses); shelves and pass filters are not offered"
     ]
   },
@@ -37,7 +42,7 @@
     "eqIndexRegister": "0x0F",
     "saveEqCommand": "0x01",
     "saveOffsetsCommand": "unknown",
-    "forbiddenCommands": ["01 05 (flash clear)", "01 FF (firmware upgrade)", "every frame with OP 0x01 while MoondropCatalog.FREEDSP_MINI_TESTER_WRITE is false"],
+    "forbiddenCommands": ["01 0F (EQ slot switch)", "01 23 (pre-gain write)", "01 03 (global gain)", "01 04 (offset save)", "01 05 (flash clear)", "01 FF (firmware upgrade)", "a band frame with slot other than 7 or type other than 2, or LEN other than 0x21", "80 0F and 80 03 (the Dawn Pro 2's reads)", "every frame with OP 0x01 while MoondropCatalog.FREEDSP_MINI_TESTER_WRITE is false"],
     "designRateHz": 96000
   },
   "peq": {
@@ -84,7 +89,7 @@
   "settings": [],
   "info": [],
   "preview": {},
-  "reset": { "offered": false, "src": "nothing read from a Mini by Contour; 01 05 and 01 FF are never sent, and this build sends no OP 0x01 frame at all" },
+  "reset": { "offered": false, "src": "no reset: 01 05 and 01 FF are never sent to a Mini; the tester build sends only PEAK band frames to slot 7, the commit and the EQ save" },
   "hwVolume": { "inScope": "unknown", "src": "nothing recorded about a vendor volume control or a UAC Feature Unit of the Mini" },
   "upstream": {
     "sourceUrl": "https://github.com/EffectiveEquivalent/FreeDSP-Studio",

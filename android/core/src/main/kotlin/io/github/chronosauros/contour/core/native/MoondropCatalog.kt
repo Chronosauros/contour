@@ -52,14 +52,20 @@ object MoondropCatalog {
         (if (passFiltersOn) setOf(FilterType.LOW_PASS, FilterType.HIGH_PASS) else emptySet()) +
         (if (shelvesOn) setOf(FilterType.LOW_SHELF, FilterType.HIGH_SHELF) else emptySet())
     /**
-     * THE write gate of the Moondrop FreeDSP Mini (record `moondrop-freedsp-mini`, tester build 1.8.2-freedsptest1, https://github.com/Chronosauros/contour/issues/2): false, so not one frame with OP 0x01 ever
-     * reaches the unit. It is checked in every public [MoondropSession] method that can send one and again at the port the session talks through, whatever [Proven.on], the build type or the caller says, and the app
-     * reports the unit as read only ([io.github.chronosauros.contour.core.DeviceTarget.readOnly]). A later write test is a separate build on the owner's decision; this constant is the one line it changes.
+     * THE write switch of the Moondrop FreeDSP Mini (record `moondrop-freedsp-mini`, tester build 1.8.3-freedsptest2, https://github.com/Chronosauros/contour/issues/2). false = every frame with OP 0x01 is refused before I/O
+     * (the test 1 build, read only); true = the allow-list of [MoondropSession] only: PEAK band frames to slot 7 ([FreeDspMiniCodec.requireMiniSendable]), the commit and, after the eight bands read back exactly as sent, the EQ save.
+     * It is checked in every public [MoondropSession] method that can send an OP 0x01 frame and again at the port the session talks through, whatever [Proven.on], the build type or the caller says. The one line a later build changes.
      */
-    const val FREEDSP_MINI_TESTER_WRITE = false
+    const val FREEDSP_MINI_TESTER_WRITE = true
 
-    /** What the app and the session say when something would write to the FreeDSP Mini ([FREEDSP_MINI_TESTER_WRITE] is false). */
+    /** What the app and the session say when something would write to the FreeDSP Mini while [FREEDSP_MINI_TESTER_WRITE] is false. */
     const val FREEDSP_MINI_READ_ONLY_TEXT = "Read-only test build: nothing is written to the FreeDSP Mini"
+
+    /** The DAC page line of the FreeDSP Mini while [FREEDSP_MINI_TESTER_WRITE] is true. */
+    const val FREEDSP_MINI_WRITE_TEXT = "Test build: Contour writes PEAK bands to Custom EQ (slot 7) only"
+
+    /** The line a screen shows for the FreeDSP Mini: [FREEDSP_MINI_WRITE_TEXT] while the write switch is on, else [FREEDSP_MINI_READ_ONLY_TEXT]. */
+    val FREEDSP_MINI_NOTICE: String get() = if (FREEDSP_MINI_TESTER_WRITE) FREEDSP_MINI_WRITE_TEXT else FREEDSP_MINI_READ_ONLY_TEXT
 
     data class Model(
         val productName: String,
@@ -85,10 +91,10 @@ object MoondropCatalog {
         val reportBytes: Int,
         /** True once the unit has taken an EQ write from the phone app and read it back (Dawn Pro 2: Nothing Phone 25.10.2026, run 2026-10-25-moondrop-dawn-pro-2-07-phone-nothing, Write Cfg on index 9, VERIFIED twice). Pass filters and pre-gain have their own flags. */
         val hardwareVerified: Boolean = false,
-        /** The Moondrop FreeDSP Mini route (record `moondrop-freedsp-mini`): read with FreeDSP-Studio's Mini frames ([FreeDspMiniCodec]), written with none while [FREEDSP_MINI_TESTER_WRITE] is false. Every other model: false. */
+        /** The Moondrop FreeDSP Mini route (record `moondrop-freedsp-mini`): read with FreeDSP-Studio's Mini frames ([FreeDspMiniCodec]), written only by [MoondropSession.writeMini] and only while [FREEDSP_MINI_TESTER_WRITE] is true. Every other model: false. */
         val freedspMini: Boolean = false,
     ) {
-        /** Every frame with OP 0x01 is refused for this model, before any I/O ([MoondropSession]): the FreeDSP Mini while [FREEDSP_MINI_TESTER_WRITE] is false. */
+        /** Every frame with OP 0x01 is refused for this model, before any I/O ([MoondropSession]): the FreeDSP Mini while [FREEDSP_MINI_TESTER_WRITE] is false. With the switch on, its allow-list is the only way out. */
         val writesBlocked: Boolean get() = freedspMini && !FREEDSP_MINI_TESTER_WRITE
         /** The active EQ index [index] is a bank Contour writes. */
         fun isWritable(index: Int): Boolean = index in writableIndexes

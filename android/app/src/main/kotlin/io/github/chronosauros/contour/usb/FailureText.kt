@@ -50,8 +50,8 @@ internal object FailureText {
         }
     }
 
-    /** The reason of a write whose read-back did not match: [detail] is the first difference the codec found. */
-    fun readBack(detail: String?): UiText = if (review) UiText.Plain("READ-BACK MISMATCH: ${detail ?: ""}") else MISMATCH
+    /** The reason of a write whose read-back did not match: [detail] is the first difference the codec found, or a sentence a release shows as written (the FreeDSP Mini's "nothing was saved"). */
+    fun readBack(detail: String?): UiText = if (review) UiText.Plain("READ-BACK MISMATCH: ${detail ?: ""}") else if (detail != null && "nothing was saved" in detail.lowercase()) UiText.Core(detail) else MISMATCH
 
     /** A note that comes with a write that was verified (the slot name did not read back): the technical text in a review build, one plain sentence in a release. */
     fun note(raw: String?): UiText? = when {

@@ -984,7 +984,7 @@ class NativeFamilyTest {
         assertEquals(planned.bands.map { listOf(it.index, it.frequencyHz, it.qQ8, it.gainQ8, it.nativeType, hex(it.coefficients)) }, manual.bands.map { listOf(it.index, it.frequencyHz, it.qQ8, it.gainQ8, it.nativeType, hex(it.coefficients)) })
     }
 
-    // ---- Moondrop FreeDSP Mini: the READ-ONLY tester entry (1.8.2-freedsptest1) ------------------------------------------------------------------------------------------------------
+    // ---- Moondrop FreeDSP Mini: the tester entry (1.8.2-freedsptest1 reads, 1.8.3-freedsptest2 writes PEAK to slot 7; the write tests are in FreeDspMiniWriteTest) ------------------------------------------------------------------------------------------------------
     // SYNTHETIC: FakeFreeDspMini answers in FreeDSP-Studio's layout (dsp2.rs 47-58); nothing here was read from a Mini.
 
     private val mini = requireNotNull(MoondropCatalog.find(0x35D8, 0x98D4, null))
@@ -1024,7 +1024,7 @@ class NativeFamilyTest {
         assertEquals("Space", FreeDspMiniCodec.slotName(3))
         // the same read through the family state: the page's two rows
         val state = FamilyState.FreeDspMini(mini, r)
-        assertEquals(7, state.slot); assertEquals(-3.0, state.preampDb); assertFalse(state.importable)
+        assertEquals(7, state.slot); assertEquals(-3.0, state.preampDb); assertTrue(state.importable, "Custom EQ with eight PEAK bands opens in the editor (test 2)")
         assertEquals(listOf(SettingReading(FamilySettings.EQ_INDEX, 7, null), SettingReading(FamilySettings.PRE_GAIN, -30, null)), state.readings())
         assertEquals("7 Custom EQ", freedspSlotText(7)); assertEquals("5", freedspSlotText(5)); assertEquals("2 Bass Enhance+", freedspSlotText(2))
         assertTrue(dac.notes.any { it.startsWith("FreeDSP Mini RX band 0: 80 09") }, "the raw reply is logged before it is parsed")
@@ -1084,12 +1084,12 @@ class NativeFamilyTest {
         assertEquals(0, s.bands.count { it != null }); assertNull(s.slot)
     }
 
-    @Test fun `every public method of a FreeDSP Mini session that can send an OP 0x01 frame refuses before any I-O, in every build`() {
+    @Test fun `every Dawn method of a FreeDSP Mini session refuses before any I-O, in every build - the Mini has writeMini and its read`() {
         val bands = List(8) { MoondropCodec.neutralBand(it) }
         for (channel in BuildChannel.entries) Proven.asChannel(channel) {
             val dac = FakeFreeDspMini()
             val s = MoondropSession(mini, dac)
-            assertTrue(mini.writesBlocked); assertFalse(MoondropCatalog.FREEDSP_MINI_TESTER_WRITE)
+            assertFalse(mini.writesBlocked); assertTrue(MoondropCatalog.FREEDSP_MINI_TESTER_WRITE)
             val refusals = listOf<() -> Any?>(
                 { s.write(bands, -3.0, explicitHold = true) },
                 { s.write(bands, null, explicitHold = true) },
@@ -1104,7 +1104,7 @@ class NativeFamilyTest {
             )
             for ((i, call) in refusals.withIndex()) {
                 val e = assertFailsWith<IllegalStateException>("refusal $i in $channel") { call() }
-                assertEquals(MoondropCatalog.FREEDSP_MINI_READ_ONLY_TEXT, e.message)
+                assertEquals("The FreeDSP Mini is written with writeMini only", e.message)
             }
             // the Dawn's two reads ask for the EQ index and the global gain: the Mini is read with readMini only
             assertFailsWith<IllegalArgumentException> { s.read() }
@@ -1114,22 +1114,28 @@ class NativeFamilyTest {
             assertEquals(0, dac.guards, "the port was not touched")
             // the read of the Mini sends no write frame either (the fake fails the test on one)
             s.readMini(); assertEquals(miniReadFrames, dac.sent.map { hex(it) })
+            // writeMini is for the Mini only
+            assertFailsWith<IllegalStateException> { MoondropSession(dawn, FakeFreeDspMini()).writeMini(emptyList(), explicitHold = true) }
         }
-        // and the model says it is the Mini that is blocked, nobody else
+        // and the model says it is the Mini that has the route, nobody else
         assertFalse(dawn.writesBlocked); assertFalse(dawn.freedspMini); assertTrue(mini.freedspMini)
     }
 
-    @Test fun `the FreeDSP Mini is read only in every build and says so, the Dawn Pro 2 is untouched`() {
+    @Test fun `the FreeDSP Mini writes in every build through its own allow-list only, offers PEAK only and keeps its two rows read only - the Dawn Pro 2 is untouched`() {
         for (channel in BuildChannel.entries) Proven.asChannel(channel) {
             val t = DeviceTarget.FREEDSP_MINI
-            assertTrue(t.readOnly, "$channel")
-            assertEquals(MoondropCatalog.FREEDSP_MINI_READ_ONLY_TEXT, t.readOnlyIssue)
+            assertFalse(t.readOnly, "$channel")
+            assertEquals("Test build: Contour writes PEAK bands to Custom EQ (slot 7) only", MoondropCatalog.FREEDSP_MINI_NOTICE)
             assertEquals("Moondrop FreeDSP Mini", t.caps.name)
             assertEquals(setOf(FilterType.PEAK), t.caps.types)
-            assertEquals(listOf(MoondropCatalog.FREEDSP_MINI_READ_ONLY_TEXT), t.issues(eqOf(Band("a", FilterType.PEAK, 1000.0, 3.0, 1.0))))
-            assertEquals(listOf(MoondropCatalog.FREEDSP_MINI_READ_ONLY_TEXT), FamilyDevices.stateIssues(t, null))
-            assertEquals(listOf(MoondropCatalog.FREEDSP_MINI_READ_ONLY_TEXT), FamilyDevices.stateIssues(t, FamilyState.FreeDspMini(mini, MoondropSession(mini, FakeFreeDspMini()).readMini())))
-            assertEquals("READ ONLY", FamilyDevices.readOnlyLabel(t))
+            assertEquals(emptyList(), t.issues(eqOf(Band("a", FilterType.PEAK, 1000.0, 3.0, 1.0))))
+            assertTrue(t.issues(eqOf(Band("a", FilterType.LOW_SHELF, 100.0, 3.0, 0.7))).isNotEmpty(), "shelves stay held")
+            assertTrue(t.issues(eqOf(Band("a", FilterType.PEAK, 1000.0, 13.0, 1.0))).isNotEmpty())
+            assertTrue(t.issues(eqOf(Band("a", FilterType.PEAK, 10.0, 3.0, 1.0))).isNotEmpty())
+            assertTrue(t.issues(eqOf(Band("a", FilterType.PEAK, 1000.0, 3.0, 11.0))).isNotEmpty())
+            assertEquals(emptyList(), t.issues(eqOf(Band("a", FilterType.PEAK, 1000.0, 3.0, 1.0)).copy(preampDb = 5.0)), "its pre-gain is never written: no preamp rule on a send")
+            assertEquals(listOf(FamilyDevices.READ_FIRST), FamilyDevices.stateIssues(t, null))
+            assertEquals(emptyList(), FamilyDevices.stateIssues(t, FamilyState.FreeDspMini(mini, MoondropSession(mini, FakeFreeDspMini()).readMini())))
             assertEquals(8, t.caps.bands); assertEquals(-12.0, t.caps.gainMinDb); assertEquals(12.0, t.caps.gainMaxDb)
             // the DAC page: the active slot and the pre-gain, both without a control; no GLOBAL GAIN row
             assertEquals(listOf(FamilySettings.EQ_INDEX, FamilySettings.PRE_GAIN), t.settings.map { it.id })
@@ -1139,16 +1145,15 @@ class NativeFamilyTest {
             assertEquals(listOf(FamilySettings.EQ_INDEX, FamilySettings.GLOBAL_GAIN, FamilySettings.PRE_GAIN), DeviceTarget.DAWN_PRO_2.settings.map { it.id })
             assertEquals("Moondrop Dawn Pro 2", DeviceTarget.DAWN_PRO_2.caps.name)
         }
-        // the HID descriptor the app opens it through: Input up to the slot byte, Output the longest query
+        // the HID descriptor the app opens it through: Input up to the slot byte, Output the band write
         assertEquals(1 + 36, NativeHidReports.minimumRawBytes(DeviceTarget.FREEDSP_MINI, NativeHidReports.Kind.INPUT))
-        assertEquals(1 + 6, NativeHidReports.minimumRawBytes(DeviceTarget.FREEDSP_MINI, NativeHidReports.Kind.OUTPUT))
+        assertEquals(1 + 37, NativeHidReports.minimumRawBytes(DeviceTarget.FREEDSP_MINI, NativeHidReports.Kind.OUTPUT))
         assertEquals(1 + 36, NativeHidReports.minimumRawBytes(DeviceTarget.DAWN_PRO_2, NativeHidReports.Kind.INPUT))
         assertEquals(1 + 37, NativeHidReports.minimumRawBytes(DeviceTarget.DAWN_PRO_2, NativeHidReports.Kind.OUTPUT))
         // the Dawn Pro 2's read still asks the Dawn's questions
         assertEquals(listOf("80 0f 00", "80 09 18 00 00 00"), MoondropCodec.readQueries(dawn).take(2).map { hex(it.payload) })
     }
 }
-
 /**
  * SYNTHETIC FreeDSP Mini for the tests and the catalog dump: it answers FreeDSP-Studio's three read frames (version `80 0C 01 00`, band `80 09 03 00 i 00`, pre-gain `80 23 00`) with replies in FreeDSP-Studio's layout
  * (report ID excluded: index at 4, frequency at 27, Q at 29, gain at 31, type at 33, slot at 35; dsp2.rs 47-58), and refuses anything else. Nothing here was read from a Mini. [sent] is every payload it is sent, in order;

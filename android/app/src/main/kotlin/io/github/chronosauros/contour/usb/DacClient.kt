@@ -22,6 +22,7 @@ import io.github.chronosauros.contour.core.native.FiioResetBackup
 import io.github.chronosauros.contour.core.native.FiioResetSent
 import io.github.chronosauros.contour.core.native.FiioResetTicket
 import io.github.chronosauros.contour.core.native.FiioRestoreResult
+import io.github.chronosauros.contour.core.native.FreeDspMiniCodec
 import io.github.chronosauros.contour.core.native.KtMicroCatalog
 import io.github.chronosauros.contour.core.native.KtMicroCodec
 import io.github.chronosauros.contour.core.native.KtMicroSession
@@ -471,6 +472,7 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
         // A 1.6 family DAC is read only until its write is proven or the build is a review build (DeviceTarget.readOnly, Proven): this is the guard, and nothing below it builds a frame for a read-only DAC.
         if (target.readOnly) throw IOException(target.readOnlyIssue)
         target.echo?.let { return writeEcho(device, profile, target, it, onProgress) }
+        target.moondrop?.takeIf { it.freedspMini }?.let { return writeMini(device, profile, target, it, onProgress) }
         target.moondrop?.let { return writeDawn(device, profile, target, it, onProgress) }
         target.ktMicro?.let { return writeAllegro(device, profile, target, it, onProgress) }
         target.gen1?.let { return writeGen1(device, profile, target, it, onProgress) }
@@ -555,6 +557,29 @@ class DacClient(private val manager: UsbManager, private val guardFor: (DacHandl
             val ms = SystemClock.elapsedRealtime() - start
             UsbLog.line("write: ${if (r.verified) "VERIFIED" else "MISMATCH"}${r.reason?.let { ", $it" }.orEmpty()}, $ms ms" + (previous?.let { "; the DAC was on EQ index $it" } ?: "") + "; EQ index after: ${back.activeIndex}")
             WriteResult(r.verified, listOfNotNull(r.reason), ms, 0, familySnapshot(target, FamilyState.Dawn(model, back), 0), previousIndex = previous)
+        }
+    }
+
+    /**
+     * FreeDSP Mini (tester build 1.8.3-freedsptest2): the profile's PEAK bands to Custom EQ (slot 7) through [MoondropSession.writeMini], which reads the unit first (another slot or an unanswered band: nothing is sent), sends the
+     * eight band frames and the commit, reads the bands back and compares them byte for byte, and saves to flash only when all eight are equal. The pre-gain is never written. A refusal comes out as an exception with the
+     * owner's wording; a read-back that differs comes back as a result that is not verified.
+     */
+    private suspend fun writeMini(device: DacHandle, profile: Profile, target: DeviceTarget, model: MoondropCatalog.Model,
+                                  onProgress: ((Float) -> Unit)?): WriteResult {
+        target.issues(profile).takeIf { it.isNotEmpty() }?.let { throw IOException(it.joinToString("; ")) }
+        return withDevice(device) { t ->
+            val start = SystemClock.elapsedRealtime()
+            // Frames planned: the read before and the read after (every query), the eight bands, the commit, the eight read-back queries, the save.
+            val steps = Steps(2 * 2 * FreeDspMiniCodec.readQueries(model).size + model.bandCount + 1 + model.bandCount + 1, onProgress)
+            val session = MoondropSession(model, WalkPlayPort(t, device) { steps.tick() })
+            UsbLog.line("write: ${target.caps.name}: PEAK bands to slot ${FreeDspMiniCodec.SLOT_CUSTOM} (read first, ${model.bandCount} bands, commit, read back, save only when equal)")
+            // the pre-gain is read only: the session refuses a profile whose pre-gain differs from the unit's (AUTO included)
+            val r = session.writeMini(profile.bands, explicitHold = true, preGainDb = runCatching { profile.effectivePreampDb(model.shelfForm) }.getOrNull())
+            t.checkSession()
+            val ms = SystemClock.elapsedRealtime() - start
+            UsbLog.line("write: ${if (r.verified) "VERIFIED" else "NOT VERIFIED"}${r.reason?.let { ", $it" }.orEmpty()}, $ms ms")
+            WriteResult(r.verified, listOfNotNull(r.reason), ms, 0, familySnapshot(target, FamilyState.FreeDspMini(model, requireNotNull(r.readback)), 0))
         }
     }
 

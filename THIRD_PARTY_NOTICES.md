@@ -85,8 +85,11 @@ write sequence and pacing of the TRN Black Pearl (WalkPlay scheme 16) from `writ
 `tools/app/src/dsp2.rs` - the band frame with length byte 0x21, 25 ms after each band, the coefficient commit,
 the preamp, the two flash commands and their pauses. It is used in
 `android/core/src/main/kotlin/io/github/chronosauros/contour/core/WalkPlay.kt` (`trnWriteSequence`) and was then
-checked on a real TRN Black Pearl (`research/black-pearl-pc-2026-10-19/FINDINGS.md`). FreeDSP-Studio is licensed
-under the MIT License:
+checked on a real TRN Black Pearl (`research/black-pearl-pc-2026-10-19/FINDINGS.md`). The FreeDSP Mini's read frames
+and its band write, commit, EQ save and their pacing were taken from `tools/app/src/dsp2.rs` (`read_*`, `write_band`,
+`commit`, `write_bank`) at the same commit 1b42f63; they are used in
+`android/core/src/main/kotlin/io/github/chronosauros/contour/core/native/FreeDspMiniCodec.kt` and `MoondropSession.kt`.
+FreeDSP-Studio is licensed under the MIT License:
 
     MIT License
 

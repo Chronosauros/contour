@@ -22,6 +22,7 @@ import io.github.chronosauros.contour.core.BuildChannel
 import io.github.chronosauros.contour.core.DacImport
 import io.github.chronosauros.contour.core.DeviceTarget
 import io.github.chronosauros.contour.core.native.VolumeTrim
+import io.github.chronosauros.contour.core.native.WriteRefused
 import io.github.chronosauros.contour.model.VolumeTrims
 import io.github.chronosauros.contour.core.Proven
 import io.github.chronosauros.contour.core.Profile
@@ -511,7 +512,7 @@ class DeviceController(private val context: Context, private val scope: Coroutin
      */
     private suspend fun writeFamilySetting(id: String, value: Int, epoch: Long): SettingWriteOutcome? {
         val allegro = protocol.ktMicro != null
-        val dawn = protocol.moondrop != null
+        val dawn = protocol.moondrop != null && protocol.moondrop?.freedspMini != true // the FreeDSP Mini has no gain write: its rows are read only
         val gen1 = protocol.gen1 != null
         val op: (suspend (DacHandle) -> WriteResult)? = when {
             gen1 && id == FamilySettings.PRESET -> { d -> client.selectGen1Preset(d, value) }
@@ -1395,6 +1396,10 @@ class DeviceController(private val context: Context, private val scope: Coroutin
             error = if (r.verified) FailureText.note(r.mismatches.firstOrNull()) else null
             if (r.verified) dismissInterruptedSend()
             if (r.verified) SendOutcome(true, null) else SendOutcome(false, FailureText.readBack(r.mismatches.firstOrNull()), "READ-BACK MISMATCH: ${r.mismatches.firstOrNull().orEmpty()}")
+        } catch (e: WriteRefused) {
+            // the FreeDSP Mini's session refused before it sent a frame with OP 0x01: the DAC holds what it held, so what is known of it stays and the send is not "interrupted"
+            UsbLog.line("$what refused: ${e.message}")
+            SendOutcome(false, FailureText.of(e), e.message)
         } catch (e: Exception) {
             UsbLog.line("$what failed: ${e.message}")
             snapshot = null // a partial write or failed read cannot establish what the DAC holds

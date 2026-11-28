@@ -693,8 +693,8 @@ internal object CatalogDump {
     }
 
     /**
-     * The Moondrop FreeDSP Mini (read-only tester entry, nothing measured on a Contour unit): the caps, flags and settings of every family entry, its model and read frames, the read of a CONSTRUCTED unit in FreeDSP-Studio's layout
-     * ([FakeFreeDspMini]: nothing here was read from a Mini) and every documented profile, each of which is refused as read only.
+     * The Moondrop FreeDSP Mini (tester entry: PEAK write to slot 7 since 1.8.3-freedsptest2; nothing measured on a Contour unit): the caps, flags and settings of every family entry, its model and read frames, the read of a CONSTRUCTED unit in FreeDSP-Studio's layout
+     * ([FakeFreeDspMini]: nothing here was read from a Mini) and every documented profile: refused by its issues, or ready with the band frames a send would make against the constructed unit.
      */
     private fun freedspMiniJson(t: DeviceTarget): JsonElement {
         val model = requireNotNull(t.moondrop)
@@ -708,7 +708,10 @@ internal object CatalogDump {
                 "freq" to s("${d(model.minFrequencyHz)}..${d(model.maxFrequencyHz)}"), "preGain" to s("${d(model.preGainMinDb)}..${d(model.preGainMaxDb)}"),
                 "globalGain" to s("${d(model.globalGainMinDb)}..${d(model.globalGainMaxDb)}")),
             "reportId" to toJson(model.reportId), "reportBytes" to toJson(model.reportBytes), "writableIndex" to toJson(model.writableIndex), "writableIndexes" to toJson(model.writableIndexes),
-            "slotNames" to toJson(FreeDspMiniCodec.SLOT_NAMES), "readOnlyText" to s(t.readOnlyIssue),
+            "slotNames" to toJson(FreeDspMiniCodec.SLOT_NAMES), "readOnlyText" to s(MoondropCatalog.FREEDSP_MINI_READ_ONLY_TEXT), "notice" to s(MoondropCatalog.FREEDSP_MINI_NOTICE), "readOnly" to toJson(t.readOnly),
+            "texts" to obj("otherSlot" to s(FreeDspMiniCodec.otherSlotText(1)), "incomplete" to s(FreeDspMiniCodec.INCOMPLETE_READ_TEXT), "notTaken" to s(FreeDspMiniCodec.NOT_TAKEN_TEXT)),
+            "write" to obj("slot" to toJson(FreeDspMiniCodec.SLOT_CUSTOM), "type" to toJson(FreeDspMiniCodec.TYPE_PEAK), "commit" to s(hex(MoondropCodec.commitPayload())), "save" to s(hex(MoondropCodec.savePayload())),
+                "delaysMs" to obj("band" to toJson(FreeDspMiniCodec.DELAY_BAND_MS), "commit" to toJson(FreeDspMiniCodec.DELAY_COMMIT_MS), "save" to toJson(FreeDspMiniCodec.DELAY_SAVE_MS)), "compareBytes" to s("${FreeDspMiniCodec.COMPARE_FROM}..${FreeDspMiniCodec.COMPARE_TO}")),
             "readQueries" to strs(FreeDspMiniCodec.readQueries(model).map { hex(it.payload) }),
         )
         entries["benchRead"] = obj(
@@ -719,7 +722,7 @@ internal object CatalogDump {
             "log" to strs(port.notes),
         )
         entries["profiles"] = JsonObject(profiles(familySpecs.getValue("MOONDROP_FREEDSP_MINI")).associate { pr ->
-            pr.name to familyProfile(t, pr) { p -> obj("status" to s("refused"), "issues" to strs(t.issues(p))) }
+            pr.name to familyProfile(t, pr) { p -> t.issues(p).let { issues -> if (issues.isNotEmpty()) obj("status" to s("refused"), "issues" to strs(issues)) else obj("status" to s("ready"), "againstTheConstructedUnit" to strs(FreeDspMiniCodec.plan(model, p.bands, read.bands).map { hex(FreeDspMiniCodec.bandPayload(it)) })) } }
         })
         return JsonObject(entries)
     }

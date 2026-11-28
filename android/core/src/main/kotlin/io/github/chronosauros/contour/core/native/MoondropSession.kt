@@ -1,5 +1,6 @@
 package io.github.chronosauros.contour.core.native
 
+import io.github.chronosauros.contour.core.Band
 import io.github.chronosauros.contour.core.WalkPlay
 
 /**
@@ -13,18 +14,23 @@ import io.github.chronosauros.contour.core.WalkPlay
  * in [Snapshot.activeIndex] of the read-back.
  * [selectIndex], [readWritableBank] and [enableAllPeq] stay as bench tools.
  *
- * The FreeDSP Mini ([MoondropCatalog.freedspMini], tester build 1.8.2-freedsptest1) is a READ-ONLY model: [readMini] is its only operation. While [MoondropCatalog.FREEDSP_MINI_TESTER_WRITE] is false every
- * public method that can send a frame with OP 0x01 ([write], [writeGain], [selectIndex], [enableAllPeq], [readWritableBank]) throws before any I/O, and the port the session talks through refuses such a frame as
- * well, so no caller, build type or [io.github.chronosauros.contour.core.Proven] channel can get one out. [read] and [readFirmware], which ask the Dawn's questions (EQ index, global gain), refuse for it too.
+ * The FreeDSP Mini ([MoondropCatalog.freedspMini], tester build 1.8.3-freedsptest2) has two operations: [readMini] and [writeMini] (PEAK bands to slot 7, saved only after they read back exactly as sent). Every Dawn method that
+ * can send a frame with OP 0x01 ([write], [writeGain], [selectIndex], [enableAllPeq], [readWritableBank]) throws before any I/O for it, and so do [read] and [readFirmware], which ask the Dawn's questions (EQ index, global gain).
+ * The port the session talks through is a [MiniAllowListPort]: it passes the three read frames, the Mini's band frame (slot 7, type 2), the commit and the save and throws on everything else, whoever built the frame, and
+ * on every frame with OP 0x01 while [MoondropCatalog.FREEDSP_MINI_TESTER_WRITE] is false; no caller, build type or [io.github.chronosauros.contour.core.Proven] channel changes that.
  */
 class MoondropSession(val model: MoondropCatalog.Model, port: NativePort) {
-    /** The port the session talks through: for a model whose writes are blocked, a port that throws on a frame with OP 0x01 whoever built it ([BlockedWritesPort]). */
-    private val port: NativePort = if (model.writesBlocked) BlockedWritesPort(port) else port
+    /** The port the session talks through: for the FreeDSP Mini, [MiniAllowListPort] whoever built the port below it. */
+    private val port: NativePort = if (model.freedspMini) MiniAllowListPort(port) else port
     private val io = NativeIo(this.port)
 
     private fun refuseBlockedWrites() = check(!model.writesBlocked) { MoondropCatalog.FREEDSP_MINI_READ_ONLY_TEXT }
-    /** Every method that can send OP 0x01 starts here: refused before the port is touched. */
-    private fun <T> writing(op: () -> T): T { refuseBlockedWrites(); return io.guarded(op) }
+    /** Every Dawn method that can send OP 0x01 starts here: refused before the port is touched; the FreeDSP Mini has [writeMini] and nothing else. */
+    private fun <T> writing(op: () -> T): T {
+        refuseBlockedWrites()
+        check(!model.freedspMini) { "The FreeDSP Mini is written with writeMini only" }
+        return io.guarded(op)
+    }
     /** The Dawn's reads ask for the EQ index and the global gain; the FreeDSP Mini is read through [readMini] only. */
     private fun <T> dawnRead(op: () -> T): T { require(!model.freedspMini) { "The FreeDSP Mini is read with readMini only" }; return io.guarded(op) }
 
@@ -150,6 +156,87 @@ class MoondropSession(val model: MoondropCatalog.Model, port: NativePort) {
         return parsed
     }
 
+    /** What the read that opens [writeMini] showed (set before its first mutating frame). */
+    var lastMiniBefore: FreeDspMiniCodec.Read? = null
+        private set
+
+    /** The eight band writes [writeMini] intended, set before its first mutating frame. */
+    var lastMiniExpected: List<MoondropCodec.BandWrite>? = null
+        private set
+
+    /**
+     * The FreeDSP Mini's only write (tester build 1.8.3-freedsptest2): PEAK bands to Custom EQ (slot 7), in FreeDSP-Studio's order (`write_bank`, dsp2.rs 644-695, without its preamp, `01 04` and slot-switch parts), saved to flash only after
+     * the unit has shown the eight bands exactly as they were sent.
+     *  1. Preflight, before any I/O: [explicitHold]; at most eight bands, every enabled one PEAK, 20-20000 Hz, -12..+12 dB, Q 0.1-10 and Q30-representable ([FreeDspMiniCodec.issues]). Any issue throws, nothing is sent.
+     *  2. The read before ([readMini], kept in [lastMiniBefore]): the unit must show slot 7 on all eight bands. Another slot throws [FreeDspMiniCodec.otherSlotText], an incomplete read [FreeDspMiniCodec.INCOMPLETE_READ_TEXT]; nothing is
+     *     sent either way (no frame with OP 0x01 leaves the session before this check passes).
+     *  3. The eight band frames ([FreeDspMiniCodec.bandWrite]: the biquad designed from the rounded registers, a disabled or missing band PEAK 0 dB at the frequency and Q the unit had), 25 ms after each, then the commit
+     *     `01 0A 04 00 00 FF FF` (50 ms), then a read of the eight bands; every reply's bytes 7..35 are compared with the frame sent (a band whose reply is lost is asked again once).
+     *  4. All eight equal: the save `01 01 00` (200 ms), a read again; the outcome is verified. Any difference or unread band: NO save, the outcome is not verified and its reason is [FreeDspMiniCodec.NOT_TAKEN_TEXT].
+     * Every frame goes through [MoondropCodec.requireSendable], through [FreeDspMiniCodec.isAllowed] here and again at the port. Never sent: `01 0F`, `01 23`, `01 03`, `01 04`, `01 05`, `01 FF`. The outcome's readback is the last read.
+     */
+    fun writeMini(bands: List<Band>, explicitHold: Boolean, preGainDb: Double? = null): WriteOutcome<FreeDspMiniCodec.Read> {
+        check(model.freedspMini) { "writeMini is the write of the FreeDSP Mini" }
+        refuseBlockedWrites()
+        // the preflight: nothing of the port is touched, not even the session guard
+        require(explicitHold) { "HOLD TO SEND required" }
+        FreeDspMiniCodec.issues(model, bands).takeIf { it.isNotEmpty() }?.let { throw IllegalArgumentException(it.joinToString("; ")) }
+        return io.guarded<WriteOutcome<FreeDspMiniCodec.Read>> {
+            val before = readMini().also { lastMiniBefore = it }
+            val slots = before.bands.filterNotNull().map { it.slot }.distinct()
+            port.log("FreeDSP Mini write: slot found ${before.slot ?: "none"}" + (before.slot?.let { s -> FreeDspMiniCodec.slotName(s)?.let { " ($it)" } }.orEmpty()))
+            if (slots.size == 1 && slots[0] != FreeDspMiniCodec.SLOT_CUSTOM) {
+                port.log("FreeDSP Mini write: no write, the unit is not on Custom EQ")
+                throw WriteRefused(FreeDspMiniCodec.otherSlotText(slots[0]))
+            }
+            if (slots != listOf(FreeDspMiniCodec.SLOT_CUSTOM) || before.bands.any { it == null }) {
+                port.log("FreeDSP Mini write: no write, the read before is incomplete (slots $slots, no valid reply to: ${before.unanswered.joinToString(", ").ifEmpty { "none" }})")
+                throw WriteRefused(FreeDspMiniCodec.INCOMPLETE_READ_TEXT)
+            }
+            // The pre-gain is never written: a profile that asks for another one than the unit holds is refused, so a send cannot report VERIFIED over a pre-gain it ignored. No read of it = nothing to compare.
+            val held = before.preGain
+            if (preGainDb != null && preGainDb.isFinite() && held != null && FreeDspMiniCodec.tenths(preGainDb) != FreeDspMiniCodec.tenths(held.db)) {
+                port.log("FreeDSP Mini write: no write, the profile's pre-gain ${preGainDb} dB differs from the unit's ${held.db} dB")
+                throw WriteRefused(FreeDspMiniCodec.preGainRefusal(held.db))
+            }
+            val full = try { FreeDspMiniCodec.plan(model, bands, before.bands) } catch (e: IllegalArgumentException) {
+                port.log("FreeDSP Mini write: no write, ${e.message}")
+                throw WriteRefused(FreeDspMiniCodec.INCOMPLETE_READ_TEXT)
+            }
+            val frames = full.map { FreeDspMiniCodec.bandPayload(it) }
+            val commit = MoondropCodec.commitPayload()
+            val save = MoondropCodec.savePayload()
+            // every frame is proven sendable before the first one goes out
+            (frames + listOf(commit, save)).forEach { MoondropCodec.requireSendable(it); check(FreeDspMiniCodec.isAllowed(it)) { "refused before I/O: ${it.joinToString(" ") { b -> "%02x".format(b.toInt() and 255) }}" } }
+            lastMiniExpected = full
+            frames.forEach { io.send(model.reportId, it); io.pause(FreeDspMiniCodec.DELAY_BAND_MS) }
+            io.send(model.reportId, commit); io.pause(FreeDspMiniCodec.DELAY_COMMIT_MS)
+            val replies = List(model.bandCount) { i -> miniAsk(FreeDspMiniCodec.bandQuery(i)) { p -> FreeDspMiniCodec.parseBand(p, i); p.copyOf() } }
+            val problems = ArrayList<String>()
+            replies.forEachIndexed { i, r ->
+                if (r == null) { problems += "band $i not read back"; port.log("FreeDSP Mini write: band $i: no reply to the read-back") }
+                else FreeDspMiniCodec.differences(frames[i], r).let { d ->
+                    if (d.isEmpty()) port.log("FreeDSP Mini write: band $i read back = sent")
+                    else { problems += "band $i: ${d.joinToString(", ")}"; port.log("FreeDSP Mini write: band $i DIFFERS: ${d.joinToString(", ")}; sent ${hexRange(frames[i])}, got ${hexRange(r)}") }
+                }
+            }
+            val parsed = replies.mapIndexed { i, r -> r?.let { FreeDspMiniCodec.parseBand(it, i) } }
+            val back = FreeDspMiniCodec.Read(before.firmware, parsed.firstNotNullOfOrNull { it?.slot }, parsed, before.preGain, replies.indices.filter { replies[it] == null }.map { "band $it" })
+            if (problems.isNotEmpty()) {
+                port.log("FreeDSP Mini write: no save: ${problems.joinToString("; ")}")
+                return@guarded WriteOutcome(false, false, FreeDspMiniCodec.NOT_TAKEN_TEXT, back)
+            }
+            io.send(model.reportId, save); io.pause(FreeDspMiniCodec.DELAY_SAVE_MS)
+            port.log("FreeDSP Mini write: save sent")
+            val after = readMini()
+            val afterProblems = after.bands.mapIndexedNotNull { i, b -> if (b == null) "band $i not read" else if (b.frequencyHz != full[i].frequencyHz || b.qQ8 != full[i].qQ8 || b.gainQ8 != full[i].gainQ8 || b.nativeType != full[i].nativeType || b.slot != FreeDspMiniCodec.SLOT_CUSTOM) "band $i" else null }
+            port.log("FreeDSP Mini write: read after the save: " + if (afterProblems.isEmpty()) "the eight bands equal what was sent" else "differs or unread: ${afterProblems.joinToString(", ")}")
+            WriteOutcome(true, false, null, after)
+        }
+    }
+
+    private fun hexRange(p: ByteArray) = (FreeDspMiniCodec.COMPARE_FROM..minOf(FreeDspMiniCodec.COMPARE_TO, p.size - 1)).joinToString(" ") { "%02x".format(p[it].toInt() and 255) }
+
     /** What [enableAllPeq] saw: the whole read before and the whole read after the one frame. */
     class EnableAllPeqResult(val before: MoondropCodec.Snapshot, val after: MoondropCodec.Snapshot)
 
@@ -265,11 +352,22 @@ class MoondropSession(val model: MoondropCatalog.Model, port: NativePort) {
 }
 
 /**
- * The port a [MoondropSession] of a model whose writes are blocked ([MoondropCatalog.Model.writesBlocked]: the FreeDSP Mini while [MoondropCatalog.FREEDSP_MINI_TESTER_WRITE] is false) talks through: every frame
- * with OP 0x01 is refused with an exception before it reaches the real port, in [send] and in [request] alike, whatever the session, the build type or [io.github.chronosauros.contour.core.Proven] says.
+ * The port a [MoondropSession] of the FreeDSP Mini talks through. It lets through exactly [FreeDspMiniCodec.isAllowed]: FreeDSP-Studio's three read frames, a band write (OP 01, CMD 09, LEN 0x21, slot byte 07, type byte 02), the commit
+ * `01 0A 04 00 00 FF FF` and the EQ save `01 01 00`, and throws before the real port is touched on anything else, in [send] and in [request] alike, whatever the session, the build type or
+ * [io.github.chronosauros.contour.core.Proven] says. With [writesOn] false (the test 1 behaviour, [MoondropCatalog.FREEDSP_MINI_TESTER_WRITE]) every frame with OP 0x01 is refused with the read-only text.
  */
-private class BlockedWritesPort(private val inner: NativePort) : NativePort by inner {
-    private fun refuseWrite(payload: ByteArray) = check(payload.isEmpty() || (payload[0].toInt() and 255) != 0x01) { MoondropCatalog.FREEDSP_MINI_READ_ONLY_TEXT }
-    override fun send(id: Int, kind: NativeHidReports.Kind, payload: ByteArray) { refuseWrite(payload); inner.send(id, kind, payload) }
-    override fun request(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean): ByteArray { refuseWrite(payload); return inner.request(id, payload, matches) }
+internal class MiniAllowListPort(private val inner: NativePort, private val writesOn: Boolean = MoondropCatalog.FREEDSP_MINI_TESTER_WRITE) : NativePort by inner {
+    private fun hex(payload: ByteArray) = payload.joinToString(" ") { "%02x".format(it.toInt() and 255) }
+    private fun refuse(payload: ByteArray) {
+        check(writesOn || payload.isEmpty() || (payload[0].toInt() and 255) != 0x01) { MoondropCatalog.FREEDSP_MINI_READ_ONLY_TEXT }
+        check(FreeDspMiniCodec.isAllowed(payload)) { "Refused before I/O: not a frame the FreeDSP Mini is sent (${hex(payload.copyOf(minOf(payload.size, 8)))}${if (payload.size > 8) " ..." else ""})" }
+    }
+    override fun send(id: Int, kind: NativeHidReports.Kind, payload: ByteArray) { refuse(payload); inner.send(id, kind, payload) }
+    override fun request(id: Int, payload: ByteArray, matches: (ByteArray) -> Boolean): ByteArray { refuse(payload); return inner.request(id, payload, matches) }
 }
+
+/**
+ * A refusal of [MoondropSession.writeMini] that came before any frame with OP 0x01 went out (the unit is not on Custom EQ, or its read before is incomplete): the unit holds what it held. The app shows the message as the
+ * result and keeps what it knew of the unit; it does not word it as an interrupted send.
+ */
+class WriteRefused(message: String) : IllegalStateException(message)

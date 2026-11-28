@@ -1,0 +1,1 @@
+Contour no longer holds on to a lot of memory in the background. In 1.8.1 and 1.8.2 the shadows of moving cards kept a new image for every frame, so after REORDER PROFILES Contour could keep hundreds of MB, sometimes over 1 GB, after you left it. Now each shadow keeps a few images and Contour lets them go when you leave the app.

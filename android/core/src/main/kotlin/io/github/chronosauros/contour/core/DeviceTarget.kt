@@ -50,8 +50,8 @@ data class DeviceTarget private constructor(
      */
     val readOnly: Boolean get() = when {
         echo != null -> !echo.writeOn
-        // the FreeDSP Mini tester build never writes, whatever the channel (MoondropCatalog.FREEDSP_MINI_TESTER_WRITE): a review build does not lift it
-        moondrop != null -> moondrop.writesBlocked || !Proven.on(moondrop.hardwareVerified)
+        // the FreeDSP Mini tester build writes only through its own allow-list (MoondropCatalog.FREEDSP_MINI_TESTER_WRITE), in every channel: it is not "proven" and a release does not wait for Proven, a review build does not widen it
+        moondrop != null -> moondrop.writesBlocked || (!moondrop.freedspMini && !Proven.on(moondrop.hardwareVerified))
         ktMicro != null -> !Proven.on(ktMicro.hardwareVerified)
         gen1 != null -> !Proven.on(gen1.hardwareVerified)
         walkplay != null -> !WalkPlayProfiles.of(walkplay).writeOn
@@ -248,6 +248,8 @@ data class DeviceTarget private constructor(
         }
         // AUTO is computed from the curve, and a band with no real response (a strong, steep shelf inside the DAC's own ranges) has no curve: that is a reason
         // to name, like the same band with a manual preamp, never an exception for the page that asks while it draws (1.6.5 threw it from here).
+        // The FreeDSP Mini's pre-gain is never written (read only on its page): no preamp rule applies to a send, and its bands are held to its own writer's rules.
+        if (moondrop?.freedspMini == true) return found.ifEmpty { FreeDspMiniCodec.issues(moondrop, profile.bands) }
         val gain = if (!hasPreamp && moondrop == null) null else runCatching { profile.effectivePreampDb(shelfForm) }.getOrElse { e ->
             if (found.isNotEmpty()) return found
             return moondrop?.let { MoondropCodec.planFor(it, profile.bands, null).issues }.orEmpty().ifEmpty { listOf(e.message ?: "Unrepresentable EQ") }

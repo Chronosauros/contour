@@ -51833,9 +51833,9 @@
             },
             "flags": {
                 "isFamily": true,
-                "readOnly": true,
-                "readOnlyInRelease": true,
-                "readOnlyInReview": true,
+                "readOnly": false,
+                "readOnlyInRelease": false,
+                "readOnlyInReview": false,
                 "hasPreamp": true,
                 "preampLabel": "PRE GAIN",
                 "stable": false,
@@ -51992,8 +51992,8 @@
                         7
                     ]
                 },
-                "writesBlocked": true,
-                "testerWriteFlag": false,
+                "writesBlocked": false,
+                "testerWriteFlag": true,
                 "nativeTypes": [
                     1,
                     2,
@@ -52027,6 +52027,25 @@
                     "7": "Custom EQ"
                 },
                 "readOnlyText": "Read-only test build: nothing is written to the FreeDSP Mini",
+                "notice": "Test build: Contour writes PEAK bands to Custom EQ (slot 7) only",
+                "readOnly": false,
+                "texts": {
+                    "otherSlot": "The FreeDSP Mini is on Bass Enhance (slot 1). Switch it to Custom EQ in the Moondrop app first. Nothing was sent.",
+                    "incomplete": "The FreeDSP Mini did not answer every band. Nothing was sent. Unplug and replug it, then try again.",
+                    "notTaken": "The FreeDSP Mini did not take the bands, so nothing was saved. Unplug and replug it to go back to its saved EQ."
+                },
+                "write": {
+                    "slot": 7,
+                    "type": 2,
+                    "commit": "010a040000ffff",
+                    "save": "010100",
+                    "delaysMs": {
+                        "band": 25,
+                        "commit": 50,
+                        "save": 200
+                    },
+                    "compareBytes": "7..35"
+                },
                 "readQueries": [
                     "800c0100",
                     "800903000000",
@@ -52100,17 +52119,22 @@
                         ],
                         "preampDb": 0.0
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": 0.0,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "0109210000000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100010000000000403a77408054c9bf3fc688bf7fac3640c03c000001000002000700",
+                            "0109210002000000000040c2dad7803eef2a3f3e25287fc210d5c0c8000001000002000700",
+                            "01092100030000000000403aa08f829426893dc65f707d6cd976c258020001000002000700",
+                            "0109210004000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100050000000000409abca099a8d01d2d66435f66582fe2d218150001000002000700",
+                            "0109210006000000000040ab9935c83a68a51b5566ca37c6975ae4b0360001000002000700",
+                            "01092100070000000000403b0ea9e9f04d5016c5f1561610b2afe9204e0001000002000700"
                         ]
                     }
                 },
@@ -52122,17 +52146,22 @@
                         ],
                         "preampDb": null
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": null,
                     "shownPreamp": -3.0,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "010921000000006dfeb44003bfb183448add3bfd404e7c4f776dc3e8030001000302000700",
+                            "01092100010000000000403a77408054c9bf3fc688bf7fac3640c03c000001000002000700",
+                            "0109210002000000000040c2dad7803eef2a3f3e25287fc210d5c0c8000001000002000700",
+                            "01092100030000000000403aa08f829426893dc65f707d6cd976c258020001000002000700",
+                            "0109210004000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100050000000000409abca099a8d01d2d66435f66582fe2d218150001000002000700",
+                            "0109210006000000000040ab9935c83a68a51b5566ca37c6975ae4b0360001000002000700",
+                            "01092100070000000000403b0ea9e9f04d5016c5f1561610b2afe9204e0001000002000700"
                         ]
                     }
                 },
@@ -52144,17 +52173,22 @@
                         ],
                         "preampDb": -30.0
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": -30.0,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "01092100000000d7fb4c3ff5710d85ea1ae93b0b8ef27a3fe9c9c4e803000100fd02000700",
+                            "01092100010000000000403a77408054c9bf3fc688bf7fac3640c03c000001000002000700",
+                            "0109210002000000000040c2dad7803eef2a3f3e25287fc210d5c0c8000001000002000700",
+                            "01092100030000000000403aa08f829426893dc65f707d6cd976c258020001000002000700",
+                            "0109210004000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100050000000000409abca099a8d01d2d66435f66582fe2d218150001000002000700",
+                            "0109210006000000000040ab9935c83a68a51b5566ca37c6975ae4b0360001000002000700",
+                            "01092100070000000000403b0ea9e9f04d5016c5f1561610b2afe9204e0001000002000700"
                         ]
                     }
                 },
@@ -52166,17 +52200,22 @@
                         ],
                         "preampDb": 1.0
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": false,
                     "shownPreamp": 1.0,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "0109210000000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100010000000000403a77408054c9bf3fc688bf7fac3640c03c000001000002000700",
+                            "0109210002000000000040c2dad7803eef2a3f3e25287fc210d5c0c8000001000002000700",
+                            "01092100030000000000403aa08f829426893dc65f707d6cd976c258020001000002000700",
+                            "0109210004000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100050000000000409abca099a8d01d2d66435f66582fe2d218150001000002000700",
+                            "0109210006000000000040ab9935c83a68a51b5566ca37c6975ae4b0360001000002000700",
+                            "01092100070000000000403b0ea9e9f04d5016c5f1561610b2afe9204e0001000002000700"
                         ]
                     }
                 },
@@ -52188,17 +52227,22 @@
                         ],
                         "preampDb": -31.0
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": false,
                     "shownPreamp": -31.0,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "0109210000000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100010000000000403a77408054c9bf3fc688bf7fac3640c03c000001000002000700",
+                            "0109210002000000000040c2dad7803eef2a3f3e25287fc210d5c0c8000001000002000700",
+                            "01092100030000000000403aa08f829426893dc65f707d6cd976c258020001000002000700",
+                            "0109210004000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100050000000000409abca099a8d01d2d66435f66582fe2d218150001000002000700",
+                            "0109210006000000000040ab9935c83a68a51b5566ca37c6975ae4b0360001000002000700",
+                            "01092100070000000000403b0ea9e9f04d5016c5f1561610b2afe9204e0001000002000700"
                         ]
                     }
                 },
@@ -52210,17 +52254,22 @@
                         ],
                         "preampDb": 0.1
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": false,
                     "shownPreamp": 0.1,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "0109210000000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100010000000000403a77408054c9bf3fc688bf7fac3640c03c000001000002000700",
+                            "0109210002000000000040c2dad7803eef2a3f3e25287fc210d5c0c8000001000002000700",
+                            "01092100030000000000403aa08f829426893dc65f707d6cd976c258020001000002000700",
+                            "0109210004000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100050000000000409abca099a8d01d2d66435f66582fe2d218150001000002000700",
+                            "0109210006000000000040ab9935c83a68a51b5566ca37c6975ae4b0360001000002000700",
+                            "01092100070000000000403b0ea9e9f04d5016c5f1561610b2afe9204e0001000002000700"
                         ]
                     }
                 },
@@ -52232,17 +52281,22 @@
                         ],
                         "preampDb": -3.47
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": -3.47,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "0109210000000020bc883f0170cb84d780ef3bff8f347b09c387c4e803000100fe02000700",
+                            "01092100010000000000403a77408054c9bf3fc688bf7fac3640c03c000001000002000700",
+                            "0109210002000000000040c2dad7803eef2a3f3e25287fc210d5c0c8000001000002000700",
+                            "01092100030000000000403aa08f829426893dc65f707d6cd976c258020001000002000700",
+                            "0109210004000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100050000000000409abca099a8d01d2d66435f66582fe2d218150001000002000700",
+                            "0109210006000000000040ab9935c83a68a51b5566ca37c6975ae4b0360001000002000700",
+                            "01092100070000000000403b0ea9e9f04d5016c5f1561610b2afe9204e0001000002000700"
                         ]
                     }
                 },
@@ -52254,17 +52308,22 @@
                         ],
                         "preampDb": null
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": null,
                     "shownPreamp": -12.0,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "0109210000000044971343036c5582c103dc3afd93aa7dfb6410c2e8030001000c02000700",
+                            "01092100010000000000403a77408054c9bf3fc688bf7fac3640c03c000001000002000700",
+                            "0109210002000000000040c2dad7803eef2a3f3e25287fc210d5c0c8000001000002000700",
+                            "01092100030000000000403aa08f829426893dc65f707d6cd976c258020001000002000700",
+                            "0109210004000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100050000000000409abca099a8d01d2d66435f66582fe2d218150001000002000700",
+                            "0109210006000000000040ab9935c83a68a51b5566ca37c6975ae4b0360001000002000700",
+                            "01092100070000000000403b0ea9e9f04d5016c5f1561610b2afe9204e0001000002000700"
                         ]
                     }
                 },
@@ -52276,17 +52335,22 @@
                         ],
                         "preampDb": 0.0
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": 0.0,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "010921000000005f88103d89f41888a15f183b770be7770018d7c7e803000100f402000700",
+                            "01092100010000000000403a77408054c9bf3fc688bf7fac3640c03c000001000002000700",
+                            "0109210002000000000040c2dad7803eef2a3f3e25287fc210d5c0c8000001000002000700",
+                            "01092100030000000000403aa08f829426893dc65f707d6cd976c258020001000002000700",
+                            "0109210004000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100050000000000409abca099a8d01d2d66435f66582fe2d218150001000002000700",
+                            "0109210006000000000040ab9935c83a68a51b5566ca37c6975ae4b0360001000002000700",
+                            "01092100070000000000403b0ea9e9f04d5016c5f1561610b2afe9204e0001000002000700"
                         ]
                     }
                 },
@@ -52299,16 +52363,16 @@
                         "preampDb": 0.0
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 1: gain 12.1 dB outside -12..12 dB"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
-                    "headline": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 1: GAIN 12.1 DB",
+                    "headline": "INVALID EQ - adjust gain",
                     "preampFits": true,
                     "shownPreamp": 0.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 1: gain 12.1 dB outside -12..12 dB"
                         ]
                     }
                 },
@@ -52321,16 +52385,16 @@
                         "preampDb": 0.0
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 1: gain -12.1 dB outside -12..12 dB"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
-                    "headline": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 1: GAIN -12.1 DB",
+                    "headline": "INVALID EQ - adjust gain",
                     "preampFits": true,
                     "shownPreamp": 0.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 1: gain -12.1 dB outside -12..12 dB"
                         ]
                     }
                 },
@@ -52342,17 +52406,22 @@
                         ],
                         "preampDb": 0.0
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": 0.0,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "01092100000000000000408e18629f93f9d22072e79d606d062ddfe8031a00000002000700",
+                            "01092100010000000000403a77408054c9bf3fc688bf7fac3640c03c000001000002000700",
+                            "0109210002000000000040c2dad7803eef2a3f3e25287fc210d5c0c8000001000002000700",
+                            "01092100030000000000403aa08f829426893dc65f707d6cd976c258020001000002000700",
+                            "0109210004000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100050000000000409abca099a8d01d2d66435f66582fe2d218150001000002000700",
+                            "0109210006000000000040ab9935c83a68a51b5566ca37c6975ae4b0360001000002000700",
+                            "01092100070000000000403b0ea9e9f04d5016c5f1561610b2afe9204e0001000002000700"
                         ]
                     }
                 },
@@ -52364,17 +52433,22 @@
                         ],
                         "preampDb": 0.0
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": 0.0,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "0109210000000000000040c2bcb0805b31953f3e434f7fa5ce6ac0e803000a000002000700",
+                            "01092100010000000000403a77408054c9bf3fc688bf7fac3640c03c000001000002000700",
+                            "0109210002000000000040c2dad7803eef2a3f3e25287fc210d5c0c8000001000002000700",
+                            "01092100030000000000403aa08f829426893dc65f707d6cd976c258020001000002000700",
+                            "0109210004000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100050000000000409abca099a8d01d2d66435f66582fe2d218150001000002000700",
+                            "0109210006000000000040ab9935c83a68a51b5566ca37c6975ae4b0360001000002000700",
+                            "01092100070000000000403b0ea9e9f04d5016c5f1561610b2afe9204e0001000002000700"
                         ]
                     }
                 },
@@ -52387,16 +52461,16 @@
                         "preampDb": 0.0
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 1: Q 10.10 outside 0.10-10.00"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
-                    "headline": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 1: Q 10.10 - EDIT BAND",
+                    "headline": "INVALID EQ - adjust Q",
                     "preampFits": true,
                     "shownPreamp": 0.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 1: Q 10.10 outside 0.10-10.00"
                         ]
                     }
                 },
@@ -52409,16 +52483,16 @@
                         "preampDb": 0.0
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 1: Q 0.05 outside 0.10-10.00"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
-                    "headline": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 1: Q 0.05 - EDIT BAND",
+                    "headline": "INVALID EQ - adjust Q",
                     "preampFits": true,
                     "shownPreamp": 0.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 1: Q 0.05 outside 0.10-10.00"
                         ]
                     }
                 },
@@ -52430,17 +52504,22 @@
                         ],
                         "preampDb": 0.0
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": 0.0,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "0109210000000000000040ec7515804391ea3f148aea7fbd6e15c014000001000002000700",
+                            "01092100010000000000403a77408054c9bf3fc688bf7fac3640c03c000001000002000700",
+                            "0109210002000000000040c2dad7803eef2a3f3e25287fc210d5c0c8000001000002000700",
+                            "01092100030000000000403aa08f829426893dc65f707d6cd976c258020001000002000700",
+                            "0109210004000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100050000000000409abca099a8d01d2d66435f66582fe2d218150001000002000700",
+                            "0109210006000000000040ab9935c83a68a51b5566ca37c6975ae4b0360001000002000700",
+                            "01092100070000000000403b0ea9e9f04d5016c5f1561610b2afe9204e0001000002000700"
                         ]
                     }
                 },
@@ -52452,17 +52531,22 @@
                         ],
                         "preampDb": 0.0
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": 0.0,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "01092100000000000000403b0ea9e9f04d5016c5f1561610b2afe9204e0001000002000700",
+                            "01092100010000000000403a77408054c9bf3fc688bf7fac3640c03c000001000002000700",
+                            "0109210002000000000040c2dad7803eef2a3f3e25287fc210d5c0c8000001000002000700",
+                            "01092100030000000000403aa08f829426893dc65f707d6cd976c258020001000002000700",
+                            "0109210004000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100050000000000409abca099a8d01d2d66435f66582fe2d218150001000002000700",
+                            "0109210006000000000040ab9935c83a68a51b5566ca37c6975ae4b0360001000002000700",
+                            "01092100070000000000403b0ea9e9f04d5016c5f1561610b2afe9204e0001000002000700"
                         ]
                     }
                 },
@@ -52475,16 +52559,16 @@
                         "preampDb": 0.0
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 1: freq 20001 Hz outside 20-20000 Hz"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
-                    "headline": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 1: FREQ 20001 HZ",
+                    "headline": "INVALID EQ - adjust frequency",
                     "preampFits": true,
                     "shownPreamp": 0.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 1: freq 20001 Hz outside 20-20000 Hz"
                         ]
                     }
                 },
@@ -52497,16 +52581,16 @@
                         "preampDb": 0.0
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 1: freq 19 Hz outside 20-20000 Hz"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
-                    "headline": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 1: FREQ 19 HZ - EDIT BAND",
+                    "headline": "INVALID EQ - adjust frequency",
                     "preampFits": true,
                     "shownPreamp": 0.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 1: freq 19 Hz outside 20-20000 Hz"
                         ]
                     }
                 },
@@ -52518,17 +52602,22 @@
                         ],
                         "preampDb": -3.0
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": -3.0,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "010921000000006dfeb44003bfb183448add3bfd404e7c4f776dc3e8030001000302000700",
+                            "01092100010000000000403a77408054c9bf3fc688bf7fac3640c03c000001000002000700",
+                            "0109210002000000000040c2dad7803eef2a3f3e25287fc210d5c0c8000001000002000700",
+                            "01092100030000000000403aa08f829426893dc65f707d6cd976c258020001000002000700",
+                            "0109210004000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100050000000000409abca099a8d01d2d66435f66582fe2d218150001000002000700",
+                            "0109210006000000000040ab9935c83a68a51b5566ca37c6975ae4b0360001000002000700",
+                            "01092100070000000000403b0ea9e9f04d5016c5f1561610b2afe9204e0001000002000700"
                         ]
                     }
                 },
@@ -52541,16 +52630,16 @@
                         "preampDb": -3.0
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 1: type unsupported"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 1: TYPE UNSUPPORTED",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": -3.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 1: type unsupported"
                         ]
                     }
                 },
@@ -52563,16 +52652,16 @@
                         "preampDb": -3.0
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 1: type unsupported"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 1: TYPE UNSUPPORTED",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": -3.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 1: type unsupported"
                         ]
                     }
                 },
@@ -52585,16 +52674,16 @@
                         "preampDb": -3.0
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 1: type unsupported"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 1: TYPE UNSUPPORTED",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": -3.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 1: type unsupported"
                         ]
                     }
                 },
@@ -52607,16 +52696,16 @@
                         "preampDb": -3.0
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 1: type unsupported"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 1: TYPE UNSUPPORTED",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": -3.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 1: type unsupported"
                         ]
                     }
                 },
@@ -52629,16 +52718,16 @@
                         "preampDb": -3.0
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 1: type unsupported"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 1: TYPE UNSUPPORTED",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": -3.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 1: type unsupported"
                         ]
                     }
                 },
@@ -52651,16 +52740,16 @@
                         "preampDb": -3.0
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 1: type unsupported"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 1: TYPE UNSUPPORTED",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": -3.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 1: type unsupported"
                         ]
                     }
                 },
@@ -52673,16 +52762,16 @@
                         "preampDb": -2.0
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 1: type unsupported"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 1: TYPE UNSUPPORTED",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": -2.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 1: type unsupported"
                         ]
                     }
                 },
@@ -52695,16 +52784,18 @@
                         "preampDb": -2.0
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 1: type unsupported",
+                        "Band 1: Q 10.01 outside 0.10-10.00"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
-                    "headline": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 1: TYPE UNSUPPORTED",
+                    "headline": "INVALID EQ - adjust Q",
                     "preampFits": true,
                     "shownPreamp": -2.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 1: type unsupported",
+                            "Band 1: Q 10.01 outside 0.10-10.00"
                         ]
                     }
                 },
@@ -52717,16 +52808,16 @@
                         "preampDb": -2.0
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 1: type unsupported"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 1: TYPE UNSUPPORTED",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": -2.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 1: type unsupported"
                         ]
                     }
                 },
@@ -52739,16 +52830,18 @@
                         "preampDb": -2.0
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 1: type unsupported",
+                        "Band 1: Q 10.01 outside 0.10-10.00"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
-                    "headline": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 1: TYPE UNSUPPORTED",
+                    "headline": "INVALID EQ - adjust Q",
                     "preampFits": true,
                     "shownPreamp": -2.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 1: type unsupported",
+                            "Band 1: Q 10.01 outside 0.10-10.00"
                         ]
                     }
                 },
@@ -52761,16 +52854,16 @@
                         "preampDb": 0.0
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 1: type unsupported"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 1: TYPE UNSUPPORTED",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": 0.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 1: type unsupported"
                         ]
                     }
                 },
@@ -52783,16 +52876,16 @@
                         "preampDb": 0.0
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 1: type unsupported"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 1: TYPE UNSUPPORTED",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": 0.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 1: type unsupported"
                         ]
                     }
                 },
@@ -52806,16 +52899,16 @@
                         "preampDb": null
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 1: type unsupported"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 1: TYPE UNSUPPORTED",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": null,
                     "shownPreamp": -4.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 1: type unsupported"
                         ]
                     }
                 },
@@ -52829,16 +52922,16 @@
                         "preampDb": -2.5
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 1: type unsupported"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 1: TYPE UNSUPPORTED",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": -2.5,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 1: type unsupported"
                         ]
                     }
                 },
@@ -52853,16 +52946,16 @@
                         "preampDb": null
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "Band 3: type unsupported"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "BAND 3: TYPE UNSUPPORTED",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": null,
                     "shownPreamp": -14.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "Band 3: type unsupported"
                         ]
                     }
                 },
@@ -52872,17 +52965,22 @@
                         "bands": [],
                         "preampDb": 0.0
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": 0.0,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "0109210000000000000040ec7515804391ea3f148aea7fbd6e15c014000001000002000700",
+                            "01092100010000000000403a77408054c9bf3fc688bf7fac3640c03c000001000002000700",
+                            "0109210002000000000040c2dad7803eef2a3f3e25287fc210d5c0c8000001000002000700",
+                            "01092100030000000000403aa08f829426893dc65f707d6cd976c258020001000002000700",
+                            "0109210004000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100050000000000409abca099a8d01d2d66435f66582fe2d218150001000002000700",
+                            "0109210006000000000040ab9935c83a68a51b5566ca37c6975ae4b0360001000002000700",
+                            "01092100070000000000403b0ea9e9f04d5016c5f1561610b2afe9204e0001000002000700"
                         ]
                     }
                 },
@@ -52892,17 +52990,22 @@
                         "bands": [],
                         "preampDb": null
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": null,
                     "shownPreamp": 0.0,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "0109210000000000000040ec7515804391ea3f148aea7fbd6e15c014000001000002000700",
+                            "01092100010000000000403a77408054c9bf3fc688bf7fac3640c03c000001000002000700",
+                            "0109210002000000000040c2dad7803eef2a3f3e25287fc210d5c0c8000001000002000700",
+                            "01092100030000000000403aa08f829426893dc65f707d6cd976c258020001000002000700",
+                            "0109210004000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100050000000000409abca099a8d01d2d66435f66582fe2d218150001000002000700",
+                            "0109210006000000000040ab9935c83a68a51b5566ca37c6975ae4b0360001000002000700",
+                            "01092100070000000000403b0ea9e9f04d5016c5f1561610b2afe9204e0001000002000700"
                         ]
                     }
                 },
@@ -52915,17 +53018,22 @@
                         ],
                         "preampDb": null
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": null,
                     "shownPreamp": -3.0,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "010921000000006dfeb44003bfb183448add3bfd404e7c4f776dc3e8030001000302000700",
+                            "01092100010000000000403a77408054c9bf3fc688bf7fac3640c03c000001000002000700",
+                            "0109210002000000000040c2dad7803eef2a3f3e25287fc210d5c0c8000001000002000700",
+                            "01092100030000000000403aa08f829426893dc65f707d6cd976c258020001000002000700",
+                            "0109210004000000000040df9151840a5ef23b216eae7bf6a10dc4e8030001000002000700",
+                            "01092100050000000000409abca099a8d01d2d66435f66582fe2d218150001000002000700",
+                            "0109210006000000000040ab9935c83a68a51b5566ca37c6975ae4b0360001000002000700",
+                            "01092100070000000000403b0ea9e9f04d5016c5f1561610b2afe9204e0001000002000700"
                         ]
                     }
                 },
@@ -52944,17 +53052,22 @@
                         ],
                         "preampDb": null
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": null,
                     "shownPreamp": -3.0,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "010921000000005bdb0640722f29807206d03f8ed0d67f331e29c01f00b300800202000700",
+                            "01092100010000cc43fa3fe19648803c6abd3f1f69b77ff75148c03e00000180fe02000700",
+                            "010921000200001e9810401b8b5180d2f49e3fe574ae7f107350c07d006601000302000700",
+                            "01092100030000ec9af03fc2119a801bb1793f3eee657ff9b395c0fa00000200fe02000700",
+                            "0109210004000003c9214017053b825c71b43de9fac47da1c529c2f401e600000102000700",
+                            "0109210005000032cdc23fe559e881da1b9a3e1ba6177ef316a3c1e803000300fd02000700",
+                            "0109210006000093c4d4403abe758785c3bf38c6418a78e8776bc6d0071a01000202000700",
+                            "010921000700007e94fb3ee8b86e96d60b4f2e18479169ac5fb5d2a00fcd0000ff02000700"
                         ]
                     }
                 },
@@ -52973,17 +53086,22 @@
                         ],
                         "preampDb": -6.0
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": -6.0,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "010921000000005bdb0640722f29807206d03f8ed0d67f331e29c01f00b300800202000700",
+                            "01092100010000cc43fa3fe19648803c6abd3f1f69b77ff75148c03e00000180fe02000700",
+                            "010921000200001e9810401b8b5180d2f49e3fe574ae7f107350c07d006601000302000700",
+                            "01092100030000ec9af03fc2119a801bb1793f3eee657ff9b395c0fa00000200fe02000700",
+                            "0109210004000003c9214017053b825c71b43de9fac47da1c529c2f401e600000102000700",
+                            "0109210005000032cdc23fe559e881da1b9a3e1ba6177ef316a3c1e803000300fd02000700",
+                            "0109210006000093c4d4403abe758785c3bf38c6418a78e8776bc6d0071a01000202000700",
+                            "010921000700007e94fb3ee8b86e96d60b4f2e18479169ac5fb5d2a00fcd0000ff02000700"
                         ]
                     }
                 },
@@ -53002,17 +53120,22 @@
                         ],
                         "preampDb": -6.0
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": true,
                     "shownPreamp": -6.0,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "010921000000005bdb0640722f29807206d03f8ed0d67f331e29c01f00b300800202000700",
+                            "01092100010000cc43fa3fe19648803c6abd3f1f69b77ff75148c03e00000180fe02000700",
+                            "010921000200001e9810401b8b5180d2f49e3fe574ae7f107350c07d006601000302000700",
+                            "01092100030000ec9af03fc2119a801bb1793f3eee657ff9b395c0fa00000200fe02000700",
+                            "0109210004000003c9214017053b825c71b43de9fac47da1c529c2f401e600000102000700",
+                            "0109210005000032cdc23fe559e881da1b9a3e1ba6177ef316a3c1e803000300fd02000700",
+                            "0109210006000093c4d4403abe758785c3bf38c6418a78e8776bc6d0071a01000202000700",
+                            "010921000700007e94fb3ee8b86e96d60b4f2e18479169ac5fb5d2a00fcd0000ff02000700"
                         ]
                     }
                 },
@@ -53031,17 +53154,22 @@
                         ],
                         "preampDb": null
                     },
-                    "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
-                    ],
+                    "issues": [],
                     "blockLabel": "INVALID EQ - EDIT BAND",
                     "headline": "INVALID EQ - EDIT BAND",
                     "preampFits": null,
                     "shownPreamp": -3.0,
                     "plan": {
-                        "status": "refused",
-                        "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "status": "ready",
+                        "againstTheConstructedUnit": [
+                            "010921000000005bdb0640722f29807206d03f8ed0d67f331e29c01f00b300800202000700",
+                            "01092100010000cc43fa3fe19648803c6abd3f1f69b77ff75148c03e00000180fe02000700",
+                            "010921000200001e9810401b8b5180d2f49e3fe574ae7f107350c07d006601000302000700",
+                            "01092100030000ec9af03fc2119a801bb1793f3eee657ff9b395c0fa00000200fe02000700",
+                            "0109210004000003c9214017053b825c71b43de9fac47da1c529c2f401e600000102000700",
+                            "0109210005000032cdc23fe559e881da1b9a3e1ba6177ef316a3c1e803000300fd02000700",
+                            "0109210006000093c4d4403abe758785c3bf38c6418a78e8776bc6d0071a01000202000700",
+                            "010921000700007e94fb3ee8b86e96d60b4f2e18479169ac5fb5d2a00fcd0000ff02000700"
                         ]
                     }
                 },
@@ -53062,16 +53190,16 @@
                         "preampDb": 0.0
                     },
                     "issues": [
-                        "Read-only test build: nothing is written to the FreeDSP Mini"
+                        "9 bands; Moondrop FreeDSP Mini accepts 8; no truncation"
                     ],
-                    "blockLabel": "INVALID EQ - EDIT BAND",
-                    "headline": "INVALID EQ - EDIT BAND",
+                    "blockLabel": "9 BANDS - MAX 8",
+                    "headline": "INVALID EQ - adjust band count",
                     "preampFits": true,
                     "shownPreamp": 0.0,
                     "plan": {
                         "status": "refused",
                         "issues": [
-                            "Read-only test build: nothing is written to the FreeDSP Mini"
+                            "9 bands; Moondrop FreeDSP Mini accepts 8; no truncation"
                         ]
                     }
                 }

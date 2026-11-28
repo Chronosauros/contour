@@ -1,0 +1,1 @@
+Contour nie trzyma już dużo pamięci w tle. W 1.8.1 i 1.8.2 cienie ruchomych kart zapisywały nowy obraz w każdej klatce, więc po REORDER PROFILES Contour potrafił trzymać setki MB, czasem ponad 1 GB, także po wyjściu z aplikacji. Teraz każdy cień trzyma kilka obrazów, a Contour zwalnia je, gdy z niego wychodzisz.

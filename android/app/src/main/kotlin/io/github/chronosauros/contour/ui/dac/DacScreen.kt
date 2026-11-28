@@ -191,8 +191,8 @@ fun DacScreen(device: DeviceController, top: Dp, bottom: Dp, onNotSent: (UiText)
                     Text(header, style = Type.small, color = c.textDim, maxLines = 1, modifier = Modifier.testTag("dac_header"))
                 }
             }
-            // the FreeDSP Mini tester build: nothing on this page is ever written to the unit, and the page says so
-            if (target.moondrop?.writesBlocked == true) Text(target.readOnlyIssue, style = Type.small, color = c.textDim, modifier = Modifier.padding(start = 6.dp).testTag("dac_read_only_note"))
+            // the FreeDSP Mini tester build: the page says what the build writes (PEAK bands to Custom EQ, slot 7, only); its slot and PRE GAIN rows below stay read only
+            if (target.moondrop?.freedspMini == true) Text(io.github.chronosauros.contour.core.native.MoondropCatalog.FREEDSP_MINI_NOTICE, style = Type.small, color = c.textDim, modifier = Modifier.padding(start = 6.dp).testTag("dac_read_only_note"))
             settings.forEachIndexed { i, s ->
                 val shown: Shown
                 val value: Int?

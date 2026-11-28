@@ -28,8 +28,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.dropShadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.changedToUp
 import androidx.compose.ui.input.pointer.pointerInput
@@ -56,6 +54,8 @@ import io.github.chronosauros.contour.ui.UiText
 import io.github.chronosauros.contour.ui.asString
 import io.github.chronosauros.contour.ui.Lift
 import io.github.chronosauros.contour.ui.Type
+import io.github.chronosauros.contour.ui.rememberShadowSteps
+import io.github.chronosauros.contour.ui.steppedShadow
 import io.github.chronosauros.contour.ui.kit.LiftGuard
 import io.github.chronosauros.contour.ui.kit.placeFill
 import io.github.chronosauros.contour.ui.kit.sliderSign
@@ -335,19 +335,20 @@ fun HoldToSend(p: Profile, device: DeviceController, sender: Sender, onDetails: 
     }
     val flat = view.kind == HoldKind.NO_DAC
     val shape = RoundedCornerShape(Radii.L)
+    // a few shadow bitmaps for the whole hold, not a new one per frame (Theme.kt, ShadowSteps)
+    val holdShadow = rememberShadowSteps(shape, c.shadow)
     Box(
         modifier
             .fillMaxWidth()
             .then(
                 if (flat) Modifier
-                else Modifier.dropShadow(shape) {
-                    // sinks while held: the shadow tightens as the fill runs
-                    val press = fill.value
-                    radius = (14f * (1f - 0.6f * press)).dp.toPx()
-                    offset = Offset(0f, (5f * (1f - 0.7f * press)).dp.toPx())
-                    color = c.shadow
-                    alpha = 0.55f * c.shadowAlpha
-                },
+                // sinks while held: the shadow tightens as the fill runs
+                else Modifier.steppedShadow(
+                    holdShadow,
+                    radiusDp = { 14f * (1f - 0.6f * fill.value) },
+                    offsetYDp = { 5f * (1f - 0.7f * fill.value) },
+                    alpha = { 0.55f * c.shadowAlpha },
+                ),
             )
             .clip(shape)
             .background(if (orange) c.accent else if (white) c.fill else c.surface2)
