@@ -34,8 +34,8 @@ android {
         minSdk = 28
         targetSdk = 36
         // v0.2 (versionCode 2) is on the Pixel; `install -r` refuses a lower code, and keeps the data only on update.
-        versionCode = 44
-        versionName = "1.8.2" // literal: F-Droid reads it for update checks
+        versionCode = 46
+        versionName = "1.8.3" // literal: F-Droid reads it for update checks
     }
 
     signingConfigs {

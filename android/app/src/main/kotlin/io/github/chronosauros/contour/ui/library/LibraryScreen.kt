@@ -17,7 +17,6 @@ import androidx.compose.runtime.withFrameMillis
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.dropShadow
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalView
@@ -136,8 +135,11 @@ import io.github.chronosauros.contour.ui.kit.ProfileIcons
 import io.github.chronosauros.contour.ui.kit.SwipeFeel
 import io.github.chronosauros.contour.ui.kit.layoutSign
 import io.github.chronosauros.contour.ui.lift
+import io.github.chronosauros.contour.ui.liftAnyHeight
 import io.github.chronosauros.contour.ui.pal
+import io.github.chronosauros.contour.ui.rememberShadowSteps
 import io.github.chronosauros.contour.ui.sink
+import io.github.chronosauros.contour.ui.steppedShadow
 import io.github.chronosauros.contour.usb.DeviceController
 import io.github.chronosauros.contour.usb.Link
 import kotlin.math.abs
@@ -348,7 +350,7 @@ fun LibraryScreen(
                 // and clips its own content, so a sliding row stays inside its slot.
                 // In REORDER the block's own surface and shadow fade out and the rows part into cards ([RowFx]).
                 Box(Modifier.fillMaxWidth().padding(horizontal = SIDE).testTag("library_block")) {
-                Box(Modifier.matchParentSize().graphicsLayer { alpha = blockGlue }.lift(BLOCK, Lift.CARD).background(c.surface, BLOCK))
+                Box(Modifier.matchParentSize().graphicsLayer { alpha = blockGlue }.liftAnyHeight(BLOCK, Lift.CARD).background(c.surface, BLOCK))
                 Column(Modifier.fillMaxWidth()) {
                     active.forEachIndexed { i, p ->
                         key(p.id) {
@@ -792,8 +794,9 @@ private fun SwipeRow(
     val moveUpLabel = stringResource(R.string.library_move_up)
     val moveDownLabel = stringResource(R.string.library_move_down)
     val reorderNow = rememberUpdatedState(reorder)
-    val shadowColor = c.shadow
     val shadowAlpha = c.shadowAlpha
+    // one set of shadow bitmaps for every card (the breathing shadow below), not a new one per frame (Theme.kt, ShadowSteps)
+    val cardShadow = rememberShadowSteps(RoundedCornerShape(Radii.L), c.shadow)
     val gapPx = with(density) { Reorder.GAP_DP.dp.toPx() }
     val rCard = with(density) { Radii.L.toPx() }
     val liftedColor = c.surface2
@@ -824,13 +827,12 @@ private fun SwipeRow(
                         transformOrigin = TransformOrigin(fx.pivotX, 0.5f)
                     }
                     // the card's own shadow: RAISED when apart, breathing to HERO, HERO while dragged
-                    .dropShadow(RoundedCornerShape(Radii.L)) {
-                        val s = fx.shadow
-                        radius = (6f + 8f * s).dp.toPx()
-                        this.offset = Offset(0f, (2f + 3f * s).dp.toPx())
-                        color = shadowColor
-                        alpha = 0.55f * shadowAlpha * fx.apart
-                    }
+                    .steppedShadow(
+                        cardShadow,
+                        radiusDp = { 6f + 8f * fx.shadow },
+                        offsetYDp = { 2f + 3f * fx.shadow },
+                        alpha = { 0.55f * shadowAlpha * fx.apart },
+                    )
                     // the block's corners on its first row, a card's (Radii.L) corners when apart
                     .graphicsLayer {
                         val a = fx.apart
